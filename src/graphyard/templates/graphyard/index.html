@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Graphyard</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Palatino, serif;
+      color: #1e293b;
+      background: linear-gradient(135deg, #f8fafc 0%, #dbeafe 55%, #c7d2fe 100%);
+      min-height: 100vh;
+    }
+    main {
+      max-width: 1000px;
+      margin: 2rem auto;
+      padding: 1.25rem;
+      background: rgba(255, 255, 255, 0.86);
+      border-radius: 16px;
+      box-shadow: 0 12px 30px rgba(15, 23, 42, 0.12);
+    }
+    h1 {
+      margin-top: 0;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      font-size: 1.35rem;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 1rem;
+    }
+    .card {
+      border: 1px solid #cbd5e1;
+      border-radius: 12px;
+      padding: 1rem;
+      background: #ffffff;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.95rem;
+    }
+    th, td {
+      text-align: left;
+      border-bottom: 1px solid #e2e8f0;
+      padding: 0.5rem 0;
+      vertical-align: top;
+    }
+    a {
+      color: #0369a1;
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Graphyard</h1>
+  <p>Host and service catalog with Grafana link-outs.</p>
+  <div class="grid">
+    <section class="card">
+      <h2>Hosts</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Host</th>
+            <th>Grafana</th>
+            <th>Last Seen</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for host in hosts %}
+          <tr>
+            <td>{{ host.display_name|default:host.host_id }}</td>
+            <td>
+              {% if host.grafana_url %}
+                <a href="{{ host.grafana_url }}">Dashboard</a>
+              {% elif grafana_base_url %}
+                <a href="{{ grafana_base_url }}">Grafana</a>
+              {% else %}
+                -
+              {% endif %}
+            </td>
+            <td>{{ host.last_seen_at|default:"-" }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="3">No hosts registered yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card">
+      <h2>Services</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Service</th>
+            <th>Host</th>
+            <th>Grafana</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for service in services %}
+          <tr>
+            <td>{{ service.display_name|default:service.service_id }}</td>
+            <td>{{ service.host|default:"-" }}</td>
+            <td>
+              {% if service.grafana_url %}
+                <a href="{{ service.grafana_url }}">Dashboard</a>
+              {% elif grafana_base_url %}
+                <a href="{{ grafana_base_url }}">Grafana</a>
+              {% else %}
+                -
+              {% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="3">No services registered yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+  </div>
+</main>
+</body>
+</html>

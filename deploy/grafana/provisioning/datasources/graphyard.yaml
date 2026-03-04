@@ -1,0 +1,17 @@
+apiVersion: 1
+
+datasources:
+  - name: Graphyard InfluxDB
+    uid: graphyard-influxdb
+    type: influxdb
+    access: proxy
+    url: ${GRAPHYARD_INFLUX_URL}
+    isDefault: true
+    editable: true
+    jsonData:
+      version: InfluxQL
+      dbName: ${GRAPHYARD_INFLUX_DB}
+      httpMode: POST
+    user: ${GRAPHYARD_INFLUX_USER}
+    secureJsonData:
+      password: ${GRAPHYARD_INFLUX_PASSWORD}
