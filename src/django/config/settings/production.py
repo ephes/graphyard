@@ -13,10 +13,8 @@ STORAGES["staticfiles"]["BACKEND"] = (
     "whitenoise.storage.CompressedManifestStaticFilesStorage"  # noqa
 )
 
-SECURE_HSTS_SECONDS = 60
-SECURE_HSTS_INCLUDE_SUBDOMAINS = env.bool(
-    "DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS", default=True
-)  # noqa
+# HSTS is enforced by Traefik at the edge to avoid duplicate/conflicting headers.
+SECURE_HSTS_SECONDS = 0
 SECURE_CONTENT_TYPE_NOSNIFF = env.bool(
     "DJANGO_SECURE_CONTENT_TYPE_NOSNIFF", default=True
 )  # noqa
@@ -26,7 +24,6 @@ CSRF_COOKIE_SECURE = True
 CSRF_COOKIE_HTTPONLY = True
 SECURE_SSL_REDIRECT = env.bool("DJANGO_SECURE_SSL_REDIRECT", default=True)  # noqa
 X_FRAME_OPTIONS = "DENY"
-SECURE_HSTS_PRELOAD = True
 
 ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=["localhost"])  # noqa
 CSRF_TRUSTED_ORIGINS = env.list("DJANGO_CSRF_TRUSTED_ORIGINS", default=[])  # noqa

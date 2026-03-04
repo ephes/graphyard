@@ -108,7 +108,9 @@ STORAGES = {
 }
 
 ADMIN_URL = env("DJANGO_ADMIN_URL", default="admin/")
-LOGIN_URL = env("DJANGO_LOGIN_URL", default="/admin/login/")
+LOGIN_URL = env("DJANGO_LOGIN_URL", default="/login/")
+LOGIN_REDIRECT_URL = env("DJANGO_LOGIN_REDIRECT_URL", default="/")
+SESSION_COOKIE_AGE = env.int("DJANGO_SESSION_COOKIE_AGE_SECONDS", default=86400)
 
 INFLUX_URL = env("INFLUX_URL", default="")
 INFLUX_TOKEN = env("INFLUX_TOKEN", default="")

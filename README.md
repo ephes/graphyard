@@ -15,6 +15,7 @@ It ingests host/service metrics into InfluxDB, evaluates derived conditions for 
 - One-shot condition evaluation command (`evaluate_conditions`)
 - Django admin for tokens, conditions, host/service registry
 - Minimal authenticated host/service index UI
+- App login page at `/login/` (separate from Django admin URL)
 
 ## Project Layout
 

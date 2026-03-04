@@ -26,6 +26,31 @@
       text-transform: uppercase;
       font-size: 1.35rem;
     }
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 0.75rem;
+    }
+    .user-nav {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      font-size: 0.95rem;
+    }
+    .logout-btn {
+      border: 1px solid #94a3b8;
+      border-radius: 8px;
+      background: #f8fafc;
+      color: #1e293b;
+      padding: 0.35rem 0.7rem;
+      cursor: pointer;
+      font: inherit;
+    }
+    .logout-btn:hover {
+      background: #eef2ff;
+    }
     .grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
@@ -59,7 +84,16 @@
 </head>
 <body>
 <main>
-  <h1>Graphyard</h1>
+  <div class="topbar">
+    <h1>Graphyard</h1>
+    <div class="user-nav">
+      <span>{{ request.user.username }}</span>
+      <form action="{% url 'graphyard:logout' %}" method="post">
+        {% csrf_token %}
+        <button class="logout-btn" type="submit">Log out</button>
+      </form>
+    </div>
+  </div>
   <p>Host and service catalog with Grafana link-outs.</p>
   <div class="grid">
     <section class="card">
