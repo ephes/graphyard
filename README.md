@@ -51,6 +51,18 @@ just manage createsuperuser
 just dev
 ```
 
+## Deployment Shorthand
+
+For production-style rollout through ops-control:
+
+```bash
+just deploy
+```
+
+This delegates to `ops-control` and runs `just deploy graphyard <host>`.
+Default `OPS_CONTROL` path is `/Users/jochen/workspaces/ws-ops-misc/ops-control`.
+Set `OPS_CONTROL` and/or `HOST` env vars to override defaults.
+
 ## Procfile Dev Stack (Nyxmon-style)
 
 Graphyard includes a root `Procfile` compatible with `honcho`, similar to Nyxmon.

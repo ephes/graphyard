@@ -1,5 +1,9 @@
 # Justfile for graphyard development
 
+# Path to your local ops-control clone
+OPS_CONTROL := env_var_or_default("OPS_CONTROL", "/Users/jochen/workspaces/ws-ops-misc/ops-control")
+HOST := env_var_or_default("HOST", "macmini")
+
 default:
     @just --list
 
@@ -20,3 +24,8 @@ manage *ARGS:
 
 dev:
     uvx honcho start
+
+# Deploy via ops-control shorthand.
+deploy:
+    #!/usr/bin/env bash
+    cd {{OPS_CONTROL}} && just deploy graphyard {{HOST}}
