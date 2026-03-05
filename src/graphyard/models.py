@@ -1,9 +1,35 @@
 from __future__ import annotations
 
-from django.contrib.auth.hashers import check_password, make_password
+import hashlib
+import hmac
+
+from django.contrib.auth.hashers import check_password
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
+
+PREFERRED_FAST_TOKEN_HASH_PREFIX = "graphyard-sha256"
+LEGACY_FAST_TOKEN_HASH_PREFIXES = ("sha256",)
+FAST_TOKEN_HASH_PREFIXES = (
+    PREFERRED_FAST_TOKEN_HASH_PREFIX,
+    *LEGACY_FAST_TOKEN_HASH_PREFIXES,
+)
+
+
+def _fast_token_hash(
+    token: str, *, prefix: str = PREFERRED_FAST_TOKEN_HASH_PREFIX
+) -> str:
+    # Safe for high-entropy machine-generated ingest tokens, not user passwords.
+    digest = hashlib.sha256(token.encode("utf-8")).hexdigest()
+    return f"{prefix}${digest}"
+
+
+def _extract_fast_token_hash_digest(token_hash: str) -> str | None:
+    for prefix in FAST_TOKEN_HASH_PREFIXES:
+        marker = f"{prefix}$"
+        if token_hash.startswith(marker):
+            return token_hash[len(marker) :]
+    return None
 
 
 class StatusLevel:
@@ -33,15 +59,23 @@ class IngestToken(models.Model):
     def __str__(self) -> str:
         return self.name
 
+    def uses_fast_token_hash(self) -> bool:
+        return _extract_fast_token_hash_digest(self.token_hash) is not None
+
+    def needs_fast_hash_prefix_upgrade(self) -> bool:
+        return self.uses_fast_token_hash() and not self.token_hash.startswith(
+            f"{PREFERRED_FAST_TOKEN_HASH_PREFIX}$"
+        )
+
     def set_token(self, token: str) -> None:
-        self.token_hash = make_password(token)
+        self.token_hash = _fast_token_hash(token)
 
     def check_token(self, token: str) -> bool:
+        fast_digest = _extract_fast_token_hash_digest(self.token_hash)
+        if fast_digest is not None:
+            expected = _fast_token_hash(token).split("$", 1)[1]
+            return hmac.compare_digest(fast_digest, expected)
         return check_password(token, self.token_hash)
-
-    def mark_used(self) -> None:
-        self.last_used_at = timezone.now()
-        self.save(update_fields=["last_used_at"])
 
     def revoke(self) -> None:
         self.enabled = False

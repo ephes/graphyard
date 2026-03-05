@@ -1,11 +1,19 @@
 from __future__ import annotations
 
+import hashlib
 from datetime import UTC, datetime
 
 import pytest
+from django.contrib.auth.hashers import make_password
 from django.urls import reverse
 
-from graphyard.models import ConditionDefinition, IngestToken, StatusLevel
+from graphyard.models import (
+    ConditionDefinition,
+    IngestToken,
+    LEGACY_FAST_TOKEN_HASH_PREFIXES,
+    PREFERRED_FAST_TOKEN_HASH_PREFIX,
+    StatusLevel,
+)
 
 
 @pytest.mark.django_db
@@ -64,7 +72,114 @@ def test_metrics_endpoint_accepts_valid_token(client, monkeypatch):
     assert captured["count"] == 1
 
     ingest_token.refresh_from_db()
+    assert ingest_token.token_hash.startswith(f"{PREFERRED_FAST_TOKEN_HASH_PREFIX}$")
     assert ingest_token.last_used_at is not None
+
+
+@pytest.mark.django_db
+def test_metrics_endpoint_upgrades_legacy_token_hash(client, monkeypatch):
+    ingest_token = IngestToken.objects.create(
+        name="macmini",
+        token_hash=make_password("legacy-secret"),
+    )
+    assert not ingest_token.token_hash.startswith("sha256$")
+
+    monkeypatch.setattr("graphyard.views.write_points", lambda points: len(points))
+
+    payload = [
+        {
+            "ts": "2026-03-04T12:00:00Z",
+            "host": "macmini",
+            "metric": "disk.used_percent",
+            "value": 79.1,
+        }
+    ]
+    response = client.post(
+        reverse("graphyard:metrics_ingest"),
+        data=payload,
+        content_type="application/json",
+        HTTP_AUTHORIZATION="Bearer legacy-secret",
+    )
+
+    assert response.status_code == 202
+
+    ingest_token.refresh_from_db()
+    assert ingest_token.token_hash.startswith(f"{PREFERRED_FAST_TOKEN_HASH_PREFIX}$")
+    assert ingest_token.last_used_at is not None
+
+
+@pytest.mark.django_db
+def test_metrics_endpoint_upgrades_legacy_fast_hash_prefix(client, monkeypatch):
+    legacy_prefix = LEGACY_FAST_TOKEN_HASH_PREFIXES[0]
+    digest = hashlib.sha256("legacy-fast-secret".encode("utf-8")).hexdigest()
+    ingest_token = IngestToken.objects.create(
+        name="macmini",
+        token_hash=f"{legacy_prefix}${digest}",
+    )
+    assert ingest_token.token_hash.startswith(f"{legacy_prefix}$")
+
+    monkeypatch.setattr("graphyard.views.write_points", lambda points: len(points))
+
+    payload = [
+        {
+            "ts": "2026-03-04T12:00:00Z",
+            "host": "macmini",
+            "metric": "disk.used_percent",
+            "value": 79.1,
+        }
+    ]
+    response = client.post(
+        reverse("graphyard:metrics_ingest"),
+        data=payload,
+        content_type="application/json",
+        HTTP_AUTHORIZATION="Bearer legacy-fast-secret",
+    )
+
+    assert response.status_code == 202
+
+    ingest_token.refresh_from_db()
+    assert ingest_token.token_hash.startswith(f"{PREFERRED_FAST_TOKEN_HASH_PREFIX}$")
+
+
+@pytest.mark.django_db
+def test_metrics_endpoint_throttles_last_used_updates(client, monkeypatch):
+    ingest_token = IngestToken(name="macmini")
+    ingest_token.set_token("secret-token")
+    ingest_token.save()
+
+    monkeypatch.setattr("graphyard.views.write_points", lambda points: len(points))
+
+    payload = [
+        {
+            "ts": "2026-03-04T12:00:00Z",
+            "host": "macmini",
+            "metric": "disk.used_percent",
+            "value": 79.1,
+        }
+    ]
+
+    first_response = client.post(
+        reverse("graphyard:metrics_ingest"),
+        data=payload,
+        content_type="application/json",
+        HTTP_AUTHORIZATION="Bearer secret-token",
+    )
+    assert first_response.status_code == 202
+
+    ingest_token.refresh_from_db()
+    first_last_used_at = ingest_token.last_used_at
+    assert first_last_used_at is not None
+
+    second_response = client.post(
+        reverse("graphyard:metrics_ingest"),
+        data=payload,
+        content_type="application/json",
+        HTTP_AUTHORIZATION="Bearer secret-token",
+    )
+    assert second_response.status_code == 202
+
+    ingest_token.refresh_from_db()
+    assert ingest_token.last_used_at == first_last_used_at
 
 
 @pytest.mark.django_db

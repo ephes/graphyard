@@ -104,6 +104,8 @@ just manage revoke_ingest_token --name macmini
 ```
 
 Graphyard stores token hashes only.
+Ingest tokens use a fast SHA-256 digest with the `graphyard-sha256$...` prefix (constant-time compare), and legacy hashes are upgraded on first successful use.
+Hash upgrades are one-way; if you revert to code that only understands Django password hash formats, rotate ingest tokens.
 
 ## Metric Collection Specs
 
