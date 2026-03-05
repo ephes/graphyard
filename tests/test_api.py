@@ -183,6 +183,78 @@ def test_metrics_endpoint_throttles_last_used_updates(client, monkeypatch):
 
 
 @pytest.mark.django_db
+def test_metrics_endpoint_rejects_unknown_subject_type(client, monkeypatch):
+    ingest_token = IngestToken(name="collector")
+    ingest_token.set_token("secret-token")
+    ingest_token.save()
+    monkeypatch.setattr("graphyard.views.write_points", lambda points: len(points))
+
+    payload = [
+        {
+            "ts": "2026-03-04T12:00:00Z",
+            "metric": "ha.sensor.office_temperature",
+            "value": 22.1,
+            "subject_type": "unknown_thing",
+            "subject_id": "office_temperature",
+            "source_system": "homeassistant",
+            "source_instance": "ha-main",
+            "collector_service": "graphyard-agent",
+            "collector_host": "macmini",
+        }
+    ]
+
+    response = client.post(
+        reverse("graphyard:metrics_ingest"),
+        data=payload,
+        content_type="application/json",
+        HTTP_AUTHORIZATION="Bearer secret-token",
+    )
+
+    assert response.status_code == 400
+    assert "subject_type" in response.json()["error"]
+
+
+@pytest.mark.django_db
+def test_metrics_endpoint_normalizes_subject_id(client, monkeypatch):
+    ingest_token = IngestToken(name="collector")
+    ingest_token.set_token("secret-token")
+    ingest_token.save()
+
+    captured: dict[str, object] = {}
+
+    def fake_write_points(points):
+        captured["subject_id"] = points[0].subject_id
+        captured["source_instance"] = points[0].source_instance
+        return len(points)
+
+    monkeypatch.setattr("graphyard.views.write_points", fake_write_points)
+
+    payload = [
+        {
+            "ts": "2026-03-04T12:00:00Z",
+            "metric": "ha.sensor.office_temperature",
+            "value": 22.1,
+            "subject_type": "environment_sensor",
+            "subject_id": "Office Temperature",
+            "source_system": "homeassistant",
+            "collector_service": "graphyard-agent",
+            "collector_host": "macmini",
+        }
+    ]
+
+    response = client.post(
+        reverse("graphyard:metrics_ingest"),
+        data=payload,
+        content_type="application/json",
+        HTTP_AUTHORIZATION="Bearer secret-token",
+    )
+
+    assert response.status_code == 202
+    assert captured["subject_id"] == "office_temperature"
+    assert captured["source_instance"] == "default"
+
+
+@pytest.mark.django_db
 def test_conditions_endpoints(client):
     condition = ConditionDefinition.objects.create(
         name="Humidity too high",
@@ -210,6 +282,8 @@ def test_conditions_endpoints(client):
     detail = detail_response.json()
     assert detail["id"] == condition.id
     assert detail["config"]["metric_name"] == condition.metric_name
+    assert "subject_type_filter" in detail["config"]
+    assert "subject_id_filter" in detail["config"]
 
 
 @pytest.mark.django_db

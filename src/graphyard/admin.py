@@ -13,6 +13,7 @@ from .models import (
     MetricCollectionSpec,
     PipelineHeartbeat,
     ServiceRegistry,
+    SubjectRegistry,
 )
 
 _SECRET_CONFIG_KEYS = {
@@ -89,6 +90,18 @@ class ServiceRegistryAdmin(admin.ModelAdmin):
     list_filter = ("enabled",)
 
 
+@admin.register(SubjectRegistry)
+class SubjectRegistryAdmin(admin.ModelAdmin):
+    list_display = (
+        "subject_type",
+        "subject_id",
+        "display_name",
+        "source_system",
+        "last_seen_at",
+    )
+    search_fields = ("subject_type", "subject_id", "display_name", "source_system")
+
+
 @admin.register(ConditionDefinition)
 class ConditionDefinitionAdmin(admin.ModelAdmin):
     list_display = (
@@ -100,7 +113,14 @@ class ConditionDefinitionAdmin(admin.ModelAdmin):
         "last_evaluated",
         "updated_at",
     )
-    search_fields = ("name", "metric_name", "host_filter", "service_filter")
+    search_fields = (
+        "name",
+        "metric_name",
+        "host_filter",
+        "subject_type_filter",
+        "subject_id_filter",
+        "service_filter",
+    )
     list_filter = ("enabled", "status", "operator")
 
 

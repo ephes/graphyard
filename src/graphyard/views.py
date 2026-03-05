@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from datetime import UTC, datetime
+import logging
 
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
@@ -14,7 +15,7 @@ from django.views.decorators.http import require_GET, require_POST
 
 from .auth import authenticate_ingest_token
 from .influx import InfluxConfigurationError, MetricPoint, check_health as influx_health
-from .influx import write_points
+from .influx import normalize_metric_point, write_points
 from .models import (
     ConditionDefinition,
     HostRegistry,
@@ -23,6 +24,8 @@ from .models import (
     StatusLevel,
 )
 from .services import record_heartbeat, touch_registry_from_points
+
+logger = logging.getLogger(__name__)
 
 
 def _json_error(message: str, *, status: int) -> JsonResponse:
@@ -56,7 +59,7 @@ def _parse_metrics_payload(payload: object) -> list[MetricPoint]:
 
         if not isinstance(ts_raw, str):
             raise ValueError(f"Metric at index {idx} has invalid ts")
-        if not isinstance(host, str) or not host:
+        if host is not None and not isinstance(host, str):
             raise ValueError(f"Metric at index {idx} has invalid host")
         if not isinstance(metric, str) or not metric:
             raise ValueError(f"Metric at index {idx} has invalid metric")
@@ -80,16 +83,87 @@ def _parse_metrics_payload(payload: object) -> list[MetricPoint]:
         else:
             raise ValueError(f"Metric at index {idx} has invalid tags")
 
-        points.append(
-            MetricPoint(
-                ts=_parse_timestamp(ts_raw),
-                host=host,
-                service=service,
-                metric=metric,
-                value=parsed_value,
-                tags=tags,
+        host_raw = host.strip() if isinstance(host, str) else ""
+        service_raw = service.strip() if isinstance(service, str) else ""
+
+        subject_type = item.get("subject_type")
+        if subject_type is None:
+            if host_raw:
+                subject_type = "host"
+            else:
+                raise ValueError(
+                    f"Metric at index {idx} missing subject_type and legacy host fallback"
+                )
+        if not isinstance(subject_type, str):
+            raise ValueError(f"Metric at index {idx} has invalid subject_type")
+
+        subject_id = item.get("subject_id")
+        if subject_id is None:
+            if host_raw:
+                subject_id = host_raw
+            else:
+                raise ValueError(
+                    f"Metric at index {idx} missing subject_id and legacy host fallback"
+                )
+        if not isinstance(subject_id, str):
+            raise ValueError(f"Metric at index {idx} has invalid subject_id")
+
+        source_system = item.get("source_system")
+        if source_system is None:
+            source_system = service_raw or "legacy"
+        if not isinstance(source_system, str):
+            raise ValueError(f"Metric at index {idx} has invalid source_system")
+
+        source_instance = item.get("source_instance", "default")
+        if source_instance is None:
+            source_instance = "default"
+        if not isinstance(source_instance, str):
+            raise ValueError(f"Metric at index {idx} has invalid source_instance")
+
+        source_entity_id = item.get("source_entity_id")
+        if source_entity_id is not None and not isinstance(source_entity_id, str):
+            raise ValueError(f"Metric at index {idx} has invalid source_entity_id")
+
+        collector_service = item.get("collector_service")
+        if collector_service is None:
+            collector_service = service_raw or "graphyard-ingest"
+        if not isinstance(collector_service, str):
+            raise ValueError(f"Metric at index {idx} has invalid collector_service")
+
+        collector_host = item.get("collector_host")
+        if collector_host is None:
+            collector_host = host_raw or str(subject_id)
+        if not isinstance(collector_host, str):
+            raise ValueError(f"Metric at index {idx} has invalid collector_host")
+
+        try:
+            normalized = normalize_metric_point(
+                MetricPoint(
+                    ts=_parse_timestamp(ts_raw),
+                    metric=metric,
+                    value=parsed_value,
+                    subject_type=subject_type,
+                    subject_id=subject_id,
+                    source_system=source_system,
+                    source_instance=source_instance,
+                    source_entity_id=source_entity_id,
+                    collector_service=collector_service,
+                    collector_host=collector_host,
+                    host=host_raw or None,
+                    service=service_raw or None,
+                    tags=tags,
+                )
             )
-        )
+        except ValueError as err:
+            logger.warning(
+                "Rejected metric payload at index=%s metric=%s: %s",
+                idx,
+                metric,
+                err,
+            )
+            raise ValueError(f"Metric at index {idx} failed validation: {err}") from err
+
+        points.append(normalized)
 
     return points
 
@@ -182,6 +256,8 @@ def condition_detail(request: HttpRequest, condition_id: int) -> JsonResponse:
     payload["config"] = {
         "metric_name": condition.metric_name,
         "host_filter": condition.host_filter,
+        "subject_type_filter": condition.subject_type_filter,
+        "subject_id_filter": condition.subject_id_filter,
         "service_filter": condition.service_filter,
         "tags_filter": condition.tags_filter,
         "operator": condition.operator,

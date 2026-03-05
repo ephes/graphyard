@@ -6,7 +6,11 @@ Graphyard writes points to one measurement (`INFLUX_MEASUREMENT`, default `graph
 
 Stored point shape:
 
-- Tags: `host`, `metric`, optional `service`, plus low-cardinality custom tags
+- Tags:
+  - Canonical: `metric`, `subject_type`, `subject_id`, `source_system`, `source_instance`, `collector_service`, `collector_host`
+  - Optional canonical: `source_entity_id`
+  - Compatibility: `host` (host subjects only), optional `service`
+  - Additional low-cardinality custom tags
 - Field: `value` (float)
 - Timestamp: UTC
 
@@ -40,14 +44,11 @@ Important compatibility note:
 
 ### Dashboard Query Alignment (2026-03-05)
 
-- Vector host metrics are stored with metric names prefixed by `host.` (for example `host.filesystem_used_ratio`).
-- The Graphyard Home dashboard disk/storage panel now queries `metric='host.filesystem_used_ratio'` and excludes `tmpfs`/`devtmpfs`.
-- Previous `metric='disk.used_percent'` query did not match the stored Vector metric naming and produced no data.
-- Temperature/humidity panels still filter by `device_class` and now group by both `host` and `metric` for clearer legends when `host=All`.
-- Temperature/humidity legends now display `entity_id` labels instead of raw `graphyard_metrics.mean { ... }` frame names.
-- Room temperature panel excludes infrastructure sensors (`fritz_box_*`, `usw_pro_*`) to avoid mixing network-device temperatures with room/environment values.
-- Infrastructure/device temperatures are shown in a dedicated panel using `entity_id` patterns (for example `fritz_box_*`, `usw_pro_*`, and `*cpu*` sensors).
-- Host variable now lists physical hosts from `host.*` metrics (`SHOW TAG VALUES ... WHERE metric =~ /^host\./`) instead of including service-scoped producer host IDs.
+- Host/infrastructure panels filter by `subject_type='host'` and `subject_id` host variable.
+- Home Assistant panels filter via `source_system`, `subject_type`, and `subject_id` variables.
+- Filesystem panel remains aligned to `metric='host.filesystem_used_ratio'`, excludes `tmpfs`/`devtmpfs`, and keeps `timeFrom=24h`.
+- Host variable is sourced from host-subject series (`subject_type='host'`) with filesystem data.
+- Datasource UID remains `graphyard-influxdb` for provisioning stability.
 
 ## Local Development (`just dev`)
 
@@ -72,6 +73,7 @@ Home Assistant collection specs normalize values into standard Graphyard metric 
 Typical conventions:
 
 - metric name prefix: `ha.`
+- subject mapping from `config.subject_mapping` resolves canonical `subject_type`/`subject_id`
 - temperature/humidity series may include tags like `entity_id`, `device_class`, `unit`, `friendly_name`
 
 The env-scan collector spec fetches `/api/states` once per run and extracts all matching sensors in one pass.

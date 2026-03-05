@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+import logging
 import re
 from typing import Callable
 
@@ -19,7 +20,12 @@ from .models import (
     PipelineHeartbeat,
     ServiceRegistry,
     StatusLevel,
+    SubjectRegistry,
+    SubjectType,
 )
+
+logger = logging.getLogger(__name__)
+_subject_mapping_warning_keys: set[str] = set()
 
 
 @dataclass(frozen=True)
@@ -186,11 +192,144 @@ def evaluate_conditions_once(
     return ConditionEvaluationRun(total=total, failed=failed)
 
 
+def _warn_subject_mapping_once(key: str, message: str, *args: object) -> None:
+    if key in _subject_mapping_warning_keys:
+        return
+    _subject_mapping_warning_keys.add(key)
+    logger.warning(message, *args)
+
+
+def _entity_name_slug(entity_id: str) -> str:
+    normalized = entity_id.strip().lower()
+    for prefix in ("sensor.", "binary_sensor."):
+        if normalized.startswith(prefix):
+            normalized = normalized[len(prefix) :]
+            break
+    return influx.normalize_subject_id(normalized)
+
+
+def _resolve_subject_mapping(
+    *,
+    spec: MetricCollectionSpec,
+    entity_id: str,
+) -> tuple[str, str] | None:
+    if not isinstance(spec.config, dict):
+        return None
+
+    subject_mapping = spec.config.get("subject_mapping")
+    if subject_mapping is None:
+        _warn_subject_mapping_once(
+            f"{spec.name}:missing",
+            "Spec %s missing config.subject_mapping; using default entity_name_slug mapping",
+            spec.name,
+        )
+        return (SubjectType.ENVIRONMENT_SENSOR, _entity_name_slug(entity_id))
+
+    if not isinstance(subject_mapping, dict):
+        _warn_subject_mapping_once(
+            f"{spec.name}:invalid_type",
+            "Spec %s has invalid config.subject_mapping type=%s; using default mapping",
+            spec.name,
+            type(subject_mapping).__name__,
+        )
+        return (SubjectType.ENVIRONMENT_SENSOR, _entity_name_slug(entity_id))
+
+    rules = subject_mapping.get("rules", [])
+    if isinstance(rules, list):
+        for index, rule in enumerate(rules):
+            if not isinstance(rule, dict):
+                logger.warning(
+                    "Spec %s subject_mapping.rules[%s] is not an object; skipping",
+                    spec.name,
+                    index,
+                )
+                continue
+            pattern_raw = str(rule.get("match_entity_id_regex", "")).strip()
+            if not pattern_raw:
+                continue
+            try:
+                pattern = re.compile(pattern_raw)
+            except re.error as err:
+                logger.warning(
+                    "Spec %s has invalid subject mapping regex at rules[%s]: %s",
+                    spec.name,
+                    index,
+                    err,
+                )
+                continue
+            if pattern.fullmatch(entity_id) is None:
+                continue
+
+            subject_type = str(rule.get("subject_type", "")).strip().lower()
+            if subject_type not in SubjectType.ALL:
+                _warn_subject_mapping_once(
+                    f"{spec.name}:rule:{index}:unknown_subject_type:{subject_type}",
+                    "Spec %s subject mapping rules[%s] has unknown subject_type=%s",
+                    spec.name,
+                    index,
+                    subject_type,
+                )
+                continue
+            template = rule.get("subject_id_template")
+            if not isinstance(template, str) or not template.strip():
+                logger.warning(
+                    "Spec %s subject mapping rules[%s] matched %s but has no static subject_id_template",
+                    spec.name,
+                    index,
+                    entity_id,
+                )
+                return None
+            try:
+                subject_id = influx.normalize_subject_id(template)
+            except ValueError as err:
+                logger.warning(
+                    "Spec %s subject mapping rules[%s] produced invalid subject_id for %s: %s",
+                    spec.name,
+                    index,
+                    entity_id,
+                    err,
+                )
+                return None
+            return (subject_type, subject_id)
+
+    default_mapping = subject_mapping.get("default", {})
+    if not isinstance(default_mapping, dict):
+        _warn_subject_mapping_once(
+            f"{spec.name}:invalid_default",
+            "Spec %s has invalid subject_mapping.default; using fallback",
+            spec.name,
+        )
+        default_mapping = {}
+
+    subject_type = (
+        str(default_mapping.get("subject_type", SubjectType.ENVIRONMENT_SENSOR))
+        .strip()
+        .lower()
+    )
+    if subject_type not in SubjectType.ALL:
+        _warn_subject_mapping_once(
+            f"{spec.name}:unknown_default_subject_type:{subject_type}",
+            "Spec %s has unknown default subject_type=%s; using %s",
+            spec.name,
+            subject_type,
+            SubjectType.ENVIRONMENT_SENSOR,
+        )
+        subject_type = SubjectType.ENVIRONMENT_SENSOR
+    subject_id_from = str(default_mapping.get("subject_id_from", "entity_name_slug"))
+    if subject_id_from != "entity_name_slug":
+        _warn_subject_mapping_once(
+            f"{spec.name}:unsupported_subject_id_from:{subject_id_from}",
+            "Spec %s has unsupported subject_id_from=%s; using entity_name_slug",
+            spec.name,
+            subject_id_from,
+        )
+    return (subject_type, _entity_name_slug(entity_id))
+
+
 def _normalize_home_assistant_sensor_state(
     payload: dict[str, object],
     *,
-    host_id: str,
-    service_id: str,
+    spec: MetricCollectionSpec,
     metric_name_override: str = "",
     extra_tags: dict[str, str] | None = None,
 ) -> influx.MetricPoint | None:
@@ -222,6 +361,35 @@ def _normalize_home_assistant_sensor_state(
     if not isinstance(attributes, dict):
         attributes = {}
 
+    resolved_subject = _resolve_subject_mapping(spec=spec, entity_id=entity_id)
+    if resolved_subject is None:
+        logger.warning(
+            "Spec %s failed subject resolution for entity_id=%s",
+            spec.name,
+            entity_id,
+        )
+        return None
+    subject_type, subject_id = resolved_subject
+
+    config = spec.config if isinstance(spec.config, dict) else {}
+    source_system = str(config.get("source_system", "homeassistant")).strip().lower()
+    source_instance = str(config.get("source_instance", "default")).strip() or "default"
+
+    # Keep legacy defaults but allow canonical collector fields.
+    legacy_host_id = (
+        str(config.get("host_id", "homeassistant")).strip() or "homeassistant"
+    )
+    legacy_service_id = (
+        str(config.get("service_id", "homeassistant")).strip() or "homeassistant"
+    )
+    collector_service = (
+        str(config.get("collector_service", "graphyard-agent")).strip()
+        or "graphyard-agent"
+    )
+    collector_host = str(config.get("collector_host", legacy_host_id)).strip()
+    if not collector_host:
+        collector_host = legacy_host_id
+
     metric_name = metric_name_override or f"ha.{entity_id.replace(' ', '_')}"
 
     tags: dict[str, str] = {"entity_id": entity_id}
@@ -236,12 +404,27 @@ def _normalize_home_assistant_sensor_state(
     if device_class is not None:
         tags["device_class"] = str(device_class)
 
+    host_compat: str | None = None
+    try:
+        normalized_legacy_host = influx.normalize_subject_id(legacy_host_id)
+    except ValueError:
+        normalized_legacy_host = ""
+    if subject_type == SubjectType.HOST and subject_id == normalized_legacy_host:
+        host_compat = normalized_legacy_host
+
     return influx.MetricPoint(
         ts=ts,
-        host=host_id,
-        service=service_id,
         metric=metric_name,
         value=value,
+        subject_type=subject_type,
+        subject_id=subject_id,
+        source_system=source_system,
+        source_instance=source_instance,
+        source_entity_id=entity_id,
+        collector_service=collector_service,
+        collector_host=collector_host,
+        host=host_compat,
+        service=legacy_service_id,
         tags=tags,
     )
 
@@ -291,8 +474,6 @@ def _execute_home_assistant_sensor_spec(
     if not entity_id:
         return StatusLevel.CRITICAL, 0, 0, "config.entity_id is required"
 
-    host_id = str(spec.config.get("host_id", "homeassistant"))
-    service_id = str(spec.config.get("service_id", "homeassistant"))
     metric_name = str(spec.config.get("metric_name", ""))
     timeout_seconds = int(spec.config.get("request_timeout_seconds", 10))
     verify_tls = bool(spec.config.get("verify_tls", True))
@@ -314,13 +495,17 @@ def _execute_home_assistant_sensor_spec(
 
         point = _normalize_home_assistant_sensor_state(
             state_payload,
-            host_id=host_id,
-            service_id=service_id,
+            spec=spec,
             metric_name_override=metric_name,
             extra_tags={"spec_name": spec.name},
         )
         if point is None:
-            return StatusLevel.WARNING, 0, 1, "state payload not numeric"
+            return (
+                StatusLevel.WARNING,
+                0,
+                1,
+                "state payload not numeric or mapping failed",
+            )
 
         written = influx.write_points([point])
         touch_registry_from_points([point])
@@ -342,8 +527,6 @@ def _execute_home_assistant_env_scan_spec(
     if not access_token:
         return StatusLevel.CRITICAL, 0, 0, "config.access_token is required"
 
-    host_id = str(spec.config.get("host_id", "homeassistant"))
-    service_id = str(spec.config.get("service_id", "homeassistant"))
     metric_prefix = str(spec.config.get("metric_prefix", "ha."))
     timeout_seconds = int(spec.config.get("request_timeout_seconds", 10))
     verify_tls = bool(spec.config.get("verify_tls", True))
@@ -387,7 +570,10 @@ def _execute_home_assistant_env_scan_spec(
             if not isinstance(item, dict):
                 continue
             entity_id = item.get("entity_id")
-            if not isinstance(entity_id, str) or not entity_id.startswith("sensor."):
+            if not isinstance(entity_id, str) or not (
+                entity_id.startswith("sensor.")
+                or entity_id.startswith("binary_sensor.")
+            ):
                 continue
 
             attributes = item.get("attributes")
@@ -406,8 +592,7 @@ def _execute_home_assistant_env_scan_spec(
 
             point = _normalize_home_assistant_sensor_state(
                 item,
-                host_id=host_id,
-                service_id=service_id,
+                spec=spec,
                 metric_name_override=f"{metric_prefix}{entity_id}",
                 extra_tags={"spec_name": spec.name},
             )
@@ -437,6 +622,18 @@ def _execute_http_json_metric_spec(
     metric_name = str(spec.config.get("metric_name", "")).strip()
     host_id = str(spec.config.get("host_id", "external"))
     service_id_raw = str(spec.config.get("service_id", "")).strip()
+    subject_type = str(spec.config.get("subject_type", SubjectType.SERVICE)).strip()
+    subject_id_raw = str(
+        spec.config.get("subject_id", service_id_raw or host_id or "external")
+    ).strip()
+    source_system = str(spec.config.get("source_system", "http")).strip()
+    source_instance = str(spec.config.get("source_instance", "default")).strip()
+    collector_service = str(
+        spec.config.get("collector_service", service_id_raw or "graphyard-agent")
+    ).strip()
+    collector_host = str(
+        spec.config.get("collector_host", host_id or "external")
+    ).strip()
     timeout_seconds = int(spec.config.get("request_timeout_seconds", 10))
     verify_tls = bool(spec.config.get("verify_tls", True))
 
@@ -492,10 +689,16 @@ def _execute_http_json_metric_spec(
 
         point = influx.MetricPoint(
             ts=datetime.now(UTC),
-            host=host_id,
-            service=service_id_raw or None,
             metric=metric_name,
             value=metric_value,
+            subject_type=subject_type,
+            subject_id=subject_id_raw,
+            source_system=source_system,
+            source_instance=source_instance or "default",
+            collector_service=collector_service or "graphyard-agent",
+            collector_host=collector_host or host_id or "external",
+            host=host_id if subject_type.strip().lower() == SubjectType.HOST else None,
+            service=service_id_raw or None,
             tags=tags,
         )
         written = influx.write_points([point])
@@ -522,6 +725,7 @@ def run_metric_collection_specs_once(
     *,
     due_only: bool = False,
 ) -> MetricCollectionSpecRun:
+    _subject_mapping_warning_keys.clear()
     now = timezone.now()
     now_ts = int(now.timestamp())
 
@@ -626,22 +830,55 @@ def record_heartbeat(
 def touch_registry_from_points(points: list[influx.MetricPoint]) -> None:
     now = timezone.now()
     for point in points:
-        host, _ = HostRegistry.objects.get_or_create(
-            host_id=point.host,
-            defaults={"display_name": point.host},
-        )
-        if host.last_seen_at is None or now > host.last_seen_at:
-            host.last_seen_at = now
-            host.save(update_fields=["last_seen_at"])
+        normalized = influx.normalize_metric_point(point)
 
-        if point.service:
+        subject, _ = SubjectRegistry.objects.get_or_create(
+            subject_type=normalized.subject_type,
+            subject_id=normalized.subject_id,
+            defaults={
+                "display_name": normalized.subject_id,
+                "source_system": normalized.source_system,
+            },
+        )
+        subject_changed_fields: list[str] = []
+        if subject.last_seen_at is None or now > subject.last_seen_at:
+            subject.last_seen_at = now
+            subject_changed_fields.append("last_seen_at")
+        if (
+            normalized.source_system
+            and subject.source_system != normalized.source_system
+        ):
+            subject.source_system = normalized.source_system
+            subject_changed_fields.append("source_system")
+        if subject_changed_fields:
+            subject.save(update_fields=subject_changed_fields)
+
+        host: HostRegistry | None = None
+        if normalized.subject_type == SubjectType.HOST:
+            host, _ = HostRegistry.objects.get_or_create(
+                host_id=normalized.subject_id,
+                defaults={"display_name": normalized.subject_id},
+            )
+            if host.last_seen_at is None or now > host.last_seen_at:
+                host.last_seen_at = now
+                host.save(update_fields=["last_seen_at"])
+
+        if normalized.service:
+            service_host: HostRegistry | None = host
+            if service_host is None:
+                service_host = HostRegistry.objects.filter(
+                    host_id=normalized.collector_host
+                ).first()
             service, _ = ServiceRegistry.objects.get_or_create(
-                service_id=point.service,
-                defaults={"display_name": point.service, "host": host},
+                service_id=normalized.service,
+                defaults={
+                    "display_name": normalized.service,
+                    "host": service_host,
+                },
             )
             changed_fields: list[str] = []
-            if service.host_id != host.id:
-                service.host = host
+            if service_host is not None and service.host_id != service_host.id:
+                service.host = service_host
                 changed_fields.append("host")
             if service.last_seen_at is None or now > service.last_seen_at:
                 service.last_seen_at = now

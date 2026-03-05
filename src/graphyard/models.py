@@ -99,6 +99,43 @@ class HostRegistry(models.Model):
         return self.display_name or self.host_id
 
 
+class SubjectType:
+    HOST = "host"
+    NETWORK_DEVICE = "network_device"
+    ENVIRONMENT_SENSOR = "environment_sensor"
+    SERVICE = "service"
+
+    CHOICES = [
+        (HOST, "Host"),
+        (NETWORK_DEVICE, "Network Device"),
+        (ENVIRONMENT_SENSOR, "Environment Sensor"),
+        (SERVICE, "Service"),
+    ]
+    ALL = {HOST, NETWORK_DEVICE, ENVIRONMENT_SENSOR, SERVICE}
+
+
+class SubjectRegistry(models.Model):
+    subject_type = models.CharField(max_length=32, choices=SubjectType.CHOICES)
+    subject_id = models.CharField(max_length=128)
+    display_name = models.CharField(max_length=255, blank=True, null=True)
+    source_system = models.CharField(max_length=64, blank=True, null=True)
+    last_seen_at = models.DateTimeField(blank=True, null=True)
+
+    class Meta:
+        db_table = "subject_registry"
+        verbose_name_plural = "subject registry"
+        ordering = ["subject_type", "subject_id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["subject_type", "subject_id"],
+                name="subject_registry_unique_subject",
+            )
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.subject_type}:{self.subject_id}"
+
+
 class ServiceRegistry(models.Model):
     service_id = models.CharField(max_length=128, unique=True)
     host = models.ForeignKey(
@@ -188,6 +225,8 @@ class ConditionDefinition(models.Model):
 
     metric_name = models.CharField(max_length=255)
     host_filter = models.CharField(max_length=128, blank=True)
+    subject_type_filter = models.CharField(max_length=32, blank=True)
+    subject_id_filter = models.CharField(max_length=128, blank=True)
     service_filter = models.CharField(max_length=128, blank=True)
     tags_filter = models.JSONField(default=dict, blank=True)
 

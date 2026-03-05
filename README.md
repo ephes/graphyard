@@ -2,7 +2,7 @@
 
 Graphyard is a Django-based metrics platform MVP.
 
-It ingests host/service metrics into InfluxDB, evaluates derived conditions for Nyxmon polling, and provides a small host/service index with Grafana links.
+It ingests metrics into InfluxDB with canonical subject/source/collector dimensions, evaluates derived conditions for Nyxmon polling, and provides a small host/service index with Grafana links.
 
 ## MVP Scope
 
@@ -13,7 +13,7 @@ It ingests host/service metrics into InfluxDB, evaluates derived conditions for 
 - Long-running agent command (`start_agent`) for scheduling
 - Generic metric collection specs (`MetricCollectionSpec`) in Django admin
 - One-shot condition evaluation command (`evaluate_conditions`)
-- Django admin for tokens, conditions, host/service registry
+- Django admin for tokens, conditions, host/service/subject registry
 - Minimal authenticated host/service index UI
 - App login page at `/login/` (separate from Django admin URL)
 
@@ -116,6 +116,13 @@ Current supported `spec_type`:
 - `home_assistant_env_scan`
 - `http_json_metric`
 
+Collectors emit canonical dimensions:
+
+- `subject_type`, `subject_id`
+- `source_system`, `source_instance`, optional `source_entity_id`
+- `collector_service`, `collector_host`
+- compatibility tags: `host` (host subjects only), optional `service`
+
 Example `config` JSON for a Home Assistant sensor spec:
 
 ```json
@@ -124,6 +131,15 @@ Example `config` JSON for a Home Assistant sensor spec:
   "access_token": "replace-me",
   "entity_id": "sensor.living_room_humidity",
   "metric_name": "ha.sensor.living_room_humidity",
+  "source_instance": "ha-main",
+  "collector_service": "graphyard-agent",
+  "collector_host": "macmini",
+  "subject_mapping": {
+    "default": {
+      "subject_type": "environment_sensor",
+      "subject_id_from": "entity_name_slug"
+    }
+  },
   "host_id": "homeassistant",
   "service_id": "homeassistant",
   "request_timeout_seconds": 10,
@@ -140,6 +156,22 @@ Example `config` JSON for a Home Assistant environment scan spec
   "access_token": "replace-me",
   "host_id": "homeassistant",
   "service_id": "homeassistant",
+  "source_instance": "ha-main",
+  "collector_service": "graphyard-agent",
+  "collector_host": "macmini",
+  "subject_mapping": {
+    "default": {
+      "subject_type": "environment_sensor",
+      "subject_id_from": "entity_name_slug"
+    },
+    "rules": [
+      {
+        "match_entity_id_regex": "^sensor\\.fritz_box_.*_cpu_temperature$",
+        "subject_type": "network_device",
+        "subject_id_template": "fritz_box_7590_ax"
+      }
+    ]
+  },
   "metric_prefix": "ha.",
   "include_device_classes": ["temperature", "humidity"],
   "entity_id_regex": "(temperature|humidity)",
@@ -166,6 +198,9 @@ Example `config` JSON for an HTTP JSON metric spec:
 ```
 
 Collected points are written by the long-running agent to InfluxDB and update host/service registry metadata.
+`host_id`/`service_id` remain supported for migration compatibility.
+Write-path behavior is partial-success: invalid points are rejected per-point, while valid points in the
+same batch are still written.
 
 Security note: metric collection `config` values are stored in SQLite and may contain secrets
 (for example `access_token`, `bearer_token`, `basic_password`). Django admin masks known secret
@@ -176,6 +211,8 @@ keys for existing specs, but secrets are still plaintext at rest in the DB for M
 Create conditions in Django admin (`ConditionDefinition`) using:
 
 - metric name
+- optional `subject_type_filter` / `subject_id_filter`
+- legacy `host_filter` (host-subject compatibility)
 - operator (`gt|gte|lt|lte`)
 - warning/critical thresholds
 - breach duration window
@@ -231,3 +268,7 @@ just lint
 ## Influx + Grafana
 
 See `docs/influx_grafana.md` for retention/downsampling notes and Grafana linking guidance.
+
+Migration note: dashboards now filter primarily on canonical `subject_*`/`source_*` tags. Historical
+series written before this migration may not have those tags, so old data can be absent from the new
+subject-aware panels until fresh points are ingested.

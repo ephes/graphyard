@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
+import logging
 import re
 from typing import TYPE_CHECKING, Any
 
@@ -11,6 +12,8 @@ from influxdb_client import InfluxDBClient, Point
 from influxdb_client.client.write_api import SYNCHRONOUS
 from influxdb_client.rest import ApiException
 
+from .models import SubjectType
+
 if TYPE_CHECKING:
     from .models import ConditionDefinition
 
@@ -19,12 +22,37 @@ class InfluxConfigurationError(RuntimeError):
     pass
 
 
+logger = logging.getLogger(__name__)
+
+_SUBJECT_ID_PATTERN = re.compile(r"[a-z0-9]+(?:_[a-z0-9]+)*")
+_DIMENSION_VALUE_PATTERN = re.compile(r"[a-z0-9][a-z0-9_.-]*")
+_RESERVED_TAG_KEYS = {
+    "metric",
+    "host",
+    "service",
+    "subject_type",
+    "subject_id",
+    "source_system",
+    "source_instance",
+    "source_entity_id",
+    "collector_service",
+    "collector_host",
+}
+
+
 @dataclass(frozen=True)
 class MetricPoint:
     ts: datetime
-    host: str
     metric: str
     value: float
+    subject_type: str
+    subject_id: str
+    source_system: str
+    collector_service: str
+    collector_host: str
+    source_instance: str = "default"
+    source_entity_id: str | None = None
+    host: str | None = None
     service: str | None = None
     tags: dict[str, str] | None = None
 
@@ -36,7 +64,121 @@ class MetricSample:
     host: str
     metric: str
     service: str | None
-    tags: dict[str, str]
+    subject_type: str | None = None
+    subject_id: str | None = None
+    source_system: str | None = None
+    source_instance: str | None = None
+    source_entity_id: str | None = None
+    collector_service: str | None = None
+    collector_host: str | None = None
+    tags: dict[str, str] = field(default_factory=dict)
+
+
+def normalize_subject_id(raw: str) -> str:
+    normalized = re.sub(r"[^a-z0-9]+", "_", raw.strip().lower())
+    normalized = re.sub(r"_+", "_", normalized).strip("_")
+    if not normalized or _SUBJECT_ID_PATTERN.fullmatch(normalized) is None:
+        raise ValueError(
+            f"Invalid subject_id {raw!r}: expected lowercase snake_case identifier"
+        )
+    return normalized
+
+
+def _normalize_dimension_value(
+    raw: str | None,
+    *,
+    field_name: str,
+    fallback: str | None = None,
+) -> str:
+    value = (raw or "").strip().lower()
+    if not value:
+        if fallback is not None:
+            value = fallback
+        else:
+            raise ValueError(f"{field_name} is required")
+    value = re.sub(r"\s+", "_", value)
+    if _DIMENSION_VALUE_PATTERN.fullmatch(value) is None:
+        raise ValueError(
+            f"Invalid {field_name} {raw!r}: expected lowercase token with [a-z0-9_.-]"
+        )
+    return value
+
+
+def normalize_metric_point(item: MetricPoint) -> MetricPoint:
+    metric_name = str(item.metric).strip()
+    if not metric_name:
+        raise ValueError("metric is required")
+
+    subject_type = str(item.subject_type).strip().lower()
+    if subject_type not in SubjectType.ALL:
+        raise ValueError(
+            f"Unknown subject_type {item.subject_type!r}; expected one of "
+            f"{sorted(SubjectType.ALL)}"
+        )
+
+    subject_id = normalize_subject_id(str(item.subject_id))
+    source_system = _normalize_dimension_value(
+        item.source_system,
+        field_name="source_system",
+    )
+    source_instance = _normalize_dimension_value(
+        item.source_instance,
+        field_name="source_instance",
+        fallback="default",
+    )
+    collector_service = _normalize_dimension_value(
+        item.collector_service,
+        field_name="collector_service",
+    )
+    collector_host = _normalize_dimension_value(
+        item.collector_host,
+        field_name="collector_host",
+    )
+    source_entity_id = (
+        str(item.source_entity_id).strip()
+        if item.source_entity_id is not None
+        else None
+    )
+    if source_entity_id == "":
+        source_entity_id = None
+
+    host: str | None = item.host
+    if subject_type == SubjectType.HOST:
+        if host is None or not str(host).strip():
+            host = subject_id
+        else:
+            normalized_host = normalize_subject_id(str(host))
+            if normalized_host != subject_id:
+                raise ValueError(
+                    "host compatibility tag must equal subject_id when subject_type=host"
+                )
+            host = normalized_host
+    else:
+        host = None
+
+    service = str(item.service).strip() if item.service is not None else None
+    if service == "":
+        service = None
+
+    normalized_tags = (
+        {str(key): str(value) for key, value in item.tags.items()} if item.tags else {}
+    )
+
+    return MetricPoint(
+        ts=_ensure_utc(item.ts),
+        metric=metric_name,
+        value=float(item.value),
+        subject_type=subject_type,
+        subject_id=subject_id,
+        source_system=source_system,
+        source_instance=source_instance,
+        source_entity_id=source_entity_id,
+        collector_service=collector_service,
+        collector_host=collector_host,
+        host=host,
+        service=service,
+        tags=normalized_tags,
+    )
 
 
 def _build_client() -> InfluxDBClient:
@@ -95,18 +237,56 @@ def write_points(points: list[MetricPoint]) -> int:
         return 0
 
     influx_points: list[Point] = []
+    rejected_points = 0
     for item in points:
+        try:
+            normalized = normalize_metric_point(item)
+        except ValueError as err:
+            logger.error(
+                "Metric point validation failed metric=%s subject_type=%s subject_id=%s: %s",
+                item.metric,
+                item.subject_type,
+                item.subject_id,
+                err,
+            )
+            rejected_points += 1
+            continue
+
         point = Point(settings.INFLUX_MEASUREMENT)
-        point = point.tag("host", item.host).tag("metric", item.metric)
-        if item.service:
-            point = point.tag("service", item.service)
-        if item.tags:
-            for key, value in item.tags.items():
+        point = (
+            point.tag("metric", normalized.metric)
+            .tag("subject_type", normalized.subject_type)
+            .tag("subject_id", normalized.subject_id)
+            .tag("source_system", normalized.source_system)
+            .tag("source_instance", normalized.source_instance)
+            .tag("collector_service", normalized.collector_service)
+            .tag("collector_host", normalized.collector_host)
+        )
+        if normalized.source_entity_id:
+            point = point.tag("source_entity_id", normalized.source_entity_id)
+        if normalized.host:
+            point = point.tag("host", normalized.host)
+        if normalized.service:
+            point = point.tag("service", normalized.service)
+        if normalized.tags:
+            for key, value in normalized.tags.items():
+                if key in _RESERVED_TAG_KEYS:
+                    logger.warning(
+                        "Ignoring custom tag override for reserved key %s", key
+                    )
+                    continue
                 point = point.tag(str(key), str(value))
 
-        point = point.field("value", float(item.value))
-        point = point.time(_ensure_utc(item.ts))
+        point = point.field("value", float(normalized.value))
+        point = point.time(_ensure_utc(normalized.ts))
         influx_points.append(point)
+
+    if not influx_points:
+        if rejected_points:
+            logger.warning(
+                "Dropped %s invalid metric points; nothing written", rejected_points
+            )
+        return 0
 
     with _build_client() as client:
         write_api = client.write_api(write_options=SYNCHRONOUS)
@@ -114,6 +294,13 @@ def write_points(points: list[MetricPoint]) -> int:
             bucket=settings.INFLUX_BUCKET,
             org=settings.INFLUX_ORG,
             record=influx_points,
+        )
+
+    if rejected_points:
+        logger.warning(
+            "Skipped %s invalid metric points while writing %s valid points",
+            rejected_points,
+            len(influx_points),
         )
 
     return len(influx_points)
@@ -126,6 +313,8 @@ def query_range(
     *,
     host: str | None = None,
     service: str | None = None,
+    subject_type: str | None = None,
+    subject_id: str | None = None,
     tags: dict[str, str] | None = None,
 ) -> list[MetricSample]:
     mode = settings.INFLUX_API_MODE
@@ -136,6 +325,8 @@ def query_range(
             stop,
             host=host,
             service=service,
+            subject_type=subject_type,
+            subject_id=subject_id,
             tags=tags,
         )
 
@@ -147,6 +338,8 @@ def query_range(
                 stop,
                 host=host,
                 service=service,
+                subject_type=subject_type,
+                subject_id=subject_id,
                 tags=tags,
             )
         except Exception as err:  # noqa: BLE001
@@ -158,6 +351,8 @@ def query_range(
                 stop,
                 host=host,
                 service=service,
+                subject_type=subject_type,
+                subject_id=subject_id,
                 tags=tags,
             )
 
@@ -167,6 +362,8 @@ def query_range(
         stop,
         host=host,
         service=service,
+        subject_type=subject_type,
+        subject_id=subject_id,
         tags=tags,
     )
 
@@ -184,6 +381,8 @@ def _query_range_v2_flux(
     *,
     host: str | None = None,
     service: str | None = None,
+    subject_type: str | None = None,
+    subject_id: str | None = None,
     tags: dict[str, str] | None = None,
 ) -> list[MetricSample]:
     clauses = [
@@ -195,6 +394,14 @@ def _query_range_v2_flux(
         clauses.append(f'{_flux_record_access("host")} == "{_flux_escape(host)}"')
     if service:
         clauses.append(f'{_flux_record_access("service")} == "{_flux_escape(service)}"')
+    if subject_type:
+        clauses.append(
+            f'{_flux_record_access("subject_type")} == "{_flux_escape(subject_type)}"'
+        )
+    if subject_id:
+        clauses.append(
+            f'{_flux_record_access("subject_id")} == "{_flux_escape(subject_id)}"'
+        )
     if tags:
         for key, value in tags.items():
             clauses.append(
@@ -232,6 +439,41 @@ def _query_range_v2_flux(
                         if record.values.get("service") is not None
                         else None
                     ),
+                    subject_type=(
+                        str(record.values.get("subject_type"))
+                        if record.values.get("subject_type") is not None
+                        else None
+                    ),
+                    subject_id=(
+                        str(record.values.get("subject_id"))
+                        if record.values.get("subject_id") is not None
+                        else None
+                    ),
+                    source_system=(
+                        str(record.values.get("source_system"))
+                        if record.values.get("source_system") is not None
+                        else None
+                    ),
+                    source_instance=(
+                        str(record.values.get("source_instance"))
+                        if record.values.get("source_instance") is not None
+                        else None
+                    ),
+                    source_entity_id=(
+                        str(record.values.get("source_entity_id"))
+                        if record.values.get("source_entity_id") is not None
+                        else None
+                    ),
+                    collector_service=(
+                        str(record.values.get("collector_service"))
+                        if record.values.get("collector_service") is not None
+                        else None
+                    ),
+                    collector_host=(
+                        str(record.values.get("collector_host"))
+                        if record.values.get("collector_host") is not None
+                        else None
+                    ),
                     tags={
                         str(key): str(tag_value)
                         for key, tag_value in record.values.items()
@@ -248,6 +490,13 @@ def _query_range_v2_flux(
                             "host",
                             "service",
                             "metric",
+                            "subject_type",
+                            "subject_id",
+                            "source_system",
+                            "source_instance",
+                            "source_entity_id",
+                            "collector_service",
+                            "collector_host",
                         }
                     },
                 )
@@ -263,6 +512,8 @@ def _query_range_v3_sql(
     *,
     host: str | None = None,
     service: str | None = None,
+    subject_type: str | None = None,
+    subject_id: str | None = None,
     tags: dict[str, str] | None = None,
 ) -> list[MetricSample]:
     where_clauses = [
@@ -274,6 +525,10 @@ def _query_range_v3_sql(
         where_clauses.append(f"host = '{_sql_escape(host)}'")
     if service:
         where_clauses.append(f"service = '{_sql_escape(service)}'")
+    if subject_type:
+        where_clauses.append(f"subject_type = '{_sql_escape(subject_type)}'")
+    if subject_id:
+        where_clauses.append(f"subject_id = '{_sql_escape(subject_id)}'")
     if tags:
         for key, tag_value in tags.items():
             where_clauses.append(
@@ -282,7 +537,9 @@ def _query_range_v3_sql(
 
     measurement = _sql_identifier(settings.INFLUX_MEASUREMENT)
     sql = (
-        "select time, value, host, metric, service "
+        "select time, value, host, metric, service, "
+        "subject_type, subject_id, source_system, source_instance, "
+        "source_entity_id, collector_service, collector_host "
         f"from {measurement} "
         f"where {' and '.join(where_clauses)} "
         "order by time asc"
@@ -338,6 +595,41 @@ def _query_range_v3_sql(
                 service=(
                     str(row.get("service")) if row.get("service") is not None else None
                 ),
+                subject_type=(
+                    str(row.get("subject_type"))
+                    if row.get("subject_type") is not None
+                    else None
+                ),
+                subject_id=(
+                    str(row.get("subject_id"))
+                    if row.get("subject_id") is not None
+                    else None
+                ),
+                source_system=(
+                    str(row.get("source_system"))
+                    if row.get("source_system") is not None
+                    else None
+                ),
+                source_instance=(
+                    str(row.get("source_instance"))
+                    if row.get("source_instance") is not None
+                    else None
+                ),
+                source_entity_id=(
+                    str(row.get("source_entity_id"))
+                    if row.get("source_entity_id") is not None
+                    else None
+                ),
+                collector_service=(
+                    str(row.get("collector_service"))
+                    if row.get("collector_service") is not None
+                    else None
+                ),
+                collector_host=(
+                    str(row.get("collector_host"))
+                    if row.get("collector_host") is not None
+                    else None
+                ),
                 tags={},
             )
         )
@@ -361,13 +653,29 @@ def query_condition_window(
     now_utc = _ensure_utc(now or datetime.now(UTC))
     lookback_minutes = max(condition.window_minutes, condition.breach_minutes)
     start = now_utc - timedelta(minutes=lookback_minutes)
+    tags = {k: str(v) for k, v in condition.tags_filter.items()}
+    if condition.subject_type_filter:
+        tags["subject_type"] = str(condition.subject_type_filter).strip().lower()
+    if condition.subject_id_filter:
+        tags["subject_id"] = normalize_subject_id(condition.subject_id_filter)
+
+    host_filter: str | None = condition.host_filter or None
+    if host_filter and condition.subject_type_filter:
+        if str(condition.subject_type_filter).strip().lower() != SubjectType.HOST:
+            logger.warning(
+                "Ignoring host_filter for non-host condition id=%s name=%s",
+                condition.id,
+                condition.name,
+            )
+            host_filter = None
+
     return query_range(
         condition.metric_name,
         start,
         now_utc,
-        host=condition.host_filter or None,
+        host=host_filter,
         service=condition.service_filter or None,
-        tags={k: str(v) for k, v in condition.tags_filter.items()},
+        tags=tags,
     )
 
 
