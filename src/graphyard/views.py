@@ -317,7 +317,11 @@ def health(request: HttpRequest) -> JsonResponse:
 
 @login_required
 def host_service_index(request: HttpRequest) -> HttpResponse:
-    hosts = HostRegistry.objects.filter(enabled=True).order_by("host_id")
+    hosts = (
+        HostRegistry.objects.filter(enabled=True, services__enabled=True)
+        .distinct()
+        .order_by("host_id")
+    )
     services = ServiceRegistry.objects.filter(enabled=True).select_related("host")
 
     context = {

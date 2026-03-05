@@ -24,14 +24,14 @@
     {
       "datasource": null,
       "gridPos": {
-        "h": 6,
+        "h": 5,
         "w": 24,
         "x": 0,
         "y": 0
       },
       "id": 1,
       "options": {
-        "content": "## Graphyard Overview\n\n- Datasource: `Graphyard InfluxDB`\n- Measurement: `graphyard_metrics`\n- Query language: `InfluxQL`\n\nUse the **host** filter at the top to focus the charts.\n",
+        "content": "## Graphyard Overview\n\n- Datasource: `Graphyard InfluxDB`\n- Measurement: `graphyard_metrics`\n- Query language: `InfluxQL`\n- Host metrics from Vector use metric names prefixed with `host.`\n\nUse the **host** filter at the top to focus charts. Room temperature and infrastructure/device temperature are shown in separate panels.\n",
         "mode": "markdown"
       },
       "pluginVersion": "12.4.0",
@@ -68,7 +68,96 @@
               "mode": "off"
             }
           },
+          "displayName": "${__field.labels.entity_id}",
           "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 75
+              },
+              {
+                "color": "red",
+                "value": 85
+              }
+            ]
+          },
+          "unit": "celsius"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 12,
+        "x": 12,
+        "y": 15
+      },
+      "id": 6,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "12.4.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "graphyard-influxdb"
+          },
+          "query": "SELECT mean(\"value\") FROM \"graphyard_metrics\" WHERE $timeFilter AND (\"host\" =~ /^$host$/ OR (\"host\" = 'homeassistant' AND \"service\" = 'homeassistant')) AND \"device_class\" = 'temperature' AND \"entity_id\" =~ /^sensor\\.(fritz_box_.*|usw_pro_.*|.*cpu.*|.*fractal.*|.*macmini.*)$/ GROUP BY time($__interval), \"entity_id\" fill(null)",
+          "rawQuery": true,
+          "refId": "A",
+          "resultFormat": "time_series"
+        }
+      ],
+      "title": "Infrastructure / Device Temperatures",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "graphyard-influxdb"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 3,
+            "showPoints": "auto",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "displayName": "${__field.labels.entity_id}",
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -81,7 +170,8 @@
                 "value": 80
               }
             ]
-          }
+          },
+          "unit": "celsius"
         },
         "overrides": []
       },
@@ -89,7 +179,7 @@
         "h": 10,
         "w": 12,
         "x": 0,
-        "y": 6
+        "y": 5
       },
       "id": 2,
       "options": {
@@ -111,13 +201,13 @@
             "type": "influxdb",
             "uid": "graphyard-influxdb"
           },
-          "query": "SELECT mean(\"value\") FROM \"graphyard_metrics\" WHERE $timeFilter AND \"host\" =~ /^$host$/ AND \"device_class\" = 'temperature' GROUP BY time($__interval), \"metric\" fill(null)",
+          "query": "SELECT mean(\"value\") FROM \"graphyard_metrics\" WHERE $timeFilter AND (\"host\" =~ /^$host$/ OR (\"host\" = 'homeassistant' AND \"service\" = 'homeassistant')) AND \"device_class\" = 'temperature' AND \"entity_id\" !~ /^sensor\\.(fritz_box_.*|usw_pro_.*)$/ GROUP BY time($__interval), \"entity_id\" fill(null)",
           "rawQuery": true,
           "refId": "A",
           "resultFormat": "time_series"
         }
       ],
-      "title": "Temperature Metrics",
+      "title": "Temperature Sensors",
       "type": "timeseries"
     },
     {
@@ -151,6 +241,7 @@
             }
           },
           "mappings": [],
+          "displayName": "${__field.labels.entity_id}",
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -163,7 +254,8 @@
                 "value": 70
               }
             ]
-          }
+          },
+          "unit": "percent"
         },
         "overrides": []
       },
@@ -171,7 +263,7 @@
         "h": 10,
         "w": 12,
         "x": 12,
-        "y": 6
+        "y": 5
       },
       "id": 3,
       "options": {
@@ -193,13 +285,13 @@
             "type": "influxdb",
             "uid": "graphyard-influxdb"
           },
-          "query": "SELECT mean(\"value\") FROM \"graphyard_metrics\" WHERE $timeFilter AND \"host\" =~ /^$host$/ AND \"device_class\" = 'humidity' GROUP BY time($__interval), \"metric\" fill(null)",
+          "query": "SELECT mean(\"value\") FROM \"graphyard_metrics\" WHERE $timeFilter AND (\"host\" =~ /^$host$/ OR (\"host\" = 'homeassistant' AND \"service\" = 'homeassistant')) AND \"device_class\" = 'humidity' GROUP BY time($__interval), \"entity_id\" fill(null)",
           "rawQuery": true,
           "refId": "A",
           "resultFormat": "time_series"
         }
       ],
-      "title": "Humidity Metrics",
+      "title": "Humidity Sensors",
       "type": "timeseries"
     },
     {
@@ -232,6 +324,7 @@
               "mode": "off"
             }
           },
+          "displayName": "${__field.labels.mountpoint}",
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
@@ -241,11 +334,16 @@
                 "value": null
               },
               {
+                "color": "orange",
+                "value": 0.8
+              },
+              {
                 "color": "red",
-                "value": 85
+                "value": 0.9
               }
             ]
-          }
+          },
+          "unit": "percentunit"
         },
         "overrides": []
       },
@@ -253,13 +351,13 @@
         "h": 10,
         "w": 12,
         "x": 0,
-        "y": 16
+        "y": 15
       },
       "id": 4,
       "options": {
         "legend": {
           "calcs": [],
-          "displayMode": "list",
+          "displayMode": "table",
           "placement": "bottom",
           "showLegend": true
         },
@@ -275,13 +373,13 @@
             "type": "influxdb",
             "uid": "graphyard-influxdb"
           },
-          "query": "SELECT mean(\"value\") FROM \"graphyard_metrics\" WHERE $timeFilter AND \"host\" =~ /^$host$/ AND \"metric\" = 'disk.used_percent' GROUP BY time($__interval), \"host\", \"service\" fill(null)",
+          "query": "SELECT mean(\"value\") FROM \"graphyard_metrics\" WHERE $timeFilter AND \"host\" =~ /^$host$/ AND \"metric\" = 'host.filesystem_used_ratio' AND \"filesystem\" !~ /^(tmpfs|devtmpfs)$/ GROUP BY time($__interval), \"host\", \"mountpoint\" fill(null)",
           "rawQuery": true,
           "refId": "A",
           "resultFormat": "time_series"
         }
       ],
-      "title": "Disk Used Percent",
+      "title": "Filesystem Used (Persistent Mounts)",
       "type": "timeseries"
     },
     {
@@ -307,9 +405,9 @@
       },
       "gridPos": {
         "h": 10,
-        "w": 12,
-        "x": 12,
-        "y": 16
+        "w": 24,
+        "x": 0,
+        "y": 25
       },
       "id": 5,
       "options": {
@@ -323,13 +421,13 @@
             "type": "influxdb",
             "uid": "graphyard-influxdb"
           },
-          "query": "SELECT last(\"value\") FROM \"graphyard_metrics\" WHERE $timeFilter AND \"host\" =~ /^$host$/ GROUP BY \"host\", \"service\", \"metric\"",
+          "query": "SELECT last(\"value\") FROM \"graphyard_metrics\" WHERE $timeFilter AND \"host\" =~ /^$host$/ AND (\"metric\" =~ /^ha\\./ OR \"metric\" = 'host.filesystem_used_ratio') GROUP BY \"host\", \"service\", \"metric\", \"mountpoint\", \"device_class\"",
           "rawQuery": true,
           "refId": "A",
           "resultFormat": "table"
         }
       ],
-      "title": "Latest Values By Host / Service / Metric",
+      "title": "Latest Environment + Filesystem Values",
       "type": "table"
     }
   ],
@@ -351,14 +449,14 @@
           "type": "influxdb",
           "uid": "graphyard-influxdb"
         },
-        "definition": "SHOW TAG VALUES FROM \"graphyard_metrics\" WITH KEY = \"host\"",
+        "definition": "SHOW TAG VALUES FROM \"graphyard_metrics\" WITH KEY = \"host\" WHERE \"metric\" =~ /^host\\./",
         "hide": 0,
         "includeAll": true,
         "label": "host",
         "multi": false,
         "name": "host",
         "options": [],
-        "query": "SHOW TAG VALUES FROM \"graphyard_metrics\" WITH KEY = \"host\"",
+        "query": "SHOW TAG VALUES FROM \"graphyard_metrics\" WITH KEY = \"host\" WHERE \"metric\" =~ /^host\\./",
         "refresh": 1,
         "skipUrlSync": false,
         "type": "query"
@@ -373,6 +471,6 @@
   "timezone": "",
   "title": "Graphyard Home",
   "uid": "graphyard-home",
-  "version": 3,
+  "version": 6,
   "weekStart": ""
 }

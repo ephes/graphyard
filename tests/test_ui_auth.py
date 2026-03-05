@@ -3,6 +3,8 @@ from __future__ import annotations
 import pytest
 from django.urls import reverse
 
+from graphyard.models import HostRegistry, ServiceRegistry
+
 
 @pytest.mark.django_db
 def test_index_redirects_to_login_for_anonymous_client(client):
@@ -78,3 +80,32 @@ def test_login_page_redirects_authenticated_user(client, django_user_model):
 
     assert response.status_code == 302
     assert response.url == "/"
+
+
+@pytest.mark.django_db
+def test_index_hides_orphan_hosts(client, django_user_model):
+    django_user_model.objects.create_user(
+        username="index-user",
+        password="index-pass",
+    )
+    client.login(username="index-user", password="index-pass")
+
+    orphan = HostRegistry.objects.create(host_id="homeassistant", enabled=True)
+    primary = HostRegistry.objects.create(host_id="macmini", enabled=True)
+    ServiceRegistry.objects.create(
+        service_id="homeassistant",
+        host=primary,
+        enabled=True,
+    )
+    ServiceRegistry.objects.create(
+        service_id="old-disabled",
+        host=orphan,
+        enabled=False,
+    )
+
+    response = client.get(reverse("graphyard:index"))
+
+    assert response.status_code == 200
+    assert response.context is not None
+    hosts = list(response.context["hosts"])
+    assert [host.host_id for host in hosts] == ["macmini"]

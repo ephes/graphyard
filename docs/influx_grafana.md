@@ -38,6 +38,17 @@ Important compatibility note:
 - This is directly compatible with InfluxDB v2 datasource usage.
 - If you standardize on InfluxDB v3, you need a different Grafana datasource/query setup (Flight SQL datasource and SQL-based panels).
 
+### Dashboard Query Alignment (2026-03-05)
+
+- Vector host metrics are stored with metric names prefixed by `host.` (for example `host.filesystem_used_ratio`).
+- The Graphyard Home dashboard disk/storage panel now queries `metric='host.filesystem_used_ratio'` and excludes `tmpfs`/`devtmpfs`.
+- Previous `metric='disk.used_percent'` query did not match the stored Vector metric naming and produced no data.
+- Temperature/humidity panels still filter by `device_class` and now group by both `host` and `metric` for clearer legends when `host=All`.
+- Temperature/humidity legends now display `entity_id` labels instead of raw `graphyard_metrics.mean { ... }` frame names.
+- Room temperature panel excludes infrastructure sensors (`fritz_box_*`, `usw_pro_*`) to avoid mixing network-device temperatures with room/environment values.
+- Infrastructure/device temperatures are shown in a dedicated panel using `entity_id` patterns (for example `fritz_box_*`, `usw_pro_*`, and `*cpu*` sensors).
+- Host variable now lists physical hosts from `host.*` metrics (`SHOW TAG VALUES ... WHERE metric =~ /^host\./`) instead of including service-scoped producer host IDs.
+
 ## Local Development (`just dev`)
 
 `just dev` starts a Procfile stack:
