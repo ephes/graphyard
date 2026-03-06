@@ -190,6 +190,11 @@ Example `config` JSON for a Home Assistant environment scan spec
         "match_entity_id_regex": "^sensor\\.fritz_box_.*_cpu_temperature$",
         "subject_type": "network_device",
         "subject_id_template": "fritz_box_7590_ax"
+      },
+      {
+        "match_entity_id_regex": "^sensor\\.usw_pro_xg_8_poe_temperature$",
+        "subject_type": "network_device",
+        "subject_id_template": "usw_pro_xg_8_poe"
       }
     ]
   },

@@ -4,7 +4,7 @@ providers:
   - name: Graphyard
     orgId: 1
     type: file
-    disableDeletion: true
+    disableDeletion: false
     updateIntervalSeconds: 10
     allowUiUpdates: true
     options:

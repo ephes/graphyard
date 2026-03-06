@@ -62,7 +62,7 @@
       },
       "id": 1,
       "options": {
-        "content": "## Graphyard Overview\\n\\nUse the dashboard links above for domain-focused troubleshooting:\\n\\n- **Host Infrastructure**: host-only metrics (filesystem and related host telemetry)\\n- **Room Climate**: `environment_sensor` temperature/humidity only\\n- **Device Thermals**: `network_device` temperature only\\n\\nThis split avoids mixing room and device thermals in the same query path.",
+        "content": "## Graphyard Overview\n\nQuick Access:\n- [Host Infrastructure](/d/graphyard-host-infrastructure/graphyard-host-infrastructure)\n- [Room Climate](/d/graphyard-room-climate/graphyard-room-climate)\n- [Device Thermals](/d/graphyard-device-thermals/graphyard-device-thermals)\n\nTip: click **Home** in the left sidebar any time to return here.\n\nDomain boundaries:\n- **Host Infrastructure**: host-only metrics (filesystem and related host telemetry)\n- **Room Climate**: `environment_sensor` temperature/humidity only\n- **Device Thermals**: `network_device` temperature only\n\nThis split avoids mixing room and device thermals in the same query path.",
         "mode": "markdown"
       },
       "pluginVersion": "12.4.0",
@@ -86,6 +86,6 @@
   "timezone": "",
   "title": "Graphyard Overview",
   "uid": "graphyard-home",
-  "version": 1,
+  "version": 3,
   "weekStart": ""
 }

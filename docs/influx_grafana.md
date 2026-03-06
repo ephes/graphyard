@@ -60,7 +60,7 @@ Important compatibility note:
 - Filesystem legend includes host + mountpoint context: `${__field.labels.subject_id}: ${__field.labels.mountpoint}`.
 - Dashboard refresh defaults are aligned to collection interval (`1m`).
 - Datasource UID remains `graphyard-influxdb` for provisioning stability.
-- Provisioning keeps `disableDeletion: true`; when migrating from older layouts, obsolete dashboards/folders can remain until manually removed in Grafana UI.
+- Provisioning keeps obsolete-file cleanup enabled (`disableDeletion: false`), so dashboards/folders removed from `deploy/grafana/dashboards/` are deleted on the next Grafana provisioning refresh.
 
 ## Local Development (`just dev`)
 
