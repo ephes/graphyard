@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 
 import pytest
 from django.contrib.auth.hashers import make_password
+from django.db import OperationalError
 from django.urls import reverse
 
 from graphyard.models import (
@@ -252,6 +253,107 @@ def test_metrics_endpoint_normalizes_subject_id(client, monkeypatch):
     assert response.status_code == 202
     assert captured["subject_id"] == "office_temperature"
     assert captured["source_instance"] == "default"
+
+
+@pytest.mark.django_db
+def test_record_heartbeat_safe_swallows_only_lock_errors(monkeypatch):
+    def fake_record_heartbeat(*args, **kwargs):  # noqa: ANN002, ANN003
+        del args, kwargs
+        raise OperationalError("database is locked")
+
+    monkeypatch.setattr("graphyard.views.record_heartbeat", fake_record_heartbeat)
+
+    from graphyard.views import _record_heartbeat_safe
+
+    _record_heartbeat_safe("metric_ingest", status=StatusLevel.OK)
+
+
+@pytest.mark.django_db
+def test_record_heartbeat_safe_reraises_non_lock_errors(monkeypatch):
+    def fake_record_heartbeat(*args, **kwargs):  # noqa: ANN002, ANN003
+        del args, kwargs
+        raise OperationalError("no such table: pipeline_heartbeat")
+
+    monkeypatch.setattr("graphyard.views.record_heartbeat", fake_record_heartbeat)
+
+    from graphyard.views import _record_heartbeat_safe
+
+    with pytest.raises(OperationalError):
+        _record_heartbeat_safe("metric_ingest", status=StatusLevel.OK)
+
+
+@pytest.mark.django_db
+def test_metrics_endpoint_swallows_registry_lock_errors(client, monkeypatch):
+    ingest_token = IngestToken(name="collector")
+    ingest_token.set_token("secret-token")
+    ingest_token.save()
+
+    monkeypatch.setattr("graphyard.views.write_points", lambda points: len(points))
+    monkeypatch.setattr("graphyard.views._record_heartbeat_safe", lambda *a, **k: None)
+
+    def fake_touch_registry(points):  # noqa: ANN001
+        del points
+        raise OperationalError("database is locked")
+
+    monkeypatch.setattr(
+        "graphyard.views.touch_registry_from_points", fake_touch_registry
+    )
+
+    payload = [
+        {
+            "ts": "2026-03-04T12:00:00Z",
+            "host": "macmini",
+            "metric": "disk.used_percent",
+            "value": 79.1,
+        }
+    ]
+
+    response = client.post(
+        reverse("graphyard:metrics_ingest"),
+        data=payload,
+        content_type="application/json",
+        HTTP_AUTHORIZATION="Bearer secret-token",
+    )
+
+    assert response.status_code == 202
+    assert response.json()["ingested"] == 1
+
+
+@pytest.mark.django_db
+def test_metrics_endpoint_reraises_non_lock_registry_errors(client, monkeypatch):
+    ingest_token = IngestToken(name="collector")
+    ingest_token.set_token("secret-token")
+    ingest_token.save()
+
+    monkeypatch.setattr("graphyard.views.write_points", lambda points: len(points))
+    monkeypatch.setattr("graphyard.views._record_heartbeat_safe", lambda *a, **k: None)
+
+    def fake_touch_registry(points):  # noqa: ANN001
+        del points
+        raise OperationalError("no such table: subject_registry")
+
+    monkeypatch.setattr(
+        "graphyard.views.touch_registry_from_points", fake_touch_registry
+    )
+
+    client.raise_request_exception = False
+    payload = [
+        {
+            "ts": "2026-03-04T12:00:00Z",
+            "host": "macmini",
+            "metric": "disk.used_percent",
+            "value": 79.1,
+        }
+    ]
+
+    response = client.post(
+        reverse("graphyard:metrics_ingest"),
+        data=payload,
+        content_type="application/json",
+        HTTP_AUTHORIZATION="Bearer secret-token",
+    )
+
+    assert response.status_code == 500
 
 
 @pytest.mark.django_db

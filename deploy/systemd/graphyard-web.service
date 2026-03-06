@@ -8,7 +8,8 @@ User=graphyard
 Group=graphyard
 WorkingDirectory=/opt/apps/graphyard/site/src/django
 EnvironmentFile=/etc/graphyard/graphyard.env
-ExecStart=/opt/apps/graphyard/site/.venv/bin/granian --workers 4 --interface wsgi --host 127.0.0.1 --port 8051 --access-log config.wsgi_proxy:application
+# SQLite backend: keep write concurrency constrained to avoid lock storms.
+ExecStart=/opt/apps/graphyard/site/.venv/bin/granian --workers 1 --interface wsgi --host 127.0.0.1 --port 8051 --access-log config.wsgi_proxy:application
 Restart=always
 RestartSec=5
 

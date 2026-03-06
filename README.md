@@ -268,6 +268,8 @@ Use units in `deploy/systemd/`:
 - `graphyard-agent.service` (long-running scheduler loop)
 
 Set environment file based on `deploy/systemd/graphyard.env.example`.
+For the SQLite-backed deployment profile, keep web concurrency conservative (`--workers 1`) and
+use WAL + busy-timeout settings from `graphyard.env.example`.
 
 ## Validation Commands
 

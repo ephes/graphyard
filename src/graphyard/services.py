@@ -4,10 +4,12 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 import logging
 import re
+import time
 from typing import Callable
 
 import httpx
 from django.conf import settings
+from django.db import OperationalError
 from django.utils import timezone
 
 from . import influx
@@ -26,6 +28,7 @@ from .models import (
 
 logger = logging.getLogger(__name__)
 _subject_mapping_warning_keys: set[str] = set()
+_heartbeat_write_cache: dict[tuple[str, str, str, bool], float] = {}
 
 
 @dataclass(frozen=True)
@@ -812,7 +815,22 @@ def record_heartbeat(
     last_error: str = "",
     details: dict | None = None,
     success: bool = False,
+    min_update_interval_seconds: int = 0,
 ) -> PipelineHeartbeat:
+    if min_update_interval_seconds > 0:
+        cache_key = (name, status, last_error, success)
+        now_monotonic = time.monotonic()
+        cache_ttl = float(max(0, min_update_interval_seconds))
+        last_write = _heartbeat_write_cache.get(cache_key)
+        if last_write is not None and now_monotonic - last_write < cache_ttl:
+            return PipelineHeartbeat(
+                name=name,
+                status=status,
+                last_error=last_error,
+                details=details or {},
+            )
+        _heartbeat_write_cache[cache_key] = now_monotonic
+
     defaults = {
         "status": status,
         "last_error": last_error,
@@ -821,10 +839,19 @@ def record_heartbeat(
     if success:
         defaults["last_success"] = timezone.now()
 
-    heartbeat, _ = PipelineHeartbeat.objects.update_or_create(
-        name=name, defaults=defaults
-    )
-    return heartbeat
+    for attempt in range(1, 4):
+        try:
+            heartbeat, _ = PipelineHeartbeat.objects.update_or_create(
+                name=name, defaults=defaults
+            )
+            return heartbeat
+        except OperationalError as err:
+            if "database is locked" not in str(err).lower() or attempt == 3:
+                raise
+            # Small bounded backoff to ride through short write locks.
+            time.sleep(0.05 * attempt)
+
+    raise RuntimeError("unreachable")
 
 
 def touch_registry_from_points(points: list[influx.MetricPoint]) -> None:

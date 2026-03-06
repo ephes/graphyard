@@ -1,12 +1,16 @@
 from __future__ import annotations
 
 from datetime import timedelta
+import logging
 from typing import Optional
 
+from django.db import OperationalError
 from django.http import HttpRequest
 from django.utils import timezone
 
 from .models import IngestToken
+
+logger = logging.getLogger(__name__)
 
 
 BEARER_PREFIX = "Bearer "
@@ -48,7 +52,16 @@ def authenticate_ingest_token(request: HttpRequest) -> Optional[IngestToken]:
                 update_fields.append("last_used_at")
 
             if update_fields:
-                ingest_token.save(update_fields=update_fields)
+                try:
+                    ingest_token.save(update_fields=update_fields)
+                except OperationalError as err:
+                    if "database is locked" not in str(err).lower():
+                        raise
+                    logger.warning(
+                        "Skipping ingest token metadata update due to SQLite lock: token=%s fields=%s",
+                        ingest_token.name,
+                        ",".join(update_fields),
+                    )
             return ingest_token
 
     return None

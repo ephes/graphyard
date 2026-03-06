@@ -7,6 +7,7 @@ import logging
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.db import connection
+from django.db import OperationalError
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
@@ -30,6 +31,34 @@ logger = logging.getLogger(__name__)
 
 def _json_error(message: str, *, status: int) -> JsonResponse:
     return JsonResponse({"error": message}, status=status)
+
+
+def _record_heartbeat_safe(
+    name: str,
+    *,
+    status: str,
+    last_error: str = "",
+    details: dict | None = None,
+    success: bool = False,
+    min_update_interval_seconds: int = 0,
+) -> None:
+    try:
+        record_heartbeat(
+            name,
+            status=status,
+            last_error=last_error,
+            details=details,
+            success=success,
+            min_update_interval_seconds=min_update_interval_seconds,
+        )
+    except OperationalError as err:
+        if "database is locked" not in str(err).lower():
+            raise
+        logger.exception(
+            "Failed to persist heartbeat due to SQLite lock: name=%s status=%s",
+            name,
+            status,
+        )
 
 
 def _parse_timestamp(value: str) -> datetime:
@@ -190,7 +219,7 @@ def metrics_ingest(request: HttpRequest) -> JsonResponse:
     try:
         payload = json.loads(request.body.decode("utf-8"))
     except json.JSONDecodeError:
-        record_heartbeat(
+        _record_heartbeat_safe(
             "metric_ingest",
             status=StatusLevel.WARNING,
             last_error="Invalid JSON payload",
@@ -201,7 +230,7 @@ def metrics_ingest(request: HttpRequest) -> JsonResponse:
     try:
         points = _parse_metrics_payload(payload)
     except ValueError as err:
-        record_heartbeat(
+        _record_heartbeat_safe(
             "metric_ingest",
             status=StatusLevel.WARNING,
             last_error=str(err),
@@ -212,7 +241,7 @@ def metrics_ingest(request: HttpRequest) -> JsonResponse:
     try:
         written = write_points(points)
     except InfluxConfigurationError as err:
-        record_heartbeat(
+        _record_heartbeat_safe(
             "metric_ingest",
             status=StatusLevel.CRITICAL,
             last_error=str(err),
@@ -220,7 +249,7 @@ def metrics_ingest(request: HttpRequest) -> JsonResponse:
         )
         return _json_error("InfluxDB is not configured", status=503)
     except Exception as err:  # noqa: BLE001
-        record_heartbeat(
+        _record_heartbeat_safe(
             "metric_ingest",
             status=StatusLevel.CRITICAL,
             last_error=str(err),
@@ -228,12 +257,20 @@ def metrics_ingest(request: HttpRequest) -> JsonResponse:
         )
         return _json_error("Failed to persist metrics", status=503)
 
-    touch_registry_from_points(points)
-    record_heartbeat(
+    try:
+        touch_registry_from_points(points)
+    except OperationalError as err:
+        if "database is locked" not in str(err).lower():
+            raise
+        # Ingest must remain available even if local metadata tables are briefly locked.
+        logger.exception("Failed to touch registry rows due to SQLite lock")
+
+    _record_heartbeat_safe(
         "metric_ingest",
         status=StatusLevel.OK,
         details={"ingested": written, "token": token.name},
         success=True,
+        min_update_interval_seconds=settings.GRAPHYARD_INGEST_HEARTBEAT_MIN_INTERVAL_SECONDS,
     )
     return JsonResponse({"status": "accepted", "ingested": written}, status=202)
 
