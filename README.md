@@ -64,6 +64,8 @@ just deploy
 This delegates to `ops-control` and runs `just deploy graphyard <host>`.
 Default `OPS_CONTROL` path is `/Users/jochen/workspaces/ws-ops-misc/ops-control`.
 Set `OPS_CONTROL` and/or `HOST` env vars to override defaults.
+If `PROJECTS_ROOT` is unset or points to a location without a `graphyard/` checkout,
+the deploy wrapper falls back to the parent directory of the current Graphyard repository.
 
 ## Procfile Dev Stack (Nyxmon-style)
 
