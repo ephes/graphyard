@@ -11,7 +11,10 @@ from graphyard.models import (
     ServiceRegistry,
     SubjectRegistry,
 )
-from graphyard.services import run_metric_collection_specs_once, touch_registry_from_points
+from graphyard.services import (
+    run_metric_collection_specs_once,
+    touch_registry_from_points,
+)
 
 
 class _FakeResponse:
@@ -142,7 +145,9 @@ def test_home_assistant_env_scan_missing_mapping_uses_default_and_logs_warning(
     caplog.set_level("WARNING", logger="graphyard.services")
     run_metric_collection_specs_once()
 
-    assert any("missing config.subject_mapping" in record.message for record in caplog.records)
+    assert any(
+        "missing config.subject_mapping" in record.message for record in caplog.records
+    )
     assert len(captured["points"]) == 1
     point = captured["points"][0]
     assert point.subject_type == "environment_sensor"
@@ -234,7 +239,9 @@ def test_home_assistant_env_scan_warning_cache_resets_between_runs(
             ]
         ),
     )
-    monkeypatch.setattr("graphyard.services.influx.write_points", lambda points: len(points))
+    monkeypatch.setattr(
+        "graphyard.services.influx.write_points", lambda points: len(points)
+    )
 
     caplog.set_level("WARNING", logger="graphyard.services")
     run_metric_collection_specs_once()
@@ -286,7 +293,9 @@ def test_touch_registry_tracks_subjects_and_keeps_host_registry_host_only(db):
     assert SubjectRegistry.objects.filter(
         subject_type="environment_sensor", subject_id="office_temperature"
     ).exists()
-    assert SubjectRegistry.objects.filter(subject_type="host", subject_id="macmini").exists()
+    assert SubjectRegistry.objects.filter(
+        subject_type="host", subject_id="macmini"
+    ).exists()
 
     assert HostRegistry.objects.count() == 1
     assert HostRegistry.objects.filter(host_id="macmini").exists()
@@ -296,7 +305,9 @@ def test_touch_registry_tracks_subjects_and_keeps_host_registry_host_only(db):
 
 
 def test_touch_registry_links_service_to_collector_host_for_non_host_subject(db):
-    collector_host = HostRegistry.objects.create(host_id="macmini", display_name="macmini")
+    collector_host = HostRegistry.objects.create(
+        host_id="macmini", display_name="macmini"
+    )
     point = influx.MetricPoint(
         ts=datetime(2026, 3, 4, 12, 0, tzinfo=UTC),
         metric="ha.sensor.office_temperature",

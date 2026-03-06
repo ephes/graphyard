@@ -31,7 +31,7 @@
       },
       "id": 1,
       "options": {
-        "content": "## Graphyard Overview\n\n- Datasource: `Graphyard InfluxDB`\n- Measurement: `graphyard_metrics`\n- Query language: `InfluxQL`\n- Canonical dimensions: `subject_*`, `source_*`, `collector_*`\n\nUse the **host** filter for host infrastructure panels. Use **source_system**, **subject_type**, and **subject_id** for Home Assistant/device panels.\n\nIf the filesystem panel is empty, no `host.filesystem_used_ratio` samples were ingested for the selected host/time range yet. Widen the time range (for example to 24h) and verify Vector -> `/v1/metrics` ingestion.\n",
+        "content": "## Graphyard Overview\n\n- Datasource: `Graphyard InfluxDB`\n- Measurement: `graphyard_metrics`\n- Query language: `InfluxQL`\n- Canonical dimensions: `subject_*`, `source_*`, `collector_*`\n\nUse **host** to scope host infrastructure panels.\nHome Assistant/device panels are scoped by `collector_host == host`, then refined by **source_system**, **subject_type**, and **subject_id**.\n\nIf the filesystem panel is empty, no `host.filesystem_used_ratio` samples were ingested for the selected host/time range yet. Widen the time range (for example to 24h) and verify Vector -> `/v1/metrics` ingestion.\n",
         "mode": "markdown"
       },
       "pluginVersion": "12.4.0",
@@ -117,7 +117,7 @@
             "type": "influxdb",
             "uid": "graphyard-influxdb"
           },
-          "query": "SELECT mean(\"value\") FROM \"graphyard_metrics\" WHERE $timeFilter AND \"source_system\" =~ /^$source_system$/ AND \"subject_type\" = 'network_device' AND \"subject_id\" =~ /^$subject_id$/ AND \"device_class\" = 'temperature' GROUP BY time($__interval), \"subject_id\", \"entity_id\" fill(null)",
+          "query": "SELECT mean(\"value\") FROM \"graphyard_metrics\" WHERE $timeFilter AND \"collector_host\" =~ /^$host$/ AND \"source_system\" =~ /^$source_system$/ AND \"subject_type\" = 'network_device' AND \"subject_id\" =~ /^$subject_id$/ AND \"device_class\" = 'temperature' GROUP BY time($__interval), \"subject_id\", \"entity_id\" fill(null)",
           "rawQuery": true,
           "refId": "A",
           "resultFormat": "time_series"
@@ -201,7 +201,7 @@
             "type": "influxdb",
             "uid": "graphyard-influxdb"
           },
-          "query": "SELECT mean(\"value\") FROM \"graphyard_metrics\" WHERE $timeFilter AND \"source_system\" =~ /^$source_system$/ AND \"subject_type\" = 'environment_sensor' AND \"subject_id\" =~ /^$subject_id$/ AND \"device_class\" = 'temperature' GROUP BY time($__interval), \"subject_id\", \"entity_id\" fill(null)",
+          "query": "SELECT mean(\"value\") FROM \"graphyard_metrics\" WHERE $timeFilter AND \"collector_host\" =~ /^$host$/ AND \"source_system\" =~ /^$source_system$/ AND \"subject_type\" = 'environment_sensor' AND \"subject_id\" =~ /^$subject_id$/ AND \"device_class\" = 'temperature' GROUP BY time($__interval), \"subject_id\", \"entity_id\" fill(null)",
           "rawQuery": true,
           "refId": "A",
           "resultFormat": "time_series"
@@ -285,7 +285,7 @@
             "type": "influxdb",
             "uid": "graphyard-influxdb"
           },
-          "query": "SELECT mean(\"value\") FROM \"graphyard_metrics\" WHERE $timeFilter AND \"source_system\" =~ /^$source_system$/ AND \"subject_type\" = 'environment_sensor' AND \"subject_id\" =~ /^$subject_id$/ AND \"device_class\" = 'humidity' GROUP BY time($__interval), \"subject_id\", \"entity_id\" fill(null)",
+          "query": "SELECT mean(\"value\") FROM \"graphyard_metrics\" WHERE $timeFilter AND \"collector_host\" =~ /^$host$/ AND \"source_system\" =~ /^$source_system$/ AND \"subject_type\" = 'environment_sensor' AND \"subject_id\" =~ /^$subject_id$/ AND \"device_class\" = 'humidity' GROUP BY time($__interval), \"subject_id\", \"entity_id\" fill(null)",
           "rawQuery": true,
           "refId": "A",
           "resultFormat": "time_series"
@@ -423,7 +423,7 @@
             "type": "influxdb",
             "uid": "graphyard-influxdb"
           },
-          "query": "SELECT last(\"value\") FROM \"graphyard_metrics\" WHERE $timeFilter AND ((\"source_system\" =~ /^$source_system$/ AND \"subject_id\" =~ /^$subject_id$/ AND \"metric\" =~ /^ha\\./) OR (\"subject_type\" = 'host' AND \"subject_id\" =~ /^$host$/ AND \"metric\" = 'host.filesystem_used_ratio')) GROUP BY \"subject_type\", \"subject_id\", \"source_system\", \"collector_service\", \"metric\", \"mountpoint\", \"device_class\"",
+          "query": "SELECT last(\"value\") FROM \"graphyard_metrics\" WHERE $timeFilter AND ((\"collector_host\" =~ /^$host$/ AND \"source_system\" =~ /^$source_system$/ AND \"subject_id\" =~ /^$subject_id$/ AND \"metric\" =~ /^ha\\./) OR (\"subject_type\" = 'host' AND \"subject_id\" =~ /^$host$/ AND \"metric\" = 'host.filesystem_used_ratio')) GROUP BY \"subject_type\", \"subject_id\", \"source_system\", \"collector_service\", \"metric\", \"mountpoint\", \"device_class\"",
           "rawQuery": true,
           "refId": "A",
           "resultFormat": "table"
@@ -467,21 +467,21 @@
         "allValue": ".*",
         "current": {
           "selected": true,
-          "text": "homeassistant",
-          "value": "homeassistant"
+          "text": "All",
+          "value": ".*"
         },
         "datasource": {
           "type": "influxdb",
           "uid": "graphyard-influxdb"
         },
-        "definition": "SHOW TAG VALUES FROM \"graphyard_metrics\" WITH KEY = \"source_system\" WHERE \"metric\" =~ /^ha\\./",
+        "definition": "SHOW TAG VALUES FROM \"graphyard_metrics\" WITH KEY = \"source_system\" WHERE \"collector_host\" =~ /^$host$/ AND \"metric\" =~ /^ha\\./",
         "hide": 0,
         "includeAll": true,
         "label": "source_system",
         "multi": false,
         "name": "source_system",
         "options": [],
-        "query": "SHOW TAG VALUES FROM \"graphyard_metrics\" WITH KEY = \"source_system\" WHERE \"metric\" =~ /^ha\\./",
+        "query": "SHOW TAG VALUES FROM \"graphyard_metrics\" WITH KEY = \"source_system\" WHERE \"collector_host\" =~ /^$host$/ AND \"metric\" =~ /^ha\\./",
         "refresh": 1,
         "skipUrlSync": false,
         "type": "query"
@@ -497,14 +497,14 @@
           "type": "influxdb",
           "uid": "graphyard-influxdb"
         },
-        "definition": "SHOW TAG VALUES FROM \"graphyard_metrics\" WITH KEY = \"subject_type\" WHERE \"source_system\" =~ /^$source_system$/ AND \"metric\" =~ /^ha\\./",
+        "definition": "SHOW TAG VALUES FROM \"graphyard_metrics\" WITH KEY = \"subject_type\" WHERE \"collector_host\" =~ /^$host$/ AND \"source_system\" =~ /^$source_system$/ AND \"metric\" =~ /^ha\\./",
         "hide": 0,
         "includeAll": true,
         "label": "subject_type",
         "multi": false,
         "name": "subject_type",
         "options": [],
-        "query": "SHOW TAG VALUES FROM \"graphyard_metrics\" WITH KEY = \"subject_type\" WHERE \"source_system\" =~ /^$source_system$/ AND \"metric\" =~ /^ha\\./",
+        "query": "SHOW TAG VALUES FROM \"graphyard_metrics\" WITH KEY = \"subject_type\" WHERE \"collector_host\" =~ /^$host$/ AND \"source_system\" =~ /^$source_system$/ AND \"metric\" =~ /^ha\\./",
         "refresh": 1,
         "skipUrlSync": false,
         "type": "query"
@@ -520,14 +520,14 @@
           "type": "influxdb",
           "uid": "graphyard-influxdb"
         },
-        "definition": "SHOW TAG VALUES FROM \"graphyard_metrics\" WITH KEY = \"subject_id\" WHERE \"source_system\" =~ /^$source_system$/ AND \"subject_type\" =~ /^$subject_type$/ AND \"metric\" =~ /^ha\\./",
+        "definition": "SHOW TAG VALUES FROM \"graphyard_metrics\" WITH KEY = \"subject_id\" WHERE \"collector_host\" =~ /^$host$/ AND \"source_system\" =~ /^$source_system$/ AND \"subject_type\" =~ /^$subject_type$/ AND \"metric\" =~ /^ha\\./",
         "hide": 0,
         "includeAll": true,
         "label": "subject_id",
         "multi": false,
         "name": "subject_id",
         "options": [],
-        "query": "SHOW TAG VALUES FROM \"graphyard_metrics\" WITH KEY = \"subject_id\" WHERE \"source_system\" =~ /^$source_system$/ AND \"subject_type\" =~ /^$subject_type$/ AND \"metric\" =~ /^ha\\./",
+        "query": "SHOW TAG VALUES FROM \"graphyard_metrics\" WITH KEY = \"subject_id\" WHERE \"collector_host\" =~ /^$host$/ AND \"source_system\" =~ /^$source_system$/ AND \"subject_type\" =~ /^$subject_type$/ AND \"metric\" =~ /^ha\\./",
         "refresh": 1,
         "skipUrlSync": false,
         "type": "query"
@@ -542,6 +542,6 @@
   "timezone": "",
   "title": "Graphyard Home",
   "uid": "graphyard-home",
-  "version": 7,
+  "version": 10,
   "weekStart": ""
 }

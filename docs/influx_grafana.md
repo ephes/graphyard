@@ -45,7 +45,7 @@ Important compatibility note:
 ### Dashboard Query Alignment (2026-03-05)
 
 - Host/infrastructure panels filter by `subject_type='host'` and `subject_id` host variable.
-- Home Assistant panels filter via `source_system`, `subject_type`, and `subject_id` variables.
+- Home Assistant/device panels filter via `collector_host == host` plus `source_system`, `subject_type`, and `subject_id` variables.
 - Filesystem panel remains aligned to `metric='host.filesystem_used_ratio'`, excludes `tmpfs`/`devtmpfs`, and keeps `timeFrom=24h`.
 - Host variable is sourced from host-subject series (`subject_type='host'`) with filesystem data.
 - Datasource UID remains `graphyard-influxdb` for provisioning stability.
