@@ -124,7 +124,6 @@
           "resultFormat": "time_series"
         }
       ],
-      "timeFrom": "24h",
       "title": "Filesystem Used (Persistent Mounts)",
       "type": "timeseries"
     },
@@ -167,7 +166,7 @@
             "type": "influxdb",
             "uid": "graphyard-influxdb"
           },
-          "query": "SELECT last(\"value\") FROM \"graphyard_metrics\" WHERE $timeFilter AND \"subject_type\" = 'host' AND \"subject_id\" =~ /^$host$/ AND \"metric\" = 'host.filesystem_used_ratio' GROUP BY \"subject_id\", \"mountpoint\"",
+          "query": "SELECT last(\"value\") FROM \"graphyard_metrics\" WHERE $timeFilter AND \"subject_type\" = 'host' AND \"subject_id\" =~ /^$host$/ AND \"metric\" = 'host.filesystem_used_ratio' AND \"filesystem\" !~ /^(tmpfs|devtmpfs)$/ GROUP BY \"subject_id\", \"mountpoint\"",
           "rawQuery": true,
           "refId": "A",
           "resultFormat": "table"

@@ -94,10 +94,10 @@ For Grafana in the Procfile stack:
 - dev startup resets Grafana admin password to `admin` for deterministic local login
 - datasource `Graphyard InfluxDB` is auto-provisioned
 - dashboard folders are auto-provisioned from filesystem structure:
-  - `overview` (`Graphyard Overview`)
-  - `host-infrastructure` (`Graphyard Host Infrastructure`)
-  - `room-climate` (`Graphyard Room Climate`)
-  - `device-thermals` (`Graphyard Device Thermals`)
+  - folder `overview` with dashboard title `Graphyard Overview`
+  - folder `host-infrastructure` with dashboard title `Graphyard Host Infrastructure`
+  - folder `room-climate` with dashboard title `Graphyard Room Climate`
+  - folder `device-thermals` with dashboard title `Graphyard Device Thermals`
 - first run may take longer because Docker pulls the image
 
 ## Ingest Token Workflow (Manual Rotation)

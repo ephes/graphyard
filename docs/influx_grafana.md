@@ -36,6 +36,11 @@ Graphyard includes Grafana provisioning:
 - datasource: `Graphyard InfluxDB`
 - dashboard folders are derived from `deploy/grafana/dashboards/` filesystem paths
 - default home dashboard: `Graphyard Overview` (uid `graphyard-home`)
+- folder names are the directory names:
+  - `overview`
+  - `host-infrastructure`
+  - `room-climate`
+  - `device-thermals`
 - domain dashboards:
   - `Graphyard Host Infrastructure`
   - `Graphyard Room Climate`
@@ -55,6 +60,7 @@ Important compatibility note:
 - Filesystem legend includes host + mountpoint context: `${__field.labels.subject_id}: ${__field.labels.mountpoint}`.
 - Dashboard refresh defaults are aligned to collection interval (`1m`).
 - Datasource UID remains `graphyard-influxdb` for provisioning stability.
+- Provisioning keeps `disableDeletion: true`; when migrating from older layouts, obsolete dashboards/folders can remain until manually removed in Grafana UI.
 
 ## Local Development (`just dev`)
 

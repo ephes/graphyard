@@ -27,8 +27,8 @@
       "keepTime": true,
       "targetBlank": false,
       "title": "Host Infrastructure",
-      "type": "dashboards",
-      "uid": "graphyard-host-infrastructure"
+      "type": "link",
+      "url": "/d/graphyard-host-infrastructure/graphyard-host-infrastructure"
     },
     {
       "asDropdown": false,
@@ -37,8 +37,8 @@
       "keepTime": true,
       "targetBlank": false,
       "title": "Room Climate",
-      "type": "dashboards",
-      "uid": "graphyard-room-climate"
+      "type": "link",
+      "url": "/d/graphyard-room-climate/graphyard-room-climate"
     },
     {
       "asDropdown": false,
@@ -47,8 +47,8 @@
       "keepTime": true,
       "targetBlank": false,
       "title": "Device Thermals",
-      "type": "dashboards",
-      "uid": "graphyard-device-thermals"
+      "type": "link",
+      "url": "/d/graphyard-device-thermals/graphyard-device-thermals"
     }
   ],
   "panels": [

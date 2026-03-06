@@ -68,7 +68,7 @@
               "mode": "off"
             }
           },
-          "displayName": "${__field.labels.subject_id}",
+          "displayName": "${__field.labels.subject_id} (${__field.labels.entity_id})",
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
@@ -117,7 +117,7 @@
             "type": "influxdb",
             "uid": "graphyard-influxdb"
           },
-          "query": "SELECT mean(\"value\") FROM \"graphyard_metrics\" WHERE $timeFilter AND \"collector_host\" =~ /^$collector_host$/ AND \"source_system\" =~ /^$source_system$/ AND \"subject_type\" = 'network_device' AND \"subject_id\" =~ /^$subject_id$/ AND \"device_class\" = 'temperature' GROUP BY time($__interval), \"subject_id\" fill(null)",
+          "query": "SELECT mean(\"value\") FROM \"graphyard_metrics\" WHERE $timeFilter AND \"collector_host\" =~ /^$collector_host$/ AND \"source_system\" =~ /^$source_system$/ AND \"subject_type\" = 'network_device' AND \"subject_id\" =~ /^$subject_id$/ AND \"device_class\" = 'temperature' GROUP BY time($__interval), \"subject_id\", \"entity_id\" fill(null)",
           "rawQuery": true,
           "refId": "A",
           "resultFormat": "time_series"
