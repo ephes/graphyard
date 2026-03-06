@@ -34,8 +34,12 @@ For production on the current InfluxDB v2 baseline, set `INFLUX_API_MODE=v2`.
 Graphyard includes Grafana provisioning:
 
 - datasource: `Graphyard InfluxDB`
-- dashboard folder: `Graphyard`
-- default dashboard: `Graphyard Home`
+- dashboard folders are derived from `deploy/grafana/dashboards/` filesystem paths
+- default home dashboard: `Graphyard Overview` (uid `graphyard-home`)
+- domain dashboards:
+  - `Graphyard Host Infrastructure`
+  - `Graphyard Room Climate`
+  - `Graphyard Device Thermals`
 
 Important compatibility note:
 
@@ -43,12 +47,13 @@ Important compatibility note:
 - This is directly compatible with InfluxDB v2 datasource usage.
 - If you standardize on InfluxDB v3, you need a different Grafana datasource/query setup (Flight SQL datasource and SQL-based panels).
 
-### Dashboard Query Alignment (2026-03-05)
+### Dashboard Query Alignment (2026-03-06)
 
-- Host/infrastructure panels filter by `subject_type='host'` and `subject_id` host variable.
-- Home Assistant/device panels filter via `collector_host == host` plus `source_system`, `subject_type`, and `subject_id` variables.
-- Filesystem panel remains aligned to `metric='host.filesystem_used_ratio'`, excludes `tmpfs`/`devtmpfs`, and keeps `timeFrom=24h`.
-- Host variable is sourced from host-subject series (`subject_type='host'`) with filesystem data.
+- Host Infrastructure dashboard queries are host-only (`subject_type='host'`).
+- Room Climate dashboard queries are room-sensor-only (`subject_type='environment_sensor'`).
+- Device Thermals dashboard queries are infrastructure device-only (`subject_type='network_device'`).
+- Filesystem legend includes host + mountpoint context: `${__field.labels.subject_id}: ${__field.labels.mountpoint}`.
+- Dashboard refresh defaults are aligned to collection interval (`1m`).
 - Datasource UID remains `graphyard-influxdb` for provisioning stability.
 
 ## Local Development (`just dev`)

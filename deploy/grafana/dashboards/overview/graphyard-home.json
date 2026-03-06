@@ -1,0 +1,91 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [
+    {
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": false,
+      "keepTime": true,
+      "targetBlank": false,
+      "title": "Host Infrastructure",
+      "type": "dashboards",
+      "uid": "graphyard-host-infrastructure"
+    },
+    {
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": false,
+      "keepTime": true,
+      "targetBlank": false,
+      "title": "Room Climate",
+      "type": "dashboards",
+      "uid": "graphyard-room-climate"
+    },
+    {
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": false,
+      "keepTime": true,
+      "targetBlank": false,
+      "title": "Device Thermals",
+      "type": "dashboards",
+      "uid": "graphyard-device-thermals"
+    }
+  ],
+  "panels": [
+    {
+      "datasource": null,
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "content": "## Graphyard Overview\\n\\nUse the dashboard links above for domain-focused troubleshooting:\\n\\n- **Host Infrastructure**: host-only metrics (filesystem and related host telemetry)\\n- **Room Climate**: `environment_sensor` temperature/humidity only\\n- **Device Thermals**: `network_device` temperature only\\n\\nThis split avoids mixing room and device thermals in the same query path.",
+        "mode": "markdown"
+      },
+      "pluginVersion": "12.4.0",
+      "title": "Scope and Navigation",
+      "type": "text"
+    }
+  ],
+  "refresh": "1m",
+  "schemaVersion": 41,
+  "tags": [
+    "graphyard"
+  ],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "",
+  "title": "Graphyard Overview",
+  "uid": "graphyard-home",
+  "version": 1,
+  "weekStart": ""
+}

@@ -3,11 +3,10 @@ apiVersion: 1
 providers:
   - name: Graphyard
     orgId: 1
-    folder: Graphyard
     type: file
     disableDeletion: true
     updateIntervalSeconds: 10
     allowUiUpdates: true
     options:
       path: /etc/grafana/provisioning/dashboards-json
-      foldersFromFilesStructure: false
+      foldersFromFilesStructure: true
