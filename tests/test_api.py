@@ -38,6 +38,31 @@ def test_metrics_endpoint_requires_bearer_token(client):
 
 
 @pytest.mark.django_db
+def test_metrics_endpoint_logs_auth_rejection_count(client, caplog):
+    payload = [
+        {
+            "ts": "2026-03-04T12:00:00Z",
+            "host": "macmini",
+            "metric": "cpu.usage_percent",
+            "value": 21.2,
+        }
+    ]
+
+    response = client.post(
+        reverse("graphyard:metrics_ingest"),
+        data=payload,
+        content_type="application/json",
+    )
+
+    assert response.status_code == 401
+    assert any(
+        "metrics_ingest_rejected category=auth rejected_requests=1"
+        in record.getMessage()
+        for record in caplog.records
+    )
+
+
+@pytest.mark.django_db
 def test_metrics_endpoint_accepts_valid_token(client, monkeypatch):
     ingest_token = IngestToken(name="macmini")
     ingest_token.set_token("secret-token")
@@ -75,6 +100,69 @@ def test_metrics_endpoint_accepts_valid_token(client, monkeypatch):
     ingest_token.refresh_from_db()
     assert ingest_token.token_hash.startswith(f"{PREFERRED_FAST_TOKEN_HASH_PREFIX}$")
     assert ingest_token.last_used_at is not None
+
+
+@pytest.mark.django_db
+def test_metrics_endpoint_accepts_vector_batched_list_payload(client, monkeypatch):
+    ingest_token = IngestToken(name="macmini")
+    ingest_token.set_token("secret-token")
+    ingest_token.save()
+
+    captured = {"count": 0, "metrics": []}
+
+    def fake_write_points(points):
+        captured["count"] = len(points)
+        captured["metrics"] = [item.metric for item in points]
+        return len(points)
+
+    monkeypatch.setattr("graphyard.views.write_points", fake_write_points)
+
+    payload = [
+        {
+            "ts": "2026-03-04T12:00:00Z",
+            "host": "macmini",
+            "service": "host_metrics",
+            "metric": "host.cpu_seconds_total",
+            "value": 123.0,
+            "tags": {"collector": "vector.host_metrics", "metric_kind": "counter"},
+        },
+        {
+            "ts": "2026-03-04T12:00:00Z",
+            "host": "macmini",
+            "service": "host_metrics",
+            "metric": "host.memory_available_bytes",
+            "value": 2048.0,
+            "tags": {"collector": "vector.host_metrics", "metric_kind": "gauge"},
+        },
+        {
+            "ts": "2026-03-04T12:00:00Z",
+            "host": "macmini",
+            "service": "host_metrics",
+            "metric": "host.filesystem_used_ratio",
+            "value": 0.42,
+            "tags": {
+                "collector": "vector.host_metrics",
+                "metric_kind": "gauge",
+                "mountpoint": "/",
+            },
+        },
+    ]
+
+    response = client.post(
+        reverse("graphyard:metrics_ingest"),
+        data=payload,
+        content_type="application/json",
+        HTTP_AUTHORIZATION="Bearer secret-token",
+    )
+
+    assert response.status_code == 202
+    assert response.json()["ingested"] == 3
+    assert captured["count"] == 3
+    assert captured["metrics"] == [
+        "host.cpu_seconds_total",
+        "host.memory_available_bytes",
+        "host.filesystem_used_ratio",
+    ]
 
 
 @pytest.mark.django_db
@@ -213,6 +301,75 @@ def test_metrics_endpoint_rejects_unknown_subject_type(client, monkeypatch):
 
     assert response.status_code == 400
     assert "subject_type" in response.json()["error"]
+
+
+@pytest.mark.django_db
+def test_metrics_endpoint_logs_parse_rejection_count(client, monkeypatch, caplog):
+    ingest_token = IngestToken(name="collector")
+    ingest_token.set_token("secret-token")
+    ingest_token.save()
+    monkeypatch.setattr("graphyard.views.write_points", lambda points: len(points))
+
+    payload = [
+        {
+            "ts": "2026-03-04T12:00:00Z",
+            "host": "macmini",
+            "metric": "host.cpu_seconds_total",
+            "value": "not-a-number",
+        }
+    ]
+
+    response = client.post(
+        reverse("graphyard:metrics_ingest"),
+        data=payload,
+        content_type="application/json",
+        HTTP_AUTHORIZATION="Bearer secret-token",
+    )
+
+    assert response.status_code == 400
+    assert any(
+        "metrics_ingest_rejected category=parse parse_rejected=1 normalization_rejected=0"
+        in record.getMessage()
+        for record in caplog.records
+    )
+
+
+@pytest.mark.django_db
+def test_metrics_endpoint_logs_normalization_rejection_count(
+    client, monkeypatch, caplog
+):
+    ingest_token = IngestToken(name="collector")
+    ingest_token.set_token("secret-token")
+    ingest_token.save()
+    monkeypatch.setattr("graphyard.views.write_points", lambda points: len(points))
+
+    payload = [
+        {
+            "ts": "2026-03-04T12:00:00Z",
+            "metric": "ha.sensor.office_temperature",
+            "value": 22.1,
+            "subject_type": "unknown_thing",
+            "subject_id": "office_temperature",
+            "source_system": "homeassistant",
+            "source_instance": "ha-main",
+            "collector_service": "graphyard-agent",
+            "collector_host": "macmini",
+        }
+    ]
+
+    response = client.post(
+        reverse("graphyard:metrics_ingest"),
+        data=payload,
+        content_type="application/json",
+        HTTP_AUTHORIZATION="Bearer secret-token",
+    )
+
+    assert response.status_code == 400
+    assert any(
+        "metrics_ingest_rejected category=normalization parse_rejected=0 normalization_rejected=1"
+        in record.getMessage()
+        for record in caplog.records
+    )
 
 
 @pytest.mark.django_db

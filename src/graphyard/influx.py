@@ -236,6 +236,7 @@ def write_points(points: list[MetricPoint]) -> int:
     if not points:
         return 0
 
+    total_points = len(points)
     influx_points: list[Point] = []
     rejected_points = 0
     for item in points:
@@ -284,7 +285,9 @@ def write_points(points: list[MetricPoint]) -> int:
     if not influx_points:
         if rejected_points:
             logger.warning(
-                "Dropped %s invalid metric points; nothing written", rejected_points
+                "metrics_write_rejected category=normalization rejected_points=%s written_points=0 total_points=%s",
+                rejected_points,
+                total_points,
             )
         return 0
 
@@ -298,9 +301,10 @@ def write_points(points: list[MetricPoint]) -> int:
 
     if rejected_points:
         logger.warning(
-            "Skipped %s invalid metric points while writing %s valid points",
+            "metrics_write_rejected category=normalization rejected_points=%s written_points=%s total_points=%s",
             rejected_points,
             len(influx_points),
+            total_points,
         )
 
     return len(influx_points)

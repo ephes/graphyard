@@ -29,6 +29,21 @@ from .services import record_heartbeat, touch_registry_from_points
 logger = logging.getLogger(__name__)
 
 
+class MetricsPayloadValidationError(ValueError):
+    def __init__(
+        self,
+        message: str,
+        *,
+        parse_rejected: int = 0,
+        normalization_rejected: int = 0,
+        total_metrics: int = 0,
+    ) -> None:
+        super().__init__(message)
+        self.parse_rejected = parse_rejected
+        self.normalization_rejected = normalization_rejected
+        self.total_metrics = total_metrics
+
+
 def _json_error(message: str, *, status: int) -> JsonResponse:
     return JsonResponse({"error": message}, status=status)
 
@@ -74,12 +89,31 @@ def _parse_metrics_payload(payload: object) -> list[MetricPoint]:
         payload = payload.get("metrics")
 
     if not isinstance(payload, list):
-        raise ValueError("Body must be a JSON list or object with a metrics list")
+        raise MetricsPayloadValidationError(
+            "Body must be a JSON list or object with a metrics list",
+            parse_rejected=1,
+        )
 
     points: list[MetricPoint] = []
+    payload_size = len(payload)
+
+    def _parse_error(message: str) -> MetricsPayloadValidationError:
+        return MetricsPayloadValidationError(
+            message,
+            parse_rejected=1,
+            total_metrics=payload_size,
+        )
+
+    def _normalization_error(message: str) -> MetricsPayloadValidationError:
+        return MetricsPayloadValidationError(
+            message,
+            normalization_rejected=1,
+            total_metrics=payload_size,
+        )
+
     for idx, item in enumerate(payload):
         if not isinstance(item, dict):
-            raise ValueError(f"Metric at index {idx} must be an object")
+            raise _parse_error(f"Metric at index {idx} must be an object")
 
         ts_raw = item.get("ts")
         host = item.get("host")
@@ -87,22 +121,22 @@ def _parse_metrics_payload(payload: object) -> list[MetricPoint]:
         value = item.get("value")
 
         if not isinstance(ts_raw, str):
-            raise ValueError(f"Metric at index {idx} has invalid ts")
+            raise _parse_error(f"Metric at index {idx} has invalid ts")
         if host is not None and not isinstance(host, str):
-            raise ValueError(f"Metric at index {idx} has invalid host")
+            raise _parse_error(f"Metric at index {idx} has invalid host")
         if not isinstance(metric, str) or not metric:
-            raise ValueError(f"Metric at index {idx} has invalid metric")
+            raise _parse_error(f"Metric at index {idx} has invalid metric")
 
         if value is None:
-            raise ValueError(f"Metric at index {idx} has invalid value")
+            raise _parse_error(f"Metric at index {idx} has invalid value")
         try:
             parsed_value = float(str(value))
         except (TypeError, ValueError) as err:
-            raise ValueError(f"Metric at index {idx} has invalid value") from err
+            raise _parse_error(f"Metric at index {idx} has invalid value") from err
 
         service = item.get("service")
         if service is not None and not isinstance(service, str):
-            raise ValueError(f"Metric at index {idx} has invalid service")
+            raise _parse_error(f"Metric at index {idx} has invalid service")
 
         raw_tags = item.get("tags")
         if raw_tags is None:
@@ -110,7 +144,7 @@ def _parse_metrics_payload(payload: object) -> list[MetricPoint]:
         elif isinstance(raw_tags, dict):
             tags = {str(key): str(tag_value) for key, tag_value in raw_tags.items()}
         else:
-            raise ValueError(f"Metric at index {idx} has invalid tags")
+            raise _parse_error(f"Metric at index {idx} has invalid tags")
 
         host_raw = host.strip() if isinstance(host, str) else ""
         service_raw = service.strip() if isinstance(service, str) else ""
@@ -120,50 +154,50 @@ def _parse_metrics_payload(payload: object) -> list[MetricPoint]:
             if host_raw:
                 subject_type = "host"
             else:
-                raise ValueError(
+                raise _parse_error(
                     f"Metric at index {idx} missing subject_type and legacy host fallback"
                 )
         if not isinstance(subject_type, str):
-            raise ValueError(f"Metric at index {idx} has invalid subject_type")
+            raise _parse_error(f"Metric at index {idx} has invalid subject_type")
 
         subject_id = item.get("subject_id")
         if subject_id is None:
             if host_raw:
                 subject_id = host_raw
             else:
-                raise ValueError(
+                raise _parse_error(
                     f"Metric at index {idx} missing subject_id and legacy host fallback"
                 )
         if not isinstance(subject_id, str):
-            raise ValueError(f"Metric at index {idx} has invalid subject_id")
+            raise _parse_error(f"Metric at index {idx} has invalid subject_id")
 
         source_system = item.get("source_system")
         if source_system is None:
             source_system = service_raw or "legacy"
         if not isinstance(source_system, str):
-            raise ValueError(f"Metric at index {idx} has invalid source_system")
+            raise _parse_error(f"Metric at index {idx} has invalid source_system")
 
         source_instance = item.get("source_instance", "default")
         if source_instance is None:
             source_instance = "default"
         if not isinstance(source_instance, str):
-            raise ValueError(f"Metric at index {idx} has invalid source_instance")
+            raise _parse_error(f"Metric at index {idx} has invalid source_instance")
 
         source_entity_id = item.get("source_entity_id")
         if source_entity_id is not None and not isinstance(source_entity_id, str):
-            raise ValueError(f"Metric at index {idx} has invalid source_entity_id")
+            raise _parse_error(f"Metric at index {idx} has invalid source_entity_id")
 
         collector_service = item.get("collector_service")
         if collector_service is None:
             collector_service = service_raw or "graphyard-ingest"
         if not isinstance(collector_service, str):
-            raise ValueError(f"Metric at index {idx} has invalid collector_service")
+            raise _parse_error(f"Metric at index {idx} has invalid collector_service")
 
         collector_host = item.get("collector_host")
         if collector_host is None:
             collector_host = host_raw or str(subject_id)
         if not isinstance(collector_host, str):
-            raise ValueError(f"Metric at index {idx} has invalid collector_host")
+            raise _parse_error(f"Metric at index {idx} has invalid collector_host")
 
         try:
             normalized = normalize_metric_point(
@@ -190,7 +224,9 @@ def _parse_metrics_payload(payload: object) -> list[MetricPoint]:
                 metric,
                 err,
             )
-            raise ValueError(f"Metric at index {idx} failed validation: {err}") from err
+            raise _normalization_error(
+                f"Metric at index {idx} failed validation: {err}"
+            ) from err
 
         points.append(normalized)
 
@@ -214,27 +250,57 @@ def _serialize_condition(condition: ConditionDefinition) -> dict[str, object]:
 def metrics_ingest(request: HttpRequest) -> JsonResponse:
     token = authenticate_ingest_token(request)
     if token is None:
+        logger.warning("metrics_ingest_rejected category=auth rejected_requests=1")
         return _json_error("Missing or invalid bearer token", status=401)
 
     try:
         payload = json.loads(request.body.decode("utf-8"))
     except json.JSONDecodeError:
+        logger.warning(
+            "metrics_ingest_rejected category=parse parse_rejected=1 normalization_rejected=0 total_metrics=0 reason=%s",
+            "Invalid JSON payload",
+        )
         _record_heartbeat_safe(
             "metric_ingest",
             status=StatusLevel.WARNING,
             last_error="Invalid JSON payload",
-            details={},
+            details={
+                "category": "parse",
+                "parse_rejected": 1,
+                "normalization_rejected": 0,
+            },
         )
         return _json_error("Invalid JSON payload", status=400)
 
     try:
         points = _parse_metrics_payload(payload)
     except ValueError as err:
+        parse_rejected = getattr(err, "parse_rejected", 1)
+        normalization_rejected = getattr(err, "normalization_rejected", 0)
+        total_metrics = getattr(err, "total_metrics", 0)
+        category = (
+            "normalization"
+            if normalization_rejected and not parse_rejected
+            else "parse"
+        )
+        logger.warning(
+            "metrics_ingest_rejected category=%s parse_rejected=%s normalization_rejected=%s total_metrics=%s reason=%s",
+            category,
+            parse_rejected,
+            normalization_rejected,
+            total_metrics,
+            err,
+        )
         _record_heartbeat_safe(
             "metric_ingest",
             status=StatusLevel.WARNING,
             last_error=str(err),
-            details={},
+            details={
+                "category": category,
+                "parse_rejected": parse_rejected,
+                "normalization_rejected": normalization_rejected,
+                "total_metrics": total_metrics,
+            },
         )
         return _json_error(str(err), status=400)
 

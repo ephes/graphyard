@@ -27,6 +27,7 @@ Graphyard runtime supports both InfluxDB v2 and v3 query paths:
   - force SQL query mode
 
 For normal development, keep `INFLUX_API_MODE=auto`.
+For production on the current InfluxDB v2 baseline, set `INFLUX_API_MODE=v2`.
 
 ## Grafana Provisioning and Compatibility
 

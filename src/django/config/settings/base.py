@@ -88,6 +88,7 @@ DATABASES = {
         "NAME": BASE_DIR / "db.sqlite3",
         "OPTIONS": {
             "timeout": GRAPHYARD_SQLITE_TIMEOUT_SECONDS,
+            "transaction_mode": "IMMEDIATE",
         },
     }
 }

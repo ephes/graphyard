@@ -82,7 +82,8 @@ brew install influxdb
 
 On a fresh local InfluxDB 2 setup, complete one-time setup and copy the created token/org/bucket into `src/django/.env`.
 With local `influxdb3` started by Procfile (`--without-auth`), the defaults in `.env.example` are sufficient for development.
-`INFLUX_API_MODE=auto` (default) lets Graphyard query with Flux for InfluxDB 2 and automatically switch to SQL for InfluxDB 3 when needed.
+`INFLUX_API_MODE=auto` (default) lets Graphyard query with Flux for InfluxDB 2 and automatically switch to SQL for InfluxDB 3 when needed in development.
+For production, prefer `INFLUX_API_MODE=v2` to keep query behavior pinned to the current InfluxDB v2 baseline.
 
 For Grafana in the Procfile stack:
 
