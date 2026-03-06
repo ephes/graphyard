@@ -7,6 +7,7 @@ It ingests metrics into InfluxDB with canonical subject/source/collector dimensi
 ## MVP Scope
 
 - `POST /v1/metrics` authenticated ingest (bearer token)
+  - accepts JSON array payloads, object-with-`metrics` arrays, and NDJSON batches
 - `GET /v1/conditions`
 - `GET /v1/conditions/<id>`
 - `GET /v1/health`
@@ -214,6 +215,8 @@ Collected points are written by the long-running agent to InfluxDB and update ho
 `host_id`/`service_id` remain supported for migration compatibility.
 Write-path behavior is partial-success: invalid points are rejected per-point, while valid points in the
 same batch are still written.
+For `POST /v1/metrics`, request-level payload validation is fail-fast: if any point fails ingest payload
+parsing/normalization before write, the request is rejected with `400` and no points are written.
 
 Security note: metric collection `config` values are stored in SQLite and may contain secrets
 (for example `access_token`, `bearer_token`, `basic_password`). Django admin masks known secret

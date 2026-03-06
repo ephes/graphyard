@@ -56,7 +56,7 @@ def test_metrics_endpoint_logs_auth_rejection_count(client, caplog):
 
     assert response.status_code == 401
     assert any(
-        "metrics_ingest_rejected category=auth rejected_requests=1"
+        "metrics_ingest_rejected category=auth rejected_requests=1 rejected_count=1"
         in record.getMessage()
         for record in caplog.records
     )
@@ -151,6 +151,46 @@ def test_metrics_endpoint_accepts_vector_batched_list_payload(client, monkeypatc
     response = client.post(
         reverse("graphyard:metrics_ingest"),
         data=payload,
+        content_type="application/json",
+        HTTP_AUTHORIZATION="Bearer secret-token",
+    )
+
+    assert response.status_code == 202
+    assert response.json()["ingested"] == 3
+    assert captured["count"] == 3
+    assert captured["metrics"] == [
+        "host.cpu_seconds_total",
+        "host.memory_available_bytes",
+        "host.filesystem_used_ratio",
+    ]
+
+
+@pytest.mark.django_db
+def test_metrics_endpoint_accepts_vector_batched_ndjson_payload(client, monkeypatch):
+    ingest_token = IngestToken(name="macmini")
+    ingest_token.set_token("secret-token")
+    ingest_token.save()
+
+    captured = {"count": 0, "metrics": []}
+
+    def fake_write_points(points):
+        captured["count"] = len(points)
+        captured["metrics"] = [item.metric for item in points]
+        return len(points)
+
+    monkeypatch.setattr("graphyard.views.write_points", fake_write_points)
+
+    ndjson_payload = "\n".join(
+        [
+            '{"ts":"2026-03-04T12:00:00Z","host":"macmini","service":"host_metrics","metric":"host.cpu_seconds_total","value":123.0}',
+            '{"ts":"2026-03-04T12:00:00Z","host":"macmini","service":"host_metrics","metric":"host.memory_available_bytes","value":2048.0}',
+            '{"ts":"2026-03-04T12:00:00Z","host":"macmini","service":"host_metrics","metric":"host.filesystem_used_ratio","value":0.42}',
+        ]
+    )
+
+    response = client.post(
+        reverse("graphyard:metrics_ingest"),
+        data=ndjson_payload,
         content_type="application/json",
         HTTP_AUTHORIZATION="Bearer secret-token",
     )
@@ -328,7 +368,47 @@ def test_metrics_endpoint_logs_parse_rejection_count(client, monkeypatch, caplog
 
     assert response.status_code == 400
     assert any(
-        "metrics_ingest_rejected category=parse parse_rejected=1 normalization_rejected=0"
+        "metrics_ingest_rejected category=parse parse_rejected=1 normalization_rejected=0 rejected_count=1"
+        in record.getMessage()
+        for record in caplog.records
+    )
+
+
+@pytest.mark.django_db
+def test_metrics_endpoint_logs_json_decode_parse_rejection_count(
+    client, monkeypatch, caplog
+):
+    ingest_token = IngestToken(name="collector")
+    ingest_token.set_token("secret-token")
+    ingest_token.save()
+
+    captured_details: dict[str, object] = {}
+
+    def fake_record_heartbeat_safe(*args, **kwargs):  # noqa: ANN002, ANN003
+        del args
+        captured_details.update(kwargs.get("details", {}))
+
+    monkeypatch.setattr(
+        "graphyard.views._record_heartbeat_safe",
+        fake_record_heartbeat_safe,
+    )
+
+    response = client.post(
+        reverse("graphyard:metrics_ingest"),
+        data="this-is-not-json",
+        content_type="application/json",
+        HTTP_AUTHORIZATION="Bearer secret-token",
+    )
+
+    assert response.status_code == 400
+    assert response.json()["error"] == "Invalid JSON payload"
+    assert captured_details["category"] == "parse"
+    assert captured_details["parse_rejected"] == 1
+    assert captured_details["normalization_rejected"] == 0
+    assert captured_details["rejected_count"] == 1
+    assert captured_details["total_metrics"] == 0
+    assert any(
+        "metrics_ingest_rejected category=parse parse_rejected=1 normalization_rejected=0 rejected_count=1 total_metrics=0"
         in record.getMessage()
         for record in caplog.records
     )
@@ -366,7 +446,7 @@ def test_metrics_endpoint_logs_normalization_rejection_count(
 
     assert response.status_code == 400
     assert any(
-        "metrics_ingest_rejected category=normalization parse_rejected=0 normalization_rejected=1"
+        "metrics_ingest_rejected category=normalization parse_rejected=0 normalization_rejected=1 rejected_count=1"
         in record.getMessage()
         for record in caplog.records
     )

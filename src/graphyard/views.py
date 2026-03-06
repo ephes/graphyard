@@ -84,6 +84,33 @@ def _parse_timestamp(value: str) -> datetime:
     return parsed.astimezone(UTC)
 
 
+def _decode_metrics_ingest_body(body: bytes) -> object:
+    decoded = body.decode("utf-8")
+    try:
+        return json.loads(decoded)
+    except json.JSONDecodeError as json_err:
+        # Vector batched payloads may be sent as newline-delimited JSON objects.
+        lines = [line.strip() for line in decoded.splitlines() if line.strip()]
+        if len(lines) < 2:
+            raise MetricsPayloadValidationError(
+                "Invalid JSON payload",
+                parse_rejected=1,
+                total_metrics=0,
+            ) from json_err
+
+        parsed_lines: list[object] = []
+        for line in lines:
+            try:
+                parsed_lines.append(json.loads(line))
+            except json.JSONDecodeError as ndjson_err:
+                raise MetricsPayloadValidationError(
+                    "Invalid JSON payload",
+                    parse_rejected=1,
+                    total_metrics=len(lines),
+                ) from ndjson_err
+        return parsed_lines
+
+
 def _parse_metrics_payload(payload: object) -> list[MetricPoint]:
     if isinstance(payload, dict):
         payload = payload.get("metrics")
@@ -250,33 +277,41 @@ def _serialize_condition(condition: ConditionDefinition) -> dict[str, object]:
 def metrics_ingest(request: HttpRequest) -> JsonResponse:
     token = authenticate_ingest_token(request)
     if token is None:
-        logger.warning("metrics_ingest_rejected category=auth rejected_requests=1")
+        logger.warning(
+            "metrics_ingest_rejected category=auth rejected_requests=1 rejected_count=1"
+        )
         return _json_error("Missing or invalid bearer token", status=401)
 
     try:
-        payload = json.loads(request.body.decode("utf-8"))
-    except json.JSONDecodeError:
+        payload = _decode_metrics_ingest_body(request.body)
+    except MetricsPayloadValidationError as err:
         logger.warning(
-            "metrics_ingest_rejected category=parse parse_rejected=1 normalization_rejected=0 total_metrics=0 reason=%s",
-            "Invalid JSON payload",
+            "metrics_ingest_rejected category=parse parse_rejected=%s normalization_rejected=0 rejected_count=%s total_metrics=%s reason=%s",
+            err.parse_rejected,
+            err.parse_rejected,
+            err.total_metrics,
+            err,
         )
         _record_heartbeat_safe(
             "metric_ingest",
             status=StatusLevel.WARNING,
-            last_error="Invalid JSON payload",
+            last_error=str(err),
             details={
                 "category": "parse",
-                "parse_rejected": 1,
+                "parse_rejected": err.parse_rejected,
                 "normalization_rejected": 0,
+                "rejected_count": err.parse_rejected,
+                "total_metrics": err.total_metrics,
             },
         )
-        return _json_error("Invalid JSON payload", status=400)
+        return _json_error(str(err), status=400)
 
     try:
         points = _parse_metrics_payload(payload)
     except ValueError as err:
         parse_rejected = getattr(err, "parse_rejected", 1)
         normalization_rejected = getattr(err, "normalization_rejected", 0)
+        rejected_count = parse_rejected + normalization_rejected
         total_metrics = getattr(err, "total_metrics", 0)
         category = (
             "normalization"
@@ -284,10 +319,11 @@ def metrics_ingest(request: HttpRequest) -> JsonResponse:
             else "parse"
         )
         logger.warning(
-            "metrics_ingest_rejected category=%s parse_rejected=%s normalization_rejected=%s total_metrics=%s reason=%s",
+            "metrics_ingest_rejected category=%s parse_rejected=%s normalization_rejected=%s rejected_count=%s total_metrics=%s reason=%s",
             category,
             parse_rejected,
             normalization_rejected,
+            rejected_count,
             total_metrics,
             err,
         )
@@ -299,6 +335,7 @@ def metrics_ingest(request: HttpRequest) -> JsonResponse:
                 "category": category,
                 "parse_rejected": parse_rejected,
                 "normalization_rejected": normalization_rejected,
+                "rejected_count": rejected_count,
                 "total_metrics": total_metrics,
             },
         )
