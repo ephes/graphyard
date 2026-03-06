@@ -613,6 +613,12 @@ def test_conditions_endpoints(client):
     assert list_response.status_code == 200
     payload = list_response.json()
     assert payload["conditions"][0]["status"] == "warning"
+    assert payload["summary"] == {
+        "total": 1,
+        "ok": 0,
+        "warning": 1,
+        "critical": 0,
+    }
 
     detail_response = client.get(
         reverse("graphyard:condition_detail", kwargs={"condition_id": condition.id})
@@ -623,6 +629,61 @@ def test_conditions_endpoints(client):
     assert detail["config"]["metric_name"] == condition.metric_name
     assert "subject_type_filter" in detail["config"]
     assert "subject_id_filter" in detail["config"]
+
+
+@pytest.mark.django_db
+def test_conditions_endpoint_returns_empty_summary_when_no_conditions(client):
+    response = client.get(reverse("graphyard:conditions_list"))
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["conditions"] == []
+    assert payload["summary"] == {
+        "total": 0,
+        "ok": 0,
+        "warning": 0,
+        "critical": 0,
+    }
+
+
+@pytest.mark.django_db
+def test_conditions_endpoint_summary_counts_multiple_statuses(client):
+    ConditionDefinition.objects.create(
+        name="Condition OK",
+        metric_name="host.filesystem_used_ratio",
+        operator="gte",
+        warning_threshold=0.8,
+        critical_threshold=0.9,
+        status=StatusLevel.OK,
+        enabled=True,
+    )
+    ConditionDefinition.objects.create(
+        name="Condition WARNING",
+        metric_name="host.filesystem_used_ratio",
+        operator="gte",
+        warning_threshold=0.8,
+        critical_threshold=0.9,
+        status=StatusLevel.WARNING,
+        enabled=True,
+    )
+    ConditionDefinition.objects.create(
+        name="Condition CRITICAL",
+        metric_name="host.filesystem_used_ratio",
+        operator="gte",
+        warning_threshold=0.8,
+        critical_threshold=0.9,
+        status=StatusLevel.CRITICAL,
+        enabled=True,
+    )
+
+    response = client.get(reverse("graphyard:conditions_list"))
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["summary"] == {
+        "total": 3,
+        "ok": 1,
+        "warning": 1,
+        "critical": 1,
+    }
 
 
 @pytest.mark.django_db

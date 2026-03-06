@@ -272,6 +272,19 @@ def _serialize_condition(condition: ConditionDefinition) -> dict[str, object]:
     }
 
 
+def _summarize_conditions(conditions: list[ConditionDefinition]) -> dict[str, int]:
+    summary = {
+        "total": len(conditions),
+        StatusLevel.OK: 0,
+        StatusLevel.WARNING: 0,
+        StatusLevel.CRITICAL: 0,
+    }
+    for condition in conditions:
+        if condition.status in summary:
+            summary[condition.status] += 1
+    return summary
+
+
 @csrf_exempt
 @require_POST
 def metrics_ingest(request: HttpRequest) -> JsonResponse:
@@ -381,9 +394,12 @@ def metrics_ingest(request: HttpRequest) -> JsonResponse:
 @require_GET
 def conditions_list(request: HttpRequest) -> JsonResponse:
     del request
-    conditions = ConditionDefinition.objects.filter(enabled=True).order_by("id")
+    conditions = list(ConditionDefinition.objects.filter(enabled=True).order_by("id"))
     return JsonResponse(
-        {"conditions": [_serialize_condition(item) for item in conditions]}
+        {
+            "conditions": [_serialize_condition(item) for item in conditions],
+            "summary": _summarize_conditions(conditions),
+        }
     )
 
 

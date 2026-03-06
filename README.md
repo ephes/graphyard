@@ -14,6 +14,7 @@ It ingests metrics into InfluxDB with canonical subject/source/collector dimensi
 - Long-running agent command (`start_agent`) for scheduling
 - Generic metric collection specs (`MetricCollectionSpec`) in Django admin
 - One-shot condition evaluation command (`evaluate_conditions`)
+- One-shot disk-usage condition seed command (`seed_disk_usage_condition`)
 - Django admin for tokens, conditions, host/service/subject registry
 - Minimal authenticated host/service index UI
 - App login page at `/login/` (separate from Django admin URL)
@@ -243,6 +244,14 @@ Run evaluator once:
 just manage evaluate_conditions
 ```
 
+Seed (or update) a practical host disk-usage condition:
+
+```bash
+just manage seed_disk_usage_condition --host macmini --mountpoint /
+```
+
+Defaults: warning `0.80`, critical `0.90`, operator `gte`, metric `host.filesystem_used_ratio`.
+
 Example supported condition: humidity above threshold for N minutes.
 
 ## Agent Runtime (Dev + Production)
@@ -264,7 +273,8 @@ just manage start_agent --disable-conditions
 Nyxmon can poll:
 
 - `/v1/health` for pipeline/service health and staleness
-- `/v1/conditions` or `/v1/conditions/<id>` for derived condition states
+- `/v1/conditions` for condition list plus summary counts (`total`, `ok`, `warning`, `critical`)
+- `/v1/conditions/<id>` for detailed config/status of one condition
 
 Status values are always `ok|warning|critical`.
 
