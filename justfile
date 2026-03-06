@@ -28,4 +28,13 @@ dev:
 # Deploy via ops-control shorthand.
 deploy:
     #!/usr/bin/env bash
-    cd {{OPS_CONTROL}} && just deploy graphyard {{HOST}}
+    set -euo pipefail
+    graphyard_root="$(git rev-parse --show-toplevel)"
+    default_projects_root="$(dirname "$graphyard_root")"
+    if [[ -n "${PROJECTS_ROOT:-}" && -d "${PROJECTS_ROOT}/graphyard" ]]; then
+        projects_root="$PROJECTS_ROOT"
+    else
+        projects_root="$default_projects_root"
+    fi
+    cd {{OPS_CONTROL}}
+    PROJECTS_ROOT="$projects_root" just deploy graphyard {{HOST}}
