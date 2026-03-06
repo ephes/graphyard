@@ -15,7 +15,9 @@ class Command(BaseCommand):
     help = "Create or update a host.filesystem_used_ratio condition for disk usage alerting"
 
     def add_arguments(self, parser) -> None:
-        parser.add_argument("--host", required=True, help="Host id (for subject and host filter)")
+        parser.add_argument(
+            "--host", required=True, help="Host id (for subject and host filter)"
+        )
         parser.add_argument(
             "--mountpoint",
             default="/",
@@ -81,22 +83,30 @@ class Command(BaseCommand):
         if not host:
             raise CommandError("--host must not be empty")
         if not no_mountpoint_filter and not mountpoint:
-            raise CommandError("--mountpoint must not be empty unless --no-mountpoint-filter is used")
+            raise CommandError(
+                "--mountpoint must not be empty unless --no-mountpoint-filter is used"
+            )
         if window_minutes <= 0:
             raise CommandError("--window-minutes must be greater than 0")
         if breach_minutes <= 0:
             raise CommandError("--breach-minutes must be greater than 0")
         if breach_minutes > window_minutes:
-            raise CommandError("--breach-minutes must be less than or equal to --window-minutes")
+            raise CommandError(
+                "--breach-minutes must be less than or equal to --window-minutes"
+            )
 
         _validate_threshold("warning-threshold", warning_threshold)
         _validate_threshold("critical-threshold", critical_threshold)
         if warning_threshold > critical_threshold:
-            raise CommandError("--warning-threshold must be less than or equal to --critical-threshold")
+            raise CommandError(
+                "--warning-threshold must be less than or equal to --critical-threshold"
+            )
 
         name_override = str(options["name"]).strip()
         mountpoint_name = "*" if no_mountpoint_filter else mountpoint
-        condition_name = name_override or f"Host filesystem usage ({host} {mountpoint_name})"
+        condition_name = (
+            name_override or f"Host filesystem usage ({host} {mountpoint_name})"
+        )
 
         tags_filter = {}
         if not no_mountpoint_filter:
