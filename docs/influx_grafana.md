@@ -113,6 +113,14 @@ Include both in backups:
 - Django SQLite DB (`src/django/db.sqlite3` in this repo layout; production path may differ)
 - InfluxDB data directory or export/backup artifacts
 
+Production note:
+
+- in the `ws-ops-misc` workspace, the operator path is the Echoport service-owned runner
+  for `graphyard-backup`
+- current production scope intentionally excludes Grafana DB state
+- if Grafana datasource/admin reconciliation is needed after restore, rerun the
+  Graphyard auth-bootstrap playbook from `ops-control`
+
 When Graphyard is operated from the `ws-ops-misc` workspace, the intended
 production path is Echoport-triggered backup/restore, not ad hoc `just` or
 standalone Ansible backup roles. Any Graphyard-specific backup automation should
