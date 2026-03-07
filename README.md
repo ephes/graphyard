@@ -139,7 +139,16 @@ just manage apply_metric_collection_specs --file /etc/graphyard/metric-collectio
 ```
 
 The file may be either a JSON list of spec objects or an object with a
-`metric_collection_specs` list. Unspecified specs are left untouched.
+`metric_collection_specs` list. Add `--prune` to delete existing rows whose
+`name` is omitted from the file:
+
+```bash
+just manage apply_metric_collection_specs --file /etc/graphyard/metric-collection-specs.json --prune
+```
+
+Prune is opt-in and keyed only by `name`. Without `--prune`, unspecified specs
+are left untouched. With `--prune`, the command refuses an empty desired spec
+set so a broken render cannot wipe every spec row in one shot.
 Current supported `spec_type`:
 
 - `home_assistant_sensor`

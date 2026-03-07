@@ -113,6 +113,11 @@ Include both in backups:
 - Django SQLite DB (`src/django/db.sqlite3` in this repo layout; production path may differ)
 - InfluxDB data directory or export/backup artifacts
 
+When Graphyard is operated from the `ws-ops-misc` workspace, the intended
+production path is Echoport-triggered backup/restore, not ad hoc `just` or
+standalone Ansible backup roles. Any Graphyard-specific backup automation should
+feed the Echoport/FastDeploy runner flow.
+
 Restore order:
 
 1. Restore InfluxDB data
