@@ -1,0 +1,204 @@
+from __future__ import annotations
+
+import io
+import json
+
+import pytest
+from django.core.management import call_command
+from django.core.management.base import CommandError
+
+from graphyard.models import MetricCollectionSpec, MetricCollectionSpecType
+
+
+def _write_specs_file(tmp_path, payload: object) -> str:
+    path = tmp_path / "metric-collection-specs.json"
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    return str(path)
+
+
+@pytest.mark.django_db
+def test_apply_metric_collection_specs_creates_specs_from_root_object(tmp_path):
+    spec_file = _write_specs_file(
+        tmp_path,
+        {
+            "metric_collection_specs": [
+                {
+                    "name": "Home Assistant Environment Scan",
+                    "enabled": True,
+                    "spec_type": MetricCollectionSpecType.HOME_ASSISTANT_ENV_SCAN,
+                    "interval_seconds": 60,
+                    "config": {
+                        "base_url": "http://macmini.local:10020",
+                        "access_token": "token",
+                        "host_id": "homeassistant",
+                        "service_id": "homeassistant",
+                    },
+                }
+            ]
+        },
+    )
+
+    stdout = io.StringIO()
+    call_command("apply_metric_collection_specs", "--file", spec_file, stdout=stdout)
+
+    spec = MetricCollectionSpec.objects.get(name="Home Assistant Environment Scan")
+    assert spec.enabled is True
+    assert spec.spec_type == MetricCollectionSpecType.HOME_ASSISTANT_ENV_SCAN
+    assert spec.interval_seconds == 60
+    assert spec.config["base_url"] == "http://macmini.local:10020"
+    assert "created=1" in stdout.getvalue()
+    assert "updated=0" in stdout.getvalue()
+
+
+@pytest.mark.django_db
+def test_apply_metric_collection_specs_is_idempotent_for_matching_state(tmp_path):
+    spec_file = _write_specs_file(
+        tmp_path,
+        [
+            {
+                "name": "Home Assistant Environment Scan",
+                "enabled": True,
+                "spec_type": MetricCollectionSpecType.HOME_ASSISTANT_ENV_SCAN,
+                "interval_seconds": 60,
+                "config": {
+                    "base_url": "http://macmini.local:10020",
+                    "access_token": "token",
+                },
+            }
+        ],
+    )
+
+    call_command("apply_metric_collection_specs", "--file", spec_file)
+
+    stdout = io.StringIO()
+    call_command("apply_metric_collection_specs", "--file", spec_file, stdout=stdout)
+
+    spec = MetricCollectionSpec.objects.get(name="Home Assistant Environment Scan")
+    assert spec.interval_seconds == 60
+    assert "created=0" in stdout.getvalue()
+    assert "updated=0" in stdout.getvalue()
+    assert "unchanged=1" in stdout.getvalue()
+
+
+@pytest.mark.django_db
+def test_apply_metric_collection_specs_updates_existing_spec_and_resets_next_run_time(
+    tmp_path,
+):
+    spec = MetricCollectionSpec.objects.create(
+        name="Home Assistant Environment Scan",
+        enabled=False,
+        spec_type=MetricCollectionSpecType.HOME_ASSISTANT_SENSOR,
+        interval_seconds=300,
+        next_run_time=123456789,
+        config={
+            "base_url": "http://old.local:10020",
+            "access_token": "old-token",
+            "entity_id": "sensor.office_temperature",
+        },
+    )
+
+    spec_file = _write_specs_file(
+        tmp_path,
+        {
+            "metric_collection_specs": [
+                {
+                    "name": "Home Assistant Environment Scan",
+                    "enabled": True,
+                    "spec_type": MetricCollectionSpecType.HOME_ASSISTANT_ENV_SCAN,
+                    "interval_seconds": 60,
+                    "config": {
+                        "base_url": "http://macmini.local:10020",
+                        "access_token": "new-token",
+                        "host_id": "homeassistant",
+                    },
+                }
+            ]
+        },
+    )
+
+    stdout = io.StringIO()
+    call_command("apply_metric_collection_specs", "--file", spec_file, stdout=stdout)
+
+    spec.refresh_from_db()
+    assert spec.enabled is True
+    assert spec.spec_type == MetricCollectionSpecType.HOME_ASSISTANT_ENV_SCAN
+    assert spec.interval_seconds == 60
+    assert spec.next_run_time == 0
+    assert spec.config == {
+        "base_url": "http://macmini.local:10020",
+        "access_token": "new-token",
+        "host_id": "homeassistant",
+    }
+    assert "created=0" in stdout.getvalue()
+    assert "updated=1" in stdout.getvalue()
+
+
+def test_apply_metric_collection_specs_rejects_invalid_spec_file_shape(tmp_path):
+    spec_file = _write_specs_file(tmp_path, {"metric_collection_specs": {"bad": "shape"}})
+
+    with pytest.raises(CommandError, match="metric_collection_specs"):
+        call_command("apply_metric_collection_specs", "--file", spec_file)
+
+
+def test_apply_metric_collection_specs_rejects_missing_file(tmp_path):
+    missing_file = tmp_path / "missing.json"
+
+    with pytest.raises(CommandError, match="Spec file not found"):
+        call_command("apply_metric_collection_specs", "--file", str(missing_file))
+
+
+def test_apply_metric_collection_specs_rejects_invalid_spec_type(tmp_path):
+    spec_file = _write_specs_file(
+        tmp_path,
+        [
+            {
+                "name": "Broken Spec",
+                "enabled": True,
+                "spec_type": "nope",
+                "interval_seconds": 60,
+                "config": {},
+            }
+        ],
+    )
+
+    with pytest.raises(CommandError, match="invalid spec_type"):
+        call_command("apply_metric_collection_specs", "--file", spec_file)
+
+
+@pytest.mark.parametrize("interval_seconds", [0, -1, True])
+def test_apply_metric_collection_specs_rejects_invalid_interval_seconds(
+    tmp_path, interval_seconds
+):
+    spec_file = _write_specs_file(
+        tmp_path,
+        [
+            {
+                "name": "Broken Interval Spec",
+                "enabled": True,
+                "spec_type": MetricCollectionSpecType.HTTP_JSON_METRIC,
+                "interval_seconds": interval_seconds,
+                "config": {},
+            }
+        ],
+    )
+
+    with pytest.raises(CommandError, match="invalid interval_seconds"):
+        call_command("apply_metric_collection_specs", "--file", spec_file)
+
+
+def test_apply_metric_collection_specs_rejects_non_dict_config(tmp_path):
+    spec_file = _write_specs_file(
+        tmp_path,
+        [
+            {
+                "name": "Broken Config Spec",
+                "enabled": True,
+                "spec_type": MetricCollectionSpecType.HTTP_JSON_METRIC,
+                "interval_seconds": 60,
+                "config": ["not", "a", "dict"],
+            }
+        ],
+    )
+
+    with pytest.raises(CommandError, match="invalid config"):
+        call_command("apply_metric_collection_specs", "--file", spec_file)

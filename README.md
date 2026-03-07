@@ -131,6 +131,15 @@ Hash upgrades are one-way; if you revert to code that only understands Django pa
 ## Metric Collection Specs
 
 Metric collection is configured in Django admin via `MetricCollectionSpec`.
+For production, specs can also be provisioned idempotently from a JSON file as
+create/update reconciliation by spec name:
+
+```bash
+just manage apply_metric_collection_specs --file /etc/graphyard/metric-collection-specs.json
+```
+
+The file may be either a JSON list of spec objects or an object with a
+`metric_collection_specs` list. Unspecified specs are left untouched.
 Current supported `spec_type`:
 
 - `home_assistant_sensor`
