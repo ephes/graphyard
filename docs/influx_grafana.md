@@ -51,6 +51,10 @@ Important compatibility note:
 - Current provisioned dashboard queries are InfluxQL.
 - This is directly compatible with InfluxDB v2 datasource usage.
 - If you standardize on InfluxDB v3, you need a different Grafana datasource/query setup (Flight SQL datasource and SQL-based panels).
+- The provisioned datasource URL is intentionally `http://graphyard-influxdb:8086`.
+  Grafana must be able to resolve that hostname from inside its container:
+  local Procfile dev uses `--add-host=graphyard-influxdb:host-gateway`,
+  and production should attach Grafana and InfluxDB to a shared Docker network.
 
 ### Dashboard Query Alignment (2026-03-06)
 

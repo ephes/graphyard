@@ -5,7 +5,7 @@ datasources:
     uid: graphyard-influxdb
     type: influxdb
     access: proxy
-    url: ${GRAPHYARD_INFLUX_URL}
+    url: http://graphyard-influxdb:8086
     isDefault: true
     editable: true
     jsonData:
