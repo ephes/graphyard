@@ -31,7 +31,7 @@
       },
       "id": 1,
       "options": {
-        "content": "Host-only filesystem view (`subject_type='host'`). Use the dedicated Host Network dashboard for interface throughput.",
+        "content": "Host-only network view (`subject_type='host'`). Internal interfaces are filtered from the device dropdown by default; choose a host uplink like `eth0` or `enp0s31f6` for useful traffic charts.",
         "mode": "markdown"
       },
       "pluginVersion": "12.4.0",
@@ -43,7 +43,7 @@
         "type": "influxdb",
         "uid": "graphyard-influxdb"
       },
-      "description": "Persistent host filesystem usage from Vector (`host.filesystem_used_ratio`).",
+      "description": "Network receive and transmit throughput derived from Vector host metrics.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -69,7 +69,7 @@
               "mode": "off"
             }
           },
-          "displayName": "${__field.labels.subject_id}: ${__field.labels.mountpoint}",
+          "displayName": "${__field.name}: ${__field.labels.device}",
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
@@ -77,18 +77,10 @@
               {
                 "color": "green",
                 "value": null
-              },
-              {
-                "color": "orange",
-                "value": 0.8
-              },
-              {
-                "color": "red",
-                "value": 0.9
               }
             ]
           },
-          "unit": "percentunit"
+          "unit": "bps"
         },
         "overrides": []
       },
@@ -120,69 +112,32 @@
             "type": "influxdb",
             "uid": "graphyard-influxdb"
           },
-          "query": "SELECT mean(\"value\") FROM \"graphyard_metrics\" WHERE $timeFilter AND \"subject_type\" = 'host' AND \"subject_id\" =~ /^$host$/ AND \"metric\" = 'host.filesystem_used_ratio' AND \"filesystem\" !~ /^(tmpfs|devtmpfs)$/ GROUP BY time($__interval), \"subject_id\", \"mountpoint\" fill(null)",
+          "query": "SELECT non_negative_derivative(mean(\"value\"), 1s) * 8 AS \"receive_bps\" FROM \"graphyard_metrics\" WHERE $timeFilter AND \"subject_type\" = 'host' AND \"subject_id\" =~ /^$host$/ AND \"metric\" = 'host.network_receive_bytes_total' AND \"device\" =~ /^$device$/ GROUP BY time($__interval), \"subject_id\", \"device\" fill(null)",
           "rawQuery": true,
           "refId": "A",
           "resultFormat": "time_series"
-        }
-      ],
-      "title": "Filesystem Used: $host",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "influxdb",
-        "uid": "graphyard-influxdb"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "custom": {},
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          }
         },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 24,
-        "x": 0,
-        "y": 14
-      },
-      "id": 3,
-      "options": {
-        "cellHeight": "sm",
-        "showHeader": true
-      },
-      "pluginVersion": "12.4.0",
-      "targets": [
         {
           "datasource": {
             "type": "influxdb",
             "uid": "graphyard-influxdb"
           },
-          "query": "SELECT last(\"value\") FROM \"graphyard_metrics\" WHERE $timeFilter AND \"subject_type\" = 'host' AND \"subject_id\" =~ /^$host$/ AND \"metric\" = 'host.filesystem_used_ratio' AND \"filesystem\" !~ /^(tmpfs|devtmpfs)$/ GROUP BY \"subject_id\", \"mountpoint\"",
+          "query": "SELECT non_negative_derivative(mean(\"value\"), 1s) * 8 AS \"transmit_bps\" FROM \"graphyard_metrics\" WHERE $timeFilter AND \"subject_type\" = 'host' AND \"subject_id\" =~ /^$host$/ AND \"metric\" = 'host.network_transmit_bytes_total' AND \"device\" =~ /^$device$/ GROUP BY time($__interval), \"subject_id\", \"device\" fill(null)",
           "rawQuery": true,
-          "refId": "A",
-          "resultFormat": "table"
+          "refId": "B",
+          "resultFormat": "time_series"
         }
       ],
-      "title": "Latest Filesystem Values",
-      "type": "table"
+      "title": "Network Traffic: $host",
+      "type": "timeseries"
     }
   ],
   "refresh": "1m",
   "schemaVersion": 41,
   "tags": [
     "graphyard",
-    "host"
+    "host",
+    "network"
   ],
   "templating": {
     "list": [
@@ -209,14 +164,37 @@
           "type": "influxdb",
           "uid": "graphyard-influxdb"
         },
-        "definition": "SHOW TAG VALUES FROM \"graphyard_metrics\" WITH KEY = \"subject_id\" WHERE \"subject_type\" = 'host' AND \"metric\" = 'host.filesystem_used_ratio'",
+        "definition": "SHOW TAG VALUES FROM \"graphyard_metrics\" WITH KEY = \"subject_id\" WHERE \"subject_type\" = 'host' AND \"metric\" = 'host.network_receive_bytes_total'",
         "hide": 0,
         "includeAll": false,
         "label": "host",
         "multi": true,
         "name": "host",
         "options": [],
-        "query": "SHOW TAG VALUES FROM \"graphyard_metrics\" WITH KEY = \"subject_id\" WHERE \"subject_type\" = 'host' AND \"metric\" = 'host.filesystem_used_ratio'",
+        "query": "SHOW TAG VALUES FROM \"graphyard_metrics\" WITH KEY = \"subject_id\" WHERE \"subject_type\" = 'host' AND \"metric\" = 'host.network_receive_bytes_total'",
+        "refresh": 1,
+        "skipUrlSync": false,
+        "type": "query"
+      },
+      {
+        "allValue": ".*",
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": ".*"
+        },
+        "datasource": {
+          "type": "influxdb",
+          "uid": "graphyard-influxdb"
+        },
+        "definition": "SHOW TAG VALUES FROM \"graphyard_metrics\" WITH KEY = \"device\" WHERE \"subject_type\" = 'host' AND \"subject_id\" =~ /^$host$/ AND \"metric\" = 'host.network_receive_bytes_total' AND \"device\" !~ /^(docker0|lo|tailscale0)$/",
+        "hide": 0,
+        "includeAll": true,
+        "label": "device",
+        "multi": false,
+        "name": "device",
+        "options": [],
+        "query": "SHOW TAG VALUES FROM \"graphyard_metrics\" WITH KEY = \"device\" WHERE \"subject_type\" = 'host' AND \"subject_id\" =~ /^$host$/ AND \"metric\" = 'host.network_receive_bytes_total' AND \"device\" !~ /^(docker0|lo|tailscale0)$/",
         "refresh": 1,
         "skipUrlSync": false,
         "type": "query"
@@ -229,8 +207,8 @@
   },
   "timepicker": {},
   "timezone": "",
-  "title": "Graphyard Host Filesystems",
-  "uid": "graphyard-host-infrastructure",
-  "version": 9,
+  "title": "Graphyard Host Network",
+  "uid": "graphyard-host-network",
+  "version": 1,
   "weekStart": ""
 }
