@@ -132,6 +132,168 @@
         "type": "influxdb",
         "uid": "graphyard-influxdb"
       },
+      "description": "Network receive throughput derived from Vector host metrics (`host.network_receive_bytes_total`).",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 3,
+            "showPoints": "auto",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "displayName": "${__field.labels.subject_id}: ${__field.labels.device}",
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "bps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 22
+      },
+      "id": 4,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "12.4.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "graphyard-influxdb"
+          },
+          "query": "SELECT non_negative_derivative(mean(\"value\"), 1s) * 8 FROM \"graphyard_metrics\" WHERE $timeFilter AND \"subject_type\" = 'host' AND \"subject_id\" =~ /^$host$/ AND \"metric\" = 'host.network_receive_bytes_total' AND \"device\" =~ /^$device$/ GROUP BY time($__interval), \"subject_id\", \"device\" fill(null)",
+          "rawQuery": true,
+          "refId": "A",
+          "resultFormat": "time_series"
+        }
+      ],
+      "title": "Network Receive Rate",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "graphyard-influxdb"
+      },
+      "description": "Network transmit throughput derived from Vector host metrics (`host.network_transmit_bytes_total`).",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 3,
+            "showPoints": "auto",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "displayName": "${__field.labels.subject_id}: ${__field.labels.device}",
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "bps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 22
+      },
+      "id": 5,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "12.4.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "graphyard-influxdb"
+          },
+          "query": "SELECT non_negative_derivative(mean(\"value\"), 1s) * 8 FROM \"graphyard_metrics\" WHERE $timeFilter AND \"subject_type\" = 'host' AND \"subject_id\" =~ /^$host$/ AND \"metric\" = 'host.network_transmit_bytes_total' AND \"device\" =~ /^$device$/ GROUP BY time($__interval), \"subject_id\", \"device\" fill(null)",
+          "rawQuery": true,
+          "refId": "A",
+          "resultFormat": "time_series"
+        }
+      ],
+      "title": "Network Transmit Rate",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "graphyard-influxdb"
+      },
       "fieldConfig": {
         "defaults": {
           "custom": {},
@@ -152,7 +314,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 14
+        "y": 31
       },
       "id": 3,
       "options": {
@@ -206,6 +368,29 @@
         "refresh": 1,
         "skipUrlSync": false,
         "type": "query"
+      },
+      {
+        "allValue": ".*",
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": ".*"
+        },
+        "datasource": {
+          "type": "influxdb",
+          "uid": "graphyard-influxdb"
+        },
+        "definition": "SHOW TAG VALUES FROM \"graphyard_metrics\" WITH KEY = \"device\" WHERE \"subject_type\" = 'host' AND \"subject_id\" =~ /^$host$/ AND \"metric\" = 'host.network_receive_bytes_total'",
+        "hide": 0,
+        "includeAll": true,
+        "label": "device",
+        "multi": false,
+        "name": "device",
+        "options": [],
+        "query": "SHOW TAG VALUES FROM \"graphyard_metrics\" WITH KEY = \"device\" WHERE \"subject_type\" = 'host' AND \"subject_id\" =~ /^$host$/ AND \"metric\" = 'host.network_receive_bytes_total'",
+        "refresh": 1,
+        "skipUrlSync": false,
+        "type": "query"
       }
     ]
   },
@@ -217,6 +402,6 @@
   "timezone": "",
   "title": "Graphyard Host Infrastructure",
   "uid": "graphyard-host-infrastructure",
-  "version": 1,
+  "version": 2,
   "weekStart": ""
 }
