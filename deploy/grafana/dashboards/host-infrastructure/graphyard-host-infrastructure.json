@@ -370,11 +370,11 @@
         "type": "query"
       },
       {
-        "allValue": ".*",
+        "allValue": "(?!docker0$|lo$|tailscale0$).*",
         "current": {
           "selected": true,
           "text": "All",
-          "value": ".*"
+          "value": "(?!docker0$|lo$|tailscale0$).*"
         },
         "datasource": {
           "type": "influxdb",
@@ -402,6 +402,6 @@
   "timezone": "",
   "title": "Graphyard Host Infrastructure",
   "uid": "graphyard-host-infrastructure",
-  "version": 2,
+  "version": 5,
   "weekStart": ""
 }
