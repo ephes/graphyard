@@ -42,7 +42,7 @@
       },
       "id": 1,
       "options": {
-      "content": "Fractal storage view only. `rootfs`, `fast`, and `tank` all come from the Fractal storage exporter; USB state comes from the Fractal backup exporter.",
+      "content": "Fractal storage view only. `rootfs`, `fast`, and `tank` come from the Fractal storage exporter. `vault` is a last-known cached value from the Fractal backup exporter so the line persists while the USB pool is offline. USB state comes from the same backup exporter.",
         "mode": "markdown"
       },
       "pluginVersion": "12.4.0",
@@ -54,7 +54,7 @@
         "type": "influxdb",
         "uid": "graphyard-influxdb"
       },
-    "description": "Logical storage utilization on fractal. `rootfs` tracks the root logical volume, while `fast` and `tank` track ZFS pool usage.",
+    "description": "Logical storage utilization on fractal. `rootfs` tracks the root logical volume, `fast` and `tank` track live ZFS pool usage, and `vault` tracks the last known USB pool usage from the most recent import window.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -136,6 +136,18 @@
               "value": "tank"
             }
           ]
+        },
+        {
+          "matcher": {
+            "id": "byName",
+            "options": "graphyard_metrics.vault"
+          },
+          "properties": [
+            {
+              "id": "displayName",
+              "value": "vault (last known)"
+            }
+          ]
         }
       ]
       },
@@ -189,6 +201,16 @@
           "rawQuery": true,
           "refId": "C",
           "resultFormat": "time_series"
+        },
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "graphyard-influxdb"
+          },
+          "query": "SELECT mean(\"value\") AS \"vault\" FROM \"graphyard_metrics\" WHERE $timeFilter AND \"subject_type\" = 'host' AND \"subject_id\" = 'fractal' AND \"metric\" = 'host.storage_pool_used_ratio' AND \"pool\" = 'vault' GROUP BY time($__interval) fill(previous)",
+          "rawQuery": true,
+          "refId": "D",
+          "resultFormat": "time_series"
         }
       ],
       "title": "Fractal Logical Storage Used",
@@ -199,7 +221,7 @@
         "type": "influxdb",
         "uid": "graphyard-influxdb"
       },
-      "description": "USB backup drive state on fractal. `device_present=1` means the USB disk is attached. `pool_imported=1` means the `vault` pool is currently imported.",
+      "description": "USB backup drive state on fractal. `device_present=1` means the USB disk is attached. `pool_imported=1` means the `vault` pool is currently imported. When `pool_imported=0`, the `vault` utilization line above is the last known cached value.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -345,6 +367,6 @@
   "timezone": "",
   "title": "Fractal Storage",
   "uid": "graphyard-fractal-storage",
-  "version": 2,
+  "version": 3,
   "weekStart": ""
 }
