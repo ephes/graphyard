@@ -75,7 +75,6 @@
               "mode": "off"
             }
           },
-          "displayName": "${__field.name}: ${__field.labels.subject_id}",
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
