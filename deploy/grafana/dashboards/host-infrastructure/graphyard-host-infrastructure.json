@@ -90,83 +90,7 @@
           },
           "unit": "percentunit"
         },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byRegexp",
-              "options": "^macmini:"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "#73BF69",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byRegexp",
-              "options": "^fractal:"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "#5794F2",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byRegexp",
-              "options": "^staging:"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "#F2CC0C",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byRegexp",
-              "options": "^production:"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "#FF9830",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byRegexp",
-              "options": "^marina:"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "#E02F44",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          }
-        ]
+        "overrides": []
       },
       "gridPos": {
         "h": 10,
@@ -188,6 +112,8 @@
         }
       },
       "pluginVersion": "12.4.0",
+      "repeat": "host",
+      "repeatDirection": "v",
       "targets": [
         {
           "datasource": {
@@ -200,7 +126,7 @@
           "resultFormat": "time_series"
         }
       ],
-      "title": "Filesystem Used (Persistent Mounts)",
+      "title": "Filesystem Used: $host",
       "type": "timeseries"
     },
     {
@@ -234,7 +160,7 @@
               "mode": "off"
             }
           },
-          "displayName": "${__field.labels.subject_id}: ${__field.labels.device}",
+          "displayName": "${__field.name}: ${__field.labels.device}",
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
@@ -247,89 +173,13 @@
           },
           "unit": "bps"
         },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byRegexp",
-              "options": "^macmini:"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "#73BF69",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byRegexp",
-              "options": "^fractal:"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "#5794F2",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byRegexp",
-              "options": "^staging:"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "#F2CC0C",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byRegexp",
-              "options": "^production:"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "#FF9830",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byRegexp",
-              "options": "^marina:"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "#E02F44",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          }
-        ]
+        "overrides": []
       },
       "gridPos": {
         "h": 9,
-        "w": 12,
+        "w": 24,
         "x": 0,
-        "y": 22
+        "y": 14
       },
       "id": 4,
       "options": {
@@ -345,176 +195,31 @@
         }
       },
       "pluginVersion": "12.4.0",
+      "repeat": "host",
+      "repeatDirection": "v",
       "targets": [
         {
           "datasource": {
             "type": "influxdb",
             "uid": "graphyard-influxdb"
           },
-          "query": "SELECT non_negative_derivative(mean(\"value\"), 1s) * 8 FROM \"graphyard_metrics\" WHERE $timeFilter AND \"subject_type\" = 'host' AND \"subject_id\" =~ /^$host$/ AND \"metric\" = 'host.network_receive_bytes_total' AND \"device\" =~ /^$device$/ GROUP BY time($__interval), \"subject_id\", \"device\" fill(null)",
+          "query": "SELECT non_negative_derivative(mean(\"value\"), 1s) * 8 AS \"receive_bps\" FROM \"graphyard_metrics\" WHERE $timeFilter AND \"subject_type\" = 'host' AND \"subject_id\" =~ /^$host$/ AND \"metric\" = 'host.network_receive_bytes_total' AND \"device\" =~ /^$device$/ GROUP BY time($__interval), \"subject_id\", \"device\" fill(null)",
           "rawQuery": true,
           "refId": "A",
           "resultFormat": "time_series"
-        }
-      ],
-      "title": "Network Receive Rate",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "influxdb",
-        "uid": "graphyard-influxdb"
-      },
-      "description": "Network transmit throughput derived from Vector host metrics (`host.network_transmit_bytes_total`).",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "drawStyle": "line",
-            "fillOpacity": 10,
-            "lineInterpolation": "linear",
-            "lineWidth": 2,
-            "pointSize": 3,
-            "showPoints": "auto",
-            "spanNulls": true,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "displayName": "${__field.labels.subject_id}: ${__field.labels.device}",
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "unit": "bps"
         },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byRegexp",
-              "options": "^macmini:"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "#73BF69",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byRegexp",
-              "options": "^fractal:"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "#5794F2",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byRegexp",
-              "options": "^staging:"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "#F2CC0C",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byRegexp",
-              "options": "^production:"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "#FF9830",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byRegexp",
-              "options": "^marina:"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "#E02F44",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          }
-        ]
-      },
-      "gridPos": {
-        "h": 9,
-        "w": 12,
-        "x": 12,
-        "y": 22
-      },
-      "id": 5,
-      "options": {
-        "legend": {
-          "calcs": [],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "none"
-        }
-      },
-      "pluginVersion": "12.4.0",
-      "targets": [
         {
           "datasource": {
             "type": "influxdb",
             "uid": "graphyard-influxdb"
           },
-          "query": "SELECT non_negative_derivative(mean(\"value\"), 1s) * 8 FROM \"graphyard_metrics\" WHERE $timeFilter AND \"subject_type\" = 'host' AND \"subject_id\" =~ /^$host$/ AND \"metric\" = 'host.network_transmit_bytes_total' AND \"device\" =~ /^$device$/ GROUP BY time($__interval), \"subject_id\", \"device\" fill(null)",
+          "query": "SELECT non_negative_derivative(mean(\"value\"), 1s) * 8 AS \"transmit_bps\" FROM \"graphyard_metrics\" WHERE $timeFilter AND \"subject_type\" = 'host' AND \"subject_id\" =~ /^$host$/ AND \"metric\" = 'host.network_transmit_bytes_total' AND \"device\" =~ /^$device$/ GROUP BY time($__interval), \"subject_id\", \"device\" fill(null)",
           "rawQuery": true,
-          "refId": "A",
+          "refId": "B",
           "resultFormat": "time_series"
         }
       ],
-      "title": "Network Transmit Rate",
+      "title": "Network Traffic: $host",
       "type": "timeseries"
     },
     {
@@ -542,7 +247,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 31
+        "y": 23
       },
       "id": 3,
       "options": {
@@ -578,8 +283,20 @@
         "allValue": ".*",
         "current": {
           "selected": true,
-          "text": "All",
-          "value": ".*"
+          "text": [
+            "fractal",
+            "macmini",
+            "marina",
+            "production",
+            "staging"
+          ],
+          "value": [
+            "fractal",
+            "macmini",
+            "marina",
+            "production",
+            "staging"
+          ]
         },
         "datasource": {
           "type": "influxdb",
@@ -587,9 +304,9 @@
         },
         "definition": "SHOW TAG VALUES FROM \"graphyard_metrics\" WITH KEY = \"subject_id\" WHERE \"subject_type\" = 'host' AND \"metric\" = 'host.filesystem_used_ratio'",
         "hide": 0,
-        "includeAll": true,
+        "includeAll": false,
         "label": "host",
-        "multi": false,
+        "multi": true,
         "name": "host",
         "options": [],
         "query": "SHOW TAG VALUES FROM \"graphyard_metrics\" WITH KEY = \"subject_id\" WHERE \"subject_type\" = 'host' AND \"metric\" = 'host.filesystem_used_ratio'",
@@ -630,6 +347,6 @@
   "timezone": "",
   "title": "Graphyard Host Infrastructure",
   "uid": "graphyard-host-infrastructure",
-  "version": 7,
+  "version": 8,
   "weekStart": ""
 }
