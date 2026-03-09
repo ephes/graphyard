@@ -109,9 +109,11 @@
         }
       },
       "pluginVersion": "12.4.0",
+      "repeat": "subject_id",
+      "repeatDirection": "v",
       "targets": [
         {
-          "alias": "TTFB: $tag_subject_id",
+          "alias": "TTFB",
           "datasource": {
             "type": "influxdb",
             "uid": "graphyard-influxdb"
@@ -122,7 +124,7 @@
           "resultFormat": "time_series"
         },
         {
-          "alias": "Total: $tag_subject_id",
+          "alias": "Total",
           "datasource": {
             "type": "influxdb",
             "uid": "graphyard-influxdb"
@@ -133,98 +135,7 @@
           "resultFormat": "time_series"
         }
       ],
-      "title": "HTTP Page Latency",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "influxdb",
-        "uid": "graphyard-influxdb"
-      },
-      "description": "Final HTTP response status code over time for the selected public page probes.",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "drawStyle": "line",
-            "fillOpacity": 20,
-            "lineInterpolation": "stepAfter",
-            "lineWidth": 2,
-            "pointSize": 3,
-            "showPoints": "auto",
-            "spanNulls": true,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "max": 599,
-          "min": 0,
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "orange",
-                "value": 300
-              },
-              {
-                "color": "red",
-                "value": 400
-              }
-            ]
-          },
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 24,
-        "x": 0,
-        "y": 14
-      },
-      "id": 3,
-      "options": {
-        "legend": {
-          "calcs": [],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "none"
-        }
-      },
-      "pluginVersion": "12.4.0",
-      "targets": [
-        {
-          "alias": "Status: $tag_subject_id",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "graphyard-influxdb"
-          },
-          "query": "SELECT last(\"value\") AS \"status_code\" FROM \"graphyard_metrics\" WHERE $timeFilter AND \"collector_host\" =~ /^$collector_host$/ AND \"source_instance\" =~ /^$source_instance$/ AND \"subject_type\" = 'service' AND \"subject_id\" =~ /^$subject_id$/ AND \"source_system\" = 'http_probe' AND \"metric\" = 'service.http_page_status_code' GROUP BY time($__interval), \"subject_id\" fill(null)",
-          "rawQuery": true,
-          "refId": "A",
-          "resultFormat": "time_series"
-        }
-      ],
-      "title": "HTTP Status Code",
+      "title": "HTTP Page Latency: $subject_id",
       "type": "timeseries"
     },
     {
@@ -253,7 +164,7 @@
         "h": 10,
         "w": 24,
         "x": 0,
-        "y": 22
+        "y": 14
       },
       "id": 4,
       "options": {
