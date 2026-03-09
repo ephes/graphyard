@@ -112,6 +112,7 @@
       "pluginVersion": "12.4.0",
       "targets": [
         {
+          "alias": "TTFB: $tag_subject_id",
           "datasource": {
             "type": "influxdb",
             "uid": "graphyard-influxdb"
@@ -122,6 +123,7 @@
           "resultFormat": "time_series"
         },
         {
+          "alias": "Total: $tag_subject_id",
           "datasource": {
             "type": "influxdb",
             "uid": "graphyard-influxdb"
@@ -223,6 +225,7 @@
       "pluginVersion": "12.4.0",
       "targets": [
         {
+          "alias": "Success: $tag_subject_id",
           "datasource": {
             "type": "influxdb",
             "uid": "graphyard-influxdb"
