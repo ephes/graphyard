@@ -163,12 +163,14 @@ class MetricCollectionSpecType:
     HOME_ASSISTANT_SENSOR = "home_assistant_sensor"
     HOME_ASSISTANT_ENV_SCAN = "home_assistant_env_scan"
     HTTP_JSON_METRIC = "http_json_metric"
+    HTTP_PAGE_PROBE = "http_page_probe"
     UNIFI_DEVICE_TRAFFIC = "unifi_device_traffic"
 
     CHOICES = [
         (HOME_ASSISTANT_SENSOR, "Home Assistant Sensor"),
         (HOME_ASSISTANT_ENV_SCAN, "Home Assistant Env Scan"),
         (HTTP_JSON_METRIC, "HTTP JSON Metric"),
+        (HTTP_PAGE_PROBE, "HTTP Page Probe"),
         (UNIFI_DEVICE_TRAFFIC, "UniFi Device Traffic"),
     ]
 

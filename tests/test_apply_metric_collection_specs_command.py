@@ -80,6 +80,33 @@ def test_apply_metric_collection_specs_accepts_unifi_device_traffic_spec(tmp_pat
 
 
 @pytest.mark.django_db
+def test_apply_metric_collection_specs_accepts_http_page_probe_spec(tmp_path):
+    spec_file = _write_specs_file(
+        tmp_path,
+        [
+            {
+                "name": "Wersdoerfer Blog Page Probe",
+                "enabled": True,
+                "spec_type": MetricCollectionSpecType.HTTP_PAGE_PROBE,
+                "interval_seconds": 300,
+                "config": {
+                    "url": "https://wersdoerfer.de/blogs/ephes_blog/",
+                    "subject_id": "wersdoerfer_blog",
+                    "collector_host": "macmini",
+                },
+            }
+        ],
+    )
+
+    call_command("apply_metric_collection_specs", "--file", spec_file)
+
+    spec = MetricCollectionSpec.objects.get(name="Wersdoerfer Blog Page Probe")
+    assert spec.spec_type == MetricCollectionSpecType.HTTP_PAGE_PROBE
+    assert spec.interval_seconds == 300
+    assert spec.config["subject_id"] == "wersdoerfer_blog"
+
+
+@pytest.mark.django_db
 def test_apply_metric_collection_specs_is_idempotent_for_matching_state(tmp_path):
     spec_file = _write_specs_file(
         tmp_path,

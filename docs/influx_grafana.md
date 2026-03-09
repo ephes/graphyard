@@ -103,6 +103,33 @@ and emit canonical `network_device.network_receive_bytes_per_second` /
 `network_device.network_transmit_bytes_per_second` metrics with tags such as
 `traffic_direction`, `traffic_scope`, `port_idx`, and `port_name`.
 
+HTTP page probe specs fetch public pages with `GET` from the Graphyard agent host
+and emit bounded service-subject metrics:
+
+- `service.http_page_ttfb_seconds`
+- `service.http_page_total_seconds`
+- `service.http_page_status_code`
+- `service.http_page_success`
+- `service.http_page_redirect_count`
+
+Recommended modeling:
+
+- `subject_type=service`
+- stable page-level `subject_id`
+- `source_system=http_probe`
+- `source_instance=public_web`
+- `collector_service=graphyard-agent`
+- `collector_host=<probe host>` (currently `macmini` in production-style usage)
+- `source_entity_id=<raw URL>`
+
+Current implementation scope for this collector:
+
+- method: `GET`
+- cadence: operator-configured per spec (the initial recommended scope is `300s`)
+- TTFB semantics: measured to response headers; when redirects are followed, redirect time is included
+- success semantics: final `2xx`/`3xx` response => `success=1`, otherwise `success=0`
+- transport failure semantics: `status_code=0`, `success=0`, collector run remains a warning, not a crash
+
 ## Retention and Downsampling
 
 Current production policy on `macmini`:

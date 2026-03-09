@@ -814,6 +814,185 @@ def _execute_http_json_metric_spec(
         return StatusLevel.CRITICAL, 0, 0, str(err)
 
 
+def _build_http_page_probe_point(
+    *,
+    ts: datetime,
+    metric: str,
+    value: float,
+    subject_id: str,
+    service_id: str,
+    source_system: str,
+    source_instance: str,
+    collector_service: str,
+    collector_host: str,
+    url: str,
+    tags: dict[str, str],
+) -> influx.MetricPoint:
+    return influx.MetricPoint(
+        ts=ts,
+        metric=metric,
+        value=value,
+        subject_type=SubjectType.SERVICE,
+        subject_id=subject_id,
+        source_system=source_system,
+        source_instance=source_instance,
+        source_entity_id=url,
+        collector_service=collector_service,
+        collector_host=collector_host,
+        service=service_id,
+        tags=dict(tags),
+    )
+
+
+def _execute_http_page_probe_spec(
+    spec: MetricCollectionSpec,
+) -> tuple[str, int, int, str]:
+    if not isinstance(spec.config, dict):
+        return StatusLevel.CRITICAL, 0, 0, "config must be an object"
+
+    url = str(spec.config.get("url", "")).strip()
+    subject_id = str(spec.config.get("subject_id", "")).strip()
+    service_id = str(spec.config.get("service_id", subject_id)).strip()
+    source_system = str(spec.config.get("source_system", "http_probe")).strip()
+    source_instance = str(spec.config.get("source_instance", "public_web")).strip()
+    collector_service = str(
+        spec.config.get("collector_service", "graphyard-agent")
+    ).strip()
+    collector_host = str(spec.config.get("collector_host", "external")).strip()
+    timeout_raw = spec.config.get("request_timeout_seconds", 10)
+    verify_tls = bool(spec.config.get("verify_tls", True))
+    follow_redirects = bool(spec.config.get("follow_redirects", True))
+
+    if not url:
+        return StatusLevel.CRITICAL, 0, 0, "config.url is required"
+    if not subject_id:
+        return StatusLevel.CRITICAL, 0, 0, "config.subject_id is required"
+
+    try:
+        timeout_seconds = float(timeout_raw)
+    except (TypeError, ValueError):
+        return (
+            StatusLevel.CRITICAL,
+            0,
+            0,
+            f"invalid request_timeout_seconds: {timeout_raw!r}",
+        )
+    if timeout_seconds <= 0:
+        return (
+            StatusLevel.CRITICAL,
+            0,
+            0,
+            "config.request_timeout_seconds must be greater than 0",
+        )
+
+    tags: dict[str, str] = {
+        "spec_name": spec.name,
+        "http_method": "get",
+    }
+    configured_tags = spec.config.get("tags", {})
+    if isinstance(configured_tags, dict):
+        tags.update({str(key): str(value) for key, value in configured_tags.items()})
+
+    normalized_source_system = source_system or "http_probe"
+    normalized_source_instance = source_instance or "public_web"
+    normalized_collector_service = collector_service or "graphyard-agent"
+    normalized_collector_host = collector_host or "external"
+
+    def _point(*, ts: datetime, metric: str, value: float) -> influx.MetricPoint:
+        return _build_http_page_probe_point(
+            ts=ts,
+            metric=metric,
+            value=value,
+            subject_id=subject_id,
+            service_id=service_id,
+            source_system=normalized_source_system,
+            source_instance=normalized_source_instance,
+            collector_service=normalized_collector_service,
+            collector_host=normalized_collector_host,
+            url=url,
+            tags=tags,
+        )
+
+    try:
+        with httpx.Client(
+            timeout=timeout_seconds,
+            verify=verify_tls,
+            follow_redirects=follow_redirects,
+        ) as client:
+            started_at = time.perf_counter()
+            with client.stream("GET", url) as response:
+                headers_received_at = time.perf_counter()
+                chunks = response.iter_bytes()
+                try:
+                    first_chunk = next(chunks)
+                except StopIteration:
+                    pass
+                else:
+                    del first_chunk
+                    for _chunk in chunks:
+                        del _chunk
+                # TTFB is measured to response headers. With follow_redirects=true,
+                # redirect round-trips are intentionally included in this end-to-end value.
+                ttfb_seconds = headers_received_at - started_at
+                total_seconds = time.perf_counter() - started_at
+                status_code = response.status_code
+                redirect_count = len(response.history)
+
+        now = datetime.now(UTC)
+        success_value = 1.0 if 200 <= status_code < 400 else 0.0
+        points = [
+            _point(
+                ts=now,
+                metric="service.http_page_ttfb_seconds",
+                value=ttfb_seconds,
+            ),
+            _point(
+                ts=now,
+                metric="service.http_page_total_seconds",
+                value=total_seconds,
+            ),
+            _point(
+                ts=now,
+                metric="service.http_page_status_code",
+                value=float(status_code),
+            ),
+            _point(
+                ts=now,
+                metric="service.http_page_success",
+                value=success_value,
+            ),
+            _point(
+                ts=now,
+                metric="service.http_page_redirect_count",
+                value=float(redirect_count),
+            ),
+        ]
+        written = influx.write_points(points)
+        touch_registry_from_points(points)
+        if success_value == 1.0:
+            return StatusLevel.OK, written, 0, ""
+        return StatusLevel.WARNING, written, 0, f"unexpected status code: {status_code}"
+    except httpx.HTTPError as err:
+        now = datetime.now(UTC)
+        points = [
+            _point(
+                ts=now,
+                metric="service.http_page_status_code",
+                value=0.0,
+            ),
+            _point(
+                ts=now,
+                metric="service.http_page_success",
+                value=0.0,
+            ),
+        ]
+        written = influx.write_points(points)
+        touch_registry_from_points(points)
+        return StatusLevel.WARNING, written, 0, str(err)
+    except Exception as err:  # noqa: BLE001
+        return StatusLevel.CRITICAL, 0, 0, str(err)
+
+
 def _find_unifi_device(
     devices: list[object],
     *,
@@ -1092,6 +1271,8 @@ def _run_single_metric_collection_spec(
         return _execute_home_assistant_env_scan_spec(spec)
     if spec.spec_type == MetricCollectionSpecType.HTTP_JSON_METRIC:
         return _execute_http_json_metric_spec(spec)
+    if spec.spec_type == MetricCollectionSpecType.HTTP_PAGE_PROBE:
+        return _execute_http_page_probe_spec(spec)
     if spec.spec_type == MetricCollectionSpecType.UNIFI_DEVICE_TRAFFIC:
         return _execute_unifi_device_traffic_spec(spec)
 

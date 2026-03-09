@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import httpx
+
 from graphyard.models import MetricCollectionSpec, MetricCollectionSpecType, StatusLevel
 from graphyard.services import run_metric_collection_specs_once
 
@@ -28,6 +30,55 @@ class _FakeClient:
     def get(self, url: str) -> _FakeResponse:
         del url
         return _FakeResponse(self._payload)
+
+
+class _FakeStreamResponse:
+    def __init__(
+        self,
+        *,
+        status_code: int,
+        chunks: list[bytes],
+        history: list[object] | None = None,
+    ) -> None:
+        self.status_code = status_code
+        self._chunks = chunks
+        self.history = history or []
+
+    def __enter__(self) -> _FakeStreamResponse:
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> None:
+        del exc_type, exc, tb
+
+    def iter_bytes(self):
+        yield from self._chunks
+
+
+class _FakePageProbeClient:
+    def __init__(
+        self,
+        *,
+        response: _FakeStreamResponse | None = None,
+        stream_error: Exception | None = None,
+        capture: dict[str, object] | None = None,
+    ) -> None:
+        self._response = response
+        self._stream_error = stream_error
+        self._capture = capture if capture is not None else {}
+
+    def __enter__(self) -> _FakePageProbeClient:
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> None:
+        del exc_type, exc, tb
+
+    def stream(self, method: str, url: str):
+        self._capture["method"] = method
+        self._capture["url"] = url
+        if self._stream_error is not None:
+            raise self._stream_error
+        assert self._response is not None
+        return self._response
 
 
 class _FakeUnifiClient:
@@ -118,6 +169,291 @@ def test_http_json_metric_spec_missing_path_sets_warning(db, monkeypatch):
     spec.refresh_from_db()
     assert spec.last_status == StatusLevel.WARNING
     assert "metric_path not found" in spec.last_error
+
+
+def test_http_page_probe_spec_ingests_latency_metrics(db, monkeypatch):
+    spec = MetricCollectionSpec.objects.create(
+        name="wersdoerfer blog probe",
+        spec_type=MetricCollectionSpecType.HTTP_PAGE_PROBE,
+        interval_seconds=300,
+        config={
+            "url": "https://wersdoerfer.de/blogs/ephes_blog/",
+            "subject_id": "wersdoerfer_blog",
+            "service_id": "wersdoerfer_blog",
+            "collector_host": "macmini",
+            "request_timeout_seconds": 15,
+        },
+    )
+
+    client_capture: dict[str, object] = {}
+
+    def _client_factory(**kwargs):
+        client_capture.update(kwargs)
+        return _FakePageProbeClient(
+            response=_FakeStreamResponse(status_code=200, chunks=[b"<html>", b"..."]),
+            capture=client_capture,
+        )
+
+    monkeypatch.setattr("graphyard.services.httpx.Client", _client_factory)
+    perf_values = iter([0.0, 0.18, 0.24])
+    monkeypatch.setattr(
+        "graphyard.services.time.perf_counter", lambda: next(perf_values)
+    )
+    captured: dict[str, list[object]] = {"points": []}
+
+    def _capture(points):
+        captured["points"] = points
+        return len(points)
+
+    monkeypatch.setattr("graphyard.services.influx.write_points", _capture)
+
+    result = run_metric_collection_specs_once()
+
+    assert result.total == 1
+    assert result.failed == 0
+    assert result.warning == 0
+    assert result.ingested == 5
+    assert client_capture["timeout"] == 15.0
+    assert client_capture["follow_redirects"] is True
+    assert client_capture["verify"] is True
+    assert client_capture["method"] == "GET"
+    assert client_capture["url"] == "https://wersdoerfer.de/blogs/ephes_blog/"
+
+    points_by_metric = {point.metric: point for point in captured["points"]}
+    assert points_by_metric["service.http_page_ttfb_seconds"].value == 0.18
+    assert points_by_metric["service.http_page_total_seconds"].value == 0.24
+    assert points_by_metric["service.http_page_status_code"].value == 200.0
+    assert points_by_metric["service.http_page_success"].value == 1.0
+    assert points_by_metric["service.http_page_redirect_count"].value == 0.0
+
+    spec.refresh_from_db()
+    assert spec.last_status == StatusLevel.OK
+    assert spec.last_error == ""
+
+
+def test_http_page_probe_spec_redirect_sets_redirect_count(db, monkeypatch):
+    spec = MetricCollectionSpec.objects.create(
+        name="python podcast redirect probe",
+        spec_type=MetricCollectionSpecType.HTTP_PAGE_PROBE,
+        interval_seconds=300,
+        config={
+            "url": "https://python-podcast.de/show/",
+            "subject_id": "python_podcast_show",
+            "collector_host": "macmini",
+        },
+    )
+
+    monkeypatch.setattr(
+        "graphyard.services.httpx.Client",
+        lambda **kwargs: _FakePageProbeClient(
+            response=_FakeStreamResponse(
+                status_code=200,
+                chunks=[b"<html>"],
+                history=[object()],
+            )
+        ),
+    )
+    perf_values = iter([0.0, 0.01, 0.16, 0.19])
+    monkeypatch.setattr(
+        "graphyard.services.time.perf_counter", lambda: next(perf_values)
+    )
+    captured: dict[str, list[object]] = {"points": []}
+
+    def _capture(points):
+        captured["points"] = points
+        return len(points)
+
+    monkeypatch.setattr("graphyard.services.influx.write_points", _capture)
+
+    result = run_metric_collection_specs_once()
+
+    assert result.failed == 0
+    assert result.warning == 0
+    assert result.ingested == 5
+    points_by_metric = {point.metric: point for point in captured["points"]}
+    assert points_by_metric["service.http_page_redirect_count"].value == 1.0
+
+    spec.refresh_from_db()
+    assert spec.last_status == StatusLevel.OK
+
+
+def test_http_page_probe_spec_respects_follow_redirects_false(db, monkeypatch):
+    spec = MetricCollectionSpec.objects.create(
+        name="no redirect follow probe",
+        spec_type=MetricCollectionSpecType.HTTP_PAGE_PROBE,
+        interval_seconds=300,
+        config={
+            "url": "https://example.invalid/redirect",
+            "subject_id": "example_redirect",
+            "collector_host": "macmini",
+            "follow_redirects": False,
+        },
+    )
+
+    client_capture: dict[str, object] = {}
+
+    def _client_factory(**kwargs):
+        client_capture.update(kwargs)
+        return _FakePageProbeClient(
+            response=_FakeStreamResponse(status_code=302, chunks=[b"redirect"])
+        )
+
+    monkeypatch.setattr("graphyard.services.httpx.Client", _client_factory)
+    perf_values = iter([0.0, 0.01, 0.05])
+    monkeypatch.setattr(
+        "graphyard.services.time.perf_counter", lambda: next(perf_values)
+    )
+    captured: dict[str, list[object]] = {"points": []}
+
+    def _capture(points):
+        captured["points"] = points
+        return len(points)
+
+    monkeypatch.setattr("graphyard.services.influx.write_points", _capture)
+
+    result = run_metric_collection_specs_once()
+
+    assert result.failed == 0
+    assert result.warning == 0
+    assert result.ingested == 5
+    assert client_capture["follow_redirects"] is False
+    points_by_metric = {point.metric: point for point in captured["points"]}
+    assert points_by_metric["service.http_page_status_code"].value == 302.0
+    assert points_by_metric["service.http_page_success"].value == 1.0
+    assert points_by_metric["service.http_page_redirect_count"].value == 0.0
+
+    spec.refresh_from_db()
+    assert spec.last_status == StatusLevel.OK
+
+
+def test_http_page_probe_spec_non_success_response_sets_warning(db, monkeypatch):
+    spec = MetricCollectionSpec.objects.create(
+        name="public page 503 probe",
+        spec_type=MetricCollectionSpecType.HTTP_PAGE_PROBE,
+        interval_seconds=300,
+        config={
+            "url": "https://example.invalid/status",
+            "subject_id": "example_status",
+            "collector_host": "macmini",
+        },
+    )
+
+    monkeypatch.setattr(
+        "graphyard.services.httpx.Client",
+        lambda **kwargs: _FakePageProbeClient(
+            response=_FakeStreamResponse(status_code=503, chunks=[b"unavailable"])
+        ),
+    )
+    perf_values = iter([0.0, 0.01, 0.07, 0.09])
+    monkeypatch.setattr(
+        "graphyard.services.time.perf_counter", lambda: next(perf_values)
+    )
+    captured: dict[str, list[object]] = {"points": []}
+
+    def _capture(points):
+        captured["points"] = points
+        return len(points)
+
+    monkeypatch.setattr("graphyard.services.influx.write_points", _capture)
+
+    result = run_metric_collection_specs_once()
+
+    assert result.failed == 0
+    assert result.warning == 1
+    assert result.ingested == 5
+    points_by_metric = {point.metric: point for point in captured["points"]}
+    assert points_by_metric["service.http_page_status_code"].value == 503.0
+    assert points_by_metric["service.http_page_success"].value == 0.0
+
+    spec.refresh_from_db()
+    assert spec.last_status == StatusLevel.WARNING
+    assert spec.last_error == "unexpected status code: 503"
+
+
+def test_http_page_probe_spec_empty_body_uses_header_ttfb(db, monkeypatch):
+    spec = MetricCollectionSpec.objects.create(
+        name="empty body probe",
+        spec_type=MetricCollectionSpecType.HTTP_PAGE_PROBE,
+        interval_seconds=300,
+        config={
+            "url": "https://example.invalid/empty",
+            "subject_id": "example_empty",
+            "collector_host": "macmini",
+        },
+    )
+
+    monkeypatch.setattr(
+        "graphyard.services.httpx.Client",
+        lambda **kwargs: _FakePageProbeClient(
+            response=_FakeStreamResponse(status_code=204, chunks=[])
+        ),
+    )
+    perf_values = iter([0.0, 0.03, 0.09])
+    monkeypatch.setattr(
+        "graphyard.services.time.perf_counter", lambda: next(perf_values)
+    )
+    captured: dict[str, list[object]] = {"points": []}
+
+    def _capture(points):
+        captured["points"] = points
+        return len(points)
+
+    monkeypatch.setattr("graphyard.services.influx.write_points", _capture)
+
+    result = run_metric_collection_specs_once()
+
+    assert result.failed == 0
+    assert result.warning == 0
+    assert result.ingested == 5
+    points_by_metric = {point.metric: point for point in captured["points"]}
+    assert points_by_metric["service.http_page_ttfb_seconds"].value == 0.03
+    assert points_by_metric["service.http_page_total_seconds"].value == 0.09
+    assert points_by_metric["service.http_page_status_code"].value == 204.0
+    assert points_by_metric["service.http_page_success"].value == 1.0
+
+    spec.refresh_from_db()
+    assert spec.last_status == StatusLevel.OK
+
+
+def test_http_page_probe_spec_timeout_records_failure_metrics(db, monkeypatch):
+    spec = MetricCollectionSpec.objects.create(
+        name="timeout probe",
+        spec_type=MetricCollectionSpecType.HTTP_PAGE_PROBE,
+        interval_seconds=300,
+        config={
+            "url": "https://example.invalid/timeout",
+            "subject_id": "example_timeout",
+            "collector_host": "macmini",
+            "verify_tls": False,
+        },
+    )
+
+    monkeypatch.setattr(
+        "graphyard.services.httpx.Client",
+        lambda **kwargs: _FakePageProbeClient(
+            stream_error=httpx.ReadTimeout("probe timed out")
+        ),
+    )
+    captured: dict[str, list[object]] = {"points": []}
+
+    def _capture(points):
+        captured["points"] = points
+        return len(points)
+
+    monkeypatch.setattr("graphyard.services.influx.write_points", _capture)
+
+    result = run_metric_collection_specs_once()
+
+    assert result.failed == 0
+    assert result.warning == 1
+    assert result.ingested == 2
+    points_by_metric = {point.metric: point for point in captured["points"]}
+    assert points_by_metric["service.http_page_status_code"].value == 0.0
+    assert points_by_metric["service.http_page_success"].value == 0.0
+
+    spec.refresh_from_db()
+    assert spec.last_status == StatusLevel.WARNING
+    assert "probe timed out" in spec.last_error
 
 
 def test_home_assistant_env_scan_collects_temp_and_humidity(db, monkeypatch):

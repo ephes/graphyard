@@ -43,6 +43,37 @@ class _FakeClient:
         return _FakeResponse(self._payload)
 
 
+class _FakeStreamResponse:
+    def __init__(self, *, status_code: int, chunks: list[bytes]) -> None:
+        self.status_code = status_code
+        self._chunks = chunks
+        self.history: list[object] = []
+
+    def __enter__(self) -> _FakeStreamResponse:
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> None:
+        del exc_type, exc, tb
+
+    def iter_bytes(self):
+        yield from self._chunks
+
+
+class _FakePageProbeClient:
+    def __init__(self, *, response: _FakeStreamResponse) -> None:
+        self._response = response
+
+    def __enter__(self) -> _FakePageProbeClient:
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> None:
+        del exc_type, exc, tb
+
+    def stream(self, method: str, url: str):
+        del method, url
+        return self._response
+
+
 def test_home_assistant_env_scan_applies_subject_mapping_rule(db, monkeypatch):
     spec = MetricCollectionSpec.objects.create(
         name="ha mapped env scan",
@@ -523,6 +554,64 @@ def test_http_json_metric_spec_emits_canonical_dimensions(db, monkeypatch):
     assert point.collector_host == "macmini"
     assert point.service == "mail"
     assert point.host is None
+
+    spec.refresh_from_db()
+    assert spec.last_status == "ok"
+
+
+def test_http_page_probe_spec_emits_canonical_dimensions(db, monkeypatch):
+    spec = MetricCollectionSpec.objects.create(
+        name="page probe canonical",
+        spec_type=MetricCollectionSpecType.HTTP_PAGE_PROBE,
+        interval_seconds=300,
+        config={
+            "url": "https://python-podcast.de/show/",
+            "subject_id": "python_podcast_show",
+            "service_id": "python_podcast",
+            "source_system": "http_probe",
+            "source_instance": "public_web",
+            "collector_service": "graphyard-agent",
+            "collector_host": "macmini",
+        },
+    )
+
+    monkeypatch.setattr(
+        "graphyard.services.httpx.Client",
+        lambda **kwargs: _FakePageProbeClient(
+            response=_FakeStreamResponse(status_code=200, chunks=[b"<html>"])
+        ),
+    )
+    perf_values = iter([0.0, 0.02, 0.17, 0.22])
+    monkeypatch.setattr(
+        "graphyard.services.time.perf_counter", lambda: next(perf_values)
+    )
+    captured: dict[str, list[influx.MetricPoint]] = {"points": []}
+
+    def _capture(points: list[influx.MetricPoint]) -> int:
+        captured["points"] = points
+        return len(points)
+
+    monkeypatch.setattr("graphyard.services.influx.write_points", _capture)
+
+    result = run_metric_collection_specs_once()
+
+    assert result.failed == 0
+    assert result.ingested == 5
+    point = next(
+        item
+        for item in captured["points"]
+        if item.metric == "service.http_page_ttfb_seconds"
+    )
+    assert point.subject_type == "service"
+    assert point.subject_id == "python_podcast_show"
+    assert point.source_system == "http_probe"
+    assert point.source_instance == "public_web"
+    assert point.source_entity_id == "https://python-podcast.de/show/"
+    assert point.collector_service == "graphyard-agent"
+    assert point.collector_host == "macmini"
+    assert point.service == "python_podcast"
+    assert point.host is None
+    assert point.tags["http_method"] == "get"
 
     spec.refresh_from_db()
     assert spec.last_status == "ok"

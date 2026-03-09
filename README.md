@@ -155,6 +155,7 @@ Current supported `spec_type`:
 - `home_assistant_sensor`
 - `home_assistant_env_scan`
 - `http_json_metric`
+- `http_page_probe`
 - `unifi_device_traffic`
 
 Collectors emit canonical dimensions:
@@ -265,6 +266,36 @@ Example `config` JSON for an HTTP JSON metric spec:
   }
 }
 ```
+
+Example `config` JSON for an HTTP page probe spec:
+
+```json
+{
+  "url": "https://python-podcast.de/show/",
+  "subject_id": "python_podcast_show",
+  "service_id": "python_podcast",
+  "source_system": "http_probe",
+  "source_instance": "public_web",
+  "collector_service": "graphyard-agent",
+  "collector_host": "macmini",
+  "request_timeout_seconds": 15,
+  "follow_redirects": true,
+  "verify_tls": true
+}
+```
+
+This collector uses `GET` and writes bounded page-probe metrics for the target:
+
+- `service.http_page_ttfb_seconds`
+- `service.http_page_total_seconds`
+- `service.http_page_status_code`
+- `service.http_page_success`
+- `service.http_page_redirect_count`
+
+`subject_type` is fixed to `service` for this collector type.
+`service.http_page_success` is `1` for final HTTP `2xx`/`3xx` responses and `0` otherwise.
+When `follow_redirects=true`, `service.http_page_ttfb_seconds` includes redirect time before the final response.
+Timeouts and transport errors emit `status_code=0` and `success=0`, while keeping the agent loop alive.
 
 Example `config` JSON for a UniFi device traffic spec:
 
