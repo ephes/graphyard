@@ -255,6 +255,88 @@ def test_home_assistant_env_scan_warning_cache_resets_between_runs(
     assert len(warnings) == 2
 
 
+def test_home_assistant_env_scan_metric_mapping_rewrites_metric_and_value(
+    db, monkeypatch
+):
+    spec = MetricCollectionSpec.objects.create(
+        name="ha traffic env scan",
+        spec_type=MetricCollectionSpecType.HOME_ASSISTANT_ENV_SCAN,
+        interval_seconds=60,
+        config={
+            "base_url": "https://ha.local",
+            "access_token": "token",
+            "subject_mapping": {
+                "default": {
+                    "subject_type": "environment_sensor",
+                    "subject_id_from": "entity_name_slug",
+                },
+                "rules": [
+                    {
+                        "match_entity_id_regex": "^sensor\\.fritz_box_.*_upload_throughput$",
+                        "subject_type": "network_device",
+                        "subject_id_template": "fritz_box_7590_ax",
+                    }
+                ],
+            },
+            "metric_mapping": {
+                "rules": [
+                    {
+                        "match_entity_id_regex": "^sensor\\.fritz_box_.*_upload_throughput$",
+                        "metric_name": "network_device.network_transmit_bytes_per_second",
+                        "value_multiplier": 1000,
+                        "extra_tags": {
+                            "traffic_direction": "transmit",
+                            "traffic_scope": "wan",
+                        },
+                    }
+                ]
+            },
+            "entity_id_regex": "upload_throughput",
+        },
+    )
+
+    monkeypatch.setattr(
+        "graphyard.services.httpx.Client",
+        lambda **kwargs: _FakeClient(
+            [
+                {
+                    "entity_id": "sensor.fritz_box_7590_ax_upload_throughput",
+                    "state": "6.1",
+                    "last_updated": "2026-03-04T12:00:00Z",
+                    "attributes": {
+                        "device_class": "data_rate",
+                        "unit_of_measurement": "kB/s",
+                    },
+                }
+            ]
+        ),
+    )
+    captured: dict[str, list[influx.MetricPoint]] = {"points": []}
+
+    def _capture(points: list[influx.MetricPoint]) -> int:
+        captured["points"] = points
+        return len(points)
+
+    monkeypatch.setattr("graphyard.services.influx.write_points", _capture)
+
+    result = run_metric_collection_specs_once()
+
+    assert result.failed == 0
+    assert result.ingested == 1
+    point = captured["points"][0]
+    assert point.metric == "network_device.network_transmit_bytes_per_second"
+    assert point.value == 6100.0
+    assert point.subject_type == "network_device"
+    assert point.subject_id == "fritz_box_7590_ax"
+    assert point.tags["traffic_direction"] == "transmit"
+    assert point.tags["traffic_scope"] == "wan"
+    assert point.tags["device_class"] == "data_rate"
+    assert point.tags["unit"] == "kB/s"
+
+    spec.refresh_from_db()
+    assert spec.last_status == "ok"
+
+
 def test_touch_registry_tracks_subjects_and_keeps_host_registry_host_only(db):
     points = [
         influx.MetricPoint(

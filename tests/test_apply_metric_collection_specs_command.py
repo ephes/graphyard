@@ -51,6 +51,35 @@ def test_apply_metric_collection_specs_creates_specs_from_root_object(tmp_path):
 
 
 @pytest.mark.django_db
+def test_apply_metric_collection_specs_accepts_unifi_device_traffic_spec(tmp_path):
+    spec_file = _write_specs_file(
+        tmp_path,
+        [
+            {
+                "name": "UniFi USW Uplink Traffic",
+                "enabled": True,
+                "spec_type": MetricCollectionSpecType.UNIFI_DEVICE_TRAFFIC,
+                "interval_seconds": 60,
+                "config": {
+                    "base_url": "https://127.0.0.1:8443",
+                    "username": "homeassistant",
+                    "password": "secret",
+                    "site_id": "default",
+                    "device_name": "USW Pro XG 8 PoE",
+                    "subject_id": "usw_pro_xg_8_poe",
+                },
+            }
+        ],
+    )
+
+    call_command("apply_metric_collection_specs", "--file", spec_file)
+
+    spec = MetricCollectionSpec.objects.get(name="UniFi USW Uplink Traffic")
+    assert spec.spec_type == MetricCollectionSpecType.UNIFI_DEVICE_TRAFFIC
+    assert spec.config["device_name"] == "USW Pro XG 8 PoE"
+
+
+@pytest.mark.django_db
 def test_apply_metric_collection_specs_is_idempotent_for_matching_state(tmp_path):
     spec_file = _write_specs_file(
         tmp_path,

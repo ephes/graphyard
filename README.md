@@ -101,6 +101,7 @@ For Grafana in the Procfile stack:
   - folder `host-infrastructure` with dashboard title `Graphyard Host Infrastructure`
   - folder `room-climate` with dashboard title `Graphyard Room Climate`
   - folder `device-thermals` with dashboard title `Graphyard Device Thermals`
+  - folder `device-network` with dashboard title `Graphyard Device Network`
 - first run may take longer because Docker pulls the image
 
 ## Ingest Token Workflow (Manual Rotation)
@@ -154,6 +155,7 @@ Current supported `spec_type`:
 - `home_assistant_sensor`
 - `home_assistant_env_scan`
 - `http_json_metric`
+- `unifi_device_traffic`
 
 Collectors emit canonical dimensions:
 
@@ -187,7 +189,8 @@ Example `config` JSON for a Home Assistant sensor spec:
 ```
 
 Example `config` JSON for a Home Assistant environment scan spec
-(single Home Assistant API call that collects all matching temperature/humidity sensors):
+(single Home Assistant API call that collects all matching temperature/humidity sensors,
+plus optional metric remapping for selected infrastructure traffic sensors):
 
 ```json
 {
@@ -205,7 +208,7 @@ Example `config` JSON for a Home Assistant environment scan spec
     },
     "rules": [
       {
-        "match_entity_id_regex": "^sensor\\.fritz_box_.*_cpu_temperature$",
+        "match_entity_id_regex": "^sensor\\.fritz_box_.*_(cpu_temperature|upload_throughput|download_throughput)$",
         "subject_type": "network_device",
         "subject_id_template": "fritz_box_7590_ax"
       },
@@ -216,9 +219,31 @@ Example `config` JSON for a Home Assistant environment scan spec
       }
     ]
   },
+  "metric_mapping": {
+    "rules": [
+      {
+        "match_entity_id_regex": "^sensor\\.fritz_box_.*_download_throughput$",
+        "metric_name": "network_device.network_receive_bytes_per_second",
+        "value_multiplier": 1000,
+        "extra_tags": {
+          "traffic_direction": "receive",
+          "traffic_scope": "wan"
+        }
+      },
+      {
+        "match_entity_id_regex": "^sensor\\.fritz_box_.*_upload_throughput$",
+        "metric_name": "network_device.network_transmit_bytes_per_second",
+        "value_multiplier": 1000,
+        "extra_tags": {
+          "traffic_direction": "transmit",
+          "traffic_scope": "wan"
+        }
+      }
+    ]
+  },
   "metric_prefix": "ha.",
   "include_device_classes": ["temperature", "humidity"],
-  "entity_id_regex": "(temperature|humidity)",
+  "entity_id_regex": "(^sensor\\.fritz_box_.*_(upload_throughput|download_throughput)$|temperature|humidity)",
   "request_timeout_seconds": 10,
   "verify_tls": true
 }
@@ -238,6 +263,28 @@ Example `config` JSON for an HTTP JSON metric spec:
   "tags": {
     "source": "mail-health"
   }
+}
+```
+
+Example `config` JSON for a UniFi device traffic spec:
+
+```json
+{
+  "base_url": "https://127.0.0.1:8443",
+  "username": "homeassistant",
+  "password": "replace-me",
+  "site_id": "default",
+  "device_name": "USW Pro XG 8 PoE",
+  "interface_selector": "uplink",
+  "subject_type": "network_device",
+  "subject_id": "usw_pro_xg_8_poe",
+  "source_system": "unifi",
+  "source_instance": "unifi-macmini",
+  "collector_service": "graphyard-agent",
+  "collector_host": "macmini",
+  "service_id": "unifi",
+  "request_timeout_seconds": 10,
+  "verify_tls": false
 }
 ```
 

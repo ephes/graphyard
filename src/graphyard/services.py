@@ -329,6 +329,101 @@ def _resolve_subject_mapping(
     return (subject_type, _entity_name_slug(entity_id))
 
 
+def _resolve_home_assistant_metric_mapping(
+    *,
+    spec: MetricCollectionSpec,
+    entity_id: str,
+    metric_name: str,
+    value: float,
+) -> tuple[str, float, dict[str, str]]:
+    config = spec.config if isinstance(spec.config, dict) else {}
+    metric_mapping = config.get("metric_mapping")
+    if not isinstance(metric_mapping, dict):
+        return metric_name, value, {}
+
+    rules = metric_mapping.get("rules", [])
+    if not isinstance(rules, list):
+        _warn_subject_mapping_once(
+            f"{spec.name}:invalid_metric_mapping_rules",
+            "Spec %s has invalid config.metric_mapping.rules type=%s; ignoring metric mapping",
+            spec.name,
+            type(rules).__name__,
+        )
+        return metric_name, value, {}
+
+    for index, rule in enumerate(rules):
+        if not isinstance(rule, dict):
+            _warn_subject_mapping_once(
+                f"{spec.name}:invalid_metric_mapping_rule:{index}",
+                "Spec %s metric_mapping.rules[%s] is not an object; skipping",
+                spec.name,
+                index,
+            )
+            continue
+
+        pattern_raw = str(rule.get("match_entity_id_regex", "")).strip()
+        if not pattern_raw:
+            _warn_subject_mapping_once(
+                f"{spec.name}:missing_metric_mapping_regex:{index}",
+                "Spec %s metric_mapping.rules[%s] missing match_entity_id_regex; skipping",
+                spec.name,
+                index,
+            )
+            continue
+
+        try:
+            pattern = re.compile(pattern_raw)
+        except re.error as err:
+            _warn_subject_mapping_once(
+                f"{spec.name}:invalid_metric_mapping_regex:{index}",
+                "Spec %s metric_mapping.rules[%s] invalid regex %s: %s",
+                spec.name,
+                index,
+                pattern_raw,
+                err,
+            )
+            continue
+
+        if pattern.search(entity_id) is None:
+            continue
+
+        mapped_metric_name = str(rule.get("metric_name", metric_name)).strip()
+        if not mapped_metric_name:
+            mapped_metric_name = metric_name
+
+        multiplier_raw = rule.get("value_multiplier", 1)
+        try:
+            if isinstance(multiplier_raw, bool):
+                raise TypeError
+            multiplier = float(multiplier_raw)
+        except (TypeError, ValueError):
+            _warn_subject_mapping_once(
+                f"{spec.name}:invalid_metric_mapping_multiplier:{index}",
+                "Spec %s metric_mapping.rules[%s] has invalid value_multiplier=%r; using 1",
+                spec.name,
+                index,
+                multiplier_raw,
+            )
+            multiplier = 1.0
+
+        extra_tags_raw = rule.get("extra_tags", {})
+        if isinstance(extra_tags_raw, dict):
+            extra_tags = {str(key): str(item) for key, item in extra_tags_raw.items()}
+        else:
+            _warn_subject_mapping_once(
+                f"{spec.name}:invalid_metric_mapping_tags:{index}",
+                "Spec %s metric_mapping.rules[%s] has invalid extra_tags type=%s; ignoring",
+                spec.name,
+                index,
+                type(extra_tags_raw).__name__,
+            )
+            extra_tags = {}
+
+        return mapped_metric_name, value * multiplier, extra_tags
+
+    return metric_name, value, {}
+
+
 def _normalize_home_assistant_sensor_state(
     payload: dict[str, object],
     *,
@@ -394,10 +489,18 @@ def _normalize_home_assistant_sensor_state(
         collector_host = legacy_host_id
 
     metric_name = metric_name_override or f"ha.{entity_id.replace(' ', '_')}"
+    metric_name, value, mapped_tags = _resolve_home_assistant_metric_mapping(
+        spec=spec,
+        entity_id=entity_id,
+        metric_name=metric_name,
+        value=value,
+    )
 
     tags: dict[str, str] = {"entity_id": entity_id}
     if extra_tags:
         tags.update(extra_tags)
+    if mapped_tags:
+        tags.update(mapped_tags)
 
     unit = attributes.get("unit_of_measurement")
     if unit is not None:
@@ -711,6 +814,275 @@ def _execute_http_json_metric_spec(
         return StatusLevel.CRITICAL, 0, 0, str(err)
 
 
+def _find_unifi_device(
+    devices: list[object],
+    *,
+    device_name: str,
+    device_mac: str,
+) -> dict[str, object] | None:
+    normalized_mac = device_mac.strip().lower()
+    normalized_name = device_name.strip()
+
+    for item in devices:
+        if not isinstance(item, dict):
+            continue
+        if normalized_name and str(item.get("name", "")).strip() == normalized_name:
+            return item
+        if (
+            normalized_mac
+            and str(item.get("mac", "")).strip().lower() == normalized_mac
+        ):
+            return item
+
+    return None
+
+
+def _resolve_unifi_interface_stats(
+    device: dict[str, object],
+    *,
+    interface_selector: str,
+) -> tuple[dict[str, object], dict[str, str]]:
+    selector = interface_selector.strip() or "uplink"
+    selector_lower = selector.lower()
+    port_table_raw = device.get("port_table")
+    port_table = port_table_raw if isinstance(port_table_raw, list) else []
+
+    if selector_lower == "uplink":
+        uplink_raw = device.get("uplink")
+        if not isinstance(uplink_raw, dict):
+            raise ValueError("device uplink stats missing")
+
+        tags: dict[str, str] = {"traffic_scope": "uplink"}
+        interface_name = str(uplink_raw.get("name", "")).strip()
+        if interface_name:
+            tags["interface"] = interface_name
+        port_idx_raw = uplink_raw.get("port_idx") or uplink_raw.get("num_port")
+        if port_idx_raw is not None:
+            tags["port_idx"] = str(port_idx_raw)
+            for port in port_table:
+                if not isinstance(port, dict):
+                    continue
+                if port.get("port_idx") == port_idx_raw:
+                    port_name = str(port.get("name", "")).strip()
+                    if port_name:
+                        tags["port_name"] = port_name
+                    break
+        speed_raw = uplink_raw.get("speed")
+        if speed_raw is not None:
+            tags["speed_mbps"] = str(speed_raw)
+        return uplink_raw, tags
+
+    if selector_lower.startswith("port_idx:"):
+        raw_port_idx = selector.split(":", 1)[1].strip()
+        if not raw_port_idx.isdigit():
+            raise ValueError(f"invalid port_idx selector: {selector}")
+        target_port_idx = int(raw_port_idx)
+        for port in port_table:
+            if not isinstance(port, dict):
+                continue
+            if port.get("port_idx") != target_port_idx:
+                continue
+            tags = {
+                "traffic_scope": "port",
+                "port_idx": str(target_port_idx),
+            }
+            port_name = str(port.get("name", "")).strip()
+            if port_name:
+                tags["port_name"] = port_name
+            speed_raw = port.get("speed")
+            if speed_raw is not None:
+                tags["speed_mbps"] = str(speed_raw)
+            return port, tags
+        raise ValueError(f"port_idx {target_port_idx} not found on device")
+
+    if selector_lower.startswith("port_name:"):
+        target_name = selector.split(":", 1)[1].strip()
+        if not target_name:
+            raise ValueError(f"invalid port_name selector: {selector}")
+        for port in port_table:
+            if not isinstance(port, dict):
+                continue
+            if str(port.get("name", "")).strip() != target_name:
+                continue
+            tags = {
+                "traffic_scope": "port",
+                "port_name": target_name,
+            }
+            port_idx_raw = port.get("port_idx")
+            if port_idx_raw is not None:
+                tags["port_idx"] = str(port_idx_raw)
+            speed_raw = port.get("speed")
+            if speed_raw is not None:
+                tags["speed_mbps"] = str(speed_raw)
+            return port, tags
+        raise ValueError(f"port_name {target_name!r} not found on device")
+
+    raise ValueError(f"unsupported interface_selector: {selector}")
+
+
+def _execute_unifi_device_traffic_spec(
+    spec: MetricCollectionSpec,
+) -> tuple[str, int, int, str]:
+    if not isinstance(spec.config, dict):
+        return StatusLevel.CRITICAL, 0, 0, "config must be an object"
+
+    base_url = str(spec.config.get("base_url", "")).rstrip("/")
+    username = str(spec.config.get("username", "")).strip()
+    password = str(spec.config.get("password", "")).strip()
+    site_id = str(spec.config.get("site_id", "default")).strip() or "default"
+    device_name = str(spec.config.get("device_name", "")).strip()
+    device_mac = str(spec.config.get("device_mac", "")).strip()
+    interface_selector = str(spec.config.get("interface_selector", "uplink")).strip()
+    subject_type = (
+        str(spec.config.get("subject_type", SubjectType.NETWORK_DEVICE)).strip()
+        or SubjectType.NETWORK_DEVICE
+    )
+    subject_id = str(spec.config.get("subject_id", "")).strip()
+    source_system = str(spec.config.get("source_system", "unifi")).strip() or "unifi"
+    source_instance = (
+        str(spec.config.get("source_instance", site_id)).strip() or site_id
+    )
+    service_id_raw = str(spec.config.get("service_id", "unifi")).strip() or "unifi"
+    collector_service = (
+        str(spec.config.get("collector_service", "graphyard-agent")).strip()
+        or "graphyard-agent"
+    )
+    collector_host = str(spec.config.get("collector_host", "macmini")).strip()
+    timeout_seconds = int(spec.config.get("request_timeout_seconds", 10))
+    verify_tls = bool(spec.config.get("verify_tls", True))
+    receive_metric_name = str(
+        spec.config.get(
+            "receive_metric_name", "network_device.network_receive_bytes_per_second"
+        )
+    ).strip()
+    transmit_metric_name = str(
+        spec.config.get(
+            "transmit_metric_name",
+            "network_device.network_transmit_bytes_per_second",
+        )
+    ).strip()
+
+    if not base_url:
+        return StatusLevel.CRITICAL, 0, 0, "config.base_url is required"
+    if not username:
+        return StatusLevel.CRITICAL, 0, 0, "config.username is required"
+    if not password:
+        return StatusLevel.CRITICAL, 0, 0, "config.password is required"
+    if not (device_name or device_mac):
+        return (
+            StatusLevel.CRITICAL,
+            0,
+            0,
+            "config.device_name or config.device_mac is required",
+        )
+    if not subject_id:
+        return StatusLevel.CRITICAL, 0, 0, "config.subject_id is required"
+
+    try:
+        with httpx.Client(
+            timeout=timeout_seconds,
+            verify=verify_tls,
+            follow_redirects=True,
+        ) as client:
+            login_resp = client.post(
+                f"{base_url}/api/login",
+                json={
+                    "username": username,
+                    "password": password,
+                    "remember": True,
+                },
+                headers={"Accept": "application/json"},
+            )
+            login_resp.raise_for_status()
+
+            resp = client.get(
+                f"{base_url}/api/s/{site_id}/stat/device",
+                headers={"Accept": "application/json"},
+            )
+            resp.raise_for_status()
+            payload = resp.json()
+
+        if not isinstance(payload, dict):
+            return StatusLevel.CRITICAL, 0, 0, "device response is not an object"
+
+        devices = payload.get("data")
+        if not isinstance(devices, list):
+            return StatusLevel.CRITICAL, 0, 0, "device response missing data list"
+
+        device = _find_unifi_device(
+            devices,
+            device_name=device_name,
+            device_mac=device_mac,
+        )
+        if device is None:
+            return StatusLevel.WARNING, 0, 1, "configured UniFi device not found"
+
+        interface_stats, interface_tags = _resolve_unifi_interface_stats(
+            device,
+            interface_selector=interface_selector,
+        )
+
+        device_mac_value = str(device.get("mac", "")).strip().lower()
+        base_tags = {
+            "device_class": "data_rate",
+            "spec_name": spec.name,
+        }
+        base_tags.update(interface_tags)
+        if device_mac_value:
+            base_tags["device_mac"] = device_mac_value
+
+        points: list[influx.MetricPoint] = []
+        skipped = 0
+        now = datetime.now(UTC)
+
+        metric_specs = [
+            (
+                receive_metric_name,
+                "rx_bytes-r",
+                {"traffic_direction": "receive"},
+            ),
+            (
+                transmit_metric_name,
+                "tx_bytes-r",
+                {"traffic_direction": "transmit"},
+            ),
+        ]
+        for metric_name, field_name, direction_tags in metric_specs:
+            raw_value = interface_stats.get(field_name)
+            try:
+                metric_value = float(str(raw_value))
+            except (TypeError, ValueError):
+                skipped += 1
+                continue
+            tags = dict(base_tags)
+            tags.update(direction_tags)
+            points.append(
+                influx.MetricPoint(
+                    ts=now,
+                    metric=metric_name,
+                    value=metric_value,
+                    subject_type=subject_type,
+                    subject_id=subject_id,
+                    source_system=source_system,
+                    source_instance=source_instance,
+                    collector_service=collector_service,
+                    collector_host=collector_host or "macmini",
+                    service=service_id_raw,
+                    source_entity_id=device_mac_value or None,
+                    tags=tags,
+                )
+            )
+
+        if not points:
+            return StatusLevel.WARNING, 0, skipped, "no numeric traffic values found"
+
+        written = influx.write_points(points)
+        touch_registry_from_points(points)
+        return StatusLevel.OK, written, skipped, ""
+    except Exception as err:  # noqa: BLE001
+        return StatusLevel.CRITICAL, 0, 0, str(err)
+
+
 def _run_single_metric_collection_spec(
     spec: MetricCollectionSpec,
 ) -> tuple[str, int, int, str]:
@@ -720,6 +1092,8 @@ def _run_single_metric_collection_spec(
         return _execute_home_assistant_env_scan_spec(spec)
     if spec.spec_type == MetricCollectionSpecType.HTTP_JSON_METRIC:
         return _execute_http_json_metric_spec(spec)
+    if spec.spec_type == MetricCollectionSpecType.UNIFI_DEVICE_TRAFFIC:
+        return _execute_unifi_device_traffic_spec(spec)
 
     return StatusLevel.CRITICAL, 0, 0, f"unsupported spec_type: {spec.spec_type}"
 

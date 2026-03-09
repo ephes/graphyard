@@ -66,6 +66,16 @@
       "includeVars": false,
       "keepTime": true,
       "targetBlank": false,
+      "title": "Device Network",
+      "type": "link",
+      "url": "/d/graphyard-device-network/graphyard-device-network"
+    },
+    {
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": false,
+      "keepTime": true,
+      "targetBlank": false,
       "title": "Fractal Storage",
       "type": "link",
       "url": "/d/graphyard-fractal-storage/fractal-storage"
@@ -92,7 +102,7 @@
       },
       "id": 1,
       "options": {
-        "content": "## Graphyard Overview\n\nQuick Access:\n- [Host Filesystems](/d/graphyard-host-infrastructure/graphyard-host-filesystems)\n- [Host Network](/d/graphyard-host-network/graphyard-host-network)\n- [Room Climate](/d/graphyard-room-climate/graphyard-room-climate)\n- [Device Thermals](/d/graphyard-device-thermals/graphyard-device-thermals)\n- [Fractal Storage](/d/graphyard-fractal-storage/fractal-storage)\n- [Logyard Overview](/d/logyard-home/logyard-overview)\n\nTip: click **Home** in the left sidebar any time to return here.\n\nDomain boundaries:\n- **Host Filesystems**: generic host filesystem usage and latest mountpoint values\n- **Host Network**: generic host interface throughput (receive/transmit)\n- **Room Climate**: `environment_sensor` temperature/humidity only\n- **Device Thermals**: `network_device` temperature only\n- **Fractal Storage**: Fractal-specific logical storage view (`rootfs`, `fast`, `tank`, USB backup drive state)\n- **Logyard Overview**: journald logs in Loki for first-look triage and service-level drilldown\n\nThis split avoids mixing filesystem and network views in one host dashboard.",
+        "content": "## Graphyard Overview\n\nQuick Access:\n- [Host Filesystems](/d/graphyard-host-infrastructure/graphyard-host-filesystems)\n- [Host Network](/d/graphyard-host-network/graphyard-host-network)\n- [Room Climate](/d/graphyard-room-climate/graphyard-room-climate)\n- [Device Thermals](/d/graphyard-device-thermals/graphyard-device-thermals)\n- [Device Network](/d/graphyard-device-network/graphyard-device-network)\n- [Fractal Storage](/d/graphyard-fractal-storage/fractal-storage)\n- [Logyard Overview](/d/logyard-home/logyard-overview)\n\nTip: click **Home** in the left sidebar any time to return here.\n\nDomain boundaries:\n- **Host Filesystems**: generic host filesystem usage and latest mountpoint values\n- **Host Network**: generic host interface throughput (receive/transmit)\n- **Room Climate**: `environment_sensor` temperature/humidity only\n- **Device Thermals**: `network_device` temperature only\n- **Device Network**: `network_device` traffic only (for example FRITZ!Box WAN and UniFi uplinks)\n- **Fractal Storage**: Fractal-specific logical storage view (`rootfs`, `fast`, `tank`, USB backup drive state)\n- **Logyard Overview**: journald logs in Loki for first-look triage and service-level drilldown\n\nThis split avoids mixing filesystem and network views across host and infrastructure-device dashboards.",
         "mode": "markdown"
       },
       "pluginVersion": "12.4.0",
@@ -116,6 +126,6 @@
   "timezone": "",
   "title": "Graphyard Overview",
   "uid": "graphyard-home",
-  "version": 8,
+  "version": 9,
   "weekStart": ""
 }

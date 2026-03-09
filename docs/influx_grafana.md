@@ -41,10 +41,12 @@ Graphyard includes Grafana provisioning:
   - `host-infrastructure`
   - `room-climate`
   - `device-thermals`
+  - `device-network`
 - domain dashboards:
   - `Graphyard Host Infrastructure`
   - `Graphyard Room Climate`
   - `Graphyard Device Thermals`
+  - `Graphyard Device Network`
 
 Important compatibility note:
 
@@ -61,6 +63,7 @@ Important compatibility note:
 - Host Infrastructure dashboard queries are host-only (`subject_type='host'`).
 - Room Climate dashboard queries are room-sensor-only (`subject_type='environment_sensor'`).
 - Device Thermals dashboard queries are infrastructure device-only (`subject_type='network_device'`).
+- Device Network dashboard queries are infrastructure device-only (`subject_type='network_device'`) and uses canonical bytes-per-second traffic metrics.
 - Filesystem legend includes host + mountpoint context: `${__field.labels.subject_id}: ${__field.labels.mountpoint}`.
 - Dashboard refresh defaults are aligned to collection interval (`1m`).
 - Datasource UID remains `graphyard-influxdb` for provisioning stability.
@@ -91,8 +94,14 @@ Typical conventions:
 - metric name prefix: `ha.`
 - subject mapping from `config.subject_mapping` resolves canonical `subject_type`/`subject_id`
 - temperature/humidity series may include tags like `entity_id`, `device_class`, `unit`, `friendly_name`
+- optional `config.metric_mapping.rules` can rewrite selected HA entity IDs to canonical metric names and scaled values (for example FRITZ!Box throughput into bytes/s)
 
 The env-scan collector spec fetches `/api/states` once per run and extracts all matching sensors in one pass.
+
+UniFi device traffic specs log in to the local controller, fetch `/api/s/<site>/stat/device`,
+and emit canonical `network_device.network_receive_bytes_per_second` /
+`network_device.network_transmit_bytes_per_second` metrics with tags such as
+`traffic_direction`, `traffic_scope`, `port_idx`, and `port_name`.
 
 ## Retention and Downsampling
 
