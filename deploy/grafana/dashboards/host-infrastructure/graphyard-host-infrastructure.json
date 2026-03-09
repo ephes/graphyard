@@ -182,7 +182,8 @@
   "schemaVersion": 41,
   "tags": [
     "graphyard",
-    "host"
+    "host",
+    "filesystem"
   ],
   "templating": {
     "list": [
