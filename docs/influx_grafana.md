@@ -105,19 +105,30 @@ and emit canonical `network_device.network_receive_bytes_per_second` /
 
 ## Retention and Downsampling
 
-Graphyard does not currently auto-provision retention/downsampling tasks. For production, use Influx-native policies/tasks.
+Current production policy on `macmini`:
 
-Recommended baseline:
+- bucket: `graphyard`
+- retention: `180d`
+- enforcement: applied in place by the `graphyard_deploy` Ansible role via
+  `influx bucket list/update` inside the `graphyard-influxdb` container
+- downsampling: not enabled
 
-- Raw data: 30 days
-- 5-minute rollup: 365 days
-- 1-hour rollup: 365 days
+Why this is the current baseline:
 
-Suggested approach:
+- live production volume on `2026-03-09` was about `1.63M` points/day
+- the active write model is still one raw Influx bucket queried directly by the
+  provisioned Grafana dashboards
+- adding rollup buckets/tasks now would increase operator and query complexity
+  without solving an observed production problem
 
-1. Create a raw bucket with 30d retention.
-2. Create rollup buckets with 365d retention.
-3. Add native Influx tasks for rollups.
+Operational consequence:
+
+- Grafana dashboards and ad hoc queries only retain raw history for the last
+  180 days
+- older raw points age out automatically
+- if operators later need multi-year history, revisit this with explicit rollup
+  buckets and matching dashboard/query changes instead of silently changing the
+  current raw bucket contract
 
 ## Backup and Restore
 
