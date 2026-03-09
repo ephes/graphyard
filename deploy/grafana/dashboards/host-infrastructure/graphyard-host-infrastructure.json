@@ -370,24 +370,24 @@
         "type": "query"
       },
       {
-        "allValue": "(?!docker0$|lo$|tailscale0$).*",
+        "allValue": ".*",
         "current": {
           "selected": true,
           "text": "All",
-          "value": "(?!docker0$|lo$|tailscale0$).*"
+          "value": ".*"
         },
         "datasource": {
           "type": "influxdb",
           "uid": "graphyard-influxdb"
         },
-        "definition": "SHOW TAG VALUES FROM \"graphyard_metrics\" WITH KEY = \"device\" WHERE \"subject_type\" = 'host' AND \"subject_id\" =~ /^$host$/ AND \"metric\" = 'host.network_receive_bytes_total'",
+        "definition": "SHOW TAG VALUES FROM \"graphyard_metrics\" WITH KEY = \"device\" WHERE \"subject_type\" = 'host' AND \"subject_id\" =~ /^$host$/ AND \"metric\" = 'host.network_receive_bytes_total' AND \"device\" !~ /^(docker0|lo|tailscale0)$/",
         "hide": 0,
         "includeAll": true,
         "label": "device",
         "multi": false,
         "name": "device",
         "options": [],
-        "query": "SHOW TAG VALUES FROM \"graphyard_metrics\" WITH KEY = \"device\" WHERE \"subject_type\" = 'host' AND \"subject_id\" =~ /^$host$/ AND \"metric\" = 'host.network_receive_bytes_total'",
+        "query": "SHOW TAG VALUES FROM \"graphyard_metrics\" WITH KEY = \"device\" WHERE \"subject_type\" = 'host' AND \"subject_id\" =~ /^$host$/ AND \"metric\" = 'host.network_receive_bytes_total' AND \"device\" !~ /^(docker0|lo|tailscale0)$/",
         "refresh": 1,
         "skipUrlSync": false,
         "type": "query"
@@ -402,6 +402,6 @@
   "timezone": "",
   "title": "Graphyard Host Infrastructure",
   "uid": "graphyard-host-infrastructure",
-  "version": 5,
+  "version": 6,
   "weekStart": ""
 }
