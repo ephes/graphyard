@@ -141,7 +141,7 @@
         "type": "influxdb",
         "uid": "graphyard-influxdb"
       },
-      "description": "Success is 1 for final HTTP 2xx/3xx responses and 0 otherwise.",
+      "description": "Final HTTP response status code over time for the selected public page probes.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -167,38 +167,27 @@
               "mode": "off"
             }
           },
-          "displayName": "${__field.labels.subject_id}",
-          "mappings": [
-            {
-              "options": {
-                "0": {
-                  "index": 0,
-                  "text": "fail"
-                },
-                "1": {
-                  "index": 1,
-                  "text": "ok"
-                }
-              },
-              "type": "value"
-            }
-          ],
-          "max": 1,
+          "mappings": [],
+          "max": 599,
           "min": 0,
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "red",
+                "color": "green",
                 "value": null
               },
               {
-                "color": "green",
-                "value": 1
+                "color": "orange",
+                "value": 300
+              },
+              {
+                "color": "red",
+                "value": 400
               }
             ]
           },
-          "unit": "none"
+          "unit": "short"
         },
         "overrides": []
       },
@@ -224,18 +213,18 @@
       "pluginVersion": "12.4.0",
       "targets": [
         {
-          "alias": "Success: $tag_subject_id",
+          "alias": "Status: $tag_subject_id",
           "datasource": {
             "type": "influxdb",
             "uid": "graphyard-influxdb"
           },
-          "query": "SELECT mean(\"value\") AS \"success\" FROM \"graphyard_metrics\" WHERE $timeFilter AND \"collector_host\" =~ /^$collector_host$/ AND \"source_instance\" =~ /^$source_instance$/ AND \"subject_type\" = 'service' AND \"subject_id\" =~ /^$subject_id$/ AND \"source_system\" = 'http_probe' AND \"metric\" = 'service.http_page_success' GROUP BY time($__interval), \"subject_id\" fill(null)",
+          "query": "SELECT last(\"value\") AS \"status_code\" FROM \"graphyard_metrics\" WHERE $timeFilter AND \"collector_host\" =~ /^$collector_host$/ AND \"source_instance\" =~ /^$source_instance$/ AND \"subject_type\" = 'service' AND \"subject_id\" =~ /^$subject_id$/ AND \"source_system\" = 'http_probe' AND \"metric\" = 'service.http_page_status_code' GROUP BY time($__interval), \"subject_id\" fill(null)",
           "rawQuery": true,
           "refId": "A",
           "resultFormat": "time_series"
         }
       ],
-      "title": "HTTP Page Success",
+      "title": "HTTP Status Code",
       "type": "timeseries"
     },
     {
