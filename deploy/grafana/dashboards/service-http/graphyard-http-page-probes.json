@@ -1,0 +1,385 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [
+    {
+      "title": "Graphyard Overview",
+      "type": "link",
+      "url": "/d/graphyard-home/graphyard-overview"
+    }
+  ],
+  "panels": [
+    {
+      "datasource": null,
+      "gridPos": {
+        "h": 4,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "content": "HTTP page probe view only (`subject_type='service'`, `metric =~ /^service.http_page_/`). Latency is measured from the Graphyard agent host; when redirects are followed, TTFB includes redirect time before the final response.",
+        "mode": "markdown"
+      },
+      "pluginVersion": "12.4.0",
+      "title": "Domain Boundary",
+      "type": "text"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "graphyard-influxdb"
+      },
+      "description": "Time to first byte and total response time for the selected public page probes.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 3,
+            "showPoints": "auto",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "displayName": "${__field.name}: ${__field.labels.subject_id}",
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 4
+      },
+      "id": 2,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "12.4.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "graphyard-influxdb"
+          },
+          "query": "SELECT mean(\"value\") AS \"ttfb_seconds\" FROM \"graphyard_metrics\" WHERE $timeFilter AND \"collector_host\" =~ /^$collector_host$/ AND \"source_instance\" =~ /^$source_instance$/ AND \"subject_type\" = 'service' AND \"subject_id\" =~ /^$subject_id$/ AND \"source_system\" = 'http_probe' AND \"metric\" = 'service.http_page_ttfb_seconds' GROUP BY time($__interval), \"subject_id\" fill(null)",
+          "rawQuery": true,
+          "refId": "A",
+          "resultFormat": "time_series"
+        },
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "graphyard-influxdb"
+          },
+          "query": "SELECT mean(\"value\") AS \"total_seconds\" FROM \"graphyard_metrics\" WHERE $timeFilter AND \"collector_host\" =~ /^$collector_host$/ AND \"source_instance\" =~ /^$source_instance$/ AND \"subject_type\" = 'service' AND \"subject_id\" =~ /^$subject_id$/ AND \"source_system\" = 'http_probe' AND \"metric\" = 'service.http_page_total_seconds' GROUP BY time($__interval), \"subject_id\" fill(null)",
+          "rawQuery": true,
+          "refId": "B",
+          "resultFormat": "time_series"
+        }
+      ],
+      "title": "HTTP Page Latency",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "graphyard-influxdb"
+      },
+      "description": "Success is 1 for final HTTP 2xx/3xx responses and 0 otherwise.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "drawStyle": "line",
+            "fillOpacity": 20,
+            "lineInterpolation": "stepAfter",
+            "lineWidth": 2,
+            "pointSize": 3,
+            "showPoints": "auto",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "displayName": "${__field.labels.subject_id}",
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "index": 0,
+                  "text": "fail"
+                },
+                "1": {
+                  "index": 1,
+                  "text": "ok"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "max": 1,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 14
+      },
+      "id": 3,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "12.4.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "graphyard-influxdb"
+          },
+          "query": "SELECT mean(\"value\") AS \"success\" FROM \"graphyard_metrics\" WHERE $timeFilter AND \"collector_host\" =~ /^$collector_host$/ AND \"source_instance\" =~ /^$source_instance$/ AND \"subject_type\" = 'service' AND \"subject_id\" =~ /^$subject_id$/ AND \"source_system\" = 'http_probe' AND \"metric\" = 'service.http_page_success' GROUP BY time($__interval), \"subject_id\" fill(null)",
+          "rawQuery": true,
+          "refId": "A",
+          "resultFormat": "time_series"
+        }
+      ],
+      "title": "HTTP Page Success",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "graphyard-influxdb"
+      },
+      "description": "Latest values grouped by metric, probe subject, raw URL, and probe host.",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {},
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 22
+      },
+      "id": 4,
+      "options": {
+        "cellHeight": "sm",
+        "showHeader": true
+      },
+      "pluginVersion": "12.4.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "graphyard-influxdb"
+          },
+          "query": "SELECT last(\"value\") FROM \"graphyard_metrics\" WHERE $timeFilter AND \"collector_host\" =~ /^$collector_host$/ AND \"source_instance\" =~ /^$source_instance$/ AND \"subject_type\" = 'service' AND \"subject_id\" =~ /^$subject_id$/ AND \"source_system\" = 'http_probe' AND \"metric\" =~ /^service\\.http_page_(ttfb_seconds|total_seconds|status_code|success|redirect_count)$/ GROUP BY \"metric\", \"subject_id\", \"source_entity_id\", \"collector_host\"",
+          "rawQuery": true,
+          "refId": "A",
+          "resultFormat": "table"
+        }
+      ],
+      "title": "Latest Probe Values",
+      "type": "table"
+    }
+  ],
+  "refresh": "1m",
+  "schemaVersion": 41,
+  "tags": [
+    "graphyard",
+    "service",
+    "http"
+  ],
+  "templating": {
+    "list": [
+      {
+        "allValue": ".*",
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": ".*"
+        },
+        "datasource": {
+          "type": "influxdb",
+          "uid": "graphyard-influxdb"
+        },
+        "definition": "SHOW TAG VALUES FROM \"graphyard_metrics\" WITH KEY = \"collector_host\" WHERE \"subject_type\" = 'service' AND \"source_system\" = 'http_probe' AND \"metric\" = 'service.http_page_ttfb_seconds'",
+        "hide": 0,
+        "includeAll": true,
+        "label": "collector_host",
+        "multi": false,
+        "name": "collector_host",
+        "options": [],
+        "query": "SHOW TAG VALUES FROM \"graphyard_metrics\" WITH KEY = \"collector_host\" WHERE \"subject_type\" = 'service' AND \"source_system\" = 'http_probe' AND \"metric\" = 'service.http_page_ttfb_seconds'",
+        "refresh": 1,
+        "skipUrlSync": false,
+        "type": "query"
+      },
+      {
+        "allValue": ".*",
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": ".*"
+        },
+        "datasource": {
+          "type": "influxdb",
+          "uid": "graphyard-influxdb"
+        },
+        "definition": "SHOW TAG VALUES FROM \"graphyard_metrics\" WITH KEY = \"source_instance\" WHERE \"collector_host\" =~ /^$collector_host$/ AND \"subject_type\" = 'service' AND \"source_system\" = 'http_probe' AND \"metric\" = 'service.http_page_ttfb_seconds'",
+        "hide": 0,
+        "includeAll": true,
+        "label": "source_instance",
+        "multi": false,
+        "name": "source_instance",
+        "options": [],
+        "query": "SHOW TAG VALUES FROM \"graphyard_metrics\" WITH KEY = \"source_instance\" WHERE \"collector_host\" =~ /^$collector_host$/ AND \"subject_type\" = 'service' AND \"source_system\" = 'http_probe' AND \"metric\" = 'service.http_page_ttfb_seconds'",
+        "refresh": 1,
+        "skipUrlSync": false,
+        "type": "query"
+      },
+      {
+        "allValue": ".*",
+        "current": {
+          "selected": true,
+          "text": [
+            "python_podcast_show",
+            "wersdoerfer_blog"
+          ],
+          "value": [
+            "python_podcast_show",
+            "wersdoerfer_blog"
+          ]
+        },
+        "datasource": {
+          "type": "influxdb",
+          "uid": "graphyard-influxdb"
+        },
+        "definition": "SHOW TAG VALUES FROM \"graphyard_metrics\" WITH KEY = \"subject_id\" WHERE \"collector_host\" =~ /^$collector_host$/ AND \"source_instance\" =~ /^$source_instance$/ AND \"subject_type\" = 'service' AND \"source_system\" = 'http_probe' AND \"metric\" = 'service.http_page_ttfb_seconds'",
+        "hide": 0,
+        "includeAll": false,
+        "label": "subject_id",
+        "multi": true,
+        "name": "subject_id",
+        "options": [],
+        "query": "SHOW TAG VALUES FROM \"graphyard_metrics\" WITH KEY = \"subject_id\" WHERE \"collector_host\" =~ /^$collector_host$/ AND \"source_instance\" =~ /^$source_instance$/ AND \"subject_type\" = 'service' AND \"source_system\" = 'http_probe' AND \"metric\" = 'service.http_page_ttfb_seconds'",
+        "refresh": 1,
+        "skipUrlSync": false,
+        "type": "query"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-7d",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "",
+  "title": "Graphyard HTTP Page Probes",
+  "uid": "graphyard-http-page-probes",
+  "version": 1,
+  "weekStart": ""
+}

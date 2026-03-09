@@ -42,11 +42,13 @@ Graphyard includes Grafana provisioning:
   - `room-climate`
   - `device-thermals`
   - `device-network`
+  - `service-http`
 - domain dashboards:
   - `Graphyard Host Infrastructure`
   - `Graphyard Room Climate`
   - `Graphyard Device Thermals`
   - `Graphyard Device Network`
+  - `Graphyard HTTP Page Probes`
 
 Important compatibility note:
 
@@ -64,6 +66,7 @@ Important compatibility note:
 - Room Climate dashboard queries are room-sensor-only (`subject_type='environment_sensor'`).
 - Device Thermals dashboard queries are infrastructure device-only (`subject_type='network_device'`).
 - Device Network dashboard queries are infrastructure device-only (`subject_type='network_device'`) and uses canonical bytes-per-second traffic metrics.
+- HTTP Page Probes dashboard queries are service-only (`subject_type='service'`) and scoped to the `service.http_page_*` metric family from `source_system='http_probe'`.
 - Filesystem legend includes host + mountpoint context: `${__field.labels.subject_id}: ${__field.labels.mountpoint}`.
 - Dashboard refresh defaults are aligned to collection interval (`1m`).
 - Datasource UID remains `graphyard-influxdb` for provisioning stability.

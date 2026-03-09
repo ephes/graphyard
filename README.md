@@ -102,6 +102,7 @@ For Grafana in the Procfile stack:
   - folder `room-climate` with dashboard title `Graphyard Room Climate`
   - folder `device-thermals` with dashboard title `Graphyard Device Thermals`
   - folder `device-network` with dashboard title `Graphyard Device Network`
+  - folder `service-http` with dashboard title `Graphyard HTTP Page Probes`
 - first run may take longer because Docker pulls the image
 
 ## Ingest Token Workflow (Manual Rotation)
