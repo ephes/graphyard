@@ -100,7 +100,44 @@
           },
           "unit": "percentunit"
         },
-        "overrides": []
+      "overrides": [
+        {
+          "matcher": {
+            "id": "byName",
+            "options": "graphyard_metrics.rootfs"
+          },
+          "properties": [
+            {
+              "id": "displayName",
+              "value": "rootfs"
+            }
+          ]
+        },
+        {
+          "matcher": {
+            "id": "byName",
+            "options": "graphyard_metrics.fast"
+          },
+          "properties": [
+            {
+              "id": "displayName",
+              "value": "fast"
+            }
+          ]
+        },
+        {
+          "matcher": {
+            "id": "byName",
+            "options": "graphyard_metrics.tank"
+          },
+          "properties": [
+            {
+              "id": "displayName",
+              "value": "tank"
+            }
+          ]
+        }
+      ]
       },
       "gridPos": {
         "h": 10,
@@ -218,7 +255,32 @@
           },
           "unit": "short"
         },
-        "overrides": []
+      "overrides": [
+        {
+          "matcher": {
+            "id": "byName",
+            "options": "graphyard_metrics.device_present"
+          },
+          "properties": [
+            {
+              "id": "displayName",
+              "value": "device_present"
+            }
+          ]
+        },
+        {
+          "matcher": {
+            "id": "byName",
+            "options": "graphyard_metrics.pool_imported"
+          },
+          "properties": [
+            {
+              "id": "displayName",
+              "value": "pool_imported"
+            }
+          ]
+        }
+      ]
       },
       "gridPos": {
         "h": 8,
@@ -283,6 +345,6 @@
   "timezone": "",
   "title": "Fractal Storage",
   "uid": "graphyard-fractal-storage",
-  "version": 1,
+  "version": 2,
   "weekStart": ""
 }
