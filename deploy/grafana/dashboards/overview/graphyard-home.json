@@ -56,6 +56,16 @@
       "includeVars": false,
       "keepTime": true,
       "targetBlank": false,
+      "title": "Fractal Storage",
+      "type": "link",
+      "url": "/d/graphyard-fractal-storage/fractal-storage"
+    },
+    {
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": false,
+      "keepTime": true,
+      "targetBlank": false,
       "title": "Logyard Overview",
       "type": "link",
       "url": "/d/logyard-home/logyard-overview"
@@ -72,7 +82,7 @@
       },
       "id": 1,
       "options": {
-        "content": "## Graphyard Overview\n\nQuick Access:\n- [Host Infrastructure](/d/graphyard-host-infrastructure/graphyard-host-infrastructure)\n- [Room Climate](/d/graphyard-room-climate/graphyard-room-climate)\n- [Device Thermals](/d/graphyard-device-thermals/graphyard-device-thermals)\n- [Logyard Overview](/d/logyard-home/logyard-overview)\n\nTip: click **Home** in the left sidebar any time to return here.\n\nDomain boundaries:\n- **Host Infrastructure**: host-only metrics (filesystem and related host telemetry)\n- **Room Climate**: `environment_sensor` temperature/humidity only\n- **Device Thermals**: `network_device` temperature only\n- **Logyard Overview**: journald logs in Loki for first-look triage and service-level drilldown\n\nThis split avoids mixing room and device thermals in the same query path.",
+        "content": "## Graphyard Overview\n\nQuick Access:\n- [Host Infrastructure](/d/graphyard-host-infrastructure/graphyard-host-infrastructure)\n- [Fractal Storage](/d/graphyard-fractal-storage/fractal-storage)\n- [Room Climate](/d/graphyard-room-climate/graphyard-room-climate)\n- [Device Thermals](/d/graphyard-device-thermals/graphyard-device-thermals)\n- [Logyard Overview](/d/logyard-home/logyard-overview)\n\nTip: click **Home** in the left sidebar any time to return here.\n\nDomain boundaries:\n- **Host Infrastructure**: generic host-only metrics (filesystem and related host telemetry)\n- **Fractal Storage**: Fractal-specific logical storage view (`rootfs`, `fast`, `tank`, USB backup drive state)\n- **Room Climate**: `environment_sensor` temperature/humidity only\n- **Device Thermals**: `network_device` temperature only\n- **Logyard Overview**: journald logs in Loki for first-look triage and service-level drilldown\n\nThis split avoids mixing specialized storage views with the generic host dashboard.",
         "mode": "markdown"
       },
       "pluginVersion": "12.4.0",
@@ -96,6 +106,6 @@
   "timezone": "",
   "title": "Graphyard Overview",
   "uid": "graphyard-home",
-  "version": 4,
+  "version": 5,
   "weekStart": ""
 }
