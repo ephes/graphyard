@@ -49,7 +49,7 @@
         "type": "influxdb",
         "uid": "graphyard-influxdb"
       },
-      "description": "Time to first byte and total response time for the selected public page probes.",
+      "description": "Time to first byte and total response time for the Wersdoerfer homepage probe.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -90,7 +90,7 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 10,
+        "h": 8,
         "w": 24,
         "x": 0,
         "y": 4
@@ -109,8 +109,6 @@
         }
       },
       "pluginVersion": "12.4.0",
-      "repeat": "subject_id",
-      "repeatDirection": "v",
       "targets": [
         {
           "alias": "TTFB",
@@ -118,7 +116,7 @@
             "type": "influxdb",
             "uid": "graphyard-influxdb"
           },
-          "query": "SELECT mean(\"value\") AS \"ttfb_seconds\" FROM \"graphyard_metrics\" WHERE $timeFilter AND \"collector_host\" =~ /^$collector_host$/ AND \"source_instance\" =~ /^$source_instance$/ AND \"subject_type\" = 'service' AND \"subject_id\" =~ /^$subject_id$/ AND \"source_system\" = 'http_probe' AND \"metric\" = 'service.http_page_ttfb_seconds' GROUP BY time($__interval), \"subject_id\" fill(null)",
+          "query": "SELECT mean(\"value\") AS \"ttfb_seconds\" FROM \"graphyard_metrics\" WHERE $timeFilter AND \"collector_host\" =~ /^$collector_host$/ AND \"source_instance\" =~ /^$source_instance$/ AND \"subject_type\" = 'service' AND \"subject_id\" = 'wersdoerfer_homepage' AND \"source_system\" = 'http_probe' AND \"metric\" = 'service.http_page_ttfb_seconds' GROUP BY time($__interval) fill(null)",
           "rawQuery": true,
           "refId": "A",
           "resultFormat": "time_series"
@@ -129,13 +127,473 @@
             "type": "influxdb",
             "uid": "graphyard-influxdb"
           },
-          "query": "SELECT mean(\"value\") AS \"total_seconds\" FROM \"graphyard_metrics\" WHERE $timeFilter AND \"collector_host\" =~ /^$collector_host$/ AND \"source_instance\" =~ /^$source_instance$/ AND \"subject_type\" = 'service' AND \"subject_id\" =~ /^$subject_id$/ AND \"source_system\" = 'http_probe' AND \"metric\" = 'service.http_page_total_seconds' GROUP BY time($__interval), \"subject_id\" fill(null)",
+          "query": "SELECT mean(\"value\") AS \"total_seconds\" FROM \"graphyard_metrics\" WHERE $timeFilter AND \"collector_host\" =~ /^$collector_host$/ AND \"source_instance\" =~ /^$source_instance$/ AND \"subject_type\" = 'service' AND \"subject_id\" = 'wersdoerfer_homepage' AND \"source_system\" = 'http_probe' AND \"metric\" = 'service.http_page_total_seconds' GROUP BY time($__interval) fill(null)",
           "rawQuery": true,
           "refId": "B",
           "resultFormat": "time_series"
         }
       ],
-      "title": "HTTP Page Latency: $subject_id",
+      "title": "HTTP Page Latency: Wersdoerfer Homepage",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "graphyard-influxdb"
+      },
+      "description": "Time to first byte and total response time for the Wersdoerfer blog index probe.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 3,
+            "showPoints": "auto",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 12
+      },
+      "id": 3,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "12.4.0",
+      "targets": [
+        {
+          "alias": "TTFB",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "graphyard-influxdb"
+          },
+          "query": "SELECT mean(\"value\") AS \"ttfb_seconds\" FROM \"graphyard_metrics\" WHERE $timeFilter AND \"collector_host\" =~ /^$collector_host$/ AND \"source_instance\" =~ /^$source_instance$/ AND \"subject_type\" = 'service' AND \"subject_id\" = 'wersdoerfer_blog' AND \"source_system\" = 'http_probe' AND \"metric\" = 'service.http_page_ttfb_seconds' GROUP BY time($__interval) fill(null)",
+          "rawQuery": true,
+          "refId": "A",
+          "resultFormat": "time_series"
+        },
+        {
+          "alias": "Total",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "graphyard-influxdb"
+          },
+          "query": "SELECT mean(\"value\") AS \"total_seconds\" FROM \"graphyard_metrics\" WHERE $timeFilter AND \"collector_host\" =~ /^$collector_host$/ AND \"source_instance\" =~ /^$source_instance$/ AND \"subject_type\" = 'service' AND \"subject_id\" = 'wersdoerfer_blog' AND \"source_system\" = 'http_probe' AND \"metric\" = 'service.http_page_total_seconds' GROUP BY time($__interval) fill(null)",
+          "rawQuery": true,
+          "refId": "B",
+          "resultFormat": "time_series"
+        }
+      ],
+      "title": "HTTP Page Latency: Wersdoerfer Blog",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "graphyard-influxdb"
+      },
+      "description": "Time to first byte and total response time for the Wersdoerfer weeknotes article probe.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 3,
+            "showPoints": "auto",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 20
+      },
+      "id": 4,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "12.4.0",
+      "targets": [
+        {
+          "alias": "TTFB",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "graphyard-influxdb"
+          },
+          "query": "SELECT mean(\"value\") AS \"ttfb_seconds\" FROM \"graphyard_metrics\" WHERE $timeFilter AND \"collector_host\" =~ /^$collector_host$/ AND \"source_instance\" =~ /^$source_instance$/ AND \"subject_type\" = 'service' AND \"subject_id\" = 'wersdoerfer_weeknotes_2025_11_03' AND \"source_system\" = 'http_probe' AND \"metric\" = 'service.http_page_ttfb_seconds' GROUP BY time($__interval) fill(null)",
+          "rawQuery": true,
+          "refId": "A",
+          "resultFormat": "time_series"
+        },
+        {
+          "alias": "Total",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "graphyard-influxdb"
+          },
+          "query": "SELECT mean(\"value\") AS \"total_seconds\" FROM \"graphyard_metrics\" WHERE $timeFilter AND \"collector_host\" =~ /^$collector_host$/ AND \"source_instance\" =~ /^$source_instance$/ AND \"subject_type\" = 'service' AND \"subject_id\" = 'wersdoerfer_weeknotes_2025_11_03' AND \"source_system\" = 'http_probe' AND \"metric\" = 'service.http_page_total_seconds' GROUP BY time($__interval) fill(null)",
+          "rawQuery": true,
+          "refId": "B",
+          "resultFormat": "time_series"
+        }
+      ],
+      "title": "HTTP Page Latency: Wersdoerfer Weeknotes",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "graphyard-influxdb"
+      },
+      "description": "Time to first byte and total response time for the Python Podcast show index probe.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 3,
+            "showPoints": "auto",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 28
+      },
+      "id": 5,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "12.4.0",
+      "targets": [
+        {
+          "alias": "TTFB",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "graphyard-influxdb"
+          },
+          "query": "SELECT mean(\"value\") AS \"ttfb_seconds\" FROM \"graphyard_metrics\" WHERE $timeFilter AND \"collector_host\" =~ /^$collector_host$/ AND \"source_instance\" =~ /^$source_instance$/ AND \"subject_type\" = 'service' AND \"subject_id\" = 'python_podcast_show' AND \"source_system\" = 'http_probe' AND \"metric\" = 'service.http_page_ttfb_seconds' GROUP BY time($__interval) fill(null)",
+          "rawQuery": true,
+          "refId": "A",
+          "resultFormat": "time_series"
+        },
+        {
+          "alias": "Total",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "graphyard-influxdb"
+          },
+          "query": "SELECT mean(\"value\") AS \"total_seconds\" FROM \"graphyard_metrics\" WHERE $timeFilter AND \"collector_host\" =~ /^$collector_host$/ AND \"source_instance\" =~ /^$source_instance$/ AND \"subject_type\" = 'service' AND \"subject_id\" = 'python_podcast_show' AND \"source_system\" = 'http_probe' AND \"metric\" = 'service.http_page_total_seconds' GROUP BY time($__interval) fill(null)",
+          "rawQuery": true,
+          "refId": "B",
+          "resultFormat": "time_series"
+        }
+      ],
+      "title": "HTTP Page Latency: Python Podcast Show",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "graphyard-influxdb"
+      },
+      "description": "Time to first byte and total response time for the Python Podcast data science episode probe.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 3,
+            "showPoints": "auto",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 36
+      },
+      "id": 6,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "12.4.0",
+      "targets": [
+        {
+          "alias": "TTFB",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "graphyard-influxdb"
+          },
+          "query": "SELECT mean(\"value\") AS \"ttfb_seconds\" FROM \"graphyard_metrics\" WHERE $timeFilter AND \"collector_host\" =~ /^$collector_host$/ AND \"source_instance\" =~ /^$source_instance$/ AND \"subject_type\" = 'service' AND \"subject_id\" = 'python_podcast_data_science' AND \"source_system\" = 'http_probe' AND \"metric\" = 'service.http_page_ttfb_seconds' GROUP BY time($__interval) fill(null)",
+          "rawQuery": true,
+          "refId": "A",
+          "resultFormat": "time_series"
+        },
+        {
+          "alias": "Total",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "graphyard-influxdb"
+          },
+          "query": "SELECT mean(\"value\") AS \"total_seconds\" FROM \"graphyard_metrics\" WHERE $timeFilter AND \"collector_host\" =~ /^$collector_host$/ AND \"source_instance\" =~ /^$source_instance$/ AND \"subject_type\" = 'service' AND \"subject_id\" = 'python_podcast_data_science' AND \"source_system\" = 'http_probe' AND \"metric\" = 'service.http_page_total_seconds' GROUP BY time($__interval) fill(null)",
+          "rawQuery": true,
+          "refId": "B",
+          "resultFormat": "time_series"
+        }
+      ],
+      "title": "HTTP Page Latency: Python Podcast Data Science",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "graphyard-influxdb"
+      },
+      "description": "Time to first byte and total response time for the Marina Adler homepage probe.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 3,
+            "showPoints": "auto",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 44
+      },
+      "id": 7,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "12.4.0",
+      "targets": [
+        {
+          "alias": "TTFB",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "graphyard-influxdb"
+          },
+          "query": "SELECT mean(\"value\") AS \"ttfb_seconds\" FROM \"graphyard_metrics\" WHERE $timeFilter AND \"collector_host\" =~ /^$collector_host$/ AND \"source_instance\" =~ /^$source_instance$/ AND \"subject_type\" = 'service' AND \"subject_id\" = 'marina_adler_homepage' AND \"source_system\" = 'http_probe' AND \"metric\" = 'service.http_page_ttfb_seconds' GROUP BY time($__interval) fill(null)",
+          "rawQuery": true,
+          "refId": "A",
+          "resultFormat": "time_series"
+        },
+        {
+          "alias": "Total",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "graphyard-influxdb"
+          },
+          "query": "SELECT mean(\"value\") AS \"total_seconds\" FROM \"graphyard_metrics\" WHERE $timeFilter AND \"collector_host\" =~ /^$collector_host$/ AND \"source_instance\" =~ /^$source_instance$/ AND \"subject_type\" = 'service' AND \"subject_id\" = 'marina_adler_homepage' AND \"source_system\" = 'http_probe' AND \"metric\" = 'service.http_page_total_seconds' GROUP BY time($__interval) fill(null)",
+          "rawQuery": true,
+          "refId": "B",
+          "resultFormat": "time_series"
+        }
+      ],
+      "title": "HTTP Page Latency: Marina Adler Homepage",
       "type": "timeseries"
     },
     {
@@ -164,9 +622,9 @@
         "h": 10,
         "w": 24,
         "x": 0,
-        "y": 14
+        "y": 52
       },
-      "id": 4,
+      "id": 8,
       "options": {
         "cellHeight": "sm",
         "showHeader": true
@@ -178,7 +636,7 @@
             "type": "influxdb",
             "uid": "graphyard-influxdb"
           },
-          "query": "SELECT last(\"value\") FROM \"graphyard_metrics\" WHERE $timeFilter AND \"collector_host\" =~ /^$collector_host$/ AND \"source_instance\" =~ /^$source_instance$/ AND \"subject_type\" = 'service' AND \"subject_id\" =~ /^$subject_id$/ AND \"source_system\" = 'http_probe' AND \"metric\" =~ /^service\\.http_page_(ttfb_seconds|total_seconds|status_code|success|redirect_count)$/ GROUP BY \"metric\", \"subject_id\", \"source_entity_id\", \"collector_host\"",
+          "query": "SELECT last(\"value\") FROM \"graphyard_metrics\" WHERE $timeFilter AND \"collector_host\" =~ /^$collector_host$/ AND \"source_instance\" =~ /^$source_instance$/ AND \"subject_type\" = 'service' AND \"source_system\" = 'http_probe' AND \"metric\" =~ /^service\\.http_page_(ttfb_seconds|total_seconds|status_code|success|redirect_count)$/ GROUP BY \"metric\", \"subject_id\", \"source_entity_id\", \"collector_host\"",
           "rawQuery": true,
           "refId": "A",
           "resultFormat": "table"
@@ -239,43 +697,6 @@
         "name": "source_instance",
         "options": [],
         "query": "SHOW TAG VALUES FROM \"graphyard_metrics\" WITH KEY = \"source_instance\" WHERE \"collector_host\" =~ /^$collector_host$/ AND \"subject_type\" = 'service' AND \"source_system\" = 'http_probe' AND \"metric\" = 'service.http_page_ttfb_seconds'",
-        "refresh": 1,
-        "skipUrlSync": false,
-        "type": "query"
-      },
-      {
-        "allValue": ".*",
-        "current": {
-          "selected": true,
-          "text": [
-            "marina_adler_homepage",
-            "python_podcast_data_science",
-            "python_podcast_show",
-            "wersdoerfer_blog",
-            "wersdoerfer_homepage",
-            "wersdoerfer_weeknotes_2025_11_03"
-          ],
-          "value": [
-            "marina_adler_homepage",
-            "python_podcast_data_science",
-            "python_podcast_show",
-            "wersdoerfer_blog",
-            "wersdoerfer_homepage",
-            "wersdoerfer_weeknotes_2025_11_03"
-          ]
-        },
-        "datasource": {
-          "type": "influxdb",
-          "uid": "graphyard-influxdb"
-        },
-        "definition": "SHOW TAG VALUES FROM \"graphyard_metrics\" WITH KEY = \"subject_id\" WHERE \"collector_host\" =~ /^$collector_host$/ AND \"source_instance\" =~ /^$source_instance$/ AND \"subject_type\" = 'service' AND \"source_system\" = 'http_probe' AND \"metric\" = 'service.http_page_ttfb_seconds'",
-        "hide": 0,
-        "includeAll": false,
-        "label": "subject_id",
-        "multi": true,
-        "name": "subject_id",
-        "options": [],
-        "query": "SHOW TAG VALUES FROM \"graphyard_metrics\" WITH KEY = \"subject_id\" WHERE \"collector_host\" =~ /^$collector_host$/ AND \"source_instance\" =~ /^$source_instance$/ AND \"subject_type\" = 'service' AND \"source_system\" = 'http_probe' AND \"metric\" = 'service.http_page_ttfb_seconds'",
         "refresh": 1,
         "skipUrlSync": false,
         "type": "query"
