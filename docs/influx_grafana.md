@@ -46,6 +46,7 @@ Graphyard includes Grafana provisioning:
 - domain dashboards:
   - `Graphyard Host Infrastructure`
   - `Fractal Thermals`
+  - `Macmini Thermals`
   - `Graphyard Room Climate`
   - `Graphyard Device Thermals`
   - `Graphyard Device Network`
@@ -68,12 +69,15 @@ Important compatibility note:
 - Fractal Thermals dashboard is host-only and pinned to
   `subject_type='host'`, `subject_id='fractal'`,
   `source_system='fractal_thermal_endpoint'`.
+- Macmini Thermals dashboard is host-only and pinned to
+  `subject_type='host'`, `subject_id='macmini'`,
+  `source_system='macmini_thermal_endpoint'`.
 - Room Climate dashboard queries are room-sensor-only (`subject_type='environment_sensor'`).
 - Device Thermals dashboard queries are infrastructure device-only (`subject_type='network_device'`).
 - Device Network dashboard queries are infrastructure device-only (`subject_type='network_device'`) and uses canonical bytes-per-second traffic metrics.
 - HTTP Page Probes dashboard queries are service-only (`subject_type='service'`) and scoped to the `service.http_page_*` metric family from `source_system='http_probe'`.
 - Filesystem legend includes host + mountpoint context: `${__field.labels.subject_id}: ${__field.labels.mountpoint}`.
-- Dashboard refresh defaults are aligned to collection interval (`1m`).
+- Dashboard refresh defaults follow collector cadence; slower thermal dashboards use `5m`.
 - Datasource UID remains `graphyard-influxdb` for provisioning stability.
 - Provisioning keeps obsolete-file cleanup enabled (`disableDeletion: false`), so dashboards/folders removed from `deploy/grafana/dashboards/` are deleted on the next Grafana provisioning refresh.
 
