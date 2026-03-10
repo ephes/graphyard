@@ -247,14 +247,8 @@
         "allValue": ".*",
         "current": {
           "selected": true,
-          "text": [
-            "python_podcast_show",
-            "wersdoerfer_blog"
-          ],
-          "value": [
-            "python_podcast_show",
-            "wersdoerfer_blog"
-          ]
+          "text": "All",
+          "value": ".*"
         },
         "datasource": {
           "type": "influxdb",
@@ -262,7 +256,7 @@
         },
         "definition": "SHOW TAG VALUES FROM \"graphyard_metrics\" WITH KEY = \"subject_id\" WHERE \"collector_host\" =~ /^$collector_host$/ AND \"source_instance\" =~ /^$source_instance$/ AND \"subject_type\" = 'service' AND \"source_system\" = 'http_probe' AND \"metric\" = 'service.http_page_ttfb_seconds'",
         "hide": 0,
-        "includeAll": false,
+        "includeAll": true,
         "label": "subject_id",
         "multi": true,
         "name": "subject_id",
