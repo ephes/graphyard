@@ -523,6 +523,7 @@ def test_http_json_metric_spec_emits_canonical_dimensions(db, monkeypatch):
             "subject_id": "graphyard_web",
             "source_system": "graphyard",
             "source_instance": "default",
+            "source_entity_id": "fractal_thermal_endpoint:queue_depth",
             "collector_service": "graphyard-agent",
             "collector_host": "macmini",
         },
@@ -550,6 +551,7 @@ def test_http_json_metric_spec_emits_canonical_dimensions(db, monkeypatch):
     assert point.subject_id == "graphyard_web"
     assert point.source_system == "graphyard"
     assert point.source_instance == "default"
+    assert point.source_entity_id == "fractal_thermal_endpoint:queue_depth"
     assert point.collector_service == "graphyard-agent"
     assert point.collector_host == "macmini"
     assert point.service == "mail"

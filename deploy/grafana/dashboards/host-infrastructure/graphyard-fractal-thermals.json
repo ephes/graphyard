@@ -1,0 +1,368 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [
+    {
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": false,
+      "keepTime": true,
+      "targetBlank": false,
+      "title": "Graphyard Home",
+      "type": "link",
+      "url": "/d/graphyard-home/graphyard-overview"
+    }
+  ],
+  "panels": [
+    {
+      "datasource": null,
+      "gridPos": {
+        "h": 4,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "content": "Fractal-specific host thermal view. Host-side temperatures come from `lm-sensors`; board, memory, chassis, and fan tach come from local `ipmitool`. Collection stays local to Fractal and is exposed through the cached thermal endpoint.",
+        "mode": "markdown"
+      },
+      "pluginVersion": "12.4.0",
+      "title": "Scope",
+      "type": "text"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "graphyard-influxdb"
+      },
+      "description": "Selected Fractal temperatures from the local thermal endpoint. `fractal-lm-sensors` covers CPU, GPU, and NVMe; `fractal-ipmi` covers motherboard, chipset, RAM, and chassis sensors.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 3,
+            "showPoints": "auto",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "displayName": "${__field.labels.sensor_label} (${__field.labels.source_instance})",
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 75
+              },
+              {
+                "color": "red",
+                "value": 85
+              }
+            ]
+          },
+          "unit": "celsius"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 4
+      },
+      "id": 2,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "12.4.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "graphyard-influxdb"
+          },
+          "query": "SELECT mean(\"value\") FROM \"graphyard_metrics\" WHERE $timeFilter AND \"subject_type\" = 'host' AND \"subject_id\" = 'fractal' AND \"source_system\" = 'fractal_thermal_endpoint' AND \"source_instance\" =~ /^$source_instance$/ AND \"metric\" = 'host.temperature_celsius' GROUP BY time($__interval), \"source_instance\", \"sensor_label\" fill(null)",
+          "rawQuery": true,
+          "refId": "A",
+          "resultFormat": "time_series"
+        }
+      ],
+      "title": "Fractal Temperatures",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "graphyard-influxdb"
+      },
+      "description": "Selected Fractal fan tach sensors from the local IPMI surface.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 3,
+            "showPoints": "auto",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "displayName": "${__field.labels.sensor_label}",
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 600
+              }
+            ]
+          },
+          "unit": "rpm"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 14
+      },
+      "id": 3,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "12.4.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "graphyard-influxdb"
+          },
+          "query": "SELECT mean(\"value\") FROM \"graphyard_metrics\" WHERE $timeFilter AND \"subject_type\" = 'host' AND \"subject_id\" = 'fractal' AND \"source_system\" = 'fractal_thermal_endpoint' AND \"source_instance\" =~ /^$source_instance$/ AND \"metric\" = 'host.fan_rpm' GROUP BY time($__interval), \"sensor_label\" fill(null)",
+          "rawQuery": true,
+          "refId": "A",
+          "resultFormat": "time_series"
+        }
+      ],
+      "title": "Fractal Fan RPM",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "graphyard-influxdb"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {},
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "celsius"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 22
+      },
+      "id": 4,
+      "options": {
+        "cellHeight": "sm",
+        "showHeader": true
+      },
+      "pluginVersion": "12.4.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "graphyard-influxdb"
+          },
+          "query": "SELECT last(\"value\") FROM \"graphyard_metrics\" WHERE $timeFilter AND \"subject_type\" = 'host' AND \"subject_id\" = 'fractal' AND \"source_system\" = 'fractal_thermal_endpoint' AND \"source_instance\" =~ /^$source_instance$/ AND \"metric\" = 'host.temperature_celsius' GROUP BY \"source_instance\", \"sensor_label\", \"source_entity_id\", \"sensor_class\"",
+          "rawQuery": true,
+          "refId": "A",
+          "resultFormat": "table"
+        }
+      ],
+      "title": "Latest Temperatures",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "graphyard-influxdb"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {},
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "rpm"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 30
+      },
+      "id": 5,
+      "options": {
+        "cellHeight": "sm",
+        "showHeader": true
+      },
+      "pluginVersion": "12.4.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "graphyard-influxdb"
+          },
+          "query": "SELECT last(\"value\") FROM \"graphyard_metrics\" WHERE $timeFilter AND \"subject_type\" = 'host' AND \"subject_id\" = 'fractal' AND \"source_system\" = 'fractal_thermal_endpoint' AND \"source_instance\" =~ /^$source_instance$/ AND \"metric\" = 'host.fan_rpm' GROUP BY \"source_instance\", \"sensor_label\", \"source_entity_id\", \"sensor_class\"",
+          "rawQuery": true,
+          "refId": "A",
+          "resultFormat": "table"
+        }
+      ],
+      "title": "Latest Fan RPM",
+      "type": "table"
+    }
+  ],
+  "refresh": "5m",
+  "schemaVersion": 41,
+  "tags": [
+    "graphyard",
+    "host-infrastructure",
+    "fractal"
+  ],
+  "templating": {
+    "list": [
+      {
+        "allValue": ".*",
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": ".*"
+        },
+        "datasource": {
+          "type": "influxdb",
+          "uid": "graphyard-influxdb"
+        },
+        "definition": "SHOW TAG VALUES FROM \"graphyard_metrics\" WITH KEY = \"source_instance\" WHERE \"subject_type\" = 'host' AND \"subject_id\" = 'fractal' AND \"source_system\" = 'fractal_thermal_endpoint'",
+        "hide": 0,
+        "includeAll": true,
+        "label": "source_instance",
+        "multi": false,
+        "name": "source_instance",
+        "options": [],
+        "query": "SHOW TAG VALUES FROM \"graphyard_metrics\" WITH KEY = \"source_instance\" WHERE \"subject_type\" = 'host' AND \"subject_id\" = 'fractal' AND \"source_system\" = 'fractal_thermal_endpoint'",
+        "refresh": 1,
+        "skipUrlSync": false,
+        "type": "query"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "",
+  "title": "Fractal Thermals",
+  "uid": "graphyard-fractal-thermals",
+  "version": 1
+}

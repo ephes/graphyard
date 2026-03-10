@@ -734,6 +734,7 @@ def _execute_http_json_metric_spec(
     ).strip()
     source_system = str(spec.config.get("source_system", "http")).strip()
     source_instance = str(spec.config.get("source_instance", "default")).strip()
+    source_entity_id = str(spec.config.get("source_entity_id", "")).strip()
     collector_service = str(
         spec.config.get("collector_service", service_id_raw or "graphyard-agent")
     ).strip()
@@ -801,6 +802,7 @@ def _execute_http_json_metric_spec(
             subject_id=subject_id_raw,
             source_system=source_system,
             source_instance=source_instance or "default",
+            source_entity_id=source_entity_id or None,
             collector_service=collector_service or "graphyard-agent",
             collector_host=collector_host or host_id or "external",
             host=host_id if subject_type.strip().lower() == SubjectType.HOST else None,

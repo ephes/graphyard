@@ -45,10 +45,12 @@ Graphyard includes Grafana provisioning:
   - `service-http`
 - domain dashboards:
   - `Graphyard Host Infrastructure`
+  - `Fractal Thermals`
   - `Graphyard Room Climate`
   - `Graphyard Device Thermals`
   - `Graphyard Device Network`
   - `Graphyard HTTP Page Probes`
+  - `Fractal Storage`
 
 Important compatibility note:
 
@@ -63,6 +65,9 @@ Important compatibility note:
 ### Dashboard Query Alignment (2026-03-06)
 
 - Host Infrastructure dashboard queries are host-only (`subject_type='host'`).
+- Fractal Thermals dashboard is host-only and pinned to
+  `subject_type='host'`, `subject_id='fractal'`,
+  `source_system='fractal_thermal_endpoint'`.
 - Room Climate dashboard queries are room-sensor-only (`subject_type='environment_sensor'`).
 - Device Thermals dashboard queries are infrastructure device-only (`subject_type='network_device'`).
 - Device Network dashboard queries are infrastructure device-only (`subject_type='network_device'`) and uses canonical bytes-per-second traffic metrics.

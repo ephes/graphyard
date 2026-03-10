@@ -171,6 +171,44 @@ def test_http_json_metric_spec_missing_path_sets_warning(db, monkeypatch):
     assert "metric_path not found" in spec.last_error
 
 
+def test_http_json_metric_spec_ingests_three_level_nested_value(db, monkeypatch):
+    spec = MetricCollectionSpec.objects.create(
+        name="fractal thermal nested path",
+        spec_type=MetricCollectionSpecType.HTTP_JSON_METRIC,
+        interval_seconds=300,
+        config={
+            "url": "https://example.internal/thermal",
+            "metric_path": "$.lm_sensors.cpu_tctl.value",
+            "metric_name": "host.temperature_celsius",
+            "host_id": "fractal",
+            "subject_type": "host",
+            "subject_id": "fractal",
+            "source_system": "fractal_thermal_endpoint",
+            "source_instance": "fractal-lm-sensors",
+            "source_entity_id": "lm_sensors:k10temp:Tctl",
+        },
+    )
+
+    monkeypatch.setattr(
+        "graphyard.services.httpx.Client",
+        lambda **kwargs: _FakeClient({"lm_sensors": {"cpu_tctl": {"value": 55.625}}}),
+    )
+    monkeypatch.setattr(
+        "graphyard.services.influx.write_points", lambda points: len(points)
+    )
+
+    result = run_metric_collection_specs_once()
+
+    assert result.total == 1
+    assert result.failed == 0
+    assert result.warning == 0
+    assert result.ingested == 1
+
+    spec.refresh_from_db()
+    assert spec.last_status == StatusLevel.OK
+    assert spec.last_error == ""
+
+
 def test_http_page_probe_spec_ingests_latency_metrics(db, monkeypatch):
     spec = MetricCollectionSpec.objects.create(
         name="wersdoerfer blog probe",

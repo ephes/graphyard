@@ -260,6 +260,7 @@ Example `config` JSON for an HTTP JSON metric spec:
   "metric_name": "service.queue_depth",
   "host_id": "macmini",
   "service_id": "mail",
+  "source_entity_id": "queue:depth",
   "request_timeout_seconds": 10,
   "verify_tls": true,
   "tags": {
