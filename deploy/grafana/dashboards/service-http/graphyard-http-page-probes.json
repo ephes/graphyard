@@ -247,8 +247,22 @@
         "allValue": ".*",
         "current": {
           "selected": true,
-          "text": "All",
-          "value": ".*"
+          "text": [
+            "marina_adler_homepage",
+            "python_podcast_data_science",
+            "python_podcast_show",
+            "wersdoerfer_blog",
+            "wersdoerfer_homepage",
+            "wersdoerfer_weeknotes_2025_11_03"
+          ],
+          "value": [
+            "marina_adler_homepage",
+            "python_podcast_data_science",
+            "python_podcast_show",
+            "wersdoerfer_blog",
+            "wersdoerfer_homepage",
+            "wersdoerfer_weeknotes_2025_11_03"
+          ]
         },
         "datasource": {
           "type": "influxdb",
@@ -256,7 +270,7 @@
         },
         "definition": "SHOW TAG VALUES FROM \"graphyard_metrics\" WITH KEY = \"subject_id\" WHERE \"collector_host\" =~ /^$collector_host$/ AND \"source_instance\" =~ /^$source_instance$/ AND \"subject_type\" = 'service' AND \"source_system\" = 'http_probe' AND \"metric\" = 'service.http_page_ttfb_seconds'",
         "hide": 0,
-        "includeAll": true,
+        "includeAll": false,
         "label": "subject_id",
         "multi": true,
         "name": "subject_id",
