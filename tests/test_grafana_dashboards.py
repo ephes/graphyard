@@ -155,3 +155,58 @@ def test_network_device_dashboards_are_subject_pinned(
     assert "network_device.network_receive_bytes_per_second" in combined
     assert "network_device.network_transmit_bytes_per_second" in combined
     assert "\"device_class\" = 'temperature'" in combined
+
+
+def test_room_climate_dashboard_is_environment_sensor_only() -> None:
+    dashboard_path = (
+        GRAFANA_DASHBOARDS_ROOT / "room-climate" / "graphyard-room-climate.json"
+    )
+    payload = json.loads(dashboard_path.read_text())
+
+    queries = [
+        target["query"]
+        for panel in payload["panels"]
+        for target in panel.get("targets", [])
+        if "query" in target
+    ]
+    combined = "\n".join(queries)
+    variable_names = [item["name"] for item in payload["templating"]["list"]]
+
+    assert payload["title"] == "Graphyard Room Climate"
+    assert "\"subject_type\" = 'environment_sensor'" in combined
+    assert "\"device_class\" = 'temperature'" in combined
+    assert "\"device_class\" = 'humidity'" in combined
+    assert variable_names == ["collector_host", "source_system", "subject_id"]
+
+
+def test_http_page_probes_dashboard_is_service_probe_only() -> None:
+    dashboard_path = (
+        GRAFANA_DASHBOARDS_ROOT / "service-http" / "graphyard-http-page-probes.json"
+    )
+    payload = json.loads(dashboard_path.read_text())
+
+    queries = [
+        target["query"]
+        for panel in payload["panels"]
+        for target in panel.get("targets", [])
+        if "query" in target
+    ]
+    combined = "\n".join(queries)
+    variable_names = [item["name"] for item in payload["templating"]["list"]]
+
+    assert payload["title"] == "Graphyard HTTP Page Probes"
+    assert "\"subject_type\" = 'service'" in combined
+    assert "\"source_system\" = 'http_probe'" in combined
+    assert "service.http_page_ttfb_seconds" in combined
+    assert "service.http_page_total_seconds" in combined
+    assert (
+        "service\\.http_page_(ttfb_seconds|total_seconds|status_code|success|redirect_count)"
+        in combined
+    )
+    assert "wersdoerfer_homepage" in combined
+    assert "wersdoerfer_blog" in combined
+    assert "wersdoerfer_weeknotes_2025_11_03" in combined
+    assert "python_podcast_show" in combined
+    assert "python_podcast_data_science" in combined
+    assert "marina_adler_homepage" in combined
+    assert variable_names == ["collector_host", "source_instance"]
