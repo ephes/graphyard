@@ -98,10 +98,9 @@ For Grafana in the Procfile stack:
 - datasource `Graphyard InfluxDB` is auto-provisioned
 - dashboard folders are auto-provisioned from filesystem structure:
   - folder `overview` with dashboard title `Graphyard Overview`
-  - folder `host-infrastructure` with dashboard titles `Graphyard Host Infrastructure`, `Fractal Thermals`, and `Macmini Thermals`
+  - folder `host-infrastructure` with dashboard titles `Fractal`, `Macmini`, `Marina`, `Production`, and `Staging`
   - folder `room-climate` with dashboard title `Graphyard Room Climate`
-  - folder `device-thermals` with dashboard title `Graphyard Device Thermals`
-  - folder `device-network` with dashboard title `Graphyard Device Network`
+  - folder `device-network` with dashboard titles `FRITZ!Box 7590 AX` and `USW Pro XG 8 PoE`
   - folder `service-http` with dashboard title `Graphyard HTTP Page Probes`
 - first run may take longer because Docker pulls the image
 

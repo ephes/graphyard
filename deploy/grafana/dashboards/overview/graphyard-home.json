@@ -26,9 +26,9 @@
       "includeVars": false,
       "keepTime": true,
       "targetBlank": false,
-      "title": "Host Filesystems",
+      "title": "Fractal",
       "type": "link",
-      "url": "/d/graphyard-host-infrastructure/graphyard-host-filesystems"
+      "url": "/d/graphyard-fractal-infrastructure/fractal"
     },
     {
       "asDropdown": false,
@@ -36,9 +36,59 @@
       "includeVars": false,
       "keepTime": true,
       "targetBlank": false,
-      "title": "Host Network",
+      "title": "Macmini",
       "type": "link",
-      "url": "/d/graphyard-host-network/graphyard-host-network"
+      "url": "/d/graphyard-macmini-infrastructure/macmini"
+    },
+    {
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": false,
+      "keepTime": true,
+      "targetBlank": false,
+      "title": "Production",
+      "type": "link",
+      "url": "/d/graphyard-production-infrastructure/production"
+    },
+    {
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": false,
+      "keepTime": true,
+      "targetBlank": false,
+      "title": "Staging",
+      "type": "link",
+      "url": "/d/graphyard-staging-infrastructure/staging"
+    },
+    {
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": false,
+      "keepTime": true,
+      "targetBlank": false,
+      "title": "Marina",
+      "type": "link",
+      "url": "/d/graphyard-marina-infrastructure/marina"
+    },
+    {
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": false,
+      "keepTime": true,
+      "targetBlank": false,
+      "title": "FRITZ!Box 7590 AX",
+      "type": "link",
+      "url": "/d/graphyard-fritz-box-7590-ax/fritz-box-7590-ax"
+    },
+    {
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": false,
+      "keepTime": true,
+      "targetBlank": false,
+      "title": "USW Pro XG 8 PoE",
+      "type": "link",
+      "url": "/d/graphyard-usw-pro-xg-8-poe/usw-pro-xg-8-poe"
     },
     {
       "asDropdown": false,
@@ -56,29 +106,9 @@
       "includeVars": false,
       "keepTime": true,
       "targetBlank": false,
-      "title": "Device Thermals",
+      "title": "HTTP Page Probes",
       "type": "link",
-      "url": "/d/graphyard-device-thermals/graphyard-device-thermals"
-    },
-    {
-      "asDropdown": false,
-      "icon": "external link",
-      "includeVars": false,
-      "keepTime": true,
-      "targetBlank": false,
-      "title": "Device Network",
-      "type": "link",
-      "url": "/d/graphyard-device-network/graphyard-device-network"
-    },
-    {
-      "asDropdown": false,
-      "icon": "external link",
-      "includeVars": false,
-      "keepTime": true,
-      "targetBlank": false,
-      "title": "Fractal Storage",
-      "type": "link",
-      "url": "/d/graphyard-fractal-storage/fractal-storage"
+      "url": "/d/graphyard-http-page-probes/graphyard-http-page-probes"
     },
     {
       "asDropdown": false,
@@ -102,7 +132,7 @@
       },
       "id": 1,
       "options": {
-        "content": "## Graphyard Overview\n\nQuick Access:\n- [Host Filesystems](/d/graphyard-host-infrastructure/graphyard-host-filesystems)\n- [Host Network](/d/graphyard-host-network/graphyard-host-network)\n- [Fractal Thermals](/d/graphyard-fractal-thermals/fractal-thermals)\n- [Macmini Thermals](/d/graphyard-macmini-thermals/macmini-thermals)\n- [Room Climate](/d/graphyard-room-climate/graphyard-room-climate)\n- [Device Thermals](/d/graphyard-device-thermals/graphyard-device-thermals)\n- [Device Network](/d/graphyard-device-network/graphyard-device-network)\n- [HTTP Page Probes](/d/graphyard-http-page-probes/graphyard-http-page-probes)\n- [Fractal Storage](/d/graphyard-fractal-storage/fractal-storage)\n- [Logyard Overview](/d/logyard-home/logyard-overview)\n\nTip: click **Home** in the left sidebar any time to return here.\n\nDomain boundaries:\n- **Host Filesystems**: generic host filesystem usage and latest mountpoint values\n- **Host Network**: generic host interface throughput (receive/transmit)\n- **Fractal Thermals**: Fractal-specific host temperatures and fan RPM from the local thermal endpoint\n- **Macmini Thermals**: Mac mini host temperatures and fan RPM from the local thermal endpoint\n- **Room Climate**: `environment_sensor` temperature/humidity only\n- **Device Thermals**: `network_device` temperature only\n- **Device Network**: `network_device` traffic only (for example FRITZ!Box WAN and UniFi uplinks)\n- **HTTP Page Probes**: public page latency and probe status for service-subject URLs measured from the agent host\n- **Fractal Storage**: Fractal-specific logical storage view (`rootfs`, `fast`, `tank`, USB backup drive state)\n- **Logyard Overview**: journald logs in Loki for first-look triage and service-level drilldown\n\nThis split avoids mixing filesystem, thermals, and network views across host and infrastructure-device dashboards.",
+        "content": "## Graphyard Overview\n\nQuick Access:\n- [Fractal](/d/graphyard-fractal-infrastructure/fractal)\n- [Macmini](/d/graphyard-macmini-infrastructure/macmini)\n- [Production](/d/graphyard-production-infrastructure/production)\n- [Staging](/d/graphyard-staging-infrastructure/staging)\n- [Marina](/d/graphyard-marina-infrastructure/marina)\n- [FRITZ!Box 7590 AX](/d/graphyard-fritz-box-7590-ax/fritz-box-7590-ax)\n- [USW Pro XG 8 PoE](/d/graphyard-usw-pro-xg-8-poe/usw-pro-xg-8-poe)\n- [Room Climate](/d/graphyard-room-climate/graphyard-room-climate)\n- [HTTP Page Probes](/d/graphyard-http-page-probes/graphyard-http-page-probes)\n- [Logyard Overview](/d/logyard-home/logyard-overview)\n\nTip: click **Home** in the left sidebar any time to return here.\n\nDomain boundaries:\n- **Fractal / Macmini / Production / Staging / Marina**: one dashboard per host, combining host infrastructure metrics and host-specific extras where they exist\n- **FRITZ!Box 7590 AX / USW Pro XG 8 PoE**: one dashboard per network device, combining traffic and temperatures\n- **Room Climate**: `environment_sensor` temperature/humidity only\n- **HTTP Page Probes**: public page latency and probe status for service-subject URLs measured from the agent host\n- **Logyard Overview**: journald logs in Loki for first-look triage and service-level drilldown\n\nThis layout keeps one dashboard per device instead of splitting network, thermals, storage, and host infrastructure across multiple pages.",
         "mode": "markdown"
       },
       "pluginVersion": "12.4.0",
@@ -126,6 +156,6 @@
   "timezone": "",
   "title": "Graphyard Overview",
   "uid": "graphyard-home",
-  "version": 10,
+  "version": 13,
   "weekStart": ""
 }

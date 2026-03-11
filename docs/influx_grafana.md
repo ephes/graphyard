@@ -40,18 +40,18 @@ Graphyard includes Grafana provisioning:
   - `overview`
   - `host-infrastructure`
   - `room-climate`
-  - `device-thermals`
   - `device-network`
   - `service-http`
 - domain dashboards:
-  - `Graphyard Host Infrastructure`
-  - `Fractal Thermals`
-  - `Macmini Thermals`
+  - `Fractal`
+  - `Macmini`
+  - `Marina`
+  - `Production`
+  - `Staging`
+  - `FRITZ!Box 7590 AX`
+  - `USW Pro XG 8 PoE`
   - `Graphyard Room Climate`
-  - `Graphyard Device Thermals`
-  - `Graphyard Device Network`
   - `Graphyard HTTP Page Probes`
-  - `Fractal Storage`
 
 Important compatibility note:
 
@@ -63,21 +63,36 @@ Important compatibility note:
   local Procfile dev uses `--add-host=graphyard-influxdb:host-gateway`,
   and production should attach Grafana and InfluxDB to a shared Docker network.
 
-### Dashboard Query Alignment (2026-03-06)
+### Dashboard Query Alignment (2026-03-11)
 
-- Host Infrastructure dashboard queries are host-only (`subject_type='host'`).
-- Fractal Thermals dashboard is host-only and pinned to
-  `subject_type='host'`, `subject_id='fractal'`,
-  `source_system='fractal_thermal_endpoint'`.
-- Macmini Thermals dashboard is host-only and pinned to
-  `subject_type='host'`, `subject_id='macmini'`,
-  `source_system='macmini_thermal_endpoint'`.
+- Host dashboards are host-specific and host-only (`subject_type='host'`).
+- Host dashboard CPU usage is derived from non-idle
+  `host.cpu_seconds_total` counters.
+- Host dashboards use `host.load1` for 1-minute system load.
+- Host dashboard disk throughput is derived from
+  `host.disk_read_bytes_total` / `host.disk_written_bytes_total`
+  and filters loop/partition/md/dm device series to reduce double counting.
+- Host dashboard network traffic is derived from
+  `host.network_receive_bytes_total` / `host.network_transmit_bytes_total`
+  and filters `docker0`, `lo`, and `tailscale0`.
+- Fractal and Macmini host dashboards also include host-local thermal metrics
+  from `fractal_thermal_endpoint` / `macmini_thermal_endpoint`.
+- Fractal additionally includes the logical storage view from
+  `host.storage_filesystem_used_ratio` and `host.storage_pool_used_ratio`.
+- Network-device dashboards are device-specific and use
+  `subject_type='network_device'`.
+- Network-device traffic uses canonical
+  `network_device.network_receive_bytes_per_second` /
+  `network_device.network_transmit_bytes_per_second`.
+- Network-device temperatures are pinned by `subject_id` and grouped by
+  `entity_id`.
 - Room Climate dashboard queries are room-sensor-only (`subject_type='environment_sensor'`).
-- Device Thermals dashboard queries are infrastructure device-only (`subject_type='network_device'`).
-- Device Network dashboard queries are infrastructure device-only (`subject_type='network_device'`) and uses canonical bytes-per-second traffic metrics.
 - HTTP Page Probes dashboard queries are service-only (`subject_type='service'`) and scoped to the `service.http_page_*` metric family from `source_system='http_probe'`.
-- Filesystem legend includes host + mountpoint context: `${__field.labels.subject_id}: ${__field.labels.mountpoint}`.
-- Dashboard refresh defaults follow collector cadence; slower thermal dashboards use `5m`.
+- Host filesystem panels use mountpoint-only legends:
+  `${__field.labels.mountpoint}`.
+- Device traffic panels use traffic-scope legends:
+  `${__field.name}: ${__field.labels.traffic_scope}`.
+- Dashboard refresh defaults follow collector cadence.
 - Datasource UID remains `graphyard-influxdb` for provisioning stability.
 - Provisioning keeps obsolete-file cleanup enabled (`disableDeletion: false`), so dashboards/folders removed from `deploy/grafana/dashboards/` are deleted on the next Grafana provisioning refresh.
 

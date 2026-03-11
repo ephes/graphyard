@@ -35,14 +35,14 @@
     {
       "datasource": null,
       "gridPos": {
-        "h": 4,
-        "w": 24,
         "x": 0,
-        "y": 0
+        "y": 0,
+        "w": 24,
+        "h": 4
       },
       "id": 1,
       "options": {
-        "content": "Fractal-specific host thermal view. Host-side temperatures come from `lm-sensors`; board, memory, chassis, and fan tach come from local `ipmitool`. Collection stays local to Fractal and is exposed through the cached thermal endpoint.",
+        "content": "USW Pro XG 8 PoE combined device view: uplink traffic plus Home Assistant temperature sensors for the switch.",
         "mode": "markdown"
       },
       "pluginVersion": "12.4.0",
@@ -54,7 +54,7 @@
         "type": "influxdb",
         "uid": "graphyard-influxdb"
       },
-      "description": "Selected Fractal temperatures from the local thermal endpoint. `fractal-lm-sensors` covers CPU, GPU, and NVMe; `fractal-ipmi` covers motherboard, chipset, RAM, and chassis sensors.",
+      "description": "Receive/transmit throughput for network devices using the canonical Graphyard traffic metrics.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -80,7 +80,156 @@
               "mode": "off"
             }
           },
-          "displayName": "${__field.labels.sensor_label} (${__field.labels.source_instance})",
+          "displayName": "${__field.name}: ${__field.labels.traffic_scope}",
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "bps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 4,
+        "w": 24,
+        "h": 10
+      },
+      "id": 2,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "12.4.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "graphyard-influxdb"
+          },
+          "query": "SELECT mean(\"value\") * 8 AS \"receive_bps\" FROM \"graphyard_metrics\" WHERE $timeFilter AND \"subject_type\" = 'network_device' AND \"subject_id\" = 'usw_pro_xg_8_poe' AND \"metric\" = 'network_device.network_receive_bytes_per_second' GROUP BY time($__interval), \"traffic_scope\" fill(null)",
+          "rawQuery": true,
+          "refId": "A",
+          "resultFormat": "time_series"
+        },
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "graphyard-influxdb"
+          },
+          "query": "SELECT mean(\"value\") * 8 AS \"transmit_bps\" FROM \"graphyard_metrics\" WHERE $timeFilter AND \"subject_type\" = 'network_device' AND \"subject_id\" = 'usw_pro_xg_8_poe' AND \"metric\" = 'network_device.network_transmit_bytes_per_second' GROUP BY time($__interval), \"traffic_scope\" fill(null)",
+          "rawQuery": true,
+          "refId": "B",
+          "resultFormat": "time_series"
+        }
+      ],
+      "title": "Traffic",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "graphyard-influxdb"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {},
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "bps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 14,
+        "w": 24,
+        "h": 8
+      },
+      "id": 3,
+      "options": {
+        "cellHeight": "sm",
+        "showHeader": true
+      },
+      "pluginVersion": "12.4.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "graphyard-influxdb"
+          },
+          "query": "SELECT last(\"value\") * 8 AS \"receive_bps\" FROM \"graphyard_metrics\" WHERE $timeFilter AND \"subject_type\" = 'network_device' AND \"subject_id\" = 'usw_pro_xg_8_poe' AND \"metric\" = 'network_device.network_receive_bytes_per_second' GROUP BY \"subject_id\", \"traffic_scope\", \"source_system\"",
+          "rawQuery": true,
+          "refId": "A",
+          "resultFormat": "table"
+        },
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "graphyard-influxdb"
+          },
+          "query": "SELECT last(\"value\") * 8 AS \"transmit_bps\" FROM \"graphyard_metrics\" WHERE $timeFilter AND \"subject_type\" = 'network_device' AND \"subject_id\" = 'usw_pro_xg_8_poe' AND \"metric\" = 'network_device.network_transmit_bytes_per_second' GROUP BY \"subject_id\", \"traffic_scope\", \"source_system\"",
+          "rawQuery": true,
+          "refId": "B",
+          "resultFormat": "table"
+        }
+      ],
+      "title": "Latest Traffic",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "graphyard-influxdb"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 3,
+            "showPoints": "auto",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "displayName": "${__field.labels.entity_id}",
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
@@ -104,12 +253,12 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 10,
-        "w": 24,
         "x": 0,
-        "y": 4
+        "y": 22,
+        "w": 24,
+        "h": 10
       },
-      "id": 2,
+      "id": 4,
       "options": {
         "legend": {
           "calcs": [],
@@ -129,98 +278,13 @@
             "type": "influxdb",
             "uid": "graphyard-influxdb"
           },
-          "query": "SELECT mean(\"value\") FROM \"graphyard_metrics\" WHERE $timeFilter AND \"subject_type\" = 'host' AND \"subject_id\" = 'fractal' AND \"source_system\" = 'fractal_thermal_endpoint' AND \"source_instance\" =~ /^$source_instance$/ AND \"metric\" = 'host.temperature_celsius' GROUP BY time($__interval), \"source_instance\", \"sensor_label\" fill(null)",
+          "query": "SELECT mean(\"value\") FROM \"graphyard_metrics\" WHERE $timeFilter AND \"subject_type\" = 'network_device' AND \"subject_id\" = 'usw_pro_xg_8_poe' AND \"device_class\" = 'temperature' GROUP BY time($__interval), \"entity_id\" fill(null)",
           "rawQuery": true,
           "refId": "A",
           "resultFormat": "time_series"
         }
       ],
-      "title": "Fractal Temperatures",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "influxdb",
-        "uid": "graphyard-influxdb"
-      },
-      "description": "Selected Fractal fan tach sensors from the local IPMI surface.",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "drawStyle": "line",
-            "fillOpacity": 10,
-            "lineInterpolation": "linear",
-            "lineWidth": 2,
-            "pointSize": 3,
-            "showPoints": "auto",
-            "spanNulls": true,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "displayName": "${__field.labels.sensor_label}",
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "orange",
-                "value": 600
-              }
-            ]
-          },
-          "unit": "rpm"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 24,
-        "x": 0,
-        "y": 14
-      },
-      "id": 3,
-      "options": {
-        "legend": {
-          "calcs": [],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "none"
-        }
-      },
-      "pluginVersion": "12.4.0",
-      "targets": [
-        {
-          "datasource": {
-            "type": "influxdb",
-            "uid": "graphyard-influxdb"
-          },
-          "query": "SELECT mean(\"value\") FROM \"graphyard_metrics\" WHERE $timeFilter AND \"subject_type\" = 'host' AND \"subject_id\" = 'fractal' AND \"source_system\" = 'fractal_thermal_endpoint' AND \"source_instance\" =~ /^$source_instance$/ AND \"metric\" = 'host.fan_rpm' GROUP BY time($__interval), \"sensor_label\" fill(null)",
-          "rawQuery": true,
-          "refId": "A",
-          "resultFormat": "time_series"
-        }
-      ],
-      "title": "Fractal Fan RPM",
+      "title": "Temperatures",
       "type": "timeseries"
     },
     {
@@ -246,59 +310,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 8,
-        "w": 24,
         "x": 0,
-        "y": 22
-      },
-      "id": 4,
-      "options": {
-        "cellHeight": "sm",
-        "showHeader": true
-      },
-      "pluginVersion": "12.4.0",
-      "targets": [
-        {
-          "datasource": {
-            "type": "influxdb",
-            "uid": "graphyard-influxdb"
-          },
-          "query": "SELECT last(\"value\") FROM \"graphyard_metrics\" WHERE $timeFilter AND \"subject_type\" = 'host' AND \"subject_id\" = 'fractal' AND \"source_system\" = 'fractal_thermal_endpoint' AND \"source_instance\" =~ /^$source_instance$/ AND \"metric\" = 'host.temperature_celsius' GROUP BY \"source_instance\", \"sensor_label\", \"source_entity_id\", \"sensor_class\"",
-          "rawQuery": true,
-          "refId": "A",
-          "resultFormat": "table"
-        }
-      ],
-      "title": "Latest Temperatures",
-      "type": "table"
-    },
-    {
-      "datasource": {
-        "type": "influxdb",
-        "uid": "graphyard-influxdb"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "custom": {},
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "unit": "rpm"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
+        "y": 32,
         "w": 24,
-        "x": 0,
-        "y": 30
+        "h": 8
       },
       "id": 5,
       "options": {
@@ -312,49 +327,24 @@
             "type": "influxdb",
             "uid": "graphyard-influxdb"
           },
-          "query": "SELECT last(\"value\") FROM \"graphyard_metrics\" WHERE $timeFilter AND \"subject_type\" = 'host' AND \"subject_id\" = 'fractal' AND \"source_system\" = 'fractal_thermal_endpoint' AND \"source_instance\" =~ /^$source_instance$/ AND \"metric\" = 'host.fan_rpm' GROUP BY \"source_instance\", \"sensor_label\", \"source_entity_id\", \"sensor_class\"",
+          "query": "SELECT last(\"value\") FROM \"graphyard_metrics\" WHERE $timeFilter AND \"subject_type\" = 'network_device' AND \"subject_id\" = 'usw_pro_xg_8_poe' AND \"device_class\" = 'temperature' GROUP BY \"source_system\", \"entity_id\"",
           "rawQuery": true,
           "refId": "A",
           "resultFormat": "table"
         }
       ],
-      "title": "Latest Fan RPM",
+      "title": "Latest Temperatures",
       "type": "table"
     }
   ],
-  "refresh": "5m",
+  "refresh": "1m",
   "schemaVersion": 41,
   "tags": [
     "graphyard",
-    "host-infrastructure",
-    "fractal"
+    "network_device"
   ],
   "templating": {
-    "list": [
-      {
-        "allValue": ".*",
-        "current": {
-          "selected": true,
-          "text": "All",
-          "value": ".*"
-        },
-        "datasource": {
-          "type": "influxdb",
-          "uid": "graphyard-influxdb"
-        },
-        "definition": "SHOW TAG VALUES FROM \"graphyard_metrics\" WITH KEY = \"source_instance\" WHERE \"subject_type\" = 'host' AND \"subject_id\" = 'fractal' AND \"source_system\" = 'fractal_thermal_endpoint'",
-        "hide": 0,
-        "includeAll": true,
-        "label": "source_instance",
-        "multi": false,
-        "name": "source_instance",
-        "options": [],
-        "query": "SHOW TAG VALUES FROM \"graphyard_metrics\" WITH KEY = \"source_instance\" WHERE \"subject_type\" = 'host' AND \"subject_id\" = 'fractal' AND \"source_system\" = 'fractal_thermal_endpoint'",
-        "refresh": 1,
-        "skipUrlSync": false,
-        "type": "query"
-      }
-    ]
+    "list": []
   },
   "time": {
     "from": "now-24h",
@@ -362,7 +352,8 @@
   },
   "timepicker": {},
   "timezone": "",
-  "title": "Fractal Thermals",
-  "uid": "graphyard-fractal-thermals",
-  "version": 1
+  "title": "USW Pro XG 8 PoE",
+  "uid": "graphyard-usw-pro-xg-8-poe",
+  "version": 1,
+  "weekStart": ""
 }

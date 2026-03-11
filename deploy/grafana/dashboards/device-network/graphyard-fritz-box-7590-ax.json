@@ -35,14 +35,14 @@
     {
       "datasource": null,
       "gridPos": {
-        "h": 4,
-        "w": 24,
         "x": 0,
-        "y": 0
+        "y": 0,
+        "w": 24,
+        "h": 4
       },
       "id": 1,
       "options": {
-        "content": "Mac mini host thermal view. Collection stays local to the host and uses bounded Linux sysfs reads for CPU package, NVMe, PCH, and fan RPM.",
+        "content": "FRITZ!Box combined device view: traffic plus Home Assistant temperature sensors for the router.",
         "mode": "markdown"
       },
       "pluginVersion": "12.4.0",
@@ -54,7 +54,7 @@
         "type": "influxdb",
         "uid": "graphyard-influxdb"
       },
-      "description": "Selected Mac mini temperatures from the local thermal endpoint.",
+      "description": "Receive/transmit throughput for network devices using the canonical Graphyard traffic metrics.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -80,7 +80,7 @@
               "mode": "off"
             }
           },
-          "displayName": "${__field.labels.sensor_label} (${__field.labels.source_instance})",
+          "displayName": "${__field.name}: ${__field.labels.traffic_scope}",
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
@@ -88,26 +88,18 @@
               {
                 "color": "green",
                 "value": null
-              },
-              {
-                "color": "orange",
-                "value": 75
-              },
-              {
-                "color": "red",
-                "value": 90
               }
             ]
           },
-          "unit": "celsius"
+          "unit": "bps"
         },
         "overrides": []
       },
       "gridPos": {
-        "h": 10,
-        "w": 24,
         "x": 0,
-        "y": 4
+        "y": 4,
+        "w": 24,
+        "h": 10
       },
       "id": 2,
       "options": {
@@ -129,13 +121,23 @@
             "type": "influxdb",
             "uid": "graphyard-influxdb"
           },
-          "query": "SELECT mean(\"value\") FROM \"graphyard_metrics\" WHERE $timeFilter AND \"subject_type\" = 'host' AND \"subject_id\" = 'macmini' AND \"source_system\" = 'macmini_thermal_endpoint' AND \"source_instance\" =~ /^$source_instance$/ AND \"metric\" = 'host.temperature_celsius' GROUP BY time($__interval), \"source_instance\", \"sensor_label\" fill(null)",
+          "query": "SELECT mean(\"value\") * 8 AS \"receive_bps\" FROM \"graphyard_metrics\" WHERE $timeFilter AND \"subject_type\" = 'network_device' AND \"subject_id\" = 'fritz_box_7590_ax' AND \"metric\" = 'network_device.network_receive_bytes_per_second' GROUP BY time($__interval), \"traffic_scope\" fill(null)",
           "rawQuery": true,
           "refId": "A",
           "resultFormat": "time_series"
+        },
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "graphyard-influxdb"
+          },
+          "query": "SELECT mean(\"value\") * 8 AS \"transmit_bps\" FROM \"graphyard_metrics\" WHERE $timeFilter AND \"subject_type\" = 'network_device' AND \"subject_id\" = 'fritz_box_7590_ax' AND \"metric\" = 'network_device.network_transmit_bytes_per_second' GROUP BY time($__interval), \"traffic_scope\" fill(null)",
+          "rawQuery": true,
+          "refId": "B",
+          "resultFormat": "time_series"
         }
       ],
-      "title": "Macmini Temperatures",
+      "title": "Traffic",
       "type": "timeseries"
     },
     {
@@ -143,7 +145,65 @@
         "type": "influxdb",
         "uid": "graphyard-influxdb"
       },
-      "description": "Selected Mac mini fan RPM from the local Apple SMC sysfs surface.",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {},
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "bps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 14,
+        "w": 24,
+        "h": 8
+      },
+      "id": 3,
+      "options": {
+        "cellHeight": "sm",
+        "showHeader": true
+      },
+      "pluginVersion": "12.4.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "graphyard-influxdb"
+          },
+          "query": "SELECT last(\"value\") * 8 AS \"receive_bps\" FROM \"graphyard_metrics\" WHERE $timeFilter AND \"subject_type\" = 'network_device' AND \"subject_id\" = 'fritz_box_7590_ax' AND \"metric\" = 'network_device.network_receive_bytes_per_second' GROUP BY \"subject_id\", \"traffic_scope\", \"source_system\"",
+          "rawQuery": true,
+          "refId": "A",
+          "resultFormat": "table"
+        },
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "graphyard-influxdb"
+          },
+          "query": "SELECT last(\"value\") * 8 AS \"transmit_bps\" FROM \"graphyard_metrics\" WHERE $timeFilter AND \"subject_type\" = 'network_device' AND \"subject_id\" = 'fritz_box_7590_ax' AND \"metric\" = 'network_device.network_transmit_bytes_per_second' GROUP BY \"subject_id\", \"traffic_scope\", \"source_system\"",
+          "rawQuery": true,
+          "refId": "B",
+          "resultFormat": "table"
+        }
+      ],
+      "title": "Latest Traffic",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "graphyard-influxdb"
+      },
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -169,7 +229,7 @@
               "mode": "off"
             }
           },
-          "displayName": "${__field.labels.sensor_label}",
+          "displayName": "${__field.labels.entity_id}",
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
@@ -180,21 +240,25 @@
               },
               {
                 "color": "orange",
-                "value": 1800
+                "value": 75
+              },
+              {
+                "color": "red",
+                "value": 85
               }
             ]
           },
-          "unit": "rpm"
+          "unit": "celsius"
         },
         "overrides": []
       },
       "gridPos": {
-        "h": 8,
-        "w": 24,
         "x": 0,
-        "y": 14
+        "y": 22,
+        "w": 24,
+        "h": 10
       },
-      "id": 3,
+      "id": 4,
       "options": {
         "legend": {
           "calcs": [],
@@ -214,13 +278,13 @@
             "type": "influxdb",
             "uid": "graphyard-influxdb"
           },
-          "query": "SELECT mean(\"value\") FROM \"graphyard_metrics\" WHERE $timeFilter AND \"subject_type\" = 'host' AND \"subject_id\" = 'macmini' AND \"source_system\" = 'macmini_thermal_endpoint' AND \"source_instance\" =~ /^$source_instance$/ AND \"metric\" = 'host.fan_rpm' GROUP BY time($__interval), \"sensor_label\" fill(null)",
+          "query": "SELECT mean(\"value\") FROM \"graphyard_metrics\" WHERE $timeFilter AND \"subject_type\" = 'network_device' AND \"subject_id\" = 'fritz_box_7590_ax' AND \"device_class\" = 'temperature' GROUP BY time($__interval), \"entity_id\" fill(null)",
           "rawQuery": true,
           "refId": "A",
           "resultFormat": "time_series"
         }
       ],
-      "title": "Macmini Fan RPM",
+      "title": "Temperatures",
       "type": "timeseries"
     },
     {
@@ -246,59 +310,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 8,
-        "w": 24,
         "x": 0,
-        "y": 22
-      },
-      "id": 4,
-      "options": {
-        "cellHeight": "sm",
-        "showHeader": true
-      },
-      "pluginVersion": "12.4.0",
-      "targets": [
-        {
-          "datasource": {
-            "type": "influxdb",
-            "uid": "graphyard-influxdb"
-          },
-          "query": "SELECT last(\"value\") FROM \"graphyard_metrics\" WHERE $timeFilter AND \"subject_type\" = 'host' AND \"subject_id\" = 'macmini' AND \"source_system\" = 'macmini_thermal_endpoint' AND \"source_instance\" =~ /^$source_instance$/ AND \"metric\" = 'host.temperature_celsius' GROUP BY \"source_instance\", \"sensor_label\", \"source_entity_id\", \"sensor_class\"",
-          "rawQuery": true,
-          "refId": "A",
-          "resultFormat": "table"
-        }
-      ],
-      "title": "Latest Temperatures",
-      "type": "table"
-    },
-    {
-      "datasource": {
-        "type": "influxdb",
-        "uid": "graphyard-influxdb"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "custom": {},
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "unit": "rpm"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
+        "y": 32,
         "w": 24,
-        "x": 0,
-        "y": 30
+        "h": 8
       },
       "id": 5,
       "options": {
@@ -312,49 +327,24 @@
             "type": "influxdb",
             "uid": "graphyard-influxdb"
           },
-          "query": "SELECT last(\"value\") FROM \"graphyard_metrics\" WHERE $timeFilter AND \"subject_type\" = 'host' AND \"subject_id\" = 'macmini' AND \"source_system\" = 'macmini_thermal_endpoint' AND \"source_instance\" =~ /^$source_instance$/ AND \"metric\" = 'host.fan_rpm' GROUP BY \"source_instance\", \"sensor_label\", \"source_entity_id\", \"sensor_class\"",
+          "query": "SELECT last(\"value\") FROM \"graphyard_metrics\" WHERE $timeFilter AND \"subject_type\" = 'network_device' AND \"subject_id\" = 'fritz_box_7590_ax' AND \"device_class\" = 'temperature' GROUP BY \"source_system\", \"entity_id\"",
           "rawQuery": true,
           "refId": "A",
           "resultFormat": "table"
         }
       ],
-      "title": "Latest Fan RPM",
+      "title": "Latest Temperatures",
       "type": "table"
     }
   ],
-  "refresh": "5m",
+  "refresh": "1m",
   "schemaVersion": 41,
   "tags": [
     "graphyard",
-    "host-infrastructure",
-    "macmini"
+    "network_device"
   ],
   "templating": {
-    "list": [
-      {
-        "allValue": ".*",
-        "current": {
-          "selected": true,
-          "text": "All",
-          "value": ".*"
-        },
-        "datasource": {
-          "type": "influxdb",
-          "uid": "graphyard-influxdb"
-        },
-        "definition": "SHOW TAG VALUES FROM \"graphyard_metrics\" WITH KEY = \"source_instance\" WHERE \"subject_type\" = 'host' AND \"subject_id\" = 'macmini' AND \"source_system\" = 'macmini_thermal_endpoint'",
-        "hide": 0,
-        "includeAll": true,
-        "label": "source_instance",
-        "multi": false,
-        "name": "source_instance",
-        "options": [],
-        "query": "SHOW TAG VALUES FROM \"graphyard_metrics\" WITH KEY = \"source_instance\" WHERE \"subject_type\" = 'host' AND \"subject_id\" = 'macmini' AND \"source_system\" = 'macmini_thermal_endpoint'",
-        "refresh": 1,
-        "skipUrlSync": false,
-        "type": "query"
-      }
-    ]
+    "list": []
   },
   "time": {
     "from": "now-24h",
@@ -362,8 +352,8 @@
   },
   "timepicker": {},
   "timezone": "",
-  "title": "Macmini Thermals",
-  "uid": "graphyard-macmini-thermals",
+  "title": "FRITZ!Box 7590 AX",
+  "uid": "graphyard-fritz-box-7590-ax",
   "version": 1,
   "weekStart": ""
 }
