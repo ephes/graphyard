@@ -76,6 +76,16 @@
       "includeVars": false,
       "keepTime": true,
       "targetBlank": false,
+      "title": "Studio",
+      "type": "link",
+      "url": "/d/graphyard-studio-infrastructure/studio"
+    },
+    {
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": false,
+      "keepTime": true,
+      "targetBlank": false,
       "title": "FRITZ!Box 7590 AX",
       "type": "link",
       "url": "/d/graphyard-fritz-box-7590-ax/fritz-box-7590-ax"
@@ -132,7 +142,7 @@
       },
       "id": 1,
       "options": {
-        "content": "## Graphyard Overview\n\nQuick Access:\n- [Fractal](/d/graphyard-fractal-infrastructure/fractal)\n- [Macmini](/d/graphyard-macmini-infrastructure/macmini)\n- [Production](/d/graphyard-production-infrastructure/production)\n- [Staging](/d/graphyard-staging-infrastructure/staging)\n- [Marina](/d/graphyard-marina-infrastructure/marina)\n- [FRITZ!Box 7590 AX](/d/graphyard-fritz-box-7590-ax/fritz-box-7590-ax)\n- [USW Pro XG 8 PoE](/d/graphyard-usw-pro-xg-8-poe/usw-pro-xg-8-poe)\n- [Room Climate](/d/graphyard-room-climate/graphyard-room-climate)\n- [HTTP Page Probes](/d/graphyard-http-page-probes/graphyard-http-page-probes)\n- [Logyard Overview](/d/logyard-home/logyard-overview)\n\nTip: click **Home** in the left sidebar any time to return here.\n\nDomain boundaries:\n- **Fractal / Macmini / Production / Staging / Marina**: one dashboard per host, combining host infrastructure metrics and host-specific extras where they exist\n- **FRITZ!Box 7590 AX / USW Pro XG 8 PoE**: one dashboard per network device, combining traffic and temperatures\n- **Room Climate**: `environment_sensor` temperature/humidity only\n- **HTTP Page Probes**: public page latency and probe status for service-subject URLs measured from the agent host\n- **Logyard Overview**: journald logs in Loki for first-look triage and service-level drilldown\n\nThis layout keeps one dashboard per device instead of splitting network, thermals, storage, and host infrastructure across multiple pages.",
+        "content": "## Graphyard Overview\n\nQuick Access:\n- [Fractal](/d/graphyard-fractal-infrastructure/fractal)\n- [Macmini](/d/graphyard-macmini-infrastructure/macmini)\n- [Production](/d/graphyard-production-infrastructure/production)\n- [Staging](/d/graphyard-staging-infrastructure/staging)\n- [Marina](/d/graphyard-marina-infrastructure/marina)\n- [Studio](/d/graphyard-studio-infrastructure/studio)\n- [FRITZ!Box 7590 AX](/d/graphyard-fritz-box-7590-ax/fritz-box-7590-ax)\n- [USW Pro XG 8 PoE](/d/graphyard-usw-pro-xg-8-poe/usw-pro-xg-8-poe)\n- [Room Climate](/d/graphyard-room-climate/graphyard-room-climate)\n- [HTTP Page Probes](/d/graphyard-http-page-probes/graphyard-http-page-probes)\n- [Logyard Overview](/d/logyard-home/logyard-overview)\n\nTip: click **Home** in the left sidebar any time to return here.\n\nDomain boundaries:\n- **Fractal / Macmini / Production / Staging / Marina / Studio**: one dashboard per host, combining host infrastructure metrics and host-specific extras where they exist\n- **FRITZ!Box 7590 AX / USW Pro XG 8 PoE**: one dashboard per network device, combining traffic and temperatures\n- **Room Climate**: `environment_sensor` temperature/humidity only\n- **HTTP Page Probes**: public page latency and probe status for service-subject URLs measured from the agent host\n- **Logyard Overview**: journald logs in Loki for first-look triage and service-level drilldown\n\nThis layout keeps one dashboard per device instead of splitting network, thermals, storage, and host infrastructure across multiple pages.",
         "mode": "markdown"
       },
       "pluginVersion": "12.4.0",
@@ -156,6 +166,6 @@
   "timezone": "",
   "title": "Graphyard Overview",
   "uid": "graphyard-home",
-  "version": 13,
+  "version": 14,
   "weekStart": ""
 }

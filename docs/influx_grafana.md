@@ -48,6 +48,7 @@ Graphyard includes Grafana provisioning:
   - `Marina`
   - `Production`
   - `Staging`
+  - `Studio`
   - `FRITZ!Box 7590 AX`
   - `USW Pro XG 8 PoE`
   - `Graphyard Room Climate`
