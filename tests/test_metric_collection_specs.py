@@ -7,8 +7,18 @@ from graphyard.services import run_metric_collection_specs_once
 
 
 class _FakeResponse:
-    def __init__(self, payload: object) -> None:
+    def __init__(
+        self,
+        payload: object,
+        *,
+        status_code: int = 200,
+        text: str = "",
+        headers: dict[str, str] | None = None,
+    ) -> None:
         self._payload = payload
+        self.status_code = status_code
+        self.text = text
+        self.headers = headers or {}
 
     def raise_for_status(self) -> None:
         return None
@@ -82,9 +92,30 @@ class _FakePageProbeClient:
 
 
 class _FakeUnifiClient:
-    def __init__(self, *, login_payload: object, device_payload: object) -> None:
+    def __init__(
+        self,
+        *,
+        login_payload: object,
+        device_payload: object,
+        login_status_code: int = 200,
+        login_text: str = "",
+        login_headers: dict[str, str] | None = None,
+        auth_login_payload: object | None = None,
+        auth_login_status_code: int = 404,
+        auth_login_text: str = "",
+        auth_login_headers: dict[str, str] | None = None,
+        capture: dict[str, object] | None = None,
+    ) -> None:
         self._login_payload = login_payload
         self._device_payload = device_payload
+        self._login_status_code = login_status_code
+        self._login_text = login_text
+        self._login_headers = login_headers or {}
+        self._auth_login_payload = auth_login_payload
+        self._auth_login_status_code = auth_login_status_code
+        self._auth_login_text = auth_login_text
+        self._auth_login_headers = auth_login_headers or {}
+        self._capture = capture if capture is not None else {"posts": [], "gets": []}
 
     def __enter__(self) -> _FakeUnifiClient:
         return self
@@ -93,11 +124,27 @@ class _FakeUnifiClient:
         del exc_type, exc, tb
 
     def post(self, url: str, **kwargs) -> _FakeResponse:
-        del url, kwargs
-        return _FakeResponse(self._login_payload)
+        del kwargs
+        self._capture.setdefault("posts", []).append(url)
+        if url.endswith("/api/auth/login"):
+            return _FakeResponse(
+                self._auth_login_payload
+                if self._auth_login_payload is not None
+                else {"meta": {"rc": "error", "msg": "unexpected auth login"}},
+                status_code=self._auth_login_status_code,
+                text=self._auth_login_text,
+                headers=self._auth_login_headers,
+            )
+        return _FakeResponse(
+            self._login_payload,
+            status_code=self._login_status_code,
+            text=self._login_text,
+            headers=self._login_headers,
+        )
 
     def get(self, url: str, **kwargs) -> _FakeResponse:
-        del kwargs
+        self._capture.setdefault("gets", []).append(url)
+        self._capture.setdefault("get_headers", []).append(kwargs.get("headers", {}))
         if url.endswith("/stat/device"):
             return _FakeResponse(self._device_payload)
         return _FakeResponse(self._login_payload)
@@ -613,6 +660,7 @@ def test_unifi_device_traffic_spec_ingests_uplink_rates(db, monkeypatch):
         },
     )
 
+    client_capture: dict[str, object] = {"posts": [], "gets": []}
     monkeypatch.setattr(
         "graphyard.services.httpx.Client",
         lambda **kwargs: _FakeUnifiClient(
@@ -636,6 +684,7 @@ def test_unifi_device_traffic_spec_ingests_uplink_rates(db, monkeypatch):
                     }
                 ],
             },
+            capture=client_capture,
         ),
     )
     captured: dict[str, list[object]] = {"points": []}
@@ -656,6 +705,8 @@ def test_unifi_device_traffic_spec_ingests_uplink_rates(db, monkeypatch):
 
     receive_point = captured["points"][0]
     transmit_point = captured["points"][1]
+    assert client_capture["posts"] == ["https://unifi.local/api/login"]
+    assert client_capture["gets"] == ["https://unifi.local/api/s/default/stat/device"]
     assert receive_point.metric == "network_device.network_receive_bytes_per_second"
     assert receive_point.subject_id == "usw_pro_xg_8_poe"
     assert receive_point.tags["traffic_direction"] == "receive"
@@ -667,3 +718,194 @@ def test_unifi_device_traffic_spec_ingests_uplink_rates(db, monkeypatch):
 
     spec.refresh_from_db()
     assert spec.last_status == StatusLevel.OK
+
+
+def test_unifi_device_traffic_spec_falls_back_to_unifi_os_auth(db, monkeypatch):
+    spec = MetricCollectionSpec.objects.create(
+        name="unifi usw traffic",
+        spec_type=MetricCollectionSpecType.UNIFI_DEVICE_TRAFFIC,
+        interval_seconds=60,
+        config={
+            "base_url": "https://unifi-os.local",
+            "username": "homeassistant",
+            "password": "secret",
+            "site_id": "default",
+            "device_name": "USW Pro XG 8 PoE",
+            "interface_selector": "uplink",
+            "subject_id": "usw_pro_xg_8_poe",
+            "verify_tls": False,
+        },
+    )
+
+    client_capture: dict[str, object] = {"posts": [], "gets": []}
+    monkeypatch.setattr(
+        "graphyard.services.httpx.Client",
+        lambda **kwargs: _FakeUnifiClient(
+            login_payload={"meta": {"rc": "error", "msg": "api.err.Invalid"}},
+            login_status_code=400,
+            login_text='{"meta":{"rc":"error","msg":"api.err.Invalid"},"data":[]}',
+            auth_login_payload={"meta": {"rc": "ok"}, "data": []},
+            auth_login_status_code=200,
+            auth_login_headers={"x-csrf-token": "csrf-123"},
+            device_payload={
+                "meta": {"rc": "ok"},
+                "data": [
+                    {
+                        "name": "USW Pro XG 8 PoE",
+                        "mac": "70:49:a2:21:53:45",
+                        "uplink": {
+                            "name": "eth0",
+                            "port_idx": 10,
+                            "rx_bytes-r": 12.5,
+                            "tx_bytes-r": 4.25,
+                        },
+                    }
+                ],
+            },
+            capture=client_capture,
+        ),
+    )
+    monkeypatch.setattr(
+        "graphyard.services.influx.write_points", lambda points: len(points)
+    )
+
+    result = run_metric_collection_specs_once()
+
+    assert result.failed == 0
+    assert result.ingested == 2
+    assert client_capture["posts"] == [
+        "https://unifi-os.local/api/login",
+        "https://unifi-os.local/api/auth/login",
+    ]
+    assert client_capture["gets"] == [
+        "https://unifi-os.local/proxy/network/api/s/default/stat/device"
+    ]
+    assert client_capture["get_headers"] == [
+        {"Accept": "application/json", "x-csrf-token": "csrf-123"}
+    ]
+
+    spec.refresh_from_db()
+    assert spec.last_status == StatusLevel.OK
+    assert spec.last_error == ""
+
+
+def test_unifi_device_traffic_spec_reports_login_response_body(db, monkeypatch):
+    spec = MetricCollectionSpec.objects.create(
+        name="unifi usw traffic",
+        spec_type=MetricCollectionSpecType.UNIFI_DEVICE_TRAFFIC,
+        interval_seconds=60,
+        config={
+            "base_url": "https://unifi.local",
+            "username": "homeassistant",
+            "password": "secret",
+            "site_id": "default",
+            "device_name": "USW Pro XG 8 PoE",
+            "interface_selector": "uplink",
+            "subject_id": "usw_pro_xg_8_poe",
+            "verify_tls": False,
+            "auth_mode": "legacy",
+        },
+    )
+
+    monkeypatch.setattr(
+        "graphyard.services.httpx.Client",
+        lambda **kwargs: _FakeUnifiClient(
+            login_payload={"meta": {"rc": "error", "msg": "api.err.Invalid"}},
+            login_status_code=400,
+            login_text='{"meta":{"rc":"error","msg":"api.err.Invalid"},"data":[]}',
+            device_payload={"meta": {"rc": "ok"}, "data": []},
+        ),
+    )
+    monkeypatch.setattr(
+        "graphyard.services.influx.write_points", lambda points: len(points)
+    )
+
+    result = run_metric_collection_specs_once()
+
+    assert result.failed == 1
+    spec.refresh_from_db()
+    assert spec.last_status == StatusLevel.CRITICAL
+    assert "/api/login returned HTTP 400" in spec.last_error
+    assert "api.err.Invalid" in spec.last_error
+
+
+def test_unifi_device_traffic_spec_redacts_login_response_body(db, monkeypatch):
+    spec = MetricCollectionSpec.objects.create(
+        name="unifi usw traffic",
+        spec_type=MetricCollectionSpecType.UNIFI_DEVICE_TRAFFIC,
+        interval_seconds=60,
+        config={
+            "base_url": "https://unifi.local",
+            "username": "homeassistant",
+            "password": "secret",
+            "site_id": "default",
+            "device_name": "USW Pro XG 8 PoE",
+            "interface_selector": "uplink",
+            "subject_id": "usw_pro_xg_8_poe",
+            "verify_tls": False,
+            "auth_mode": "legacy",
+        },
+    )
+
+    monkeypatch.setattr(
+        "graphyard.services.httpx.Client",
+        lambda **kwargs: _FakeUnifiClient(
+            login_payload={"meta": {"rc": "error", "msg": "api.err.Invalid"}},
+            login_status_code=400,
+            login_text='{"username":"homeassistant","password":"secret"}',
+            device_payload={"meta": {"rc": "ok"}, "data": []},
+        ),
+    )
+    monkeypatch.setattr(
+        "graphyard.services.influx.write_points", lambda points: len(points)
+    )
+
+    result = run_metric_collection_specs_once()
+
+    assert result.failed == 1
+    spec.refresh_from_db()
+    assert "homeassistant" not in spec.last_error
+    assert "secret" not in spec.last_error
+    assert "<redacted>" in spec.last_error
+
+
+def test_unifi_device_traffic_spec_keeps_short_values_from_over_redacting(
+    db, monkeypatch
+):
+    spec = MetricCollectionSpec.objects.create(
+        name="unifi usw traffic",
+        spec_type=MetricCollectionSpecType.UNIFI_DEVICE_TRAFFIC,
+        interval_seconds=60,
+        config={
+            "base_url": "https://unifi.local",
+            "username": "a",
+            "password": "secret",
+            "site_id": "default",
+            "device_name": "USW Pro XG 8 PoE",
+            "interface_selector": "uplink",
+            "subject_id": "usw_pro_xg_8_poe",
+            "verify_tls": False,
+            "auth_mode": "legacy",
+        },
+    )
+
+    monkeypatch.setattr(
+        "graphyard.services.httpx.Client",
+        lambda **kwargs: _FakeUnifiClient(
+            login_payload={"meta": {"rc": "error", "msg": "api.err.Invalid"}},
+            login_status_code=400,
+            login_text='{"msg":"api.err.Invalid","username":"a","password":"secret"}',
+            device_payload={"meta": {"rc": "ok"}, "data": []},
+        ),
+    )
+    monkeypatch.setattr(
+        "graphyard.services.influx.write_points", lambda points: len(points)
+    )
+
+    result = run_metric_collection_specs_once()
+
+    assert result.failed == 1
+    spec.refresh_from_db()
+    assert "api.err.Invalid" in spec.last_error
+    assert "secret" not in spec.last_error
+    assert '"password":"<redacted>"' in spec.last_error

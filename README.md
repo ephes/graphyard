@@ -320,6 +320,14 @@ Example `config` JSON for a UniFi device traffic spec:
 }
 ```
 
+By default, UniFi auth uses `auth_mode=auto`: Graphyard first tries the classic
+Network Application flow (`POST /api/login`, then `/api/s/<site>/stat/device`)
+and falls back to the UniFi OS flow (`POST /api/auth/login`, then
+`/proxy/network/api/s/<site>/stat/device`). Set `auth_mode` to `legacy` or
+`unifi_os` only when an installation needs to pin one flow.
+Login and device-fetch failures record the endpoint, HTTP status, and a short
+non-secret response summary in the spec `last_error`.
+
 Collected points are written by the long-running agent to InfluxDB and update host/service registry metadata.
 `host_id`/`service_id` remain supported for migration compatibility.
 Write-path behavior is partial-success: invalid points are rejected per-point, while valid points in the

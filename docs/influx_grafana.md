@@ -126,10 +126,15 @@ Typical conventions:
 
 The env-scan collector spec fetches `/api/states` once per run and extracts all matching sensors in one pass.
 
-UniFi device traffic specs log in to the local controller, fetch `/api/s/<site>/stat/device`,
-and emit canonical `network_device.network_receive_bytes_per_second` /
+UniFi device traffic specs log in to the local controller and emit canonical
+`network_device.network_receive_bytes_per_second` /
 `network_device.network_transmit_bytes_per_second` metrics with tags such as
 `traffic_direction`, `traffic_scope`, `port_idx`, and `port_name`.
+The default `auth_mode=auto` tries the classic Network Application path
+(`POST /api/login`, then `/api/s/<site>/stat/device`) and falls back to the
+UniFi OS path (`POST /api/auth/login`, then
+`/proxy/network/api/s/<site>/stat/device`). Collector failures include the
+endpoint, HTTP status, and a short response summary in `last_error`.
 
 HTTP page probe specs fetch public pages with `GET` from the Graphyard agent host
 and emit bounded service-subject metrics:

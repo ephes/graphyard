@@ -1101,6 +1101,112 @@ def _resolve_unifi_interface_stats(
     raise ValueError(f"unsupported interface_selector: {selector}")
 
 
+def _unifi_response_summary(
+    resp: httpx.Response,
+    *,
+    redactions: tuple[str, ...] = (),
+) -> str:
+    text = resp.text
+    if not text:
+        return ""
+    for value in redactions:
+        # Avoid making short/common usernames unreadable; password fields in JSON
+        # bodies are still redacted structurally below.
+        if value and len(value) >= 4:
+            text = text.replace(value, "<redacted>")
+    text = re.sub(
+        r'("password"\s*:\s*")[^"]*(")',
+        r"\1<redacted>\2",
+        text,
+        flags=re.IGNORECASE,
+    )
+    return " ".join(text.split())[:240]
+
+
+def _unifi_response_error(
+    resp: httpx.Response,
+    *,
+    endpoint: str,
+    redactions: tuple[str, ...] = (),
+) -> str:
+    summary = _unifi_response_summary(resp, redactions=redactions)
+    message = f"{endpoint} returned HTTP {resp.status_code}"
+    if summary:
+        message = f"{message}: {summary}"
+    return message
+
+
+def _unifi_login_response_ok(resp: httpx.Response) -> bool:
+    if not 200 <= resp.status_code < 300:
+        return False
+
+    try:
+        payload = resp.json()
+    except ValueError:
+        return True
+
+    if not isinstance(payload, dict):
+        return True
+    meta = payload.get("meta")
+    if not isinstance(meta, dict):
+        return True
+    return str(meta.get("rc", "ok")).lower() == "ok"
+
+
+def _login_to_unifi(
+    client: httpx.Client,
+    *,
+    base_url: str,
+    username: str,
+    password: str,
+    auth_mode: str,
+) -> tuple[str, dict[str, str]]:
+    attempts: list[tuple[str, str, str, dict[str, object]]] = []
+    if auth_mode in {"auto", "legacy"}:
+        attempts.append(
+            (
+                "legacy",
+                "/api/login",
+                "/api",
+                {"username": username, "password": password, "remember": True},
+            )
+        )
+    if auth_mode in {"auto", "unifi_os"}:
+        attempts.append(
+            (
+                "unifi_os",
+                "/api/auth/login",
+                "/proxy/network/api",
+                {"username": username, "password": password, "remember": True},
+            )
+        )
+
+    if not attempts:
+        raise ValueError(f"unsupported UniFi auth_mode: {auth_mode}")
+
+    headers = {
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+    }
+    errors: list[str] = []
+    for mode_name, login_path, api_prefix, payload in attempts:
+        login_resp = client.post(
+            f"{base_url}{login_path}", json=payload, headers=headers
+        )
+        if _unifi_login_response_ok(login_resp):
+            csrf_token = login_resp.headers.get("x-csrf-token", "").strip()
+            request_headers = {"Accept": "application/json"}
+            if csrf_token:
+                request_headers["x-csrf-token"] = csrf_token
+            return api_prefix, request_headers
+        errors.append(
+            f"{mode_name} "
+            f"{_unifi_response_error(login_resp, endpoint=login_path, redactions=(username, password))}"
+        )
+
+    raise ValueError("UniFi login failed; attempts: " + "; ".join(errors))
+
+
 def _execute_unifi_device_traffic_spec(
     spec: MetricCollectionSpec,
 ) -> tuple[str, int, int, str]:
@@ -1131,6 +1237,7 @@ def _execute_unifi_device_traffic_spec(
     collector_host = str(spec.config.get("collector_host", "macmini")).strip()
     timeout_seconds = int(spec.config.get("request_timeout_seconds", 10))
     verify_tls = bool(spec.config.get("verify_tls", True))
+    auth_mode = str(spec.config.get("auth_mode", "auto")).strip().lower() or "auto"
     receive_metric_name = str(
         spec.config.get(
             "receive_metric_name", "network_device.network_receive_bytes_per_second"
@@ -1165,22 +1272,26 @@ def _execute_unifi_device_traffic_spec(
             verify=verify_tls,
             follow_redirects=True,
         ) as client:
-            login_resp = client.post(
-                f"{base_url}/api/login",
-                json={
-                    "username": username,
-                    "password": password,
-                    "remember": True,
-                },
-                headers={"Accept": "application/json"},
+            api_prefix, request_headers = _login_to_unifi(
+                client,
+                base_url=base_url,
+                username=username,
+                password=password,
+                auth_mode=auth_mode,
             )
-            login_resp.raise_for_status()
 
             resp = client.get(
-                f"{base_url}/api/s/{site_id}/stat/device",
-                headers={"Accept": "application/json"},
+                f"{base_url}{api_prefix}/s/{site_id}/stat/device",
+                headers=request_headers,
             )
-            resp.raise_for_status()
+            if not 200 <= resp.status_code < 300:
+                raise ValueError(
+                    _unifi_response_error(
+                        resp,
+                        endpoint=f"{api_prefix}/s/{site_id}/stat/device",
+                        redactions=(username, password),
+                    )
+                )
             payload = resp.json()
 
         if not isinstance(payload, dict):
