@@ -15,7 +15,7 @@ lint:
 
 typecheck:
     uv run mypy
-    uv run mypy --check-untyped-defs scripts/inventory_transport_probe.py
+    uv run mypy --check-untyped-defs scripts/inventory_transport_probe.py scripts/inventory_sender_probe.py
 
 test:
     uv run pytest
@@ -44,3 +44,8 @@ deploy:
     fi
     cd {{OPS_CONTROL}}
     PROJECTS_ROOT="$projects_root" just deploy graphyard {{HOST}}
+
+# Opt-in direct HTTPS sender contract; no Vector or production database involved.
+[positional-arguments]
+test-inventory-sender *ARGS:
+    uv run python scripts/inventory_sender_probe.py "$@"

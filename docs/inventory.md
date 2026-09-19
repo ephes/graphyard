@@ -213,3 +213,36 @@ exists, so neither change is needed. The actual Just recipe passed argument-forw
 checks both without arguments and with a filename containing spaces on macOS.
 Review bundles were complete and unredacted. This is an advisory closure, not a
 CLEAN verdict or transport acceptance: the intermittent Vector stall remains open.
+
+## Direct sender integration (preferred inventory transport)
+
+The local inventory path now has a source-run stdlib HTTPS sender in the paired
+ops-library checkout (`roles/software_estate/files/send.py`). Existing Vector log
+and metric routes remain unchanged. Production inventory deployment and weekly
+local scheduling are separate rollout steps; no new service is installed here.
+
+Run `just test-inventory-sender` to exercise that sender against real Graphyard
+WSGI routes in a fresh private SQLite FULL database on loopback. It never loads
+the normal application settings or `.env`, never touches an existing DB, and
+requires no Vector binary. `--library /path/to/ops-library` selects the source.
+The probe uses synthetic reports and short-lived local credentials. It removes
+its credential file and stops its listeners on completion, retaining private
+`result.json` and DB artifacts under the printed temporary directory.
+This new probe records `listeners_stopped` for its own listener threads; sender
+subprocesses are awaited (and killed/reaped by `subprocess.run` on timeout).
+The older Vector probe retains its existing `processes_stopped` field.
+
+Coverage includes >5 MiB Unicode reports, a real 503 rejection followed by a new
+sender process, a lost reply after commit followed by idempotent replay, delayed
+snapshots/category errors, package removal, host-binding rejection and credential
+revocation. The retry test first verifies persistent backoff, then advances only
+its private fixture's eligibility time rather than waiting an hour. The sender's
+ops-library tests additionally exercise 429, invalid acknowledgments, TLS,
+process termination, capacity, file permissions and concurrent invocations.
+
+The sender removes a report only after HTTP 200 with `status: stored`, matching
+`snapshot_id` and boolean `duplicate`. Both first delivery and duplicate delivery
+use this contract. Rejected reports remain on disk and do not obstruct other
+eligible reports; network/429/5xx retries are deferred persistently. It sends no
+commands and has no SSH functionality. The earlier Vector probe remains available
+as a diagnostic for its unresolved inventory-specific low-traffic stall.
