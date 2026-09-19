@@ -86,6 +86,7 @@
 <main>
   <div class="topbar">
     <h1>Graphyard</h1>
+      <a href="{% url 'graphyard:inventory_index' %}">Software inventory</a>
     <div class="user-nav">
       <span>{{ request.user.username }}</span>
       <form action="{% url 'graphyard:logout' %}" method="post">

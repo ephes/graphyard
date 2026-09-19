@@ -289,3 +289,62 @@ class PipelineHeartbeat(models.Model):
 
     def __str__(self) -> str:
         return self.name
+
+
+class InventoryHost(models.Model):
+    """Explicit enrollment; absence of reports must remain visible."""
+
+    host = models.OneToOneField(HostRegistry, on_delete=models.PROTECT)
+    warning_after_seconds = models.PositiveIntegerField(default=172800)
+    # Sleeping laptops still show age but do not generate freshness alerts.
+    alert_when_stale = models.BooleanField(default=True)
+
+
+class InventoryCredential(models.Model):
+    host = models.ForeignKey(InventoryHost, on_delete=models.CASCADE)
+    digest = models.CharField(max_length=64)
+    enabled = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+
+class InventorySnapshot(models.Model):
+    host = models.ForeignKey(InventoryHost, on_delete=models.PROTECT)
+    snapshot_id = models.UUIDField()
+    observed_at = models.DateTimeField()
+    received_at = models.DateTimeField(auto_now_add=True)
+    digest = models.CharField(max_length=64)
+    report = models.JSONField()
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["host", "snapshot_id"], name="inventory_snapshot_identity"
+            )
+        ]
+        indexes = [
+            models.Index(fields=["host", "observed_at"], name="inventory_host_time")
+        ]
+
+
+class InventoryCategory(models.Model):
+    host = models.ForeignKey(InventoryHost, on_delete=models.CASCADE)
+    name = models.CharField(max_length=32)
+    latest_attempt = models.ForeignKey(
+        InventorySnapshot,
+        on_delete=models.PROTECT,
+        related_name="category_attempts",
+        null=True,
+    )
+    latest_success = models.ForeignKey(
+        InventorySnapshot,
+        on_delete=models.PROTECT,
+        related_name="category_successes",
+        null=True,
+    )
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["host", "name"], name="inventory_host_category"
+            )
+        ]

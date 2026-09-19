@@ -158,3 +158,6 @@ GRAPHYARD_INGEST_HEARTBEAT_MIN_INTERVAL_SECONDS = env.int(
 CONDITION_DATA_STALE_WARNING_SECONDS = env.int(
     "GRAPHYARD_CONDITION_DATA_STALE_WARNING_SECONDS", default=600
 )
+
+# Separate read-only credential for central inventory monitoring, disabled if empty.
+GRAPHYARD_INVENTORY_MONITOR_TOKEN = env("GRAPHYARD_INVENTORY_MONITOR_TOKEN", default="")

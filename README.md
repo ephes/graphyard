@@ -4,6 +4,12 @@ Graphyard is a Django-based metrics platform MVP.
 
 It ingests metrics into InfluxDB with canonical subject/source/collector dimensions, evaluates derived conditions for Nyxmon polling, and provides a small host/service index with Grafana links.
 
+## Software inventory pilot
+
+See [push inventory](docs/inventory.md) for host-bound reporting, private inventory
+views and rollout prerequisites. This pilot does not make remote logins or install
+producer schedules.
+
 ## MVP Scope
 
 - `POST /v1/metrics` authenticated ingest (bearer token)

@@ -1,11 +1,20 @@
 from django.contrib.auth import views as auth_views
 from django.urls import path
 
-from . import views
+from . import inventory, views
 
 app_name = "graphyard"
 
 urlpatterns = [
+    path("v1/inventory", inventory.ingest, name="inventory_ingest"),
+    path("v1/inventory/status", inventory.status, name="inventory_status"),
+    path("inventory/", inventory.index, name="inventory_index"),
+    path("inventory/<str:host_id>/", inventory.detail, name="inventory_detail"),
+    path(
+        "inventory/<str:host_id>/<uuid:snapshot_id>.json",
+        inventory.download,
+        name="inventory_download",
+    ),
     path(
         "login/",
         auth_views.LoginView.as_view(
