@@ -108,14 +108,15 @@ history, missing hosts, intermittent devices, HTML escaping and credential rotat
 The local Vector/HTTP outage experiment passed after the user enabled local
 execution access: exact reports, retry after 503, disk-buffer recovery after
 SIGKILL with the source removed, and retry after a lost response. That test uses
-a synthetic HTTP receiver; integration with this Graphyard endpoint and the
-production TLS/ingress configuration still require verification.
+a synthetic HTTP receiver. The real Graphyard integration is now covered by the
+repeatable probe below; production TLS/ingress verification remains outstanding.
 
 The producer and Vector files are opt-in local pilot tools in ops-library; manual
 preparation is documented in ops-control. No private receiver destination has been
 selected automatically. The removed macmini pilot is not reinstalled. All changes
 require the requested independent review before rollout. The user subsequently
-selected Pi with openai-codex/gpt-5.6-sol in place of Claude Code Opus.
+selected Pi with openai-codex/gpt-5.6-sol for earlier reviews; Claude Code Opus is
+used again for the transport integration.
 
 Current local checkpoint: all 144 Graphyard tests pass, including 28 inventory
 checks; migrations are in sync, Graphyard typecheck and direct Ruff checks pass.
@@ -149,3 +150,66 @@ queries: the endpoint regression explicitly detects any stored-report decoding,
 and timestamp comparison precedes retention under the same host transaction lock.
 No files were omitted or redacted from the repair review. The advisory result is
 accepted for this local checkpoint; it is not a CLEAN verdict or rollout approval.
+
+
+## Repeatable local transport integration
+
+Run the real receiver and the installed Vector binary in an isolated process:
+
+```sh
+just test-inventory-transport
+just test-inventory-transport --report /private/path/to/local-report.ndjson
+```
+
+Requires the Graphyard development dependencies, Vector already on PATH, and the
+matching sibling ops-library checkout (`--library /path/to/ops-library` overrides
+that source path). The optional report is one schema-1 envelope produced by the
+local collector. Only that explicitly supplied report leaves its source directory,
+and only towards a new loopback receiver on this same machine.
+
+The probe creates a private temporary directory, explicitly configures Django with
+a newly migrated SQLite database and FULL synchronization, and binds two random
+127.0.0.1 ports. It never imports the project's normal settings or .env. Generated
+credentials and a login account belong solely to this temporary database. Vector
+uses the production config generator and directory secret backend; no environment
+interpolation override is enabled. The system Vector process stays independent.
+Vector uses its default worker count unless the diagnostic `--vector-threads N`
+override is supplied. Installed Vector 0.58 on macOS intermittently stalled on
+individual small reports until another event or shutdown. Three complete runs with
+one worker passed, but a later repeat failed again. One worker is therefore **not**
+a reliable workaround; unattended inventory delivery is not approved. The exact
+upstream cause is unresolved; the probe must fail when the stall occurs.
+
+
+Assertions cover a >4 MiB Unicode report, HTTP 503 retries, SIGKILL plus recovery
+from the disk buffer with only the synthetic source removed, a dropped committed
+response with idempotent retry, last-success preservation after a failed category,
+host binding, revoked writers, a working separate monitor credential that writers
+cannot substitute, and actual cookie/CSRF login. With `--report`, an
+authenticated download must equal the input JSON exactly. A `result.json`, private
+HTML captures, database and Vector log remain at the printed artifact path. Treat
+that directory as private inventory data; saved HTML is a capture, not a running
+service. The probe stops its Vector child and both listeners on exit and removes the
+temporary writer secret files. No permanent
+service, timer, SSH login or fleet receiver is created.
+
+TLS, ingress body limits, production storage durability and unattended outbox
+retention are separate rollout work. Passing loopback tests does not approve those.
+
+
+Local integration checkpoint (2026-09-19): the complete scenario passed three times
+with Vector 0.58 and one worker, including two runs with a real local report. Later runs also verified that missing and empty writer files reject actual
+Vector startup. The subsequent single-worker failure supersedes the provisional
+workaround recommendation; successful runs do not establish reliable delivery. Artifacts are private and outside the checkout. All 147 application/probe regression
+tests and typechecking pass; `just typecheck` now includes the probe's function
+bodies. The opt-in probe is intentionally separate from the fast offline suite.
+
+
+Transport-probe review closure: Claude Code Opus re-reviewed the repairs. All
+required findings are resolved or disproved by direct checks; round 3 has only
+conditional suggestions about hypothetical mutable status elements or an empty
+initial error placeholder. Status elements are integers and no such placeholder
+exists, so neither change is needed. The actual Just recipe passed argument-forwarding
+checks both without arguments and with a filename containing spaces on macOS.
+Review bundles were complete and unredacted. This is an advisory closure, not a
+CLEAN verdict or transport acceptance: the intermittent Vector stall remains open.

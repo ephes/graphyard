@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Add an opt-in real Vector/Graphyard transport probe with an isolated SQLite FULL
+  database, loopback fault injection, authenticated UI checks and optional local
+  collector report round trip. Keep normal settings and services untouched.
+
 - Compare ingest timestamps and duplicate digests without decoding stored reports.
 - Return retryable errors for credential storage outages, share report objects across
   category views, and expose the latest report download even after failed probes.

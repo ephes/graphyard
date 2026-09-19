@@ -15,9 +15,15 @@ lint:
 
 typecheck:
     uv run mypy
+    uv run mypy --check-untyped-defs scripts/inventory_transport_probe.py
 
 test:
     uv run pytest
+
+# Opt-in real Vector/Graphyard transport test; fresh DB and loopback listeners only.
+[positional-arguments]
+test-inventory-transport *ARGS:
+    uv run python scripts/inventory_transport_probe.py "$@"
 
 manage *ARGS:
     cd src/django && uv run python manage.py {{ARGS}}
