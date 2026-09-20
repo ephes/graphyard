@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Accept and display opt-in partial application evidence from failed inventory
+  attempts while retaining category errors, alerts and last successful reports.
+  Deploy the receiver before enabling producer `preserve_partial_applications`.
+
 - Add an opt-in real Vector/Graphyard transport probe with an isolated SQLite FULL
   database, loopback fault injection, authenticated UI checks and optional local
   collector report round trip. Keep normal settings and services untouched.

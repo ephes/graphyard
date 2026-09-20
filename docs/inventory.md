@@ -73,10 +73,24 @@ timestamps do not replace an existing category pointer; use a new actual scan ti
 for a new observation. No server-side refresh of producer time is performed.
 
 A category error updates latest-attempt state while retaining the last successful
-category. An empty **successful** category records actual absence. Partial application
-probes currently mark the entire applications category failed in the pilot emitter;
-per-application preservation is future refinement. Unsupported categories and
-coverage gaps stay visible, not inferred as fully inventoried.
+category. An empty **successful** category records actual absence. Unsupported
+categories and coverage gaps stay visible, not inferred as fully inventoried.
+Partial application
+probes still mark the entire applications category failed. Producers may attach
+`partial_items` only to an `applications` category with `status: error` and empty
+`items`. This optional list of objects has the same 100,000-entry, nesting and
+whole-request size limits as ordinary items. It contains individual probe results,
+including their errors and coverage gaps. The private detail page labels these
+latest-attempt results incomplete and keeps the last successful observation
+separate. Partial evidence does not clear category-error alerts. The preview shows
+at most 50 entries with bounded text and up to 10 coverage gaps per entry. Only
+list-shaped coverage is previewed; other shapes remain in the full report. The
+attempt-specific download retains complete evidence.
+
+Deploy this receiver before enabling the producer policy boolean
+`preserve_partial_applications: true`. The producer default is false; old reports
+remain valid and unchanged. Older receivers reject `partial_items`. No database
+migration is needed: snapshots retain the full validated report and its digest.
 
 ## Retention and monitoring
 

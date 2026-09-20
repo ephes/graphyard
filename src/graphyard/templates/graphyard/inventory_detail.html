@@ -6,7 +6,17 @@
 {% if host.gaps %}<h2>Coverage gaps</h2><ul>{% for gap in host.gaps %}<li>{{ gap }}</li>{% endfor %}</ul>{% endif %}
 {% for category in categories %}<section><h2>{{ category.name }}</h2>
 <p>Latest attempt: {{ category.latest_attempt.observed_at }}.</p>
-{% for name, observation in category.latest_attempt.report.categories.items %}{% if name == category.name %}<p>Status: {{ observation.status }} {{ observation.error }}</p>{% endif %}{% endfor %}
+{% for name, observation in category.latest_attempt.report.categories.items %}{% if name == category.name %}<p>Status: {{ observation.status }} {{ observation.error }}</p>
+{% if observation.partial_items %}
+<p><strong>Incomplete application inventory.</strong> These are results from the latest attempt; they do not replace the last successful inventory.</p>
+<p>{{ partial_applications.count }} partial entries; showing up to 50. <a href="{% url 'graphyard:inventory_download' host.host partial_applications.snapshot %}">Download this attempt's full report</a> for complete evidence.</p>
+{% for app in partial_applications.entries %}
+<details><summary>{{ app.id }} · {{ app.status }}{% if app.version %} · {{ app.version }}{% endif %}</summary>
+{% if app.error %}<p>Probe error: {{ app.error }}</p>{% endif %}
+{% if app.coverage %}<p>Missing coverage (up to 10 entries):</p><ul>{% for gap in app.coverage %}<li>{{ gap }}</li>{% endfor %}</ul>{% endif %}
+</details>
+{% endfor %}
+{% endif %}{% endif %}{% endfor %}
 {% if category.latest_success %}<p>Last successful observation: {{ category.latest_success.observed_at }}.
 <a href="{% url 'graphyard:inventory_download' host.host category.latest_success.snapshot_id %}">Download last successful full report</a></p>
 {% for name, observation in category.latest_success.report.categories.items %}{% if name == category.name %}

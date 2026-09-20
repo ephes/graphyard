@@ -106,10 +106,10 @@ def validate(report, now):
         or any(not isinstance(gap, str) or len(gap) > 512 for gap in gaps)
     ):
         raise ValueError("invalid coverage gaps")
-    for category in categories.values():
+    for name, category in categories.items():
         if (
             not isinstance(category, dict)
-            or set(category) - {"status", "items", "error"}
+            or set(category) - {"status", "items", "error", "partial_items"}
             or not {"status", "items"} <= set(category)
         ):
             raise ValueError("invalid category")
@@ -123,6 +123,16 @@ def validate(report, now):
             raise ValueError("invalid category items")
         if category["status"] != "ok" and category["items"]:
             raise ValueError("failed category cannot contain successful items")
+        if "partial_items" in category:
+            partial = category["partial_items"]
+            if (
+                name != "applications"
+                or category["status"] != "error"
+                or not isinstance(partial, list)
+                or len(partial) > 100000
+                or any(not isinstance(item, dict) for item in partial)
+            ):
+                raise ValueError("invalid partial application evidence")
         if "error" in category and (
             not isinstance(category["error"], str) or len(category["error"]) > 512
         ):
@@ -334,6 +344,47 @@ def index(request):
     return render(request, "graphyard/inventory.html", {"hosts": summaries()})
 
 
+def partial_application_preview(state):
+    """Project untrusted nested evidence into a bounded, text-only page preview."""
+    for category in state[1]:
+        if category.name != "applications":
+            continue
+        report = category.latest_attempt.report["categories"]["applications"]
+        partial = report.get("partial_items", [])
+        if not partial:
+            return None
+
+        def text(value, limit, default=""):
+            if not isinstance(value, str):
+                return default
+            return value[:limit] + ("…" if len(value) > limit else "")
+
+        entries = []
+        for app in partial[:50]:
+            evidence = app.get("items")
+            evidence = evidence if isinstance(evidence, dict) else {}
+            gaps = evidence.get("coverage")
+            gaps = gaps if isinstance(gaps, list) else []
+            entries.append(
+                {
+                    "id": text(app.get("id"), 200, "Application"),
+                    "status": text(app.get("status"), 40, "unknown"),
+                    "version": text(evidence.get("installed_version"), 200),
+                    "error": text(app.get("error"), 512),
+                    "coverage": [
+                        text(gap, 160, "unstructured gap; see full report")
+                        for gap in gaps[:10]
+                    ],
+                }
+            )
+        return {
+            "count": len(partial),
+            "entries": entries,
+            "snapshot": category.latest_attempt.snapshot_id,
+        }
+    return None
+
+
 @login_required
 @require_GET
 def detail(request, host_id):
@@ -346,6 +397,7 @@ def detail(request, host_id):
             "host": host_summary(host, timezone.now(), state),
             "categories": state[1],
             "latest": state[0],
+            "partial_applications": partial_application_preview(state),
         },
     )
 

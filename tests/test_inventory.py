@@ -116,6 +116,150 @@ def test_error_does_not_erase_last_success_and_old_report_cannot_replace_new(
     assert str(category.latest_attempt.snapshot_id) == bad["snapshot_id"]
 
 
+def test_partial_applications_remain_failed_but_visible_and_do_not_erase_success(
+    client,
+    enrolled,
+    django_user_model,
+):
+    good = report(observed_at=(timezone.now() - timedelta(minutes=1)).isoformat())
+    good["categories"]["applications"]["items"] = [{"id": "previous-success"}]
+    assert send(client, enrolled, good).status_code == 200
+    partial = report()
+    partial["categories"]["applications"] = {
+        "status": "error",
+        "items": [],
+        "error": "application_probe_failed",
+        "partial_items": [
+            {
+                "id": "visible-app",
+                "status": "ok",
+                "items": {"installed_version": "1.2.3"},
+            },
+            {
+                "id": "<script>unsafe</script>",
+                "status": "error",
+                "items": [],
+                "error": "PermissionError",
+            },
+        ],
+    }
+    assert send(client, enrolled, partial).status_code == 200
+    category = InventoryCategory.objects.get(name="applications")
+    assert str(category.latest_success.snapshot_id) == good["snapshot_id"]
+    assert str(category.latest_attempt.snapshot_id) == partial["snapshot_id"]
+    client.force_login(django_user_model.objects.create_user(username="partial-reader"))
+    status = client.get(reverse("graphyard:inventory_status")).json()["hosts"]["studio"]
+    assert status["alert"] is True
+    assert status["categories"]["applications"]["status"] == "error"
+    page = client.get(reverse("graphyard:inventory_detail", args=["studio"]))
+    assert page.status_code == 200
+    html = page.content.decode()
+    assert "Incomplete application inventory" in html
+    assert "visible-app" in html and "1.2.3" in html and "previous-success" in html
+    assert "<script>unsafe</script>" not in html
+    assert "&lt;script&gt;unsafe&lt;/script&gt;" in html
+    response = client.get(
+        reverse("graphyard:inventory_download", args=["studio", partial["snapshot_id"]])
+    )
+    assert response.json() == partial
+
+
+@pytest.mark.parametrize(
+    "category,status,items",
+    [
+        ("packages", "error", []),
+        ("applications", "ok", []),
+        ("applications", "unsupported", []),
+        ("applications", "error", {}),
+        ("applications", "error", ["not-an-object"]),
+    ],
+)
+def test_invalid_partial_application_evidence_rejected(
+    client, enrolled, category, status, items
+):
+    data = report()
+    data["categories"][category] = {
+        "status": status,
+        "items": [],
+        "partial_items": items,
+    }
+    assert send(client, enrolled, data).status_code == 400
+    assert not InventorySnapshot.objects.exists()
+
+
+@pytest.mark.parametrize("case", ["count", "depth"])
+def test_partial_evidence_shares_request_limits(client, enrolled, case):
+    data = report()
+    value = {"leaf": "bounded"}
+    for _ in range(20):
+        value = {"nested": value}
+    partial = [{}] * 100001 if case == "count" else [value]
+    data["categories"]["applications"] = {
+        "status": "error",
+        "items": [],
+        "partial_items": partial,
+    }
+    assert send(client, enrolled, data).status_code == 400
+    assert not InventorySnapshot.objects.exists()
+
+
+def test_partial_preview_is_bounded_and_full_download_retained(
+    client, enrolled, django_user_model
+):
+    data = report()
+    items = [
+        {"id": f"partial-app-{i:03d}", "status": "error", "error": "x" * 10000}
+        for i in range(60)
+    ]
+    data["categories"]["applications"] = {
+        "status": "error",
+        "items": [],
+        "partial_items": items,
+    }
+    assert send(client, enrolled, data).status_code == 200
+    client.force_login(django_user_model.objects.create_user(username="bounded-reader"))
+    page = client.get(reverse("graphyard:inventory_detail", args=["studio"]))
+    assert b"partial-app-049" in page.content and b"partial-app-050" not in page.content
+    assert b"60 partial entries" in page.content
+    assert len(page.content) < 50000
+    assert (
+        client.get(
+            reverse(
+                "graphyard:inventory_download", args=["studio", data["snapshot_id"]]
+            )
+        ).json()
+        == data
+    )
+
+
+@pytest.mark.parametrize("shape", ["dict", "string", "list"])
+def test_partial_coverage_preview_is_bounded_for_untrusted_shapes(
+    client, enrolled, django_user_model, shape
+):
+    data = report()
+    coverage = (
+        {f"gap-{i}": "x" for i in range(5000)}
+        if shape == "dict"
+        else ("x" * 100000 if shape == "string" else ["<" * 1000] * 100)
+    )
+    data["categories"]["applications"] = {
+        "status": "error",
+        "items": [],
+        "partial_items": [{"id": "app", "items": {"coverage": coverage}}] * 50,
+    }
+    # All shapes fit the unchanged 8 MiB request limit.
+    assert send(client, enrolled, data).status_code == 200
+    client.force_login(django_user_model.objects.create_user(username="shape-reader"))
+    html = client.get(reverse("graphyard:inventory_detail", args=["studio"])).content
+    assert html.count(b"<li>") <= 501
+    assert len(html) < 500000
+    assert b"gap-4999" not in html
+    assert b"app" in html
+    if shape == "list":
+        assert b"&lt;" * 160 in html
+        assert b"<<<" not in html
+
+
 def test_complete_empty_category_means_removed(client, enrolled):
     assert (
         send(
