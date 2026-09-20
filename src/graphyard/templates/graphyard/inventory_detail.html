@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>{{ host.host }} · Software inventory</title><style>body{font:16px system-ui;margin:2rem;color:#1e293b;background:#f8fafc}main{max-width:1100px;margin:auto}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:white;padding:1rem}a{color:#075985}</style></head>
 <body><main><a href="{% url 'graphyard:inventory_index' %}">Software inventory</a><h1>{{ host.host }}</h1>
+<p><a href="{% url 'graphyard:inventory_applications' host.host %}">Applications, versions and dependencies</a></p>
 <p>Last observation: {{ host.observed_at|default:"Never reported" }}. Received: {{ host.received_at|default:"Never" }}.</p>
 {% if latest %}<p><a href="{% url 'graphyard:inventory_download' host.host latest.snapshot_id %}">Download latest full report</a></p>{% endif %}
 {% if host.gaps %}<h2>Coverage gaps</h2><ul>{% for gap in host.gaps %}<li>{{ gap }}</li>{% endfor %}</ul>{% endif %}

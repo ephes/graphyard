@@ -260,3 +260,37 @@ use this contract. Rejected reports remain on disk and do not obstruct other
 eligible reports; network/429/5xx retries are deferred persistently. It sends no
 commands and has no SSH functionality. The earlier Vector probe remains available
 as a diagnostic for its unresolved inventory-specific low-traffic stall.
+
+
+## Application evidence view
+
+`/inventory/<host>/applications/` provides an authenticated, read-only view of
+already received application data. Open **Applications** on the host overview or
+**Applications, versions and dependencies** on its report. No producer contact,
+new scan, upstream API request or software upgrade occurs when reading this page.
+
+The view distinguishes installed/running versions, service presence/state, Git
+commit/dirty state and installed Python dependency metadata. macOS bundle entries
+are expanded into individual applications. All named applications are searchable
+by name with 20 entries per page; unnamed entries remain available without a
+search filter. Failed or malformed bundle scans retain an explicit diagnostic row. The query is limited
+to 100 characters. Missing fields remain Unknown, Not verified or Not assessed.
+
+When an application attempt fails, partial evidence is labelled incomplete. If
+there is no usable partial evidence, the last successful application snapshot is
+labelled historical, with its own age and download link. A fresh host report never
+makes that older evidence current. Latest-attempt downloads remain separate.
+An empty application list does not establish absence of installed software.
+
+Update findings display only reported cached APT comparisons; cache age is unknown.
+A false update flag means no newer cached candidate, not proof of currentness.
+There is no upstream comparison for other applications in this view. Python
+requirements are declarations from installed metadata; optional activation and a
+complete dependency graph remain unverified. This page is not a complete SBOM.
+
+Each page projects at most 20 applications, with bounded text, ten coverage gaps,
+ten cached package comparisons, and ten Python packages with five requirements
+each. Counts and the exact source-report download expose the full evidence. Nested
+report values are shape-checked and rendered as escaped text, never executable HTML
+or external links. Malformed coverage and comparison shapes are labelled explicitly. Unknown nested
+shapes do not manufacture success or versions.

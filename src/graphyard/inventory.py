@@ -11,6 +11,7 @@ from uuid import UUID
 
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
+from django.core.paginator import Paginator
 from django.core.exceptions import RequestDataTooBig
 from django.db import OperationalError, transaction
 from django.http import JsonResponse
@@ -398,6 +399,55 @@ def detail(request, host_id):
             "categories": state[1],
             "latest": state[0],
             "partial_applications": partial_application_preview(state),
+        },
+    )
+
+
+@login_required
+@require_GET
+def application_list(request, host_id):
+    from . import inventory_applications as presentation
+
+    host = get_object_or_404(InventoryHost, host__host_id=host_id)
+    state = host_state(host)
+    category = next((entry for entry in state[1] if entry.name == "applications"), None)
+    snapshot, basis, entries = presentation.source(category)
+    latest_category = (
+        category.latest_attempt.report["categories"]["applications"]
+        if category and category.latest_attempt
+        else {}
+    )
+    query = request.GET.get("q", "")[:100].strip()
+    rows = list(presentation.applications(entries))
+    total = len(rows)
+    if query:
+        rows = [
+            row
+            for row in rows
+            if isinstance(row.get("id"), str)
+            and query.casefold() in row["id"].casefold()
+        ]
+    page = Paginator(rows, 20).get_page(request.GET.get("page"))
+    now = timezone.now()
+    return render(
+        request,
+        "graphyard/inventory_applications.html",
+        {
+            "host": host_summary(host, now, state),
+            "snapshot": snapshot,
+            "basis": basis,
+            "observation_stale": snapshot is None
+            or (now - snapshot.observed_at).total_seconds()
+            > host.warning_after_seconds,
+            "latest_attempt": category.latest_attempt if category else None,
+            "attempt_status": presentation.text(
+                latest_category.get("status"), 40, "missing"
+            ),
+            "attempt_error": presentation.text(latest_category.get("error"), 512, ""),
+            "rows": [presentation.project(row) for row in page.object_list],
+            "page": page,
+            "total": total,
+            "query": query,
         },
     )
 

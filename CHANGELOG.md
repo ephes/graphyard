@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Add a searchable application evidence view with separate installed/running
+  versions, cached APT update findings, Python requirements and Git provenance.
+  Preserve partial/historical labels and unknown coverage; reading never scans
+  producers or fetches upstream releases.
+
 - Accept and display opt-in partial application evidence from failed inventory
   attempts while retaining category errors, alerts and last successful reports.
   Deploy the receiver before enabling producer `preserve_partial_applications`.

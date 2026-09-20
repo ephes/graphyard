@@ -563,3 +563,371 @@ def test_invalid_freshness_threshold_does_not_issue_credential(enrolled):
     assert InventoryCredential.objects.count() == before
     enrolled[1].refresh_from_db()
     assert enrolled[1].enabled
+
+
+def application_page(client, django_user_model, **query):
+    user, _ = django_user_model.objects.get_or_create(username="application-reader")
+    client.force_login(user)
+    return client.get(
+        reverse("graphyard:inventory_applications", args=["studio"]), query
+    )
+
+
+def test_application_view_requires_reader_and_does_not_write_inventory(
+    client, enrolled, django_user_model
+):
+    data = report()
+    assert send(client, enrolled, data).status_code == 200
+    url = reverse("graphyard:inventory_applications", args=["studio"])
+    assert client.get(url, HTTP_AUTHORIZATION=enrolled[2]).status_code == 302
+    before = list(InventorySnapshot.objects.values())
+    response = application_page(client, django_user_model)
+    assert response.status_code == 200
+    assert b"empty report does not prove" in response.content
+    assert list(InventorySnapshot.objects.values()) == before
+
+
+def test_application_view_shows_observed_versions_dependencies_and_cached_updates(
+    client, enrolled, django_user_model
+):
+    data = report()
+    data["categories"]["applications"]["items"] = [
+        {
+            "id": "media-service",
+            "status": "ok",
+            "items": {
+                "installed_version": "1.2",
+                "running_version": "1.1",
+                "presence": "installed",
+                "runtime": "active",
+                "git": {"status": "ok", "items": {"commit": "a" * 40, "dirty": True}},
+                "python": {
+                    "status": "ok",
+                    "items": [
+                        {
+                            "name": "my-dependency",
+                            "version": "4.0",
+                            "requires": ['other>=2; extra == "optional"'],
+                        }
+                    ],
+                },
+                "package_candidates": [
+                    {
+                        "name": "media-package",
+                        "installed": "1.2",
+                        "candidate": "1.3",
+                        "update_available": True,
+                    }
+                ],
+            },
+        }
+    ]
+    assert send(client, enrolled, data).status_code == 200
+    response = application_page(client, django_user_model)
+    html = response.content.decode()
+    for value in [
+        "media-service",
+        "1.2",
+        "1.1",
+        "my-dependency",
+        "4.0",
+        "optional",
+        "Update available",
+        "cache age is unknown",
+        "activation is not evaluated",
+        "Modified",
+        "a" * 40,
+    ]:
+        assert value in html
+    assert data["snapshot_id"] in html
+
+
+@pytest.mark.parametrize("partial", [False, True])
+def test_application_view_distinguishes_partial_and_historical_sources(
+    client, enrolled, django_user_model, partial
+):
+    old = report(observed_at=(timezone.now() - timedelta(days=30)).isoformat())
+    old["categories"]["applications"]["items"] = [
+        {
+            "id": "old-success",
+            "status": "ok",
+            "items": {"installed_version": "old-version"},
+        }
+    ]
+    assert send(client, enrolled, old).status_code == 200
+    latest = report()
+    latest["categories"]["applications"] = {"status": "error", "items": []}
+    if partial:
+        latest["categories"]["applications"]["partial_items"] = [
+            {"id": "new-partial", "status": "error", "error": "PermissionError"}
+        ]
+    assert send(client, enrolled, latest).status_code == 200
+    response = application_page(client, django_user_model)
+    html = response.content.decode()
+    if partial:
+        assert "Incomplete application inventory" in html and "new-partial" in html
+        assert "old-version" not in html
+        assert response.context["snapshot"].snapshot_id.hex == latest[
+            "snapshot_id"
+        ].replace("-", "")
+    else:
+        assert "Historical evidence" in html and "old-version" in html
+        assert "older than the host" in html
+        assert old["snapshot_id"] in html and latest["snapshot_id"] in html
+    assert response.context["host"]["alert"] is True
+
+
+def test_application_view_paginates_and_searches_macos_bundles(
+    client, enrolled, django_user_model
+):
+    data = report()
+    data["categories"]["applications"]["items"] = [
+        {
+            "id": "macos-application-bundles",
+            "status": "ok",
+            "items": [
+                {
+                    "name": f"Bundle {i:03}",
+                    "version": f"2.{i}",
+                    "build": "100",
+                    "path": f"/Applications/Bundle {i:03}.app",
+                }
+                for i in range(45)
+            ],
+        }
+    ]
+    assert send(client, enrolled, data).status_code == 200
+    first = application_page(client, django_user_model)
+    assert b"Bundle 019" in first.content and b"Bundle 020" not in first.content
+    second = application_page(client, django_user_model, page=2)
+    assert b"Bundle 020" in second.content and b"Bundle 000" not in second.content
+    filtered = application_page(
+        client, django_user_model, q="bundle 044", page="invalid"
+    )
+    assert b"Bundle 044" in filtered.content and b"2.44" in filtered.content
+    assert b"1 matching of 45" in filtered.content
+    assert b"Update availability: Not assessed" in filtered.content
+    assert b"Not verified" in filtered.content
+
+
+@pytest.mark.parametrize(
+    "nested",
+    [
+        None,
+        [],
+        "<script>unsafe</script>",
+        {
+            "coverage": {},
+            "python": {"status": "ok", "items": {}},
+            "git": {"status": "ok", "items": []},
+            "package_candidates": ["invalid", {"update_available": "false"}],
+        },
+    ],
+)
+def test_application_view_handles_untrusted_shapes_and_escapes_text(
+    client, enrolled, django_user_model, nested
+):
+    data = report()
+    data["categories"]["applications"]["items"] = [
+        {"id": "<script>unsafe</script>", "status": "ok", "items": nested}
+    ]
+    assert send(client, enrolled, data).status_code == 200
+    response = application_page(client, django_user_model)
+    assert response.status_code == 200
+    assert b"<script>unsafe</script>" not in response.content
+    assert b"&lt;script&gt;unsafe&lt;/script&gt;" in response.content
+    assert b"Update available</td>" not in response.content
+    assert b"No newer cached candidate</td>" not in response.content
+
+
+def test_application_dependency_preview_is_bounded_and_download_complete(
+    client, enrolled, django_user_model
+):
+    data = report()
+    packages = [
+        {"name": f"dep-{i:03}", "version": "1", "requires": ["<" * 1000] * 10}
+        for i in range(30)
+    ]
+    data["categories"]["applications"]["items"] = [
+        {
+            "id": "bounded-app",
+            "status": "ok",
+            "items": {"python": {"status": "ok", "items": packages}},
+        }
+    ]
+    assert send(client, enrolled, data).status_code == 200
+    response = application_page(client, django_user_model)
+    assert b"dep-009" in response.content and b"dep-010" not in response.content
+    assert b"30 installed Python packages" in response.content
+    assert b"&lt;" * 160 in response.content and b"<<<" not in response.content
+    assert len(response.content) < 50000
+    assert (
+        client.get(
+            reverse(
+                "graphyard:inventory_download", args=["studio", data["snapshot_id"]]
+            )
+        ).json()
+        == data
+    )
+
+
+def test_application_view_missing_host_report_is_explicit(
+    client, enrolled, django_user_model
+):
+    response = application_page(client, django_user_model)
+    assert response.status_code == 200
+    assert b"No usable application evidence" in response.content
+    assert b"0 matching of 0" in response.content
+
+
+def test_application_projection_does_not_treat_malformed_dependencies_as_empty():
+    from graphyard.inventory_applications import project
+
+    for invalid in [{}, None, "text", ["not-an-object"]]:
+        app = project({"items": {"python": {"status": "ok", "items": invalid}}})
+        assert app["python_status"] == "Invalid evidence"
+    app = project(
+        {
+            "items": {
+                "python": {
+                    "status": "ok",
+                    "items": [{"name": "dependency", "requires": {}}],
+                }
+            }
+        }
+    )
+    assert app["packages"][0]["requires_count"] is None
+    app = project(
+        {
+            "items": {
+                "package_candidates": [
+                    {"installed": "2", "candidate": "2", "update_available": False}
+                ]
+            }
+        }
+    )
+    assert app["updates"][0]["verdict"] == "No newer cached candidate"
+
+
+@pytest.mark.parametrize(
+    "items,status,error", [([], "error", "PermissionError"), (["invalid"], "ok", None)]
+)
+def test_application_view_retains_failed_or_malformed_bundle_scan(
+    client, enrolled, django_user_model, items, status, error
+):
+    data = report()
+    data["categories"]["applications"] = {
+        "status": "error",
+        "items": [],
+        "partial_items": [
+            {
+                "id": "macos-application-bundles",
+                "status": status,
+                "error": error,
+                "items": items,
+            }
+        ],
+    }
+    assert send(client, enrolled, data).status_code == 200
+    html = application_page(client, django_user_model).content
+    assert b"macOS bundle scan" in html
+    assert (error or "Malformed bundle evidence").encode() in html
+    assert b"1 matching of 1" in html
+
+
+def test_application_view_labels_malformed_coverage_and_counts_comparisons(
+    client, enrolled, django_user_model
+):
+    data = report()
+    data["categories"]["applications"]["items"] = [
+        {
+            "id": "broken",
+            "items": {"coverage": {}, "package_candidates": [None, {"name": "pkg"}]},
+        }
+    ]
+    assert send(client, enrolled, data).status_code == 200
+    html = application_page(client, django_user_model).content
+    assert (
+        b"Malformed coverage evidence" in html
+        and b"Malformed package comparison evidence" in html
+    )
+    assert b"2 package comparisons" in html
+
+
+def test_application_view_bounds_query_and_coverage(
+    client, enrolled, django_user_model
+):
+    data = report()
+    data["categories"]["applications"]["items"] = [
+        {"id": "a" * 100, "items": {"coverage": [f"gap-{i:02}" for i in range(25)]}}
+    ]
+    assert send(client, enrolled, data).status_code == 200
+    page = application_page(client, django_user_model, q="a" * 500)
+    assert page.context["query"] == "a" * 100
+    assert b"Coverage gaps: 25" in page.content
+    assert b"gap-09" in page.content and b"gap-10" not in page.content
+
+
+def test_application_view_missing_failed_attempt_keeps_diagnostics_and_link(
+    client, enrolled, django_user_model
+):
+    data = report()
+    data["categories"]["applications"] = {
+        "status": "error",
+        "items": [],
+        "error": "application_probe_failed",
+    }
+    assert send(client, enrolled, data).status_code == 200
+    page = application_page(client, django_user_model)
+    assert page.status_code == 200
+    assert page.context["basis"] == "missing" and page.context["snapshot"] is None
+    assert (
+        b"Status: error" in page.content and b"application_probe_failed" in page.content
+    )
+    assert (
+        b"Download latest attempt" in page.content
+        and data["snapshot_id"].encode() in page.content
+    )
+    assert b"Download this evidence report" not in page.content
+
+
+def test_malformed_bundle_error_cannot_hide_invalid_entries():
+    from graphyard.inventory_applications import applications, project
+
+    for invalid in [{"error": "nested"}, 0, ["error"]]:
+        rows = list(
+            applications(
+                [
+                    {
+                        "id": "macos-application-bundles",
+                        "status": "ok",
+                        "error": invalid,
+                        "items": ["bad-entry"],
+                    }
+                ]
+            )
+        )
+        assert len(rows) == 1
+        result = project(rows[0])
+        assert "Malformed bundle error" in result["error"]
+        assert "Malformed bundle evidence" in result["error"]
+
+
+def test_bundle_diagnostic_does_not_label_valid_bundle_malformed():
+    from graphyard.inventory_applications import applications, project
+
+    rows = list(
+        applications(
+            [
+                {
+                    "id": "macos-application-bundles",
+                    "status": "ok",
+                    "error": "x" * 1000,
+                    "items": ["bad-entry", {"name": "valid-bundle", "version": "1"}],
+                }
+            ]
+        )
+    )
+    assert "Malformed bundle evidence" in project(rows[0])["error"]
+    assert "Malformed" not in project(rows[1])["error"]
+    assert project(rows[1])["installed"] == "1"

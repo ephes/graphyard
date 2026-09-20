@@ -4,6 +4,6 @@
 <body><main><a href="{% url 'graphyard:index' %}">Graphyard</a><h1>Software inventory</h1>
 <p class="note">Reports originate on each host. Missing or old observations remain visible. Versions and dependency metadata are observations, not a claim that everything is up to date.</p>
 <table><thead><tr><th>Host</th><th>Last observation</th><th>State</th><th>Categories</th></tr></thead><tbody>
-{% for host in hosts %}<tr><td><a href="{% url 'graphyard:inventory_detail' host.host %}">{{ host.host }}</a></td><td>{{ host.observed_at|default:"Never reported" }}</td><td>{% if host.alert %}Needs attention{% elif host.stale %}Old observation{% else %}Current report{% endif %}</td><td>{% for name, category in host.categories.items %}{{ name }}: {{ category.status }}{% if category.count != None %} ({{ category.count }}){% endif %}<br>{% endfor %}</td></tr>
+{% for host in hosts %}<tr><td><a href="{% url 'graphyard:inventory_detail' host.host %}">{{ host.host }}</a><br><a href="{% url 'graphyard:inventory_applications' host.host %}">Applications</a></td><td>{{ host.observed_at|default:"Never reported" }}</td><td>{% if host.alert %}Needs attention{% elif host.stale %}Old observation{% else %}Current report{% endif %}</td><td>{% for name, category in host.categories.items %}{{ name }}: {{ category.status }}{% if category.count != None %} ({{ category.count }}){% endif %}<br>{% endfor %}</td></tr>
 {% empty %}<tr><td colspan="4">No inventory hosts enrolled yet.</td></tr>{% endfor %}</tbody></table>
 </main></body></html>

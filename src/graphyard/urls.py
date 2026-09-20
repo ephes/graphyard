@@ -9,6 +9,11 @@ urlpatterns = [
     path("v1/inventory", inventory.ingest, name="inventory_ingest"),
     path("v1/inventory/status", inventory.status, name="inventory_status"),
     path("inventory/", inventory.index, name="inventory_index"),
+    path(
+        "inventory/<str:host_id>/applications/",
+        inventory.application_list,
+        name="inventory_applications",
+    ),
     path("inventory/<str:host_id>/", inventory.detail, name="inventory_detail"),
     path(
         "inventory/<str:host_id>/<uuid:snapshot_id>.json",

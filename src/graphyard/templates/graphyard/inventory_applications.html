@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>{{ host.host }} applications · Software inventory</title>
+<style>body{font:16px system-ui;margin:2rem;color:#1e293b;background:#f8fafc}main{max-width:1200px;margin:auto}table{width:100%;border-collapse:collapse}th,td{text-align:left;vertical-align:top;padding:.7rem;border-bottom:1px solid #cbd5e1;overflow-wrap:anywhere}a{color:#075985}.table-scroll{overflow-x:auto}.notice{padding:1rem;background:#fff4d6}details{margin:1rem 0}dt{font-weight:600}dd{margin:0 0 .6rem;overflow-wrap:anywhere}code{overflow-wrap:anywhere}input,button{font:inherit;padding:.4rem}nav{margin:1rem 0}</style></head>
+<body><main><a href="{% url 'graphyard:inventory_index' %}">Software inventory</a> · <a href="{% url 'graphyard:inventory_detail' host.host %}">{{ host.host }} report</a>
+<h1>Applications on {{ host.host }}</h1>
+<p>Installed and running versions are separate observations. Unknown means the report does not establish the answer. This is not a complete SBOM.</p>
+{% if basis == 'partial' %}<p class="notice"><strong>Incomplete application inventory.</strong> Showing partial evidence from a failed attempt. Coverage errors remain active.</p>
+{% elif basis == 'historical' %}<p class="notice"><strong>Historical evidence.</strong> The latest attempt has no usable application details. Showing the last successful application report; it does not establish the current installation.</p>
+{% elif basis == 'missing' %}<p class="notice">No usable application evidence has been received.</p>{% endif %}
+{% if observation_stale %}<p class="notice">This application observation is missing or older than the host's configured freshness threshold.</p>{% endif %}
+{% if snapshot %}<p>Evidence observed: {{ snapshot.observed_at }}. <a href="{% url 'graphyard:inventory_download' host.host snapshot.snapshot_id %}">Download this evidence report</a>.</p>{% endif %}
+{% if latest_attempt %}<p>Latest application attempt: {{ latest_attempt.observed_at }}. Status: {{ attempt_status }}. {{ attempt_error }} <a href="{% url 'graphyard:inventory_download' host.host latest_attempt.snapshot_id %}">Download latest attempt</a>.</p>{% endif %}
+<form method="get"><label for="q">Find an application</label> <input id="q" name="q" maxlength="100" value="{{ query }}"><button type="submit">Search</button> <a href="{% url 'graphyard:inventory_applications' host.host %}">Clear</a></form>
+<p>{{ page.paginator.count }} matching of {{ total }} observed application entries. Showing up to 20 per page.</p>
+{% for app in rows %}
+<section><h2>{{ app.name }}</h2><p>{{ app.kind }} · Probe status: {{ app.probe_status }}</p>
+<div class="table-scroll"><table><thead><tr><th>Installed version</th><th>Running version</th><th>Presence</th><th>Runtime state</th></tr></thead><tbody><tr><td>{{ app.installed }}</td><td>{{ app.running }}</td><td>{{ app.presence }}</td><td>{{ app.runtime }}</td></tr></tbody></table></div>
+{% if app.error %}<p>Probe error: {{ app.error }}</p>{% endif %}
+{% if app.coverage_invalid %}<p>Malformed coverage evidence; see the full report.</p>{% endif %}
+{% if app.coverage %}<p>Coverage gaps: {{ app.coverage_count }}; showing up to 10.</p><ul>{% for gap in app.coverage %}<li>{{ gap }}</li>{% endfor %}</ul>{% endif %}
+{% if app.bundle_path %}<p>Bundle: {{ app.bundle_path }}</p>{% endif %}
+{% if app.bundle_build %}<p>Build: {{ app.bundle_build }}</p>{% endif %}
+<details><summary>Update evidence</summary>
+{% if app.candidates_invalid %}<p>Malformed package comparison evidence; see the full report.</p>{% endif %}
+{% if app.updates %}<p>Cached APT metadata at observation time; cache age is unknown. This does not check upstream releases or prove that all software is current. {{ app.candidate_count }} package comparisons; showing up to 10.</p>
+<div class="table-scroll"><table><thead><tr><th>Package</th><th>Installed</th><th>Cached candidate</th><th>Finding</th></tr></thead><tbody>{% for update in app.updates %}<tr><td>{{ update.name }}</td><td>{{ update.installed }}</td><td>{{ update.candidate }}</td><td>{{ update.verdict }}</td></tr>{% endfor %}</tbody></table></div>
+{% else %}<p>Update availability: Not assessed.</p>{% endif %}</details>
+<details><summary>Dependencies and source</summary>
+<dl><dt>Git commit</dt><dd>{{ app.commit }} · Working tree: {{ app.dirty }}</dd><dt>Python inventory</dt><dd>{{ app.python_status }}</dd></dl>
+{% if app.python_status == 'ok' %}<p>{{ app.package_count }} installed Python packages; showing up to 10. Requirements are declarations from installed metadata. Optional activation is not evaluated and this is not a complete dependency graph. Use the evidence download for all entries.</p>
+<div class="table-scroll"><table><thead><tr><th>Package</th><th>Version</th><th>Declared requirements (up to 5)</th></tr></thead><tbody>{% for package in app.packages %}<tr><td>{{ package.name }}</td><td>{{ package.version }}</td><td>{% for requirement in package.requires %}<div><code>{{ requirement }}</code></div>{% endfor %}{% if package.requires_count != None %}{{ package.requires_count }} declared requirements.{% else %}Requirement metadata not assessed.{% endif %}</td></tr>{% empty %}<tr><td colspan="3">No Python packages were reported by this probe.</td></tr>{% endfor %}</tbody></table></div>{% endif %}</details></section>
+{% empty %}<p>No application entries match this view. An empty report does not prove that no software is installed.</p>{% endfor %}
+<nav aria-label="Application pages">{% if page.has_previous %}<a href="?q={{ query|urlencode }}&amp;page={{ page.previous_page_number }}">Previous</a> · {% endif %}Page {{ page.number }} of {{ page.paginator.num_pages }}{% if page.has_next %} · <a href="?q={{ query|urlencode }}&amp;page={{ page.next_page_number }}">Next</a>{% endif %}</nav>
+</main></body></html>
