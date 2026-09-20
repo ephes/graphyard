@@ -80,6 +80,8 @@ def applications(entries):
 
 def project(app):
     """Never render arbitrary nested report values or infer unsupported freshness."""
+    from .inventory_sbom import eligible
+
     evidence = mapping(app.get("items"))
     raw_coverage = evidence.get("coverage")
     coverage_invalid = "coverage" in evidence and (
@@ -140,6 +142,7 @@ def project(app):
     checkout = mapping(git.get("items")) if git.get("status") == "ok" else {}
     dirty = checkout.get("dirty")
     return {
+        "sbom_id": app["id"] if eligible(app) else None,
         "name": text(app.get("id"), default="Unnamed application"),
         "kind": text(app.get("kind"), default="Registered application probe"),
         "probe_status": text(app.get("status"), 40),

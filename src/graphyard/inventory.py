@@ -463,3 +463,27 @@ def download(request, host_id, snapshot_id):
         f'attachment; filename="inventory-{snapshot.snapshot_id}.json"'
     )
     return response
+
+
+@login_required
+@require_GET
+def python_sbom(request, host_id, snapshot_id):
+    from . import inventory_sbom
+
+    snapshot = get_object_or_404(
+        InventorySnapshot, host__host__host_id=host_id, snapshot_id=snapshot_id
+    )
+    application_id = request.GET.get("application", "")
+    try:
+        document = inventory_sbom.build(snapshot, application_id)
+    except inventory_sbom.Unavailable as exc:
+        return JsonResponse({"error": str(exc)}, status=422)
+    response = JsonResponse(document, content_type="application/vnd.cyclonedx+json")
+    response["Content-Disposition"] = (
+        'attachment; filename="'
+        + inventory_sbom.filename(application_id, snapshot.snapshot_id)
+        + '"'
+    )
+    response["Cache-Control"] = "private, no-store"
+    response["X-Content-Type-Options"] = "nosniff"
+    return response

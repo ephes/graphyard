@@ -294,3 +294,35 @@ each. Counts and the exact source-report download expose the full evidence. Nest
 report values are shape-checked and rendered as escaped text, never executable HTML
 or external links. Malformed coverage and comparison shapes are labelled explicitly. Unknown nested
 shapes do not manufacture success or versions.
+
+## Python SBOM downloads
+
+The application view links to an authenticated, read-only CycloneDX 1.6 JSON
+export when an application has successful Python distribution metadata. The URL
+`/inventory/<host>/<snapshot-id>/python-sbom/?application=<exact-id>` pins the
+export to an immutable received report, including historical or partial reports.
+It never contacts a producer or upstream service. Writer tokens cannot download
+it; a normal reader session is required. Missing snapshots return 404; missing,
+ambiguous or malformed Python/application evidence returns 422.
+
+The export includes **all** reported Python distributions, normalized PyPI package
+URLs, original installed metadata (including declared requirements and license
+text) as properties, source report digest, snapshot ID, collector and observation
+time. Serial identity is deterministic for this export format and exact evidence.
+`EXPORT_VERSION` identifies the export contract in tool provenance and serial
+identity; bump it when changing the exported meaning or structure.
+Git/coverage/runtime evidence is retained as source properties. Application and
+category failure states remain explicit even if their Python sub-probe succeeded.
+
+This is an **incomplete, package-only SBOM**. It does not establish artifact
+identity, file hashes, active dependency edges, license compliance, update status
+or vulnerability status. OS/native/frontend/container contents are outside its
+scope. Requirement extras/markers are not evaluated; declared licenses are not
+promoted to validated SPDX licenses. No empty dependency graph is invented.
+Duplicate normalized package names are rejected rather than merged. An empty
+successful package list produces an explicitly incomplete empty package inventory.
+Download time does not refresh the observation. Exact source JSON remains available.
+
+Export code uses the standard library only. Tests validate documents with the
+CycloneDX project's strict 1.6 JSON schema validator (a development dependency):
+<https://cyclonedx-python-library.readthedocs.io/en/stable/autoapi/cyclonedx/validation/json/>.

@@ -21,6 +21,11 @@ urlpatterns = [
         name="inventory_download",
     ),
     path(
+        "inventory/<str:host_id>/<uuid:snapshot_id>/python-sbom/",
+        inventory.python_sbom,
+        name="inventory_python_sbom",
+    ),
+    path(
         "login/",
         auth_views.LoginView.as_view(
             template_name="graphyard/login.html",

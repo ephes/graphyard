@@ -931,3 +931,69 @@ def test_bundle_diagnostic_does_not_label_valid_bundle_malformed():
     assert "Malformed bundle evidence" in project(rows[0])["error"]
     assert "Malformed" not in project(rows[1])["error"]
     assert project(rows[1])["installed"] == "1"
+
+
+def test_python_sbom_auth_scope_and_historical_source(
+    client, enrolled, django_user_model
+):
+    good = report(observed_at=(timezone.now() - timedelta(days=2)).isoformat())
+    good["categories"]["applications"]["items"] = [
+        {
+            "id": "app/<&>",
+            "status": "ok",
+            "items": {
+                "python": {
+                    "status": "ok",
+                    "items": [
+                        {"name": "example", "version": "1.2", "requires": []},
+                    ],
+                }
+            },
+        }
+    ]
+    assert send(client, enrolled, good).status_code == 200
+    bad = report()
+    bad["categories"]["applications"] = {"status": "error", "items": []}
+    assert send(client, enrolled, bad).status_code == 200
+    url = reverse(
+        "graphyard:inventory_python_sbom", args=["studio", good["snapshot_id"]]
+    )
+    query = {"application": "app/<&>"}
+    assert client.get(url, query).status_code == 302
+    assert client.get(url, query, HTTP_AUTHORIZATION=enrolled[2]).status_code == 302
+    client.force_login(django_user_model.objects.create_user(username="sbom-reader"))
+    before = list(
+        InventoryCategory.objects.values_list("latest_attempt_id", "latest_success_id")
+    )
+    response = client.get(url, query)
+    assert response.status_code == 200
+    assert response["Content-Type"] == "application/vnd.cyclonedx+json"
+    assert response["Cache-Control"] == "private, no-store"
+    assert "<&>" not in response["Content-Disposition"]
+    assert response.json()["metadata"]["component"]["name"] == "app/<&>"
+    assert client.get(url).status_code == 422
+    assert client.post(url, query).status_code == 405
+    wrong_host = reverse(
+        "graphyard:inventory_python_sbom", args=["atlas", good["snapshot_id"]]
+    )
+    assert client.get(wrong_host, query).status_code == 404
+    missing = reverse("graphyard:inventory_python_sbom", args=["studio", uuid4()])
+    assert client.get(missing, query).status_code == 404
+    failed = reverse(
+        "graphyard:inventory_python_sbom", args=["studio", bad["snapshot_id"]]
+    )
+    assert client.get(failed, query).status_code == 422
+    html = client.get(
+        reverse("graphyard:inventory_applications", args=["studio"])
+    ).content.decode()
+    assert url in html and failed not in html
+    assert "Historical evidence" in html and "application=app/%3C%26%3E" in html
+    assert InventorySnapshot.objects.count() == 2
+    assert (
+        list(
+            InventoryCategory.objects.values_list(
+                "latest_attempt_id", "latest_success_id"
+            )
+        )
+        == before
+    )

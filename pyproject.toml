@@ -28,6 +28,7 @@ packages = ["src/graphyard"]
 
 [dependency-groups]
 dev = [
+    "cyclonedx-python-lib[json-validation]>=11,<12",
     "mypy>=1.15.0",
     "pre-commit>=4.2.0",
     "pytest>=8.3.5",

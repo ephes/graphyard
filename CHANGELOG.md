@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Add private, snapshot-bound CycloneDX 1.6 Python package SBOM downloads,
+  preserving observation provenance and explicitly incomplete dependency coverage.
+
 - Add a searchable application evidence view with separate installed/running
   versions, cached APT update findings, Python requirements and Git provenance.
   Preserve partial/historical labels and unknown coverage; reading never scans
