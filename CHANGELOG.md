@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add weekly cached inventory release comparison with source timestamps and explicit unknowns.
+
 - Display recorded local software-health observations with source times, explicit
   historical/unknown states and bounded APT security-update scope.
 

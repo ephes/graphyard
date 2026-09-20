@@ -344,3 +344,56 @@ the distribution security repositories observed by that monitor, not all softwar
 Source errors and inventory coverage gaps remain separate from recorded warning
 verdicts; a successfully read warning is still a warning. The report download keeps
 the exact underlying observation and its timestamp.
+
+
+## Weekly version comparison
+
+`/inventory/versions/` is a session-authenticated, paginated comparison of installed
+application/Python/Homebrew observations with explicit public release sources.
+It supports host, component/application and finding filters. Each row links the
+immutable source report and the release API, showing both observation times.
+The page never makes outbound requests and never modifies host reports.
+
+`refresh_inventory_releases --file /etc/graphyard/inventory-releases.json` refreshes
+a separate database cache. The registry is an array of `{kind, project, targets}`;
+each target has `{kind, name}`. Sources support `pypi`, `github`, `brew` (formulae),
+and target kinds are `python`, `application`, `brew`. Registry identifiers are
+validated; URLs are constructed for fixed public HTTPS endpoints. Inventory content
+cannot register sources, select destinations, or send private package names outward.
+Each public response is bounded to 16 MiB after decompression.
+HTTP redirects, proxy environment settings, prereleases/dev/local versions, yanked
+PyPI releases, disabled formulae and oversized responses are refused. No GitHub
+credential is used; rate limits appear as failed checks. PyPI's latest project
+release must have at least one non-yanked artifact; no compatibility resolver is run.
+
+The explicit registry defines package identity; matching a distribution name is not
+proof of its original download registry. Private/repacked distributions must not be
+mapped to public packages unless that identity is intended by the operator.
+
+The weekly job refreshes sources at least six days old, leaving margin for
+request duration and timer jitter; a failed lookup retains the prior version
+and successful timestamp but forces unknown status. Both source and installation
+must be no more than eight days old and not future-dated to compare. Historical
+fallback reports remain unknown. Valid Python subprobes within partial application
+reports may be compared, with explicit partial-basis markers and host coverage notes. Exact version matches mean only a match to that
+checked stable release; an installed version ahead of the source is distinct.
+Python package versions use PEP 440 ordering. Homebrew excludes rebuild suffixes
+and formula revisions; casks and arbitrary OS versions have no upstream comparator.
+APT comparisons retain their locally recorded candidate and explicitly unknown
+index age. No Debian epoch/revision is compared to a GitHub semantic version.
+
+A weekly systemd oneshot can run as the existing Graphyard account. It needs only
+public HTTPS access and its existing database rights, no producer access. Refreshes
+are serialized by a private `.inventory-releases.lock` next to the Django database;
+rsync must exclude that lock from both deletion and replacement. `--check` validates without DB/network/lock writes;
+`--force` bypasses the cache age for an operator acceptance check. Removed sources
+are disabled on the next valid refresh; invalid configuration changes nothing.
+A disabled timer retains previous cache rows, which become stale normally.
+
+Apply migration 0009 before serving this page. Rollback can disable the timer and
+revert the application code while retaining the additive cache table and all source
+reports. Back up SQLite consistently; do not replace a running database file.
+
+Source contracts: [PyPI JSON API](https://docs.pypi.org/api/json/),
+[GitHub latest release API](https://docs.github.com/en/rest/releases/releases#get-the-latest-release),
+[Homebrew API](https://formulae.brew.sh/docs/api/).

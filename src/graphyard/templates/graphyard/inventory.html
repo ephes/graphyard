@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Software inventory · Graphyard</title>
 <style>body{font:16px system-ui;margin:2rem;color:#1e293b;background:#f8fafc}main{max-width:1100px;margin:auto}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:.7rem;border-bottom:1px solid #cbd5e1}a{color:#075985}.note{color:#475569}code{white-space:pre-wrap}</style></head>
-<body><main><a href="{% url 'graphyard:index' %}">Graphyard</a><h1>Software inventory</h1>
+<body><main><nav><a href="{% url 'graphyard:inventory_versions' %}">Version comparison</a></nav><a href="{% url 'graphyard:index' %}">Graphyard</a><h1>Software inventory</h1>
 <p class="note">Reports originate on each host. Missing or old observations remain visible. Versions and dependency metadata are observations, not a claim that everything is up to date.</p>
 <table><thead><tr><th>Host</th><th>Last observation</th><th>State</th><th>Categories</th></tr></thead><tbody>
 {% for host in hosts %}<tr><td><a href="{% url 'graphyard:inventory_detail' host.host %}">{{ host.host }}</a><br><a href="{% url 'graphyard:inventory_applications' host.host %}">Applications</a></td><td>{{ host.observed_at|default:"Never reported" }}</td><td>{% if host.alert %}Needs attention{% elif host.stale %}Old observation{% else %}Current report{% endif %}</td><td>{% for name, category in host.categories.items %}{{ name }}: {{ category.status }}{% if category.count != None %} ({{ category.count }}){% endif %}<br>{% endfor %}</td></tr>

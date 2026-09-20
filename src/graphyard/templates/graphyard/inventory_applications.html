@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>{{ host.host }} applications · Software inventory</title>
 <style>body{font:16px system-ui;margin:2rem;color:#1e293b;background:#f8fafc}main{max-width:1200px;margin:auto}table{width:100%;border-collapse:collapse}th,td{text-align:left;vertical-align:top;padding:.7rem;border-bottom:1px solid #cbd5e1;overflow-wrap:anywhere}a{color:#075985}.table-scroll{overflow-x:auto}.notice{padding:1rem;background:#fff4d6}details{margin:1rem 0}dt{font-weight:600}dd{margin:0 0 .6rem;overflow-wrap:anywhere}code{overflow-wrap:anywhere}input,button{font:inherit;padding:.4rem}nav{margin:1rem 0}</style></head>
-<body><main><a href="{% url 'graphyard:inventory_index' %}">Software inventory</a> · <a href="{% url 'graphyard:inventory_detail' host.host %}">{{ host.host }} report</a>
+<body><main><nav><a href="{% url 'graphyard:inventory_versions' %}">Version comparison</a></nav><a href="{% url 'graphyard:inventory_index' %}">Software inventory</a> · <a href="{% url 'graphyard:inventory_detail' host.host %}">{{ host.host }} report</a>
 <h1>Applications on {{ host.host }}</h1>
 <p>Installed and running versions are separate observations. Unknown means the report does not establish the answer. This is not a complete SBOM.</p>
 {% if basis == 'partial' %}<p class="notice"><strong>Incomplete application inventory.</strong> Showing partial evidence from a failed attempt. Coverage errors remain active.</p>

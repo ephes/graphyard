@@ -13,6 +13,7 @@ dependencies = [
     "granian>=2.2.6",
     "httpx>=0.28.1",
     "influxdb-client>=1.49.0",
+    "packaging>=24",
     "whitenoise>=6.9.0",
 ]
 

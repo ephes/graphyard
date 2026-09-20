@@ -348,3 +348,15 @@ class InventoryCategory(models.Model):
                 fields=["host", "name"], name="inventory_host_category"
             )
         ]
+
+
+class InventoryRelease(models.Model):
+    """Public release observation, independent of immutable host reports."""
+
+    source_id = models.CharField(max_length=255, primary_key=True)
+    definition = models.JSONField()
+    enabled = models.BooleanField(default=True)
+    attempted_at = models.DateTimeField(null=True)
+    checked_at = models.DateTimeField(null=True)
+    version = models.CharField(max_length=160, blank=True)
+    error = models.CharField(max_length=80, blank=True)

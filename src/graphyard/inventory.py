@@ -494,3 +494,71 @@ def python_sbom(request, host_id, snapshot_id):
     response["Cache-Control"] = "private, no-store"
     response["X-Content-Type-Options"] = "nosniff"
     return response
+
+
+@login_required
+@require_GET
+def version_list(request):
+    from . import inventory_releases
+
+    now = timezone.now()
+    sources = inventory_releases.registry()
+    selected_host = request.GET.get("host", "")[:128]
+    query = request.GET.get("q", "")[:100].strip()
+    selected_status = request.GET.get("status", "")
+    hosts = (
+        InventoryHost.objects.select_related("host")
+        .filter(host__enabled=True)
+        .order_by("host__host_id")
+    )
+    rows = []
+    coverage = []
+    for host in hosts:
+        if selected_host and host.host.host_id != selected_host:
+            continue
+        host_rows, notes = inventory_releases.rows_for_host(host, sources, now)
+        coverage.extend({"host": host.host.host_id, "message": note} for note in notes)
+        for row in host_rows:
+            row["host"] = host.host.host_id
+            rows.append(row)
+    counts = {
+        key: sum(row["status"] == key for row in rows)
+        for key in ("update", "equal", "ahead", "unknown")
+    }
+    if selected_status in counts:
+        rows = [row for row in rows if row["status"] == selected_status]
+    if query:
+        rows = [
+            row
+            for row in rows
+            if query.casefold()
+            in (row["application"] + " " + row["component"]).casefold()
+        ]
+    rows.sort(
+        key=lambda row: (
+            {"update": 0, "unknown": 1, "ahead": 2, "equal": 3}[row["status"]],
+            row["host"],
+            row["application"].casefold(),
+            row["component"].casefold(),
+        )
+    )
+    page = Paginator(rows, 50).get_page(request.GET.get("page"))
+    params = request.GET.copy()
+    params.pop("page", None)
+    return render(
+        request,
+        "graphyard/inventory_versions.html",
+        {
+            "page": page,
+            "counts": counts,
+            "coverage": coverage,
+            "hosts": hosts,
+            "selected_host": selected_host,
+            "selected_status": selected_status,
+            "query": query,
+            "params": params.urlencode(),
+            "source_count": inventory_releases.InventoryRelease.objects.filter(
+                enabled=True
+            ).count(),
+        },
+    )

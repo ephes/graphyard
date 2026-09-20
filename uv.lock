@@ -246,6 +246,7 @@ dependencies = [
     { name = "granian" },
     { name = "httpx" },
     { name = "influxdb-client" },
+    { name = "packaging" },
     { name = "whitenoise" },
 ]
 
@@ -266,6 +267,7 @@ requires-dist = [
     { name = "granian", specifier = ">=2.2.6" },
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "influxdb-client", specifier = ">=1.49.0" },
+    { name = "packaging", specifier = ">=24" },
     { name = "whitenoise", specifier = ">=6.9.0" },
 ]
 

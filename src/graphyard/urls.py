@@ -9,6 +9,7 @@ urlpatterns = [
     path("v1/inventory", inventory.ingest, name="inventory_ingest"),
     path("v1/inventory/status", inventory.status, name="inventory_status"),
     path("inventory/", inventory.index, name="inventory_index"),
+    path("inventory/versions/", inventory.version_list, name="inventory_versions"),
     path(
         "inventory/<str:host_id>/applications/",
         inventory.application_list,
