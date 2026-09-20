@@ -326,3 +326,21 @@ Download time does not refresh the observation. Exact source JSON remains availa
 Export code uses the standard library only. Tests validate documents with the
 CycloneDX project's strict 1.6 JSON schema validator (a development dependency):
 <https://cyclonedx-python-library.readthedocs.io/en/stable/autoapi/cyclonedx/validation/json/>.
+
+## Recorded software-health observations
+
+An application's optional `software_health` subprobe carries an allowlisted local
+observation from the existing software-live monitor. The view shows the source
+observation time, OS support/PostgreSQL/Traefik verdicts and versions, and APT
+security-update counts. These are recorded results, not a receiver-side query.
+The receiver never contacts producers or monitoring endpoints.
+
+Host identity, schema, timestamp and nested display shapes are checked. An absent,
+malformed, future or already-stale-at-collection source is unavailable. An
+observation older than 30 minutes when viewed has an explicit historical banner;
+weekly inventory collection does not make monitoring current. Unknown APT status
+or stale indexes yields an unknown count, never zero. A known count only concerns
+the distribution security repositories observed by that monitor, not all software.
+Source errors and inventory coverage gaps remain separate from recorded warning
+verdicts; a successfully read warning is still a warning. The report download keeps
+the exact underlying observation and its timestamp.

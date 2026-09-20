@@ -20,6 +20,18 @@
 {% if app.coverage %}<p>Coverage gaps: {{ app.coverage_count }}; showing up to 10.</p><ul>{% for gap in app.coverage %}<li>{{ gap }}</li>{% endfor %}</ul>{% endif %}
 {% if app.bundle_path %}<p>Bundle: {{ app.bundle_path }}</p>{% endif %}
 {% if app.bundle_build %}<p>Build: {{ app.bundle_build }}</p>{% endif %}
+{% if app.health %}
+<details open><summary>Recorded software health</summary>
+{% if app.health.available %}
+<p>Monitoring observation: {{ app.health.observed_at }}. These are results saved in this inventory report, not a live monitoring query.</p>
+{% if app.health.historical %}<p class="notice">Historical monitoring observation (older than 30 minutes, or clock mismatch). Current software health is not established by this report.</p>{% endif %}
+<p>Pending APT security updates at observation: <strong>{% if app.health.security_count != None %}{{ app.health.security_count }}{% else %}Unknown{% endif %}</strong>. Indexes fresh at observation: {{ app.health.indexes_fresh|yesno:"yes,no" }}. This covers cached distribution security repositories only; it does not establish currency of all applications or containers.</p>
+<div class="table-scroll"><table><thead><tr><th>Check</th><th>Recorded finding</th><th>Installed</th><th>Running</th><th>Observed upstream</th></tr></thead><tbody>
+{% for check in app.health.checks %}<tr><td>{{ check.name }}{% if not check.expected %} (not expected on this host){% endif %}</td><td>{{ check.status }}{% for issue in check.issues %}<div>{{ issue }}</div>{% endfor %}{% if check.truncated %}<div>Additional issue codes omitted.</div>{% endif %}</td><td>{{ check.installed }}</td><td>{{ check.running }}</td><td>{{ check.upstream }}</td></tr>{% endfor %}
+</tbody></table></div>
+{% else %}<p>Software-health evidence unavailable or malformed. No healthy/current conclusion can be drawn.</p>{% endif %}
+</details>
+{% endif %}
 <details><summary>Update evidence</summary>
 {% if app.candidates_invalid %}<p>Malformed package comparison evidence; see the full report.</p>{% endif %}
 {% if app.updates %}<p>Cached APT metadata at observation time; cache age is unknown. This does not check upstream releases or prove that all software is current. {{ app.candidate_count }} package comparisons; showing up to 10.</p>

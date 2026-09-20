@@ -1,5 +1,11 @@
 """Bounded presentation of received application evidence; no collection or lookups."""
 
+import math
+import time
+from datetime import UTC, datetime
+
+HEALTH_MAX_AGE_SECONDS = 1800
+
 
 def text(value, limit=200, default="Unknown"):
     if not isinstance(value, str) or not value:
@@ -78,7 +84,93 @@ def applications(entries):
             yield app
 
 
-def project(app):
+def health_projection(evidence, host_id, observed_at):
+    """Monitoring results retain their own source time and restricted meaning."""
+    if "software_health" not in evidence:
+        return None
+    unavailable = {"available": False}
+    observation = mapping(evidence["software_health"])
+    data = mapping(observation.get("items"))
+    stamp = data.get("observed_at_epoch")
+    if (
+        not isinstance(host_id, str)
+        or not host_id
+        or observation.get("status") != "ok"
+        or type(data.get("schema_version")) is not int
+        or data["schema_version"] != 1
+        or data.get("source") != "software-live/2"
+        or data.get("host") != host_id
+        or not isinstance(observed_at, datetime)
+        or type(stamp) not in (int, float)
+        or not 0 < stamp <= 253402300799
+        or not math.isfinite(stamp)
+        or not 0 <= observed_at.timestamp() - stamp <= HEALTH_MAX_AGE_SECONDS
+        or type(data.get("max_age_seconds")) is not int
+        or data["max_age_seconds"] != HEALTH_MAX_AGE_SECONDS
+    ):
+        return unavailable
+    checks = mapping(data.get("checks"))
+    if set(checks) != {"os", "postgresql", "traefik"}:
+        return unavailable
+    rows = []
+    for key, label in (
+        ("os", "Operating system support"),
+        ("postgresql", "PostgreSQL"),
+        ("traefik", "Traefik"),
+    ):
+        item = mapping(checks[key])
+        if item.get("status") not in ("ok", "warning", "unknown") or any(
+            type(item.get(k)) is not bool
+            for k in ("observed", "expected", "issues_truncated")
+        ):
+            return unavailable
+        if any(
+            item.get(field) is not None
+            and (not isinstance(item[field], str) or len(item[field]) > 160)
+            for field in ("installed_version", "running_version", "upstream_version")
+        ):
+            return unavailable
+        issues = item.get("issues")
+        if (
+            not isinstance(issues, list)
+            or len(issues) > 20
+            or any(not isinstance(i, str) for i in issues)
+        ):
+            return unavailable
+        rows.append(
+            {
+                "name": label,
+                "status": item["status"] if item["observed"] else "unknown",
+                "expected": item["expected"],
+                "installed": text(item.get("installed_version")),
+                "running": text(item.get("running_version"), default="Not assessed"),
+                "upstream": text(item.get("upstream_version"), default="Not assessed"),
+                "issues": [text(i, 160) for i in issues if i],
+                "truncated": item["issues_truncated"],
+            }
+        )
+    apt = mapping(data.get("apt"))
+    count = apt.get("pending_security_count")
+    if (
+        apt.get("status") not in ("ok", "unknown")
+        or type(apt.get("indexes_fresh")) is not bool
+        or (count is not None and (type(count) is not int or count < 0))
+        or (apt.get("status") == "ok" and count is None)
+    ):
+        return unavailable
+    return {
+        "available": True,
+        "observed_at": datetime.fromtimestamp(stamp, UTC),
+        "historical": not 0 <= time.time() - stamp <= HEALTH_MAX_AGE_SECONDS,
+        "checks": rows,
+        "security_count": count
+        if apt["status"] == "ok" and apt["indexes_fresh"]
+        else None,
+        "indexes_fresh": apt["indexes_fresh"],
+    }
+
+
+def project(app, host_id=None, observed_at=None):
     """Never render arbitrary nested report values or infer unsupported freshness."""
     from .inventory_sbom import eligible
 
@@ -142,6 +234,7 @@ def project(app):
     checkout = mapping(git.get("items")) if git.get("status") == "ok" else {}
     dirty = checkout.get("dirty")
     return {
+        "health": health_projection(evidence, host_id, observed_at),
         "sbom_id": app["id"] if eligible(app) else None,
         "name": text(app.get("id"), default="Unnamed application"),
         "kind": text(app.get("kind"), default="Registered application probe"),

@@ -444,7 +444,14 @@ def application_list(request, host_id):
                 latest_category.get("status"), 40, "missing"
             ),
             "attempt_error": presentation.text(latest_category.get("error"), 512, ""),
-            "rows": [presentation.project(row) for row in page.object_list],
+            "rows": [
+                presentation.project(
+                    row,
+                    host_id=host.host.host_id,
+                    observed_at=snapshot.observed_at if snapshot else None,
+                )
+                for row in page.object_list
+            ],
             "page": page,
             "total": total,
             "query": query,

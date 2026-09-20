@@ -997,3 +997,163 @@ def test_python_sbom_auth_scope_and_historical_source(
         )
         == before
     )
+
+
+def health_evidence(host="studio", timestamp=None):
+    return {
+        "schema_version": 1,
+        "source": "software-live/2",
+        "host": host,
+        "observed_at_epoch": timestamp or timezone.now().timestamp(),
+        "max_age_seconds": 1800,
+        "checks": {
+            name: {
+                "status": "ok",
+                "observed": True,
+                "expected": name != "postgresql",
+                "installed_version": "1.2.3",
+                "running_version": None,
+                "upstream_version": None,
+                "issues": [],
+                "issues_truncated": False,
+            }
+            for name in ["os", "postgresql", "traefik"]
+        },
+        "apt": {"status": "ok", "indexes_fresh": True, "pending_security_count": 0},
+    }
+
+
+def test_software_health_view_preserves_source_time_scope_and_historical_status(
+    client, enrolled, django_user_model
+):
+    stamp = timezone.now() - timedelta(days=1)
+    evidence = health_evidence(timestamp=stamp.timestamp())
+    evidence["checks"]["traefik"].update(
+        status="warning", issues=["<script>fake</script>"]
+    )
+    data = report(observed_at=(stamp + timedelta(minutes=20)).isoformat())
+    data["categories"]["applications"]["items"] = [
+        {
+            "id": "software_live",
+            "status": "ok",
+            "items": {"software_health": {"status": "ok", "items": evidence}},
+        }
+    ]
+    assert send(client, enrolled, data).status_code == 200
+    client.force_login(django_user_model.objects.create_user(username="health-reader"))
+    html = client.get(
+        reverse("graphyard:inventory_applications", args=["studio"])
+    ).content.decode()
+    from django.template import Context, Template
+
+    rendered_source = Template("{{ stamp }}").render(Context({"stamp": stamp}))
+    assert "Monitoring observation: " + rendered_source in html
+    assert "Recorded software health" in html
+    assert "Historical monitoring observation" in html
+    assert "Pending APT security updates at observation: <strong>0</strong>" in html
+    assert "not expected on this host" in html
+    assert (
+        "&lt;script&gt;fake&lt;/script&gt;" in html
+        and "<script>fake</script>" not in html
+    )
+    assert "does not establish currency of all applications or containers" in html
+    assert InventorySnapshot.objects.get().report == data
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        "failed_probe",
+        "wrong_host",
+        "future",
+        "stale_at_capture",
+        "bool_time",
+        "malformed_check",
+        "malformed_version",
+        "bool_count",
+        "unknown_apt",
+        "stale_indexes",
+    ],
+)
+def test_health_projection_never_turns_missing_invalid_or_stale_indexes_green(case):
+    from graphyard.inventory_applications import health_projection
+
+    now = timezone.now()
+    data = health_evidence(timestamp=(now - timedelta(seconds=60)).timestamp())
+    observation = {"status": "ok", "items": data}
+    if case == "failed_probe":
+        observation = {"status": "error", "items": []}
+    elif case == "wrong_host":
+        data["host"] = "another-host"
+    elif case == "future":
+        data["observed_at_epoch"] = now.timestamp() + 60
+    elif case == "stale_at_capture":
+        data["observed_at_epoch"] = now.timestamp() - 1801
+    elif case == "bool_time":
+        data["observed_at_epoch"] = True
+    elif case == "malformed_check":
+        data["checks"]["os"]["observed"] = "yes"
+    elif case == "malformed_version":
+        data["checks"]["os"]["installed_version"] = {}
+    elif case == "bool_count":
+        data["apt"]["pending_security_count"] = False
+    elif case == "unknown_apt":
+        data["apt"].update(status="unknown", pending_security_count=None)
+    elif case == "stale_indexes":
+        data["apt"]["indexes_fresh"] = False
+    result = health_projection({"software_health": observation}, "studio", now)
+    if case in ["unknown_apt", "stale_indexes"]:
+        assert result["available"] is True and result["security_count"] is None
+    else:
+        assert result == {"available": False}
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("source", "unknown-source"),
+        ("schema_version", 2),
+        ("max_age_seconds", 86400),
+        ("observed_at_epoch", 10**400),
+        ("checks", {}),
+        ("checks", {"unexpected": {}}),
+    ],
+)
+def test_health_projection_rejects_contract_mismatch(field, value):
+    from graphyard.inventory_applications import health_projection
+
+    now = timezone.now()
+    data = health_evidence(timestamp=now.timestamp())
+    data[field] = value
+    assert health_projection(
+        {"software_health": {"status": "ok", "items": data}}, "studio", now
+    ) == {"available": False}
+
+
+@pytest.mark.parametrize("issues", [["x"] * 21, [7]])
+def test_health_projection_rejects_invalid_issues(issues):
+    from graphyard.inventory_applications import health_projection
+
+    now = timezone.now()
+    data = health_evidence(timestamp=now.timestamp())
+    data["checks"]["os"]["issues"] = issues
+    assert health_projection(
+        {"software_health": {"status": "ok", "items": data}}, "studio", now
+    ) == {"available": False}
+
+
+def test_health_projection_absent_context_and_fresh_source(monkeypatch):
+    from graphyard import inventory_applications as presentation
+
+    now = timezone.now()
+    data = health_evidence(timestamp=now.timestamp())
+    evidence = {"software_health": {"status": "ok", "items": data}}
+    assert presentation.health_projection({}, "studio", now) is None
+    for host, date in [(None, now), (7, now), ("studio", None), ("studio", "invalid")]:
+        assert presentation.health_projection(evidence, host, date) == {
+            "available": False
+        }
+    monkeypatch.setattr(presentation.time, "time", lambda: now.timestamp() + 60)
+    result = presentation.health_projection(evidence, "studio", now)
+    assert result["observed_at"] == now
+    assert result["historical"] is False

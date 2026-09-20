@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Display recorded local software-health observations with source times, explicit
+  historical/unknown states and bounded APT security-update scope.
+
 - Add private, snapshot-bound CycloneDX 1.6 Python package SBOM downloads,
   preserving observation provenance and explicitly incomplete dependency coverage.
 
