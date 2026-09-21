@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Separate inventory delivery freshness, partial coverage and cached release-source
+  health in the private status API, preserving the combined attention field and
+  source timestamps without new scans or upstream requests.
+
 - Show bounded, snapshot-bound worker/runtime unit bindings under existing
   applications, preserving failed, missing and historical evidence.
 

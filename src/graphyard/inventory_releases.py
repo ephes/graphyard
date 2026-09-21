@@ -164,6 +164,45 @@ def refresh(data, force=False):
     return failures
 
 
+def source_health(now):
+    """Report cached public-source freshness without fetching or trusting host names."""
+    rows = []
+    for release in InventoryRelease.objects.filter(enabled=True).order_by("source_id"):
+        if release.error:
+            state = "failed"
+        elif not release.checked_at or not release.version:
+            state = "missing"
+        elif not timedelta(0) <= now - release.checked_at <= MAX_AGE:
+            state = "stale"
+        else:
+            try:
+                Version(stable(release.version))
+            except (InvalidVersion, ValueError, TypeError):
+                state = "invalid"
+            else:
+                state = "ok"
+        rows.append(
+            {
+                "source": release.source_id,
+                "status": state,
+                "checked_at": release.checked_at.isoformat()
+                if release.checked_at
+                else None,
+                "attempted_at": release.attempted_at.isoformat()
+                if release.attempted_at
+                else None,
+            }
+        )
+    attention = sum(row["status"] != "ok" for row in rows)
+    return {
+        "total": len(rows),
+        "attention": attention,
+        "status": "not_configured" if not rows else "attention" if attention else "ok",
+        "max_age_seconds": int(MAX_AGE.total_seconds()),
+        "sources": rows,
+    }
+
+
 def registry():
     result = {}
     for row in InventoryRelease.objects.filter(enabled=True):

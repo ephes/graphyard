@@ -480,3 +480,51 @@ def test_linux_packages_are_not_mistaken_for_missing_brew_and_unsupported_is_exp
     )
     rows, notes = releases.rows_for_host(host, {}, timezone.now())
     assert rows == [] and notes == ["Latest package observation: unsupported"]
+
+
+@pytest.mark.parametrize(
+    "kind", ["ok", "failed", "missing", "empty_version", "stale", "future", "invalid"]
+)
+def test_monitor_status_reports_cached_release_failures_without_fetch(
+    client, settings, monkeypatch, kind
+):
+    settings.GRAPHYARD_INVENTORY_MONITOR_TOKEN = "synthetic-monitor"
+    row = cache()
+    if kind == "failed":
+        row.error = "private diagnostic must not be echoed"
+    elif kind == "missing":
+        row.checked_at = None
+    elif kind == "empty_version":
+        row.version = ""
+    elif kind == "stale":
+        row.checked_at = timezone.now() - timedelta(days=9)
+    elif kind == "future":
+        row.checked_at = timezone.now() + timedelta(hours=1)
+    elif kind == "invalid":
+        row.version = "not a version"
+    row.save()
+    before = InventoryRelease.objects.values().get()
+
+    def no_fetch(*args, **kwargs):
+        raise AssertionError("monitoring must not contact release sources")
+
+    monkeypatch.setattr(httpx, "Client", no_fetch)
+    response = client.get(
+        reverse("graphyard:inventory_status"),
+        HTTP_AUTHORIZATION="Bearer synthetic-monitor",
+    )
+    status = response.json()
+    expected = {"empty_version": "missing", "future": "stale"}.get(kind, kind)
+    assert status["releases"]["sources"][0]["status"] == expected
+    assert status["releases"]["total"] == 1
+    assert status["summary"]["release_attention"] == int(kind != "ok")
+    assert "private diagnostic" not in response.content.decode()
+    assert InventoryRelease.objects.values().get() == before
+    row.enabled = False
+    row.save()
+    status = client.get(
+        reverse("graphyard:inventory_status"),
+        HTTP_AUTHORIZATION="Bearer synthetic-monitor",
+    ).json()
+    assert status["releases"]["status"] == "not_configured"
+    assert status["releases"]["total"] == 0

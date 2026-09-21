@@ -106,8 +106,35 @@ reports. A server observation older than the enrollment threshold (default 48 h)
 is stale. Intermittent hosts still show age but suppress freshness alerts once
 reports exist. Category errors still need attention. `summary.total` and
 `summary.attention` can be consumed by an existing Nyxmon JSON-Metrics check.
-That check is not provisioned by this change. Inventory age and receipt age are
-separate; retries do not make an old scan fresh.
+The endpoint exposes separate `summary.delivery_attention` and
+`summary.coverage_attention` counts while preserving the combined `attention`.
+A never-reporting enrolled host requires delivery attention even when intermittent;
+a previously reporting intermittent host shows staleness without a delivery alert.
+Coverage counts only hosts with a report; a missing first report is a delivery
+problem. A previously reporting host can have both stale delivery and partial coverage.
+Each host includes its effective `warning_after_seconds` and `alert_when_stale`.
+Monitoring can therefore alarm on failed delivery without hiding known partial
+application evidence. Inventory age and receipt age are separate; retries do not
+make an old scan fresh.
+
+The response has `schema_version: 1`, a server `generated_at` timestamp and
+`Cache-Control: private, no-store`. `releases` summarizes only enabled cached public
+sources: `total`, `attention`, `status`, `max_age_seconds`, and source IDs with their
+status and original attempt/success times. Failed, missing, stale/future and invalid
+cached versions require attention; no raw diagnostic or credential is returned.
+`summary.release_attention` repeats this failure count and `summary.release_total`
+the enabled source count. Aggregate release status is `ok`, `attention`, or
+`not_configured`; per-source status is `ok`, `failed`, `missing`, `stale`, or
+`invalid`. An empty version counts as missing; a future check timestamp counts as
+stale. The eight-day freshness budget allows one day beyond the weekly schedule;
+a missed weekly refresh should produce one aggregate monitoring alert, rather
+than stay silent for another week. An empty registry reports
+`status: not_configured`, not healthy operation. A deployment that expects release
+comparison must check its expected source count/status as well as zero attention.
+The status request neither fetches upstreams nor changes observations. This is
+refresh-operation health, not proof all installed software is current. Provision
+monitoring separately with the existing read-only bearer credential; producers
+retain write-only credentials and cannot query status.
 
 The detail view displays metadata as reported and links to full JSON. It does not
 yet calculate upstream update availability, resolve all dependency graphs, ingest

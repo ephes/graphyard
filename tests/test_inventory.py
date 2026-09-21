@@ -363,7 +363,21 @@ def test_status_includes_missing_host_and_laptop_policy(client, enrolled, settin
     )
     assert response.status_code == 200
     state = response.json()
-    assert state["summary"] == {"total": 2, "attention": 1}
+    assert state["summary"] == {
+        "total": 2,
+        "attention": 1,
+        "delivery_attention": 1,
+        "coverage_attention": 0,
+        "release_attention": 0,
+        "release_total": 0,
+    }
+    assert state["releases"]["status"] == "not_configured"
+    assert state["hosts"]["studio"]["delivery_alert"] is False
+    assert state["hosts"]["studio"]["alert_when_stale"] is False
+    assert state["hosts"]["missing-server"]["delivery_alert"] is True
+    assert state["hosts"]["missing-server"]["coverage_alert"] is False
+    assert state["schema_version"] == 1
+    assert response["Cache-Control"] == "private, no-store"
     assert state["hosts"]["studio"]["stale"] is True
     assert state["hosts"]["studio"]["alert"] is False
     assert state["hosts"]["missing-server"]["alert"] is True
@@ -1295,3 +1309,58 @@ def test_old_report_has_no_fabricated_related_unit_section(
     html = application_page(client, django_user_model).content.decode()
     assert "Related systemd units" not in html
     assert "Malformed related-unit evidence" not in html
+
+
+def test_operational_status_separates_partial_coverage_from_lost_delivery(
+    client, enrolled, settings
+):
+    settings.GRAPHYARD_INVENTORY_MONITOR_TOKEN = "synthetic-monitor"
+    payload = report()
+    payload["categories"]["applications"] = {
+        "status": "error",
+        "items": [],
+        "error": "known partial coverage",
+    }
+    assert send(client, enrolled, payload).status_code == 200
+    url = reverse("graphyard:inventory_status")
+    response = client.get(url, HTTP_AUTHORIZATION="Bearer synthetic-monitor")
+    state = response.json()
+    assert state["summary"]["attention"] == 1
+    assert state["summary"]["coverage_attention"] == 1
+    assert state["summary"]["delivery_attention"] == 0
+    original = InventorySnapshot.objects.get().observed_at
+    InventorySnapshot.objects.update(observed_at=timezone.now() - timedelta(days=11))
+    before = InventorySnapshot.objects.values().get()
+    state = client.get(url, HTTP_AUTHORIZATION="Bearer synthetic-monitor").json()
+    assert state["summary"]["delivery_attention"] == 1
+    assert state["summary"]["coverage_attention"] == 1
+    assert (
+        state["hosts"]["studio"]["warning_after_seconds"]
+        == enrolled[0].warning_after_seconds
+    )
+    assert before["observed_at"] != original
+    assert InventorySnapshot.objects.values().get() == before
+    # Neither repeated status reading nor request time renews source observation.
+    assert state["hosts"]["studio"]["observed_at"] == before["observed_at"].isoformat()
+
+
+def test_inventory_monitor_cannot_ingest_and_writer_cannot_monitor(
+    client, enrolled, settings
+):
+    settings.GRAPHYARD_INVENTORY_MONITOR_TOKEN = "synthetic-monitor"
+    assert (
+        client.get(
+            reverse("graphyard:inventory_status"), HTTP_AUTHORIZATION=enrolled[2]
+        ).status_code
+        == 401
+    )
+    assert (
+        client.post(
+            reverse("graphyard:inventory_ingest"),
+            data=report(),
+            content_type="application/json",
+            HTTP_AUTHORIZATION="Bearer synthetic-monitor",
+        ).status_code
+        == 401
+    )
+    assert InventorySnapshot.objects.count() == 0

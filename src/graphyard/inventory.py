@@ -297,19 +297,24 @@ def host_summary(host, now, state=None):
     incomplete = len(categories) != len(CATEGORIES) or any(
         value["status"] == "error" for value in categories.values()
     )
+    delivery_alert = latest is None or (stale and host.alert_when_stale)
     return {
         "host": host.host.host_id,
         "observed_at": latest.observed_at.isoformat() if latest else None,
         "received_at": latest.received_at.isoformat() if latest else None,
         "stale": stale,
-        "alert": incomplete or (stale and host.alert_when_stale),
+        "alert": incomplete or delivery_alert,
+        "delivery_alert": delivery_alert,
+        "coverage_alert": latest is not None and incomplete,
+        "warning_after_seconds": host.warning_after_seconds,
+        "alert_when_stale": host.alert_when_stale,
         "categories": categories,
         "gaps": latest.report["gaps"] if latest else ["never_reported"],
     }
 
 
-def summaries():
-    now = timezone.now()
+def summaries(now=None):
+    now = timezone.now() if now is None else now
     return [
         host_summary(host, now)
         for host in InventoryHost.objects.filter(host__enabled=True)
@@ -327,16 +332,29 @@ def status(request):
     )
     if not request.user.is_authenticated and not machine:
         return JsonResponse({"error": "inventory read access required"}, status=401)
-    hosts = summaries()
-    return JsonResponse(
+    from .inventory_releases import source_health
+
+    now = timezone.now()
+    hosts = summaries(now)
+    releases = source_health(now)
+    response = JsonResponse(
         {
+            "schema_version": 1,
+            "generated_at": now.isoformat(),
             "summary": {
                 "total": len(hosts),
                 "attention": sum(host["alert"] for host in hosts),
+                "delivery_attention": sum(host["delivery_alert"] for host in hosts),
+                "coverage_attention": sum(host["coverage_alert"] for host in hosts),
+                "release_attention": releases["attention"],
+                "release_total": releases["total"],
             },
             "hosts": {host["host"]: host for host in hosts},
+            "releases": releases,
         }
     )
+    response["Cache-Control"] = "private, no-store"
+    return response
 
 
 @login_required
