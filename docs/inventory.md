@@ -397,3 +397,27 @@ reports. Back up SQLite consistently; do not replace a running database file.
 Source contracts: [PyPI JSON API](https://docs.pypi.org/api/json/),
 [GitHub latest release API](https://docs.github.com/en/rest/releases/releases#get-the-latest-release),
 [Homebrew API](https://formulae.brew.sh/docs/api/).
+
+
+## Related systemd units
+
+Application evidence can include an optional `related_units` projection from the
+collector's unit inventory in the same snapshot. The application page displays
+these explicit worker/runtime bindings under their existing application; it does
+not count them as separate application entries. Unit states retain the report's
+source time and partial/historical/stale labels. Active can include completed
+oneshot jobs and is not a whole-stack health check, dependency proof or image ID.
+
+The bounded presentation accepts up to 32 unique exact `.service` names, each up
+to 200 characters (`[a-zA-Z0-9_.@-]+\.service`), and state strings up to 40 characters.
+This is the same allowlist as the producer; escaped or colon-bearing unit names
+require a deliberate contract extension. Empty row lists display "No related
+units recorded" alongside their source status and never establish complete
+coverage. The current producer omits the field when its configured binding list
+is empty. Malformed input displays
+an explicit evidence error rather than an empty success. If the unit inventory
+status is error/unsupported, every state is shown as unknown even if uploaded rows
+claim active. A missing unit is not-observed, not proof of absence. Older reports
+without this field show no related-unit section and acquire no inferred bindings.
+Rendering performs no collection, outbound lookup, database mutation or current
+unit-inventory join; downloading the source report retains the exact evidence.

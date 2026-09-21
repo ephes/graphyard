@@ -1,6 +1,7 @@
 """Bounded presentation of received application evidence; no collection or lookups."""
 
 import math
+import re
 import time
 from datetime import UTC, datetime
 
@@ -170,6 +171,40 @@ def health_projection(evidence, host_id, observed_at):
     }
 
 
+def related_units(evidence):
+    """Bounded unit bindings from the same report, not independent applications."""
+    if "related_units" not in evidence:
+        return None
+    observation = mapping(evidence["related_units"])
+    rows = observation.get("items")
+    status = observation.get("status")
+    if (
+        status not in ("ok", "error", "unsupported")
+        or not isinstance(rows, list)
+        or len(rows) > 32
+    ):
+        return {"valid": False}
+    names = set()
+    result = []
+    for row in rows:
+        if not isinstance(row, dict):
+            return {"valid": False}
+        name, state = row.get("name"), row.get("state")
+        if (
+            not isinstance(name, str)
+            or len(name) > 200
+            or not re.fullmatch(r"[a-zA-Z0-9_.@-]+\.service", name)
+            or name in names
+            or not isinstance(state, str)
+            or not state
+            or len(state) > 40
+        ):
+            return {"valid": False}
+        names.add(name)
+        result.append({"name": name, "state": state if status == "ok" else "unknown"})
+    return {"valid": True, "status": status, "rows": result}
+
+
 def project(app, host_id=None, observed_at=None):
     """Never render arbitrary nested report values or infer unsupported freshness."""
     from .inventory_sbom import eligible
@@ -234,6 +269,7 @@ def project(app, host_id=None, observed_at=None):
     checkout = mapping(git.get("items")) if git.get("status") == "ok" else {}
     dirty = checkout.get("dirty")
     return {
+        "related_units": related_units(evidence),
         "health": health_projection(evidence, host_id, observed_at),
         "sbom_id": app["id"] if eligible(app) else None,
         "name": text(app.get("id"), default="Unnamed application"),

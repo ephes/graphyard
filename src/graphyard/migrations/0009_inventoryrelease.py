@@ -4,22 +4,27 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('graphyard', '0008_inventoryhost_inventorycredential_inventorysnapshot_and_more'),
+        (
+            "graphyard",
+            "0008_inventoryhost_inventorycredential_inventorysnapshot_and_more",
+        ),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='InventoryRelease',
+            name="InventoryRelease",
             fields=[
-                ('source_id', models.CharField(max_length=255, primary_key=True, serialize=False)),
-                ('definition', models.JSONField()),
-                ('enabled', models.BooleanField(default=True)),
-                ('attempted_at', models.DateTimeField(null=True)),
-                ('checked_at', models.DateTimeField(null=True)),
-                ('version', models.CharField(blank=True, max_length=160)),
-                ('error', models.CharField(blank=True, max_length=80)),
+                (
+                    "source_id",
+                    models.CharField(max_length=255, primary_key=True, serialize=False),
+                ),
+                ("definition", models.JSONField()),
+                ("enabled", models.BooleanField(default=True)),
+                ("attempted_at", models.DateTimeField(null=True)),
+                ("checked_at", models.DateTimeField(null=True)),
+                ("version", models.CharField(blank=True, max_length=160)),
+                ("error", models.CharField(blank=True, max_length=80)),
             ],
         ),
     ]

@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Show bounded, snapshot-bound worker/runtime unit bindings under existing
+  applications, preserving failed, missing and historical evidence.
+
 - Add weekly cached inventory release comparison with source timestamps and explicit unknowns.
 
 - Display recorded local software-health observations with source times, explicit

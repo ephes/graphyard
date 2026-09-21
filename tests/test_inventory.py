@@ -1157,3 +1157,141 @@ def test_health_projection_absent_context_and_fresh_source(monkeypatch):
     result = presentation.health_projection(evidence, "studio", now)
     assert result["observed_at"] == now
     assert result["historical"] is False
+
+
+@pytest.mark.parametrize("basis", ["successful", "partial", "historical"])
+def test_related_units_keep_application_count_snapshot_and_failure_labels(
+    client, enrolled, django_user_model, basis
+):
+    data = report()
+    app = {
+        "id": "web",
+        "status": "ok",
+        "items": {
+            "related_units": {
+                "status": "ok",
+                "items": [
+                    {"name": "worker.service", "state": "failed"},
+                    {"name": "scheduler.service", "state": "<script>state</script>"},
+                    {"name": "missing.service", "state": "not-observed"},
+                ],
+            }
+        },
+    }
+    data["categories"]["applications"]["items"] = [app]
+    if basis == "partial":
+        data["categories"]["applications"] = {
+            "status": "error",
+            "items": [],
+            "partial_items": [app],
+        }
+    assert send(client, enrolled, data).status_code == 200
+    if basis == "historical":
+        later = report(observed_at=(timezone.now() + timedelta(seconds=1)).isoformat())
+        later["categories"]["applications"] = {"status": "error", "items": []}
+        assert send(client, enrolled, later).status_code == 200
+    before = list(InventorySnapshot.objects.values())
+    response = application_page(client, django_user_model)
+    html = response.content.decode()
+    assert response.context["total"] == 1
+    assert "worker.service" in html and "failed" in html and "not-observed" in html
+    assert "&lt;script&gt;state&lt;/script&gt;" in html and "<script>" not in html
+    assert data["snapshot_id"] in html
+    assert "whole-stack health" in html
+    if basis == "historical":
+        assert "Historical evidence" in html
+    if basis == "partial":
+        assert "Incomplete application inventory" in html
+    assert list(InventorySnapshot.objects.values()) == before
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        None,
+        [],
+        {},
+        {"status": "ok", "items": [None]},
+        {"status": "ok", "items": [{"name": "bad/name.service", "state": "active"}]},
+        {"status": "ok", "items": [{"name": "x.service", "state": "active"}] * 2},
+        {
+            "status": "ok",
+            "items": [{"name": f"w{i}.service", "state": "active"} for i in range(33)],
+        },
+    ],
+)
+def test_malformed_related_units_are_visible(value):
+    from graphyard.inventory_applications import project
+
+    assert project({"id": "app", "items": {"related_units": value}})[
+        "related_units"
+    ] == {"valid": False}
+
+
+def test_failed_related_unit_inventory_never_renders_active_state():
+    from graphyard.inventory_applications import project
+
+    for status in ["error", "unsupported"]:
+        result = project(
+            {
+                "id": "app",
+                "items": {
+                    "related_units": {
+                        "status": status,
+                        "items": [{"name": "worker.service", "state": "active"}],
+                    }
+                },
+            }
+        )
+        assert result["related_units"]["rows"][0]["state"] == "unknown"
+    assert project({"id": "old", "items": {}})["related_units"] is None
+
+
+@pytest.mark.parametrize(
+    "value,expected",
+    [
+        (None, "Malformed related-unit evidence"),
+        ({"status": "ok", "items": []}, "No related units recorded"),
+        ({"status": "unsupported", "items": []}, "No related units recorded"),
+        ({"status": "error", "items": []}, "No related units recorded"),
+        (
+            {
+                "status": "error",
+                "items": [{"name": "worker.service", "state": "active"}],
+            },
+            "unknown",
+        ),
+    ],
+)
+def test_related_unit_error_and_empty_states_reach_reader_html(
+    client, enrolled, django_user_model, value, expected
+):
+    data = report()
+    data["categories"]["applications"]["items"] = [
+        {"id": "app", "status": "ok", "items": {"related_units": value}}
+    ]
+    assert send(client, enrolled, data).status_code == 200
+    html = application_page(client, django_user_model).content.decode()
+    assert expected in html
+    assert "<td>active</td>" not in html
+    if isinstance(value, dict):
+        assert "Unit inventory status: " + value["status"] in html
+        if value["items"]:
+            assert "<td>unknown</td>" in html
+        else:
+            assert "Malformed related-unit evidence" not in html
+            assert "does not establish complete coverage" in html
+            assert "<th>Unit</th>" not in html
+
+
+def test_old_report_has_no_fabricated_related_unit_section(
+    client, enrolled, django_user_model
+):
+    data = report()
+    data["categories"]["applications"]["items"] = [
+        {"id": "old", "status": "ok", "items": {}}
+    ]
+    assert send(client, enrolled, data).status_code == 200
+    html = application_page(client, django_user_model).content.decode()
+    assert "Related systemd units" not in html
+    assert "Malformed related-unit evidence" not in html

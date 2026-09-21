@@ -18,6 +18,16 @@
 {% if app.error %}<p>Probe error: {{ app.error }}</p>{% endif %}
 {% if app.coverage_invalid %}<p>Malformed coverage evidence; see the full report.</p>{% endif %}
 {% if app.coverage %}<p>Coverage gaps: {{ app.coverage_count }}; showing up to 10.</p><ul>{% for gap in app.coverage %}<li>{{ gap }}</li>{% endfor %}</ul>{% endif %}
+{% if app.related_units %}
+<details open><summary>Related systemd units</summary>
+{% if app.related_units.valid %}
+<p>Unit inventory status: {{ app.related_units.status }}. These explicitly bound units belong to this application's evidence report and observation time. They are not separate application entries. Active units can include completed oneshot jobs; this does not establish whole-stack health, dependency use or container image identity. Not-observed means the unit was missing from this inventory, not proven absent.</p>
+{% if app.related_units.rows %}
+<div class="table-scroll"><table><thead><tr><th>Unit</th><th>Recorded state</th></tr></thead><tbody>{% for unit in app.related_units.rows %}<tr><td>{{ unit.name }}</td><td>{{ unit.state }}</td></tr>{% endfor %}</tbody></table></div>
+{% else %}<p>No related units recorded; this does not establish complete coverage.</p>{% endif %}
+{% else %}<p>Malformed related-unit evidence; see the full report. No unit state is established.</p>{% endif %}
+</details>
+{% endif %}
 {% if app.bundle_path %}<p>Bundle: {{ app.bundle_path }}</p>{% endif %}
 {% if app.bundle_build %}<p>Build: {{ app.bundle_build }}</p>{% endif %}
 {% if app.health %}
