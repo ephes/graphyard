@@ -133,8 +133,16 @@ than stay silent for another week. An empty registry reports
 comparison must check its expected source count/status as well as zero attention.
 The status request neither fetches upstreams nor changes observations. This is
 refresh-operation health, not proof all installed software is current. Provision
-monitoring separately with the existing read-only bearer credential; producers
-retain write-only credentials and cannot query status.
+monitoring separately with the existing read-only credential; producers retain
+write-only credentials and cannot query status. For Nyxmon JSON-metrics clients,
+the status endpoint also accepts HTTP Basic authentication with the fixed username
+`inventory-monitor` and `GRAPHYARD_INVENTORY_MONITOR_TOKEN` as password. Use HTTPS.
+The existing Bearer form remains supported; neither form grants ingest, UI session,
+administration or report-download access. An empty monitor setting disables both
+machine authentication forms. Provision a dedicated random URL-safe monitor
+secret, never a writer token or Django login password. Clients send credentials
+pre-emptively (Nyxmon/httpx BasicAuth does this); 401 responses intentionally do
+not challenge browsers with a Basic login dialog.
 
 The detail view displays metadata as reported and links to full JSON. It does not
 yet calculate upstream update availability, resolve all dependency graphs, ingest

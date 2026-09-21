@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 import hashlib
 import hmac
 import json
@@ -326,9 +327,16 @@ def summaries(now=None):
 @require_GET
 def status(request):
     configured = getattr(settings, "GRAPHYARD_INVENTORY_MONITOR_TOKEN", "")
-    supplied = request.headers.get("Authorization", "")
-    machine = bool(configured) and hmac.compare_digest(
-        supplied.encode(), ("Bearer " + configured).encode()
+    parts = request.headers.get("Authorization", "").split()
+    scheme, supplied = parts if len(parts) == 2 else ("", "")
+    # Nyxmon JSON-metrics supports Basic auth. Both forms grant only this GET.
+    basic = base64.b64encode(f"inventory-monitor:{configured}".encode())
+    machine = bool(configured) and (
+        (
+            scheme.lower() == "bearer"
+            and hmac.compare_digest(supplied.encode(), configured.encode())
+        )
+        or (scheme.lower() == "basic" and hmac.compare_digest(supplied.encode(), basic))
     )
     if not request.user.is_authenticated and not machine:
         return JsonResponse({"error": "inventory read access required"}, status=401)

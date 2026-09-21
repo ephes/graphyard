@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Accept dedicated read-only Basic authentication on inventory status for Nyxmon,
+  alongside the existing Bearer credential, without widening writer access.
+
 - Separate inventory delivery freshness, partial coverage and cached release-source
   health in the private status API, preserving the combined attention field and
   source timestamps without new scans or upstream requests.

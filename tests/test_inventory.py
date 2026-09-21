@@ -1,3 +1,4 @@
+import base64
 import copy
 import hashlib
 import io
@@ -1344,10 +1345,36 @@ def test_operational_status_separates_partial_coverage_from_lost_delivery(
     assert state["hosts"]["studio"]["observed_at"] == before["observed_at"].isoformat()
 
 
-def test_inventory_monitor_cannot_ingest_and_writer_cannot_monitor(
-    client, enrolled, settings
+@pytest.mark.parametrize("scheme", ["Bearer", "Basic", "bAsIc", "bEaReR"])
+@pytest.mark.parametrize("separator", [" ", "   "])
+def test_monitor_auth_forms_read_status_but_cannot_write(
+    client, enrolled, settings, scheme, separator
 ):
-    settings.GRAPHYARD_INVENTORY_MONITOR_TOKEN = "synthetic-monitor"
+    secret = "synthetic-monitor-password"
+    settings.GRAPHYARD_INVENTORY_MONITOR_TOKEN = secret
+    encoded = base64.b64encode(f"inventory-monitor:{secret}".encode()).decode()
+    header = (
+        f"{scheme}{separator}{encoded}"
+        if scheme.lower() == "basic"
+        else f"{scheme}{separator}{secret}"
+    )
+    assert (
+        client.get(
+            reverse("graphyard:inventory_status"), HTTP_AUTHORIZATION=header
+        ).status_code
+        == 200
+    )
+    assert (
+        client.post(
+            reverse("graphyard:inventory_ingest"),
+            data=report(),
+            content_type="application/json",
+            HTTP_AUTHORIZATION=header,
+        ).status_code
+        == 401
+    )
+    assert InventorySnapshot.objects.count() == 0
+    assert send(client, enrolled, report()).status_code == 200
     assert (
         client.get(
             reverse("graphyard:inventory_status"), HTTP_AUTHORIZATION=enrolled[2]
@@ -1355,12 +1382,56 @@ def test_inventory_monitor_cannot_ingest_and_writer_cannot_monitor(
         == 401
     )
     assert (
-        client.post(
-            reverse("graphyard:inventory_ingest"),
-            data=report(),
-            content_type="application/json",
-            HTTP_AUTHORIZATION="Bearer synthetic-monitor",
+        client.get(
+            reverse("graphyard:inventory_index"), HTTP_AUTHORIZATION=header
+        ).status_code
+        == 302
+    )
+
+
+@pytest.mark.parametrize(
+    "username,password,enabled",
+    [
+        ("wrong", "synthetic-monitor-password", True),
+        ("inventory-monitor", "wrong", True),
+        ("inventory-monitor", "", False),
+        ("inventory-monitor", "synthetic-monitor-password", False),
+    ],
+)
+def test_monitor_basic_auth_rejects_wrong_or_disabled_credentials(
+    client, settings, username, password, enabled
+):
+    settings.GRAPHYARD_INVENTORY_MONITOR_TOKEN = (
+        "synthetic-monitor-password" if enabled else ""
+    )
+    encoded = base64.b64encode(f"{username}:{password}".encode()).decode()
+    assert (
+        client.get(
+            reverse("graphyard:inventory_status"), HTTP_AUTHORIZATION=f"Basic {encoded}"
         ).status_code
         == 401
     )
-    assert InventorySnapshot.objects.count() == 0
+
+
+@pytest.mark.parametrize(
+    "header", ["Basic !!!", "Basic", "Basic Og==", "Bearer", "Basic " + "A" * 4096]
+)
+def test_monitor_auth_malformed_headers_fail_closed(client, settings, header):
+    settings.GRAPHYARD_INVENTORY_MONITOR_TOKEN = "synthetic-monitor-password"
+    assert (
+        client.get(
+            reverse("graphyard:inventory_status"), HTTP_AUTHORIZATION=header
+        ).status_code
+        == 401
+    )
+
+
+def test_disabled_monitor_rejects_nonempty_bearer(client, settings):
+    settings.GRAPHYARD_INVENTORY_MONITOR_TOKEN = ""
+    assert (
+        client.get(
+            reverse("graphyard:inventory_status"),
+            HTTP_AUTHORIZATION="Bearer synthetic-monitor-password",
+        ).status_code
+        == 401
+    )
