@@ -617,3 +617,70 @@ def test_http_page_probe_spec_emits_canonical_dimensions(db, monkeypatch):
 
     spec.refresh_from_db()
     assert spec.last_status == "ok"
+
+
+def test_home_assistant_env_scan_skips_overflowing_mapped_value(db, monkeypatch):
+    MetricCollectionSpec.objects.create(
+        name="ha overflow env scan",
+        spec_type=MetricCollectionSpecType.HOME_ASSISTANT_ENV_SCAN,
+        interval_seconds=60,
+        config={
+            "base_url": "https://ha.local",
+            "access_token": "token",
+            "subject_mapping": {
+                "default": {
+                    "subject_type": "environment_sensor",
+                    "subject_id_from": "entity_name_slug",
+                },
+            },
+            "metric_mapping": {
+                "rules": [
+                    {
+                        "match_entity_id_regex": "_upload_throughput$",
+                        "value_multiplier": 1000,
+                    }
+                ]
+            },
+            "entity_id_regex": "upload_throughput",
+        },
+    )
+
+    monkeypatch.setattr(
+        "graphyard.services.httpx.Client",
+        lambda **kwargs: _FakeClient(
+            [
+                {
+                    "entity_id": "sensor.overflow_upload_throughput",
+                    "state": "1e308",
+                    "last_updated": "2026-03-04T12:00:00Z",
+                    "attributes": {"device_class": "data_rate"},
+                },
+                {
+                    "entity_id": "sensor.normal_upload_throughput",
+                    "state": "6.1",
+                    "last_updated": "2026-03-04T12:00:00Z",
+                    "attributes": {"device_class": "data_rate"},
+                },
+            ]
+        ),
+    )
+    captured: dict[str, list[influx.MetricPoint]] = {"points": []}
+
+    def _capture(points: list[influx.MetricPoint]) -> int:
+        captured["points"] = points
+        return len(points)
+
+    monkeypatch.setattr("graphyard.services.influx.write_points", _capture)
+
+    result = run_metric_collection_specs_once()
+
+    assert result.failed == 0
+    assert result.ingested == 1
+    assert result.skipped == 1
+    assert [point.value for point in captured["points"]] == [6100.0]
+    assert SubjectRegistry.objects.filter(
+        subject_id="normal_upload_throughput"
+    ).exists()
+    assert not SubjectRegistry.objects.filter(
+        subject_id="overflow_upload_throughput"
+    ).exists()

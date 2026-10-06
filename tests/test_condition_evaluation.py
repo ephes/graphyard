@@ -168,3 +168,166 @@ def test_evaluate_conditions_once_updates_condition_and_heartbeat(db, monkeypatc
     heartbeat = PipelineHeartbeat.objects.get(name="condition_evaluator")
     assert heartbeat.status == StatusLevel.OK
     assert heartbeat.last_success is not None
+
+
+def _series_sample(
+    now: datetime,
+    *,
+    minutes_ago: float,
+    value: float,
+    mountpoint: str,
+) -> influx.MetricSample:
+    return influx.MetricSample(
+        ts=now - timedelta(minutes=minutes_ago),
+        value=value,
+        host="macmini",
+        metric="host.filesystem_used_ratio",
+        service=None,
+        subject_type="host",
+        subject_id="macmini",
+        tags={"mountpoint": mountpoint},
+    )
+
+
+def _disk_condition() -> ConditionDefinition:
+    return ConditionDefinition(
+        name="disk",
+        enabled=True,
+        metric_name="host.filesystem_used_ratio",
+        host_filter="macmini",
+        service_filter="",
+        tags_filter={},
+        operator=ComparisonOperator.GTE,
+        warning_threshold=0.80,
+        critical_threshold=0.90,
+        window_minutes=30,
+        breach_minutes=5,
+    )
+
+
+def _flux_order(*series: list[influx.MetricSample]) -> list[influx.MetricSample]:
+    """Mimic v2/Flux: each table sorted by time, tables concatenated."""
+    return [
+        sample for table in series for sample in sorted(table, key=lambda item: item.ts)
+    ]
+
+
+def _global_order(*series: list[influx.MetricSample]) -> list[influx.MetricSample]:
+    """Mimic v3/SQL: one result sorted globally by time."""
+    return sorted(
+        [sample for table in series for sample in table], key=lambda item: item.ts
+    )
+
+
+def _full_disk_and_healthy(now: datetime):
+    full = [
+        _series_sample(now, minutes_ago=i, value=0.95, mountpoint="/data")
+        for i in [6, 5, 4, 3, 2, 1, 0]
+    ]
+    healthy = [
+        _series_sample(now, minutes_ago=i, value=0.40, mountpoint="/")
+        for i in [6, 5, 4, 3, 2, 1, 0]
+    ]
+    return full, healthy
+
+
+def test_one_breaching_series_next_to_healthy_one_is_critical(monkeypatch):
+    now = datetime(2026, 3, 4, 12, 0, tzinfo=UTC)
+    full, healthy = _full_disk_and_healthy(now)
+    for ordered in (
+        _flux_order(full, healthy),
+        _flux_order(healthy, full),
+        _global_order(full, healthy),
+    ):
+        monkeypatch.setattr(
+            "graphyard.services.influx.query_condition_window",
+            lambda *a, _ordered=ordered, **k: list(_ordered),
+        )
+
+        result = evaluate_condition(_disk_condition(), now=now)
+
+        assert result.status == StatusLevel.CRITICAL
+        assert result.last_value == 0.95
+        assert "mountpoint=/data" in result.message
+        assert "1 of 2 series" in result.message
+
+
+def test_stale_series_next_to_fresh_one_is_warning(monkeypatch, settings):
+    settings.CONDITION_DATA_STALE_WARNING_SECONDS = 120
+    now = datetime(2026, 3, 4, 12, 0, tzinfo=UTC)
+    fresh = [
+        _series_sample(now, minutes_ago=i, value=0.40, mountpoint="/")
+        for i in [3, 2, 1, 0]
+    ]
+    stale = [
+        _series_sample(now, minutes_ago=i, value=0.50, mountpoint="/backup")
+        for i in [20, 15, 10]
+    ]
+    # Previously, Flux table order decided the result: with the fresh series
+    # last, the stale one was hidden. Every order must now warn.
+    for ordered in (
+        _flux_order(stale, fresh),
+        _flux_order(fresh, stale),
+        _global_order(stale, fresh),
+    ):
+        monkeypatch.setattr(
+            "graphyard.services.influx.query_condition_window",
+            lambda *a, _ordered=ordered, **k: list(_ordered),
+        )
+
+        result = evaluate_condition(_disk_condition(), now=now)
+
+        assert result.status == StatusLevel.WARNING
+        assert "stale" in result.message.lower()
+        assert "mountpoint=/backup" in result.message
+        assert result.last_value == 0.50
+
+
+def test_healthy_multi_series_reports_newest_value(monkeypatch):
+    now = datetime(2026, 3, 4, 12, 0, tzinfo=UTC)
+    first = [
+        _series_sample(now, minutes_ago=i, value=0.30, mountpoint="/")
+        for i in [3, 2, 1]
+    ]
+    second = [
+        _series_sample(now, minutes_ago=i, value=0.20, mountpoint="/data")
+        for i in [3, 2, 1, 0]
+    ]
+    monkeypatch.setattr(
+        "graphyard.services.influx.query_condition_window",
+        lambda *a, **k: _flux_order(second, first),
+    )
+
+    result = evaluate_condition(_disk_condition(), now=now)
+
+    assert result.status == StatusLevel.OK
+    assert result.last_value == 0.20
+    assert result.message == "Condition is within thresholds (2 series)"
+
+
+def test_series_split_by_collector_dimension(monkeypatch):
+    now = datetime(2026, 3, 4, 12, 0, tzinfo=UTC)
+
+    def _collector_sample(minutes_ago: int, value: float, collector: str):
+        return influx.MetricSample(
+            ts=now - timedelta(minutes=minutes_ago),
+            value=value,
+            host="homeassistant",
+            metric="ha.sensor.office_humidity",
+            service="homeassistant",
+            collector_host=collector,
+            tags={},
+        )
+
+    breaching = [_collector_sample(i, 80.0, "macmini") for i in [5, 4, 3, 2, 1, 0]]
+    healthy = [_collector_sample(i, 40.0, "pi") for i in [5, 4, 3, 2, 1, 0]]
+    monkeypatch.setattr(
+        "graphyard.services.influx.query_condition_window",
+        lambda *a, **k: _global_order(breaching, healthy),
+    )
+
+    result = evaluate_condition(_condition(), now=now)
+
+    assert result.status == StatusLevel.CRITICAL
+    assert "collector_host=macmini" in result.message
+    assert result.last_value == 80.0

@@ -340,6 +340,10 @@ Write-path behavior is partial-success: invalid points are rejected per-point, w
 same batch are still written.
 For `POST /v1/metrics`, request-level payload validation is fail-fast: if any point fails ingest payload
 parsing/normalization before write, the request is rejected with `400` and no points are written.
+Metric values must be finite numbers: `NaN`, `Infinity`, `-Infinity` (as JSON literals or strings
+such as `"nan"`/`"inf"`) are rejected as invalid values, since InfluxDB cannot store them. Collection
+specs skip such values like other non-numeric readings, and they are never counted as ingested nor
+mark a subject as seen.
 
 Security note: metric collection `config` values are stored in SQLite and may contain secrets
 (for example `access_token`, `bearer_token`, `basic_password`). Django admin masks known secret
@@ -371,6 +375,27 @@ just manage seed_disk_usage_condition --host macmini --mountpoint /
 Defaults: warning `0.80`, critical `0.90`, operator `gte`, metric `host.filesystem_used_ratio`.
 
 Example supported condition: humidity above threshold for N minutes.
+
+### Conditions that match several series
+
+A condition matches more than one time series when its filters do not pin every
+tag, for example a disk condition seeded with `--no-mountpoint-filter`, or a
+metric reported by several collectors. Graphyard groups the samples by series
+(every tag/dimension except time and value) and evaluates staleness and the
+breach duration for each series on its own. The condition takes the worst series
+status (`critical` > `warning` > `ok`):
+
+- one series breaching the critical threshold for the full breach window makes the
+  condition `critical`, even if other series are healthy;
+- one stale series makes the condition at least `warning`, even if other series are fresh;
+- the message names the deciding series by the dimensions that differ, for example
+  `... [series: mountpoint=/data] (1 of 3 series not OK)`, and `last_value` comes
+  from that series. When every series is healthy, `last_value` is the newest
+  sample and the message is `Condition is within thresholds (N series)`.
+
+Conditions that match a single series behave exactly as before. A series with no
+samples in the condition window at all is not visible to the evaluator; pin the
+filters if you need an alert for a series that disappears.
 
 ## Agent Runtime (Dev + Production)
 

@@ -157,6 +157,8 @@ def test_query_range_v3_sql_selects_and_returns_dimension_columns(
                     "source_entity_id": "sensor.office_temperature",
                     "collector_service": "graphyard-agent",
                     "collector_host": "macmini",
+                    "mountpoint": "/",
+                    "device": None,
                 }
             ]
 
@@ -173,9 +175,7 @@ def test_query_range_v3_sql_selects_and_returns_dimension_columns(
     stop = datetime(2026, 3, 4, 12, 0, tzinfo=UTC)
     samples = influx._query_range_v3_sql("ha.sensor.office_temperature", start, stop)
 
-    assert "subject_type" in str(captured["query"])
-    assert "subject_id" in str(captured["query"])
-    assert "collector_service" in str(captured["query"])
+    assert str(captured["query"]).startswith("select * ")
     assert len(samples) == 1
     assert samples[0].subject_type == "environment_sensor"
     assert samples[0].subject_id == "office_temperature"
@@ -184,6 +184,7 @@ def test_query_range_v3_sql_selects_and_returns_dimension_columns(
     assert samples[0].source_entity_id == "sensor.office_temperature"
     assert samples[0].collector_service == "graphyard-agent"
     assert samples[0].collector_host == "macmini"
+    assert samples[0].tags == {"mountpoint": "/"}
 
 
 def test_write_points_skips_invalid_points_in_batch(monkeypatch):
@@ -237,3 +238,77 @@ def test_write_points_skips_invalid_points_in_batch(monkeypatch):
 
     assert written == 1
     assert captured["written"] == 1
+
+
+@pytest.mark.parametrize("value", [float("nan"), float("inf"), float("-inf")])
+def test_normalize_metric_point_rejects_non_finite_value(value):
+    point = influx.MetricPoint(
+        ts=datetime.now(UTC),
+        metric="host.cpu_usage",
+        value=value,
+        subject_type="host",
+        subject_id="macmini",
+        source_system="vector",
+        source_instance="vector-macmini",
+        collector_service="vector",
+        collector_host="macmini",
+    )
+
+    with pytest.raises(ValueError, match="finite"):
+        influx.normalize_metric_point(point)
+
+
+def test_write_points_does_not_count_non_finite_points(monkeypatch, caplog):
+    captured: dict[str, int] = {"written": 0}
+
+    class _FakeWriteApi:
+        def write(self, bucket: str, org: str, record):
+            del bucket, org
+            captured["written"] = len(record)
+
+    class _FakeClient:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb) -> None:
+            del exc_type, exc, tb
+
+        def write_api(self, write_options):
+            del write_options
+            return _FakeWriteApi()
+
+    monkeypatch.setattr(influx, "_build_client", lambda: _FakeClient())
+
+    def _point(value: float) -> influx.MetricPoint:
+        return influx.MetricPoint(
+            ts=datetime.now(UTC),
+            metric="host.cpu_usage",
+            value=value,
+            subject_type="host",
+            subject_id="macmini",
+            source_system="vector",
+            source_instance="vector-macmini",
+            collector_service="vector",
+            collector_host="macmini",
+        )
+
+    written = influx.write_points([_point(0.5), _point(float("nan"))])
+
+    assert written == 1
+    assert captured["written"] == 1
+    assert any(
+        "metrics_write_rejected category=normalization rejected_points=1 written_points=1"
+        in record.getMessage()
+        for record in caplog.records
+    )
+
+
+@pytest.mark.parametrize("raw", ["nan", "inf", "-Infinity", float("nan")])
+def test_parse_finite_float_rejects_non_finite(raw):
+    with pytest.raises(ValueError):
+        influx.parse_finite_float(raw)
+
+
+def test_parse_finite_float_accepts_numbers():
+    assert influx.parse_finite_float("1.5") == 1.5
+    assert influx.parse_finite_float(3) == 3.0
