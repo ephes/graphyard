@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
+import pytest
+
 from graphyard import influx
 from graphyard.models import (
     ComparisonOperator,
@@ -331,3 +333,213 @@ def test_series_split_by_collector_dimension(monkeypatch):
     assert result.status == StatusLevel.CRITICAL
     assert "collector_host=macmini" in result.message
     assert result.last_value == 80.0
+
+
+# --- sparse series: carry the last sample before the window forward ----------
+
+
+def _sample_at(
+    now: datetime, *, seconds_ago: float, value: float
+) -> influx.MetricSample:
+    return influx.MetricSample(
+        ts=now - timedelta(seconds=seconds_ago),
+        value=value,
+        host="homeassistant",
+        metric="ha.sensor.office_humidity",
+        service="homeassistant",
+        tags={},
+    )
+
+
+def _five_minute_series(
+    now: datetime, *, offset_seconds: float, count: int, value: float
+) -> list[influx.MetricSample]:
+    """Samples every 300 s, newest ``offset_seconds`` ago, oldest first."""
+    return [
+        _sample_at(now, seconds_ago=offset_seconds + 300 * i, value=value)
+        for i in reversed(range(count))
+    ]
+
+
+def _patch_window(monkeypatch, samples: list[influx.MetricSample]) -> None:
+    monkeypatch.setattr(
+        "graphyard.services.influx.query_condition_window",
+        lambda *a, **k: sorted(samples, key=lambda item: item.ts),
+    )
+
+
+@pytest.mark.parametrize(
+    "offset_seconds", [0, 30, 60, 90, 120, 150, 180, 210, 240, 270]
+)
+def test_five_minute_series_breaches_for_every_phase_offset(
+    monkeypatch, offset_seconds
+):
+    now = datetime(2026, 3, 4, 12, 0, tzinfo=UTC)
+    condition = _condition(
+        warning_threshold=60.0, critical_threshold=None, breach_minutes=10
+    )
+    _patch_window(
+        monkeypatch,
+        _five_minute_series(now, offset_seconds=offset_seconds, count=6, value=80.0),
+    )
+
+    result = evaluate_condition(condition, now=now)
+
+    assert result.status == StatusLevel.WARNING
+    assert "for 10m" in result.message
+
+
+def test_five_minute_series_critical_for_every_evaluation(monkeypatch):
+    now = datetime(2026, 3, 4, 12, 0, tzinfo=UTC)
+    condition = _condition(
+        warning_threshold=60.0, critical_threshold=75.0, breach_minutes=10
+    )
+    # Scout repro phases: -12/-7/-2, -10/-5/0, -13.5/-8.5/-3.5 minutes.
+    for offset in (120, 0, 210):
+        _patch_window(
+            monkeypatch,
+            _five_minute_series(now, offset_seconds=offset, count=3, value=80.0),
+        )
+        assert evaluate_condition(condition, now=now).status == StatusLevel.CRITICAL
+
+
+def test_five_minute_series_with_one_in_window_sample_below_is_ok(monkeypatch):
+    now = datetime(2026, 3, 4, 12, 0, tzinfo=UTC)
+    condition = _condition(
+        warning_threshold=60.0, critical_threshold=None, breach_minutes=10
+    )
+    samples = _five_minute_series(now, offset_seconds=120, count=4, value=80.0)
+    samples[-2] = _sample_at(now, seconds_ago=420, value=50.0)
+    _patch_window(monkeypatch, samples)
+
+    assert evaluate_condition(condition, now=now).status == StatusLevel.OK
+
+
+def test_anchor_below_threshold_means_breach_not_held_yet(monkeypatch):
+    now = datetime(2026, 3, 4, 12, 0, tzinfo=UTC)
+    condition = _condition(
+        warning_threshold=60.0, critical_threshold=None, breach_minutes=10
+    )
+    # Anchor at -12 min is below; in-window samples at -7 and -2 are above.
+    samples = [
+        _sample_at(now, seconds_ago=720, value=50.0),
+        _sample_at(now, seconds_ago=420, value=80.0),
+        _sample_at(now, seconds_ago=120, value=80.0),
+    ]
+    _patch_window(monkeypatch, samples)
+
+    assert evaluate_condition(condition, now=now).status == StatusLevel.OK
+
+
+def test_series_younger_than_breach_window_is_not_breached(monkeypatch):
+    now = datetime(2026, 3, 4, 12, 0, tzinfo=UTC)
+    condition = _condition(
+        warning_threshold=60.0, critical_threshold=None, breach_minutes=10
+    )
+    # First sample ever at -7 min: no anchor, starts too late for the grace.
+    samples = [
+        _sample_at(now, seconds_ago=420, value=80.0),
+        _sample_at(now, seconds_ago=120, value=80.0),
+    ]
+    _patch_window(monkeypatch, samples)
+
+    assert evaluate_condition(condition, now=now).status == StatusLevel.OK
+
+
+def test_anchor_older_than_staleness_limit_is_not_carried_forward(
+    monkeypatch, settings
+):
+    settings.CONDITION_DATA_STALE_WARNING_SECONDS = 600
+    now = datetime(2026, 3, 4, 12, 0, tzinfo=UTC)
+    condition = _condition(
+        warning_threshold=60.0, critical_threshold=None, breach_minutes=10
+    )
+    # Anchor 11 minutes before the window start (data gap), then fresh data
+    # that starts too late for the one-minute grace.
+    samples = [
+        _sample_at(now, seconds_ago=600 + 660, value=80.0),
+        _sample_at(now, seconds_ago=420, value=80.0),
+        _sample_at(now, seconds_ago=120, value=80.0),
+    ]
+    _patch_window(monkeypatch, samples)
+
+    assert evaluate_condition(condition, now=now).status == StatusLevel.OK
+
+
+def test_one_minute_series_with_anchor_still_breaches(monkeypatch):
+    now = datetime(2026, 3, 4, 12, 0, tzinfo=UTC)
+    condition = _condition(
+        warning_threshold=60.0, critical_threshold=None, breach_minutes=5
+    )
+    samples = [_sample(now, minutes_ago=i, value=80.0) for i in range(12, -1, -1)]
+    _patch_window(monkeypatch, samples)
+
+    assert evaluate_condition(condition, now=now).status == StatusLevel.WARNING
+
+
+def test_query_condition_window_looks_back_far_enough_for_the_anchor(
+    monkeypatch, settings
+):
+    settings.CONDITION_DATA_STALE_WARNING_SECONDS = 600
+    now = datetime(2026, 3, 4, 12, 0, tzinfo=UTC)
+    captured: dict[str, datetime] = {}
+
+    def fake_query_range(metric, start, stop, **kwargs):
+        captured["start"] = start
+        return []
+
+    monkeypatch.setattr("graphyard.influx.query_range", fake_query_range)
+
+    condition = _condition(breach_minutes=10)
+    condition.window_minutes = 10
+    influx.query_condition_window(condition, now=now)
+    assert captured["start"] == now - timedelta(minutes=20)
+
+    condition.window_minutes = 30
+    influx.query_condition_window(condition, now=now)
+    assert captured["start"] == now - timedelta(minutes=30)
+
+
+def test_sample_at_window_start_supersedes_the_anchor(monkeypatch):
+    now = datetime(2026, 3, 4, 12, 0, tzinfo=UTC)
+    condition = _condition(
+        warning_threshold=60.0, critical_threshold=None, breach_minutes=10
+    )
+    samples = [
+        _sample(now, minutes_ago=15, value=50.0),
+        _sample(now, minutes_ago=10, value=80.0),
+        _sample(now, minutes_ago=5, value=80.0),
+    ]
+    _patch_window(monkeypatch, samples)
+
+    assert evaluate_condition(condition, now=now).status == StatusLevel.WARNING
+
+
+@pytest.mark.parametrize("age_seconds", [30, 90, 150, 210, 270])
+def test_breach_shorter_than_sampling_interval_uses_the_anchor_alone(
+    monkeypatch, age_seconds
+):
+    now = datetime(2026, 3, 4, 12, 0, tzinfo=UTC)
+    condition = _condition(
+        warning_threshold=60.0, critical_threshold=75.0, breach_minutes=1
+    )
+    _patch_window(
+        monkeypatch,
+        _five_minute_series(now, offset_seconds=age_seconds, count=4, value=80.0),
+    )
+
+    assert evaluate_condition(condition, now=now).status == StatusLevel.CRITICAL
+
+
+def test_breach_shorter_than_sampling_interval_ok_when_anchor_is_below(
+    monkeypatch,
+):
+    now = datetime(2026, 3, 4, 12, 0, tzinfo=UTC)
+    condition = _condition(
+        warning_threshold=60.0, critical_threshold=None, breach_minutes=1
+    )
+    samples = _five_minute_series(now, offset_seconds=150, count=3, value=80.0)
+    samples[-1] = _sample_at(now, seconds_ago=150, value=50.0)
+    _patch_window(monkeypatch, samples)
+
+    assert evaluate_condition(condition, now=now).status == StatusLevel.OK

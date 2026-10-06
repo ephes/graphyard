@@ -78,21 +78,58 @@ def _is_breached_for_duration(
     threshold: float,
     breach_minutes: int,
     now_utc: datetime,
+    *,
+    max_carry_seconds: float | None = None,
 ) -> bool:
+    """Return True when the series breached ``threshold`` for ``breach_minutes``.
+
+    ``values`` must be time-ordered. The breach window is
+    ``[now - breach_minutes, now]``. A sample's value is carried forward until
+    the next sample, so the last sample *before* the window (the anchor)
+    covers the start of the window. The breach holds when the anchor and every
+    in-window sample breach. This keeps series sampled less often than once a
+    minute (for example every 5 minutes) from flapping depending on where the
+    first in-window sample lands.
+
+    The anchor is only used when it is at most ``max_carry_seconds`` older
+    than the window start; an older anchor means a data gap, not evidence.
+    A sample exactly at the window start supersedes the anchor. When no
+    sample falls inside the window (a breach duration shorter than the
+    sampling interval), the anchor alone decides.
+    Without a usable anchor (for example a series younger than the window),
+    the first in-window sample must lie within one minute of the window start.
+    """
     if not values:
         return False
 
     compare = _operator_fn(operator_name)
     window_start = now_utc - timedelta(minutes=breach_minutes)
     window_values = [sample for sample in values if sample.ts >= window_start]
-    if not window_values:
-        return False
 
-    grace_start = window_start + timedelta(minutes=1)
-    if window_values[0].ts > grace_start:
-        return False
+    # A sample exactly at the window start already covers the boundary, so
+    # an earlier sample is superseded and must not be carried forward.
+    anchor: influx.MetricSample | None = None
+    covers_start = bool(window_values) and window_values[0].ts == window_start
+    before = [sample for sample in values if sample.ts < window_start]
+    if before and not covers_start and max_carry_seconds is not None:
+        candidate = before[-1]
+        if (window_start - candidate.ts).total_seconds() <= max_carry_seconds:
+            anchor = candidate
 
-    return all(compare(sample.value, threshold) for sample in window_values)
+    if anchor is not None:
+        # The anchor covers the window up to the first in-window sample, or
+        # the whole window when the breach duration is shorter than the
+        # sampling interval and no sample falls inside it.
+        evaluated = [anchor, *window_values]
+    else:
+        if not window_values:
+            return False
+        grace_start = window_start + timedelta(minutes=1)
+        if window_values[0].ts > grace_start:
+            return False
+        evaluated = window_values
+
+    return all(compare(sample.value, threshold) for sample in evaluated)
 
 
 _SERIES_DIMENSIONS = (
@@ -175,6 +212,7 @@ def _evaluate_series(
         condition.critical_threshold,
         condition.breach_minutes,
         now_utc,
+        max_carry_seconds=settings.CONDITION_DATA_STALE_WARNING_SECONDS,
     ):
         return (
             StatusLevel.CRITICAL,
@@ -191,6 +229,7 @@ def _evaluate_series(
         condition.warning_threshold,
         condition.breach_minutes,
         now_utc,
+        max_carry_seconds=settings.CONDITION_DATA_STALE_WARNING_SECONDS,
     ):
         return (
             StatusLevel.WARNING,

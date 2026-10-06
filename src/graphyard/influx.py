@@ -694,7 +694,13 @@ def query_condition_window(
     now: datetime | None = None,
 ) -> list[MetricSample]:
     now_utc = _ensure_utc(now or datetime.now(UTC))
-    lookback_minutes = max(condition.window_minutes, condition.breach_minutes)
+    # Look back far enough to find the last sample before the breach window
+    # (the carry-forward anchor, see services._is_breached_for_duration),
+    # bounded by the same staleness limit the evaluator applies to it.
+    anchor_minutes = math.ceil(settings.CONDITION_DATA_STALE_WARNING_SECONDS / 60)
+    lookback_minutes = max(
+        condition.window_minutes, condition.breach_minutes + anchor_minutes
+    )
     start = now_utc - timedelta(minutes=lookback_minutes)
     tags = {k: str(v) for k, v in condition.tags_filter.items()}
     if condition.subject_type_filter:
