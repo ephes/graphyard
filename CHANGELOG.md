@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Reject NaN and +/-Infinity metric values. `POST /v1/metrics` now answers `400`
+  instead of counting them as ingested (InfluxDB dropped them silently), and
+  collection specs skip them, so a sensor reporting only NaN no longer looks alive
+  in the registry.
+
 - Evaluate threshold conditions per series. A condition whose filters match
   several series (for example several mountpoints or collectors) now goes
   critical/warning when any one series breaches or goes stale, independent of

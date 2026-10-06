@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 import logging
+import math
 import re
 import time
 from typing import Callable
@@ -546,7 +547,7 @@ def _normalize_home_assistant_sensor_state(
     if state_value is None:
         return None
     try:
-        value = float(str(state_value))
+        value = influx.parse_finite_float(state_value)
     except (TypeError, ValueError):
         return None
 
@@ -602,6 +603,9 @@ def _normalize_home_assistant_sensor_state(
         metric_name=metric_name,
         value=value,
     )
+    if not math.isfinite(value):
+        # A finite reading times value_multiplier can overflow to inf/NaN.
+        return None
 
     tags: dict[str, str] = {"entity_id": entity_id}
     if extra_tags:
@@ -897,9 +901,9 @@ def _execute_http_json_metric_spec(
             )
 
         try:
-            metric_value = float(str(raw_value))
+            metric_value = influx.parse_finite_float(raw_value)
         except (TypeError, ValueError):
-            return StatusLevel.WARNING, 0, 1, "metric value is not numeric"
+            return StatusLevel.WARNING, 0, 1, "metric value is not a finite number"
 
         point = influx.MetricPoint(
             ts=datetime.now(UTC),
@@ -1449,7 +1453,7 @@ def _execute_unifi_device_traffic_spec(
         for metric_name, field_name, direction_tags in metric_specs:
             raw_value = interface_stats.get(field_name)
             try:
-                metric_value = float(str(raw_value))
+                metric_value = influx.parse_finite_float(raw_value)
             except (TypeError, ValueError):
                 skipped += 1
                 continue

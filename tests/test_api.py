@@ -702,3 +702,53 @@ def test_health_endpoint_shape(client, monkeypatch):
     assert "database" in payload["components"]
     assert "influxdb" in payload["components"]
     assert "pipelines" in payload["components"]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "raw_value",
+    ["NaN", '"nan"', '"inf"', "-Infinity", "Infinity", '"-inf"'],
+)
+def test_metrics_endpoint_rejects_non_finite_values(client, monkeypatch, raw_value):
+    ingest_token = IngestToken(name="collector")
+    ingest_token.set_token("secret-token")
+    ingest_token.save()
+    written: list[object] = []
+    monkeypatch.setattr(
+        "graphyard.views.write_points",
+        lambda points: written.extend(points) or len(points),
+    )
+    touched: list[object] = []
+    monkeypatch.setattr(
+        "graphyard.views.touch_registry_from_points",
+        lambda points: touched.extend(points),
+    )
+    captured: dict[str, object] = {}
+
+    def fake_record_heartbeat_safe(*args, **kwargs):  # noqa: ANN002, ANN003
+        del args
+        captured.update(kwargs)
+
+    monkeypatch.setattr(
+        "graphyard.views._record_heartbeat_safe", fake_record_heartbeat_safe
+    )
+
+    # Python's json module accepts the bare NaN/Infinity literals, so send raw text.
+    body = (
+        '[{"ts": "2026-03-04T12:00:00Z", "host": "macmini", '
+        f'"metric": "host.cpu_usage", "value": {raw_value}}}]'
+    )
+    response = client.post(
+        reverse("graphyard:metrics_ingest"),
+        data=body,
+        content_type="application/json",
+        HTTP_AUTHORIZATION="Bearer secret-token",
+    )
+
+    assert response.status_code == 400
+    assert "finite" in response.json()["error"]
+    assert written == []
+    assert touched == []
+    assert captured["status"] == StatusLevel.WARNING
+    assert captured["details"]["parse_rejected"] == 1
+    assert captured["details"]["total_metrics"] == 1

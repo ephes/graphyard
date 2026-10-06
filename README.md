@@ -340,6 +340,10 @@ Write-path behavior is partial-success: invalid points are rejected per-point, w
 same batch are still written.
 For `POST /v1/metrics`, request-level payload validation is fail-fast: if any point fails ingest payload
 parsing/normalization before write, the request is rejected with `400` and no points are written.
+Metric values must be finite numbers: `NaN`, `Infinity`, `-Infinity` (as JSON literals or strings
+such as `"nan"`/`"inf"`) are rejected as invalid values, since InfluxDB cannot store them. Collection
+specs skip such values like other non-numeric readings, and they are never counted as ingested nor
+mark a subject as seen.
 
 Security note: metric collection `config` values are stored in SQLite and may contain secrets
 (for example `access_token`, `bearer_token`, `basic_password`). Django admin masks known secret

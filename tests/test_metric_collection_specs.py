@@ -909,3 +909,38 @@ def test_unifi_device_traffic_spec_keeps_short_values_from_over_redacting(
     assert "api.err.Invalid" in spec.last_error
     assert "secret" not in spec.last_error
     assert '"password":"<redacted>"' in spec.last_error
+
+
+def test_http_json_metric_spec_skips_non_finite_value(db, monkeypatch):
+    spec = MetricCollectionSpec.objects.create(
+        name="nan queue depth",
+        spec_type=MetricCollectionSpecType.HTTP_JSON_METRIC,
+        interval_seconds=60,
+        config={
+            "url": "https://example.internal/health",
+            "metric_path": "$.queue.depth",
+            "metric_name": "service.queue_depth",
+            "host_id": "macmini",
+        },
+    )
+
+    monkeypatch.setattr(
+        "graphyard.services.httpx.Client",
+        lambda **kwargs: _FakeClient({"queue": {"depth": "NaN"}}),
+    )
+    written: list[object] = []
+    monkeypatch.setattr(
+        "graphyard.services.influx.write_points",
+        lambda points: written.extend(points) or len(points),
+    )
+
+    result = run_metric_collection_specs_once()
+
+    assert result.warning == 1
+    assert result.ingested == 0
+    assert result.skipped == 1
+    assert written == []
+
+    spec.refresh_from_db()
+    assert spec.last_status == StatusLevel.WARNING
+    assert "finite" in spec.last_error

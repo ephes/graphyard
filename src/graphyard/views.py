@@ -16,7 +16,7 @@ from django.views.decorators.http import require_GET, require_POST
 
 from .auth import authenticate_ingest_token
 from .influx import InfluxConfigurationError, MetricPoint, check_health as influx_health
-from .influx import normalize_metric_point, write_points
+from .influx import normalize_metric_point, parse_finite_float, write_points
 from .models import (
     ConditionDefinition,
     HostRegistry,
@@ -157,9 +157,11 @@ def _parse_metrics_payload(payload: object) -> list[MetricPoint]:
         if value is None:
             raise _parse_error(f"Metric at index {idx} has invalid value")
         try:
-            parsed_value = float(str(value))
+            parsed_value = parse_finite_float(value)
         except (TypeError, ValueError) as err:
-            raise _parse_error(f"Metric at index {idx} has invalid value") from err
+            raise _parse_error(
+                f"Metric at index {idx} has invalid value (must be a finite number)"
+            ) from err
 
         service = item.get("service")
         if service is not None and not isinstance(service, str):
