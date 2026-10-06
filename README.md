@@ -161,8 +161,7 @@ Typed config values are validated on save (Django admin and
 `apply_metric_collection_specs`, which aborts on the first invalid spec in the
 file, including specs whose stored row is otherwise unchanged):
 
-- `request_timeout_seconds` and `total_timeout_seconds` must be numbers greater
-  than 0 (numeric strings such as `"15"` are accepted; `"5s"` or `null` are not).
+- `request_timeout_seconds` must be a number greater than 0 (numeric strings such as `"15"` are accepted; `"5s"` or `null` are not).
 - `max_body_bytes` must be a positive integer.
 - `verify_tls` and `follow_redirects` must be JSON booleans. Strings such as
   `"false"` are rejected instead of silently meaning `true`.
@@ -320,14 +319,12 @@ This collector uses `GET` and writes bounded page-probe metrics for the target:
 `service.http_page_success` is `1` for final HTTP `2xx`/`3xx` responses and `0` otherwise.
 When `follow_redirects=true`, `service.http_page_ttfb_seconds` includes redirect time before the final response.
 Timeouts and transport errors emit `status_code=0` and `success=0`, while keeping the agent loop alive.
-`request_timeout_seconds` bounds each connect/read. The whole probe, including
-reading the body, is also bounded by `total_timeout_seconds` (default `30`) and
-`max_body_bytes` (default `10485760`), counted across redirect hops. Every
-connect, TLS handshake, write and read (including reading response headers) waits
-at most the time left before that deadline. Page probes connect directly and
-ignore `HTTP(S)_PROXY` environment variables.
-Exceeding either limit records the same `status_code=0`/`success=0` failure, so a
-slow-drip endpoint cannot hold the agent loop.
+`request_timeout_seconds` is httpx's per-operation timeout: it bounds each
+connect, write and read, not the whole probe. The response body is streamed and
+capped by `max_body_bytes` (default `10485760`), counted across redirect hops;
+exceeding it records the same `status_code=0`/`success=0` failure. There is no
+total deadline yet, so an endpoint that keeps dripping bytes can still hold the
+agent loop for longer than `request_timeout_seconds` (see `BACKLOG.md`).
 
 Example `config` JSON for a UniFi device traffic spec:
 

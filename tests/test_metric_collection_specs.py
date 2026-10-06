@@ -3,7 +3,6 @@ from __future__ import annotations
 import httpx
 
 from graphyard.models import MetricCollectionSpec, MetricCollectionSpecType, StatusLevel
-from graphyard.http_deadline import DeadlineTransport
 from graphyard.services import run_metric_collection_specs_once
 
 
@@ -315,7 +314,7 @@ def test_http_page_probe_spec_ingests_latency_metrics(db, monkeypatch):
     assert result.warning == 0
     assert result.ingested == 5
     assert client_capture["timeout"] == 15.0
-    assert isinstance(client_capture["transport"], DeadlineTransport)
+    assert client_capture["follow_redirects"] is False  # followed manually
     assert client_capture["verify"] is True
     assert client_capture["method"] == "GET"
     assert client_capture["url"] == "https://wersdoerfer.de/blogs/ephes_blog/"

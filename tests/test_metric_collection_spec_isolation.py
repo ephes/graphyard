@@ -1,9 +1,5 @@
 from __future__ import annotations
 
-import itertools
-import socket
-import threading
-import time
 
 import httpx
 import pytest
@@ -133,8 +129,10 @@ def test_unexpected_collector_exception_is_isolated(
         ({"request_timeout_seconds": True}, "request_timeout_seconds"),
         ({"verify_tls": "false"}, "verify_tls"),
         ({"follow_redirects": "true"}, "follow_redirects"),
-        ({"total_timeout_seconds": "soon"}, "total_timeout_seconds"),
         ({"max_body_bytes": 1.5}, "max_body_bytes"),
+        ({"request_timeout_seconds": 10**400}, "request_timeout_seconds"),
+        ({"max_body_bytes": "\u00b2"}, "max_body_bytes"),
+        ({"max_body_bytes": "\u0661"}, "max_body_bytes"),
     ],
 )
 def test_full_clean_rejects_malformed_config(db, config, message):
@@ -156,7 +154,6 @@ def test_full_clean_accepts_valid_config(db):
             "url": "https://example.test/",
             "subject_id": "example",
             "request_timeout_seconds": "15",
-            "total_timeout_seconds": 2.5,
             "max_body_bytes": 1024,
             "verify_tls": False,
             "follow_redirects": True,
@@ -229,29 +226,6 @@ def _capture_points(monkeypatch) -> list[object]:
 
     monkeypatch.setattr("graphyard.services.influx.write_points", _write)
     return captured
-
-
-def test_page_probe_total_deadline_records_failure(db, monkeypatch):
-    spec = _probe_spec(total_timeout_seconds=5)
-    monkeypatch.setattr(
-        "graphyard.services.httpx.Client",
-        lambda **kwargs: _DripClient([b"a", b"b", b"c"]),
-    )
-    # Every clock read advances 3s, so the drip outlives the 5s deadline.
-    clock = itertools.count(0.0, 3.0)
-    monkeypatch.setattr("graphyard.services.time.monotonic", lambda: next(clock))
-    captured = _capture_points(monkeypatch)
-
-    result = run_metric_collection_specs_once()
-
-    assert result.warning == 1
-    assert {point.metric: point.value for point in captured} == {
-        "service.http_page_status_code": 0.0,
-        "service.http_page_success": 0.0,
-    }
-    spec.refresh_from_db()
-    assert spec.last_status == StatusLevel.WARNING
-    assert "total_timeout_seconds=5" in spec.last_error
 
 
 def test_page_probe_body_cap_records_failure(db, monkeypatch):
@@ -329,67 +303,3 @@ def test_page_probe_follows_redirects_with_real_client(db, monkeypatch):
     assert by_metric["service.http_page_redirect_count"] == 1.0
     spec.refresh_from_db()
     assert spec.last_status == StatusLevel.OK
-
-
-def test_page_probe_empty_response_after_deadline_is_failure(db, monkeypatch):
-    spec = _probe_spec(total_timeout_seconds=5)
-    _mock_transport_client(monkeypatch, lambda request: httpx.Response(204))
-    clock = itertools.count(0.0, 3.0)
-    monkeypatch.setattr("graphyard.services.time.monotonic", lambda: next(clock))
-    captured = _capture_points(monkeypatch)
-
-    result = run_metric_collection_specs_once()
-
-    assert result.warning == 1
-    assert {point.metric: point.value for point in captured}[
-        "service.http_page_success"
-    ] == 0.0
-    spec.refresh_from_db()
-    assert "total_timeout_seconds=5" in spec.last_error
-
-
-def test_page_probe_deadline_bounds_dripping_headers(db, monkeypatch):
-    listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    listener.bind(("127.0.0.1", 0))
-    listener.listen(1)
-    port = listener.getsockname()[1]
-    stop = threading.Event()
-
-    def _serve() -> None:
-        conn, _ = listener.accept()
-        with conn:
-            conn.recv(4096)
-            conn.sendall(b"HTTP/1.1 200 OK\r\n")
-            # Never finish the headers; each byte resets per-read timeouts.
-            while not stop.is_set():
-                try:
-                    conn.sendall(b"X")
-                except OSError:
-                    return
-                time.sleep(0.05)
-
-    server = threading.Thread(target=_serve, daemon=True)
-    server.start()
-    spec = _probe_spec(
-        url=f"http://127.0.0.1:{port}/",
-        request_timeout_seconds=5,
-        total_timeout_seconds=0.3,
-    )
-    captured = _capture_points(monkeypatch)
-
-    started = time.monotonic()
-    try:
-        result = run_metric_collection_specs_once()
-    finally:
-        stop.set()
-        listener.close()
-    elapsed = time.monotonic() - started
-
-    assert elapsed < 2.0
-    assert result.warning == 1
-    assert {point.metric: point.value for point in captured} == {
-        "service.http_page_status_code": 0.0,
-        "service.http_page_success": 0.0,
-    }
-    spec.refresh_from_db()
-    assert "total_timeout_seconds=0.3" in spec.last_error

@@ -14,13 +14,10 @@ from django.db import OperationalError
 from django.utils import timezone
 
 from . import influx
-from .http_deadline import DeadlineTransport
 from .spec_config import (
     DEFAULT_PAGE_PROBE_MAX_BODY_BYTES,
-    DEFAULT_PAGE_PROBE_TOTAL_TIMEOUT_SECONDS,
     SpecConfigError,
     bool_config,
-    positive_float_config,
     positive_int_config,
     request_timeout_config,
 )
@@ -968,16 +965,7 @@ def _build_http_page_probe_point(
 
 
 class _PageProbeLimitExceeded(Exception):
-    """The page probe hit its total deadline or body size cap."""
-
-
-def _page_probe_remaining(deadline: float, total_timeout_seconds: float) -> float:
-    remaining = deadline - time.monotonic()
-    if remaining <= 0:
-        raise _PageProbeLimitExceeded(
-            f"response exceeded total_timeout_seconds={total_timeout_seconds:g}"
-        )
-    return remaining
+    """The page probe response body exceeded its size cap."""
 
 
 def _execute_http_page_probe_spec(
@@ -996,11 +984,6 @@ def _execute_http_page_probe_spec(
     ).strip()
     collector_host = str(spec.config.get("collector_host", "external")).strip()
     timeout_seconds = request_timeout_config(spec.config)
-    total_timeout_seconds = positive_float_config(
-        spec.config,
-        "total_timeout_seconds",
-        DEFAULT_PAGE_PROBE_TOTAL_TIMEOUT_SECONDS,
-    )
     max_body_bytes = positive_int_config(
         spec.config, "max_body_bytes", DEFAULT_PAGE_PROBE_MAX_BODY_BYTES
     )
@@ -1041,33 +1024,21 @@ def _execute_http_page_probe_spec(
         )
 
     try:
-        # Per-operation timeouts alone let a slow-drip endpoint (even one
-        # dripping headers) hold the single-threaded agent loop indefinitely;
-        # the transport clamps every socket operation to the total deadline.
-        deadline = time.monotonic() + total_timeout_seconds
-        transport = DeadlineTransport(
-            verify=verify_tls,
-            deadline=deadline,
-            label=f"total_timeout_seconds={total_timeout_seconds:g}",
-        )
         # Redirects are followed by hand: httpx reads redirect bodies in full
         # before yielding the final response, which would bypass the byte cap.
         with httpx.Client(
             timeout=timeout_seconds,
             verify=verify_tls,
             follow_redirects=False,
-            transport=transport,
         ) as client:
             started_at = time.perf_counter()
             body_bytes = 0
             redirect_count = 0
             request = client.build_request("GET", url)
             while True:
-                _page_probe_remaining(deadline, total_timeout_seconds)
                 response = client.send(request, stream=True, follow_redirects=False)
                 try:
                     headers_received_at = time.perf_counter()
-                    _page_probe_remaining(deadline, total_timeout_seconds)
                     for chunk in response.iter_bytes():
                         body_bytes += len(chunk)
                         del chunk
@@ -1076,8 +1047,6 @@ def _execute_http_page_probe_spec(
                                 "response body exceeded "
                                 f"max_body_bytes={max_body_bytes}"
                             )
-                        _page_probe_remaining(deadline, total_timeout_seconds)
-                    _page_probe_remaining(deadline, total_timeout_seconds)
                 finally:
                     response.close()
                 next_request = response.next_request

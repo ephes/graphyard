@@ -9,8 +9,8 @@
   stopped all collectors after it. Spec configs are now validated on save in the
   admin and in `apply_metric_collection_specs`: timeouts must be positive numbers
   and `verify_tls`/`follow_redirects` must be real booleans (`"false"` used to mean
-  `true`). HTTP page probes gain a total deadline (`total_timeout_seconds`, default
-  30) and a body cap (`max_body_bytes`, default 10 MiB).
+  `true`). HTTP page probes stream the body under a cap (`max_body_bytes`,
+  default 10 MiB) that also covers redirect bodies.
 
 - Reject NaN and +/-Infinity metric values. `POST /v1/metrics` now answers `400`
   instead of counting them as ingested (InfluxDB dropped them silently), and

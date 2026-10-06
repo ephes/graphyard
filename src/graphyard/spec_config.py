@@ -8,15 +8,23 @@ agent can run, and a malformed value fails the same way in both places.
 from __future__ import annotations
 
 import math
+import re
 from collections.abc import Mapping
 
 DEFAULT_REQUEST_TIMEOUT_SECONDS = 10.0
-DEFAULT_PAGE_PROBE_TOTAL_TIMEOUT_SECONDS = 30.0
 DEFAULT_PAGE_PROBE_MAX_BODY_BYTES = 10 * 1024 * 1024
 
 
 class SpecConfigError(ValueError):
     """A spec config value has the wrong type or range."""
+
+
+def _describe(raw: object) -> str:
+    try:
+        text = repr(raw)
+    except ValueError:  # e.g. an int too long to convert to text
+        return f"<{type(raw).__name__}>"
+    return text if len(text) <= 64 else f"{text[:61]}..."
 
 
 def positive_float_config(
@@ -26,44 +34,33 @@ def positive_float_config(
     if key not in config:
         return default
     raw = config[key]
-    if isinstance(raw, bool) or raw is None:
-        raise SpecConfigError(
-            f"config.{key} must be a number greater than 0, got {raw!r}"
-        )
-    if isinstance(raw, int | float):
-        value = float(raw)
-    elif isinstance(raw, str):
+    value: float | None = None
+    if isinstance(raw, int | float | str) and not isinstance(raw, bool):
         try:
-            value = float(raw.strip())
-        except ValueError:
-            raise SpecConfigError(
-                f"config.{key} must be a number greater than 0, got {raw!r}"
-            ) from None
-    else:
+            value = float(raw.strip() if isinstance(raw, str) else raw)
+        except (OverflowError, ValueError):
+            value = None
+    if value is None or not math.isfinite(value) or value <= 0:
         raise SpecConfigError(
-            f"config.{key} must be a number greater than 0, got {raw!r}"
-        )
-    if not math.isfinite(value) or value <= 0:
-        raise SpecConfigError(
-            f"config.{key} must be a number greater than 0, got {raw!r}"
+            f"config.{key} must be a number greater than 0, got {_describe(raw)}"
         )
     return value
 
 
 def positive_int_config(config: Mapping[str, object], key: str, default: int) -> int:
-    """Return an integer >= 1. Integers and digit strings are accepted."""
+    """Return an integer >= 1. Integers and ASCII digit strings are accepted."""
     if key not in config:
         return default
     raw = config[key]
     value: int | None = None
-    if isinstance(raw, bool) or raw is None:
-        value = None
-    elif isinstance(raw, int):
+    if isinstance(raw, int) and not isinstance(raw, bool):
         value = raw
-    elif isinstance(raw, str) and raw.strip().isdigit():
+    elif isinstance(raw, str) and re.fullmatch(r"[0-9]{1,18}", raw.strip()):
         value = int(raw.strip())
     if value is None or value < 1:
-        raise SpecConfigError(f"config.{key} must be a positive integer, got {raw!r}")
+        raise SpecConfigError(
+            f"config.{key} must be a positive integer, got {_describe(raw)}"
+        )
     return value
 
 
@@ -73,7 +70,9 @@ def bool_config(config: Mapping[str, object], key: str, default: bool) -> bool:
         return default
     raw = config[key]
     if not isinstance(raw, bool):
-        raise SpecConfigError(f"config.{key} must be true or false, got {raw!r}")
+        raise SpecConfigError(
+            f"config.{key} must be true or false, got {_describe(raw)}"
+        )
     return raw
 
 
@@ -98,11 +97,6 @@ def validate_spec_config(spec_type: str, config: object) -> list[str]:
         lambda: request_timeout_config(config),
         lambda: bool_config(config, "verify_tls", True),
         lambda: bool_config(config, "follow_redirects", True),
-        lambda: positive_float_config(
-            config,
-            "total_timeout_seconds",
-            DEFAULT_PAGE_PROBE_TOTAL_TIMEOUT_SECONDS,
-        ),
         lambda: positive_int_config(
             config, "max_body_bytes", DEFAULT_PAGE_PROBE_MAX_BODY_BYTES
         ),
