@@ -13,6 +13,7 @@ from collections.abc import Mapping
 
 DEFAULT_REQUEST_TIMEOUT_SECONDS = 10.0
 DEFAULT_PAGE_PROBE_MAX_BODY_BYTES = 10 * 1024 * 1024
+DEFAULT_PAGE_PROBE_TOTAL_TIMEOUT_FACTOR = 3
 
 
 class SpecConfigError(ValueError):
@@ -82,6 +83,17 @@ def request_timeout_config(config: Mapping[str, object]) -> float:
     )
 
 
+def page_probe_total_timeout_config(
+    config: Mapping[str, object], request_timeout_seconds: float
+) -> float:
+    """Whole-probe deadline; defaults to three request timeouts."""
+    return positive_float_config(
+        config,
+        "total_timeout_seconds",
+        request_timeout_seconds * DEFAULT_PAGE_PROBE_TOTAL_TIMEOUT_FACTOR,
+    )
+
+
 def validate_spec_config(spec_type: str, config: object) -> list[str]:
     """Return human-readable problems with a spec config (empty when valid).
 
@@ -95,6 +107,7 @@ def validate_spec_config(spec_type: str, config: object) -> list[str]:
     errors: list[str] = []
     checks = (
         lambda: request_timeout_config(config),
+        lambda: positive_float_config(config, "total_timeout_seconds", 1.0),
         lambda: bool_config(config, "verify_tls", True),
         lambda: bool_config(config, "follow_redirects", True),
         lambda: positive_int_config(
