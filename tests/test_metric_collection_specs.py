@@ -42,39 +42,47 @@ class _FakeClient:
         return _FakeResponse(self._payload)
 
 
+class _FakeRequest:
+    def __init__(self, url: str) -> None:
+        self.url = url
+        self.extensions: dict[str, object] = {}
+
+
 class _FakeStreamResponse:
     def __init__(
         self,
         *,
         status_code: int,
         chunks: list[bytes],
-        history: list[object] | None = None,
+        next_request: _FakeRequest | None = None,
     ) -> None:
         self.status_code = status_code
         self._chunks = chunks
-        self.history = history or []
-
-    def __enter__(self) -> _FakeStreamResponse:
-        return self
-
-    def __exit__(self, exc_type, exc, tb) -> None:
-        del exc_type, exc, tb
+        self.next_request = next_request
+        self.closed = False
 
     def iter_bytes(self):
         yield from self._chunks
 
+    def close(self) -> None:
+        self.closed = True
+
 
 class _FakePageProbeClient:
+    max_redirects = 20
+
     def __init__(
         self,
         *,
         response: _FakeStreamResponse | None = None,
+        responses: list[_FakeStreamResponse] | None = None,
         stream_error: Exception | None = None,
         capture: dict[str, object] | None = None,
     ) -> None:
-        self._response = response
+        self._responses = list(responses or ([response] if response else []))
         self._stream_error = stream_error
         self._capture = capture if capture is not None else {}
+        self._capture.setdefault("sent_urls", [])
 
     def __enter__(self) -> _FakePageProbeClient:
         return self
@@ -82,13 +90,20 @@ class _FakePageProbeClient:
     def __exit__(self, exc_type, exc, tb) -> None:
         del exc_type, exc, tb
 
-    def stream(self, method: str, url: str):
+    def build_request(self, method: str, url: str) -> _FakeRequest:
         self._capture["method"] = method
         self._capture["url"] = url
+        return _FakeRequest(url)
+
+    def send(
+        self, request: _FakeRequest, *, stream: bool, follow_redirects: bool
+    ) -> _FakeStreamResponse:
+        assert stream is True
+        assert follow_redirects is False
+        self._capture["sent_urls"].append(request.url)
         if self._stream_error is not None:
             raise self._stream_error
-        assert self._response is not None
-        return self._response
+        return self._responses.pop(0)
 
 
 class _FakeUnifiClient:
@@ -299,7 +314,7 @@ def test_http_page_probe_spec_ingests_latency_metrics(db, monkeypatch):
     assert result.warning == 0
     assert result.ingested == 5
     assert client_capture["timeout"] == 15.0
-    assert client_capture["follow_redirects"] is True
+    assert client_capture["follow_redirects"] is False  # followed manually
     assert client_capture["verify"] is True
     assert client_capture["method"] == "GET"
     assert client_capture["url"] == "https://wersdoerfer.de/blogs/ephes_blog/"
@@ -328,14 +343,19 @@ def test_http_page_probe_spec_redirect_sets_redirect_count(db, monkeypatch):
         },
     )
 
+    client_capture: dict[str, object] = {}
     monkeypatch.setattr(
         "graphyard.services.httpx.Client",
         lambda **kwargs: _FakePageProbeClient(
-            response=_FakeStreamResponse(
-                status_code=200,
-                chunks=[b"<html>"],
-                history=[object()],
-            )
+            responses=[
+                _FakeStreamResponse(
+                    status_code=301,
+                    chunks=[b"moved"],
+                    next_request=_FakeRequest("https://python-podcast.de/show"),
+                ),
+                _FakeStreamResponse(status_code=200, chunks=[b"<html>"]),
+            ],
+            capture=client_capture,
         ),
     )
     perf_values = iter([0.0, 0.01, 0.16, 0.19])
@@ -357,6 +377,11 @@ def test_http_page_probe_spec_redirect_sets_redirect_count(db, monkeypatch):
     assert result.ingested == 5
     points_by_metric = {point.metric: point for point in captured["points"]}
     assert points_by_metric["service.http_page_redirect_count"].value == 1.0
+    assert points_by_metric["service.http_page_status_code"].value == 200.0
+    assert client_capture["sent_urls"] == [
+        "https://python-podcast.de/show/",
+        "https://python-podcast.de/show",
+    ]
 
     spec.refresh_from_db()
     assert spec.last_status == StatusLevel.OK
@@ -380,7 +405,12 @@ def test_http_page_probe_spec_respects_follow_redirects_false(db, monkeypatch):
     def _client_factory(**kwargs):
         client_capture.update(kwargs)
         return _FakePageProbeClient(
-            response=_FakeStreamResponse(status_code=302, chunks=[b"redirect"])
+            response=_FakeStreamResponse(
+                status_code=302,
+                chunks=[b"redirect"],
+                next_request=_FakeRequest("https://example.invalid/target"),
+            ),
+            capture=client_capture,
         )
 
     monkeypatch.setattr("graphyard.services.httpx.Client", _client_factory)
@@ -401,7 +431,7 @@ def test_http_page_probe_spec_respects_follow_redirects_false(db, monkeypatch):
     assert result.failed == 0
     assert result.warning == 0
     assert result.ingested == 5
-    assert client_capture["follow_redirects"] is False
+    assert client_capture["sent_urls"] == ["https://example.invalid/redirect"]
     points_by_metric = {point.metric: point for point in captured["points"]}
     assert points_by_metric["service.http_page_status_code"].value == 302.0
     assert points_by_metric["service.http_page_success"].value == 1.0

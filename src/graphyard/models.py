@@ -8,6 +8,8 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
 
+from graphyard.spec_config import validate_spec_config
+
 PREFERRED_FAST_TOKEN_HASH_PREFIX = "graphyard-sha256"
 LEGACY_FAST_TOKEN_HASH_PREFIXES = ("sha256",)
 FAST_TOKEN_HASH_PREFIXES = (
@@ -207,6 +209,12 @@ class MetricCollectionSpec(models.Model):
 
     def __str__(self) -> str:
         return self.name
+
+    def clean(self) -> None:
+        super().clean()
+        errors = validate_spec_config(self.spec_type, self.config)
+        if errors:
+            raise ValidationError({"config": errors})
 
 
 class ComparisonOperator:

@@ -44,22 +44,27 @@ class _FakeClient:
 
 
 class _FakeStreamResponse:
+    next_request = None
+
     def __init__(self, *, status_code: int, chunks: list[bytes]) -> None:
         self.status_code = status_code
         self._chunks = chunks
-        self.history: list[object] = []
-
-    def __enter__(self) -> _FakeStreamResponse:
-        return self
-
-    def __exit__(self, exc_type, exc, tb) -> None:
-        del exc_type, exc, tb
 
     def iter_bytes(self):
         yield from self._chunks
 
+    def close(self) -> None:
+        return None
+
+
+class _FakeRequest:
+    def __init__(self) -> None:
+        self.extensions: dict[str, object] = {}
+
 
 class _FakePageProbeClient:
+    max_redirects = 20
+
     def __init__(self, *, response: _FakeStreamResponse) -> None:
         self._response = response
 
@@ -69,8 +74,12 @@ class _FakePageProbeClient:
     def __exit__(self, exc_type, exc, tb) -> None:
         del exc_type, exc, tb
 
-    def stream(self, method: str, url: str):
+    def build_request(self, method: str, url: str) -> _FakeRequest:
         del method, url
+        return _FakeRequest()
+
+    def send(self, request, *, stream: bool, follow_redirects: bool):
+        del request, stream, follow_redirects
         return self._response
 
 

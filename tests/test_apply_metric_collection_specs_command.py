@@ -429,3 +429,65 @@ def test_apply_metric_collection_specs_prune_rejects_empty_desired_set(tmp_path)
 
     with pytest.raises(CommandError, match="empty desired spec set"):
         call_command("apply_metric_collection_specs", "--file", spec_file, "--prune")
+
+
+@pytest.mark.django_db
+def test_apply_metric_collection_specs_rejects_malformed_timeout(tmp_path):
+    spec_file = _write_specs_file(
+        tmp_path,
+        {
+            "metric_collection_specs": [
+                {
+                    "name": "bad timeout",
+                    "enabled": True,
+                    "spec_type": MetricCollectionSpecType.HTTP_JSON_METRIC,
+                    "interval_seconds": 60,
+                    "config": {
+                        "url": "https://example.test/metrics",
+                        "metric_path": "$.value",
+                        "metric_name": "service.example_value",
+                        "request_timeout_seconds": "5s",
+                    },
+                }
+            ]
+        },
+    )
+
+    with pytest.raises(CommandError, match="request_timeout_seconds"):
+        call_command("apply_metric_collection_specs", "--file", spec_file)
+    assert not MetricCollectionSpec.objects.filter(name="bad timeout").exists()
+
+
+@pytest.mark.django_db
+def test_apply_metric_collection_specs_rejects_unchanged_legacy_malformed_spec(
+    tmp_path,
+):
+    config = {
+        "url": "https://example.test/metrics",
+        "metric_path": "$.value",
+        "metric_name": "service.example_value",
+        "verify_tls": "false",
+    }
+    # Saved without validation, as rows created before validation existed were.
+    MetricCollectionSpec.objects.create(
+        name="legacy",
+        enabled=True,
+        spec_type=MetricCollectionSpecType.HTTP_JSON_METRIC,
+        interval_seconds=60,
+        config=config,
+    )
+    spec_file = _write_specs_file(
+        tmp_path,
+        [
+            {
+                "name": "legacy",
+                "enabled": True,
+                "spec_type": MetricCollectionSpecType.HTTP_JSON_METRIC,
+                "interval_seconds": 60,
+                "config": config,
+            }
+        ],
+    )
+
+    with pytest.raises(CommandError, match="verify_tls"):
+        call_command("apply_metric_collection_specs", "--file", spec_file)
