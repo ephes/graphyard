@@ -110,6 +110,8 @@ class ConditionDefinitionAdmin(admin.ModelAdmin):
         "enabled",
         "metric_name",
         "status",
+        "stale_after_seconds",
+        "alert_when_stale",
         "last_evaluated",
         "updated_at",
     )
@@ -121,7 +123,7 @@ class ConditionDefinitionAdmin(admin.ModelAdmin):
         "subject_id_filter",
         "service_filter",
     )
-    list_filter = ("enabled", "status", "operator")
+    list_filter = ("enabled", "status", "operator", "alert_when_stale")
 
 
 @admin.register(MetricCollectionSpec)

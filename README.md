@@ -381,6 +381,8 @@ Create conditions in Django admin (`ConditionDefinition`) using:
 - operator (`gt|gte|lt|lte`)
 - warning/critical thresholds
 - breach duration window
+- optional staleness allowance (`stale_after_seconds`) and `alert_when_stale`
+  (see "Intermittent sources" below)
 
 Run evaluator once:
 
@@ -395,6 +397,34 @@ just manage seed_disk_usage_condition --host macmini --mountpoint /
 ```
 
 Defaults: warning `0.80`, critical `0.90`, operator `gte`, metric `host.filesystem_used_ratio`.
+
+For a host that is not always online (for example a laptop that sleeps), add
+`--stale-after-seconds N` and/or `--intermittent`:
+
+```bash
+just manage seed_disk_usage_condition --host atlas --stale-after-seconds 43200 --intermittent
+```
+
+Re-running the command without these flags resets them to the defaults, like
+every other field it seeds.
+
+### Intermittent sources
+
+A condition turns `warning` when its newest sample is older than
+`GRAPHYARD_CONDITION_DATA_STALE_WARNING_SECONDS` (default 600 s), or when the
+condition window has no samples at all. Two per-condition fields (admin,
+`seed_disk_usage_condition`, and the `config` of `GET /v1/conditions/<id>`)
+relax this for intermittent sources:
+
+- `stale_after_seconds`: the age the newest sample may reach before the
+  condition turns `warning`. Empty means the global setting. The evaluator
+  also looks back this far, so a sample within the allowance is still found
+  and evaluated against the thresholds.
+- `alert_when_stale` (default on): when off, stale or missing data reports
+  `ok` with a message ending in `not alerting (intermittent)` instead of
+  `warning`. Fresh data is still evaluated, so a real breach still alerts.
+
+Conditions that set neither field behave exactly as before.
 
 Example supported condition: humidity above threshold for N minutes.
 

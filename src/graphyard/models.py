@@ -5,6 +5,7 @@ import hmac
 
 from django.contrib.auth.hashers import check_password
 from django.core.exceptions import ValidationError
+from django.conf import settings
 from django.db import models
 from django.utils import timezone
 
@@ -251,6 +252,24 @@ class ConditionDefinition(models.Model):
     critical_threshold = models.FloatField(blank=True, null=True)
     window_minutes = models.PositiveIntegerField(default=30)
     breach_minutes = models.PositiveIntegerField(default=5)
+    # Staleness allowance for intermittent sources (for example a laptop that
+    # sleeps). Null means the global CONDITION_DATA_STALE_WARNING_SECONDS.
+    stale_after_seconds = models.PositiveIntegerField(
+        blank=True,
+        null=True,
+        help_text=(
+            "Seconds the newest sample may age before the condition turns "
+            "warning. Empty uses the global "
+            "GRAPHYARD_CONDITION_DATA_STALE_WARNING_SECONDS."
+        ),
+    )
+    alert_when_stale = models.BooleanField(
+        default=True,
+        help_text=(
+            "Untick for intermittent hosts: stale or missing data then reports "
+            "ok ('not alerting') instead of warning."
+        ),
+    )
 
     status = models.CharField(
         max_length=16,
@@ -277,6 +296,18 @@ class ConditionDefinition(models.Model):
             raise ValidationError(
                 "ConditionDefinition requires warning_threshold or critical_threshold"
             )
+        if self.stale_after_seconds is not None and self.stale_after_seconds <= 0:
+            raise ValidationError(
+                {
+                    "stale_after_seconds": "Must be greater than 0, or empty for the default."
+                }
+            )
+
+    def stale_limit_seconds(self) -> int:
+        """Age in seconds after which the newest sample counts as stale."""
+        if self.stale_after_seconds:
+            return int(self.stale_after_seconds)
+        return int(settings.CONDITION_DATA_STALE_WARNING_SECONDS)
 
 
 class PipelineHeartbeat(models.Model):

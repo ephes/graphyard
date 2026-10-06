@@ -68,6 +68,23 @@ class Command(BaseCommand):
             default=5,
             help="Required continuous breach duration in minutes (default: 5)",
         )
+        parser.add_argument(
+            "--stale-after-seconds",
+            type=int,
+            default=None,
+            help=(
+                "Per-condition staleness allowance in seconds "
+                "(default: the global GRAPHYARD_CONDITION_DATA_STALE_WARNING_SECONDS)"
+            ),
+        )
+        parser.add_argument(
+            "--intermittent",
+            action="store_true",
+            help=(
+                "Host is intermittent (for example a sleeping laptop): stale or "
+                "missing data reports ok instead of warning"
+            ),
+        )
 
     def handle(self, *args, **options) -> None:
         del args
@@ -79,6 +96,8 @@ class Command(BaseCommand):
         window_minutes: int = int(options["window_minutes"])
         breach_minutes: int = int(options["breach_minutes"])
         operator: str = str(options["operator"])
+        stale_after_seconds: int | None = options["stale_after_seconds"]
+        intermittent: bool = bool(options["intermittent"])
 
         if not host:
             raise CommandError("--host must not be empty")
@@ -90,6 +109,8 @@ class Command(BaseCommand):
             raise CommandError("--window-minutes must be greater than 0")
         if breach_minutes <= 0:
             raise CommandError("--breach-minutes must be greater than 0")
+        if stale_after_seconds is not None and stale_after_seconds <= 0:
+            raise CommandError("--stale-after-seconds must be greater than 0")
         if breach_minutes > window_minutes:
             raise CommandError(
                 "--breach-minutes must be less than or equal to --window-minutes"
@@ -125,6 +146,8 @@ class Command(BaseCommand):
             "critical_threshold": critical_threshold,
             "window_minutes": window_minutes,
             "breach_minutes": breach_minutes,
+            "stale_after_seconds": stale_after_seconds,
+            "alert_when_stale": not intermittent,
         }
 
         condition, created = ConditionDefinition.objects.get_or_create(
@@ -147,3 +170,8 @@ class Command(BaseCommand):
         self.stdout.write(f"name={condition.name}")
         self.stdout.write(f"host={host}")
         self.stdout.write(f"mountpoint={mountpoint_name}")
+        self.stdout.write(
+            "stale_after_seconds="
+            f"{stale_after_seconds if stale_after_seconds is not None else 'default'}"
+        )
+        self.stdout.write(f"alert_when_stale={'false' if intermittent else 'true'}")

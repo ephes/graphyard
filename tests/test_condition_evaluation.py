@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 
 import pytest
+from django.core.exceptions import ValidationError
 
 from graphyard import influx
 from graphyard.models import (
@@ -543,3 +544,108 @@ def test_breach_shorter_than_sampling_interval_ok_when_anchor_is_below(
     _patch_window(monkeypatch, samples)
 
     assert evaluate_condition(condition, now=now).status == StatusLevel.OK
+
+
+# --- per-condition staleness allowance ---------------------------------------
+
+
+def test_stale_sample_within_allowance_is_evaluated(monkeypatch, settings):
+    settings.CONDITION_DATA_STALE_WARNING_SECONDS = 600
+    now = datetime(2026, 3, 4, 12, 0, tzinfo=UTC)
+    condition = _condition()
+    condition.stale_after_seconds = 3600
+    _patch_window(monkeypatch, [_sample(now, minutes_ago=20, value=50.0)])
+
+    result = evaluate_condition(condition, now=now)
+
+    assert result.status == StatusLevel.OK
+    assert result.message == "Condition is within thresholds"
+
+
+def test_stale_sample_past_allowance_warns(monkeypatch, settings):
+    settings.CONDITION_DATA_STALE_WARNING_SECONDS = 600
+    now = datetime(2026, 3, 4, 12, 0, tzinfo=UTC)
+    condition = _condition()
+    condition.stale_after_seconds = 3600
+    _patch_window(monkeypatch, [_sample(now, minutes_ago=61, value=50.0)])
+
+    result = evaluate_condition(condition, now=now)
+
+    assert result.status == StatusLevel.WARNING
+    assert "stale (3660s old)" in result.message
+
+
+def test_intermittent_condition_reports_stale_data_as_ok(monkeypatch, settings):
+    settings.CONDITION_DATA_STALE_WARNING_SECONDS = 600
+    now = datetime(2026, 3, 4, 12, 0, tzinfo=UTC)
+    condition = _condition()
+    condition.alert_when_stale = False
+    _patch_window(monkeypatch, [_sample(now, minutes_ago=20, value=80.0)])
+
+    result = evaluate_condition(condition, now=now)
+
+    assert result.status == StatusLevel.OK
+    assert "not alerting (intermittent)" in result.message
+    assert result.last_value == 80.0
+
+
+def test_intermittent_condition_with_no_samples_is_ok(monkeypatch):
+    now = datetime(2026, 3, 4, 12, 0, tzinfo=UTC)
+    condition = _condition()
+    condition.alert_when_stale = False
+    _patch_window(monkeypatch, [])
+
+    result = evaluate_condition(condition, now=now)
+
+    assert result.status == StatusLevel.OK
+    assert "No samples available" in result.message
+    assert "not alerting (intermittent)" in result.message
+
+
+def test_intermittent_condition_still_alerts_on_fresh_breach(monkeypatch):
+    now = datetime(2026, 3, 4, 12, 0, tzinfo=UTC)
+    condition = _condition(
+        warning_threshold=60.0, critical_threshold=75.0, breach_minutes=5
+    )
+    condition.alert_when_stale = False
+    _patch_window(
+        monkeypatch, [_sample(now, minutes_ago=i, value=80.0) for i in range(6)]
+    )
+
+    assert evaluate_condition(condition, now=now).status == StatusLevel.CRITICAL
+
+
+def test_default_condition_staleness_is_unchanged(monkeypatch, settings):
+    settings.CONDITION_DATA_STALE_WARNING_SECONDS = 600
+    now = datetime(2026, 3, 4, 12, 0, tzinfo=UTC)
+    condition = _condition()
+    assert condition.stale_after_seconds is None
+    assert condition.alert_when_stale is True
+    assert condition.stale_limit_seconds() == 600
+    _patch_window(monkeypatch, [_sample(now, minutes_ago=11, value=50.0)])
+
+    assert evaluate_condition(condition, now=now).status == StatusLevel.WARNING
+
+
+def test_query_looks_back_over_a_long_staleness_allowance(monkeypatch, settings):
+    settings.CONDITION_DATA_STALE_WARNING_SECONDS = 600
+    now = datetime(2026, 3, 4, 12, 0, tzinfo=UTC)
+    captured: dict[str, datetime] = {}
+
+    def fake_query_range(metric, start, stop, **kwargs):
+        captured["start"] = start
+        return []
+
+    monkeypatch.setattr("graphyard.influx.query_range", fake_query_range)
+
+    condition = _condition(breach_minutes=10)
+    condition.stale_after_seconds = 43200
+    influx.query_condition_window(condition, now=now)
+    assert captured["start"] == now - timedelta(minutes=720)
+
+
+def test_stale_allowance_must_be_positive():
+    condition = _condition()
+    condition.stale_after_seconds = 0
+    with pytest.raises(ValidationError):
+        condition.clean()
