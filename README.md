@@ -415,6 +415,9 @@ just typecheck
 just lint
 ```
 
+GitHub Actions (`.github/workflows/ci.yml`) runs the same lint, typecheck and test
+commands on every push and pull request. It needs no secrets or InfluxDB.
+
 ## Influx + Grafana
 
 See `docs/influx_grafana.md` for retention/downsampling notes and Grafana linking guidance.

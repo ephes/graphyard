@@ -41,3 +41,6 @@
   private inventory pages/downloads, monitoring status, transactional snapshots,
   duplicate handling and preservation of last successful category observations.
   No producer scheduling or deployment is enabled automatically.
+
+- Add a GitHub Actions CI workflow that runs `just lint`, `just typecheck` and
+  `just test` on every push and pull request.
