@@ -154,6 +154,9 @@ Conditions:
 
 - Extend condition filtering with `subject_type_filter` and `subject_id_filter`.
 - Keep `host_filter` as compatibility filter for host-subject conditions only.
+- Evaluate a condition per series (the full dimension and tag set). When the filters
+  match several series, the worst series status wins and the message names that
+  series (see README, "Conditions that match several series").
 
 ## Concrete Examples
 

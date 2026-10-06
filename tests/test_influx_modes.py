@@ -157,6 +157,8 @@ def test_query_range_v3_sql_selects_and_returns_dimension_columns(
                     "source_entity_id": "sensor.office_temperature",
                     "collector_service": "graphyard-agent",
                     "collector_host": "macmini",
+                    "mountpoint": "/",
+                    "device": None,
                 }
             ]
 
@@ -173,9 +175,7 @@ def test_query_range_v3_sql_selects_and_returns_dimension_columns(
     stop = datetime(2026, 3, 4, 12, 0, tzinfo=UTC)
     samples = influx._query_range_v3_sql("ha.sensor.office_temperature", start, stop)
 
-    assert "subject_type" in str(captured["query"])
-    assert "subject_id" in str(captured["query"])
-    assert "collector_service" in str(captured["query"])
+    assert str(captured["query"]).startswith("select * ")
     assert len(samples) == 1
     assert samples[0].subject_type == "environment_sensor"
     assert samples[0].subject_id == "office_temperature"
@@ -184,6 +184,7 @@ def test_query_range_v3_sql_selects_and_returns_dimension_columns(
     assert samples[0].source_entity_id == "sensor.office_temperature"
     assert samples[0].collector_service == "graphyard-agent"
     assert samples[0].collector_host == "macmini"
+    assert samples[0].tags == {"mountpoint": "/"}
 
 
 def test_write_points_skips_invalid_points_in_batch(monkeypatch):

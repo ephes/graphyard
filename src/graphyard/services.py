@@ -87,11 +87,127 @@ def _is_breached_for_duration(
     return all(compare(sample.value, threshold) for sample in window_values)
 
 
+_SERIES_DIMENSIONS = (
+    "host",
+    "service",
+    "subject_type",
+    "subject_id",
+    "source_system",
+    "source_instance",
+    "source_entity_id",
+    "collector_service",
+    "collector_host",
+)
+
+_STATUS_SEVERITY = {
+    StatusLevel.OK: 0,
+    StatusLevel.WARNING: 1,
+    StatusLevel.CRITICAL: 2,
+}
+
+SeriesKey = tuple[tuple[str, str], ...]
+
+
+def _series_key(sample: influx.MetricSample) -> SeriesKey:
+    """Identify the time series a sample belongs to (all tags but time/value)."""
+    dimensions: dict[str, str] = {"metric": sample.metric}
+    for name in _SERIES_DIMENSIONS:
+        value = getattr(sample, name)
+        if value is not None and value != "":
+            dimensions[name] = str(value)
+    for key, value in sample.tags.items():
+        dimensions.setdefault(str(key), str(value))
+    return tuple(sorted(dimensions.items()))
+
+
+def _group_samples_by_series(
+    samples: list[influx.MetricSample],
+) -> dict[SeriesKey, list[influx.MetricSample]]:
+    grouped: dict[SeriesKey, list[influx.MetricSample]] = {}
+    for sample in samples:
+        grouped.setdefault(_series_key(sample), []).append(sample)
+    for series_samples in grouped.values():
+        series_samples.sort(key=lambda item: item.ts)
+    return grouped
+
+
+def _series_labels(keys: list[SeriesKey]) -> dict[SeriesKey, str]:
+    """Label each series by the dimensions that distinguish it from the others."""
+    all_names = sorted({name for key in keys for name, _ in key})
+    as_dicts = {key: dict(key) for key in keys}
+    varying = [
+        name for name in all_names if len({as_dicts[key].get(name) for key in keys}) > 1
+    ]
+    labels: dict[SeriesKey, str] = {}
+    for key in keys:
+        dims = as_dicts[key]
+        names = varying or [name for name in all_names if name != "metric"]
+        labels[key] = ", ".join(f"{name}={dims.get(name, '')}" for name in names)
+    return labels
+
+
+def _evaluate_series(
+    condition: ConditionDefinition,
+    samples: list[influx.MetricSample],
+    now_utc: datetime,
+) -> tuple[str, str, float]:
+    """Evaluate one time-ordered series; returns (status, message, last_value)."""
+    latest = samples[-1]
+    stale_seconds = int((now_utc - latest.ts).total_seconds())
+    if stale_seconds > settings.CONDITION_DATA_STALE_WARNING_SECONDS:
+        return (
+            StatusLevel.WARNING,
+            f"Latest sample is stale ({stale_seconds}s old)",
+            latest.value,
+        )
+
+    if condition.critical_threshold is not None and _is_breached_for_duration(
+        samples,
+        condition.operator,
+        condition.critical_threshold,
+        condition.breach_minutes,
+        now_utc,
+    ):
+        return (
+            StatusLevel.CRITICAL,
+            (
+                f"{condition.metric_name} {condition.operator} "
+                f"{condition.critical_threshold} for {condition.breach_minutes}m"
+            ),
+            latest.value,
+        )
+
+    if condition.warning_threshold is not None and _is_breached_for_duration(
+        samples,
+        condition.operator,
+        condition.warning_threshold,
+        condition.breach_minutes,
+        now_utc,
+    ):
+        return (
+            StatusLevel.WARNING,
+            (
+                f"{condition.metric_name} {condition.operator} "
+                f"{condition.warning_threshold} for {condition.breach_minutes}m"
+            ),
+            latest.value,
+        )
+
+    return StatusLevel.OK, "Condition is within thresholds", latest.value
+
+
 def evaluate_condition(
     condition: ConditionDefinition,
     *,
     now: datetime | None = None,
 ) -> ConditionEvaluation:
+    """Evaluate a condition per matching time series.
+
+    Each series (distinct tag set) is checked for staleness and threshold
+    breaches on its own; the condition takes the worst series status. With
+    several series, the message names the series that decided the status and
+    ``last_value`` comes from that series.
+    """
     now_utc = (now or datetime.now(UTC)).astimezone(UTC)
     samples = influx.query_condition_window(condition, now=now_utc)
 
@@ -103,54 +219,45 @@ def evaluate_condition(
             evaluated_at=now_utc,
         )
 
-    latest = samples[-1]
-    stale_seconds = int((now_utc - latest.ts).total_seconds())
-    if stale_seconds > settings.CONDITION_DATA_STALE_WARNING_SECONDS:
+    grouped = _group_samples_by_series(samples)
+    labels = _series_labels(list(grouped))
+    results = [
+        (key, series[-1].ts, *_evaluate_series(condition, series, now_utc))
+        for key, series in grouped.items()
+    ]
+
+    if len(results) == 1:
+        _, _, status, message, last_value = results[0]
         return ConditionEvaluation(
-            status=StatusLevel.WARNING,
-            message=f"Latest sample is stale ({stale_seconds}s old)",
-            last_value=latest.value,
+            status=status,
+            message=message,
+            last_value=last_value,
             evaluated_at=now_utc,
         )
 
-    if condition.critical_threshold is not None and _is_breached_for_duration(
-        samples,
-        condition.operator,
-        condition.critical_threshold,
-        condition.breach_minutes,
-        now_utc,
-    ):
-        return ConditionEvaluation(
-            status=StatusLevel.CRITICAL,
-            message=(
-                f"{condition.metric_name} {condition.operator} "
-                f"{condition.critical_threshold} for {condition.breach_minutes}m"
-            ),
-            last_value=latest.value,
-            evaluated_at=now_utc,
-        )
+    # Worst status wins; among equals prefer stale (oldest latest sample),
+    # then the series label for a deterministic choice.
+    results.sort(
+        key=lambda item: (-_STATUS_SEVERITY[item[2]], item[1], labels[item[0]])
+    )
+    total = len(results)
+    not_ok = sum(1 for item in results if item[2] != StatusLevel.OK)
+    key, _, status, message, last_value = results[0]
 
-    if condition.warning_threshold is not None and _is_breached_for_duration(
-        samples,
-        condition.operator,
-        condition.warning_threshold,
-        condition.breach_minutes,
-        now_utc,
-    ):
-        return ConditionEvaluation(
-            status=StatusLevel.WARNING,
-            message=(
-                f"{condition.metric_name} {condition.operator} "
-                f"{condition.warning_threshold} for {condition.breach_minutes}m"
-            ),
-            last_value=latest.value,
-            evaluated_at=now_utc,
+    if status == StatusLevel.OK:
+        # Report the most recent value across all healthy series.
+        key, _, status, message, last_value = max(
+            results, key=lambda item: (item[1], labels[item[0]])
         )
+        message = f"{message} ({total} series)"
+    else:
+        message = f"{message} [series: {labels[key]}]"
+        message += f" ({not_ok} of {total} series not OK)"
 
     return ConditionEvaluation(
-        status=StatusLevel.OK,
-        message="Condition is within thresholds",
-        last_value=latest.value,
+        status=status,
+        message=message,
+        last_value=last_value,
         evaluated_at=now_utc,
     )
 

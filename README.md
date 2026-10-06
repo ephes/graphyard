@@ -372,6 +372,27 @@ Defaults: warning `0.80`, critical `0.90`, operator `gte`, metric `host.filesyst
 
 Example supported condition: humidity above threshold for N minutes.
 
+### Conditions that match several series
+
+A condition matches more than one time series when its filters do not pin every
+tag, for example a disk condition seeded with `--no-mountpoint-filter`, or a
+metric reported by several collectors. Graphyard groups the samples by series
+(every tag/dimension except time and value) and evaluates staleness and the
+breach duration for each series on its own. The condition takes the worst series
+status (`critical` > `warning` > `ok`):
+
+- one series breaching the critical threshold for the full breach window makes the
+  condition `critical`, even if other series are healthy;
+- one stale series makes the condition at least `warning`, even if other series are fresh;
+- the message names the deciding series by the dimensions that differ, for example
+  `... [series: mountpoint=/data] (1 of 3 series not OK)`, and `last_value` comes
+  from that series. When every series is healthy, `last_value` is the newest
+  sample and the message is `Condition is within thresholds (N series)`.
+
+Conditions that match a single series behave exactly as before. A series with no
+samples in the condition window at all is not visible to the evaluator; pin the
+filters if you need an alert for a series that disappears.
+
 ## Agent Runtime (Dev + Production)
 
 Graphyard scheduler tasks run inside one long-lived process (`start_agent`), not per-run Python process spawns.

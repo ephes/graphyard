@@ -509,6 +509,24 @@ def _query_range_v2_flux(
     return samples
 
 
+_V3_NON_TAG_COLUMNS = frozenset(
+    {
+        "time",
+        "value",
+        "host",
+        "service",
+        "metric",
+        "subject_type",
+        "subject_id",
+        "source_system",
+        "source_instance",
+        "source_entity_id",
+        "collector_service",
+        "collector_host",
+    }
+)
+
+
 def _query_range_v3_sql(
     metric_name: str,
     start: datetime,
@@ -540,10 +558,10 @@ def _query_range_v3_sql(
             )
 
     measurement = _sql_identifier(settings.INFLUX_MEASUREMENT)
+    # Select every column so custom tags (for example ``mountpoint``) come
+    # back and multi-series condition results can be split per series.
     sql = (
-        "select time, value, host, metric, service, "
-        "subject_type, subject_id, source_system, source_instance, "
-        "source_entity_id, collector_service, collector_host "
+        "select * "
         f"from {measurement} "
         f"where {' and '.join(where_clauses)} "
         "order by time asc"
@@ -634,7 +652,11 @@ def _query_range_v3_sql(
                     if row.get("collector_host") is not None
                     else None
                 ),
-                tags={},
+                tags={
+                    str(key): str(tag_value)
+                    for key, tag_value in row.items()
+                    if tag_value is not None and key not in _V3_NON_TAG_COLUMNS
+                },
             )
         )
 
