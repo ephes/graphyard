@@ -170,6 +170,12 @@ class Command(BaseCommand):
                     updated += 1
                     result_lines.append(f"updated {spec.name}")
                 else:
+                    # Re-validate rows saved before config validation existed so
+                    # an apply never reports a malformed legacy spec as accepted.
+                    try:
+                        spec.full_clean()
+                    except ValidationError as err:
+                        raise CommandError(str(err)) from err
                     unchanged += 1
                     result_lines.append(f"unchanged {spec.name}")
 

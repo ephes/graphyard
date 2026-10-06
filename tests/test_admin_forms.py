@@ -44,3 +44,22 @@ def test_metric_collection_spec_admin_form_preserves_masked_secret_on_clean(db):
 
     assert cleaned["access_token"] == "super-secret-token"
     assert cleaned["base_url"] == "https://ha.changed.local"
+
+
+def test_metric_collection_spec_admin_form_rejects_string_boolean(db):
+    form = MetricCollectionSpecAdminForm(
+        data={
+            "name": "probe with string bool",
+            "enabled": True,
+            "spec_type": MetricCollectionSpecType.HTTP_PAGE_PROBE,
+            "interval_seconds": 60,
+            "next_run_time": 0,
+            "config": '{"url": "https://example.test/", "subject_id": "x", '
+            '"verify_tls": "false"}',
+            "last_status": "warning",
+            "last_error": "",
+        }
+    )
+
+    assert not form.is_valid()
+    assert "verify_tls" in str(form.errors["config"])

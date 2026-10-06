@@ -14,6 +14,16 @@ from django.db import OperationalError
 from django.utils import timezone
 
 from . import influx
+from .http_deadline import DeadlineTransport
+from .spec_config import (
+    DEFAULT_PAGE_PROBE_MAX_BODY_BYTES,
+    DEFAULT_PAGE_PROBE_TOTAL_TIMEOUT_SECONDS,
+    SpecConfigError,
+    bool_config,
+    positive_float_config,
+    positive_int_config,
+    request_timeout_config,
+)
 from .models import (
     ComparisonOperator,
     ConditionDefinition,
@@ -692,8 +702,8 @@ def _execute_home_assistant_sensor_spec(
         return StatusLevel.CRITICAL, 0, 0, "config.entity_id is required"
 
     metric_name = str(spec.config.get("metric_name", ""))
-    timeout_seconds = int(spec.config.get("request_timeout_seconds", 10))
-    verify_tls = bool(spec.config.get("verify_tls", True))
+    timeout_seconds = request_timeout_config(spec.config)
+    verify_tls = bool_config(spec.config, "verify_tls", True)
 
     headers = {
         "Authorization": f"Bearer {access_token}",
@@ -745,8 +755,8 @@ def _execute_home_assistant_env_scan_spec(
         return StatusLevel.CRITICAL, 0, 0, "config.access_token is required"
 
     metric_prefix = str(spec.config.get("metric_prefix", "ha."))
-    timeout_seconds = int(spec.config.get("request_timeout_seconds", 10))
-    verify_tls = bool(spec.config.get("verify_tls", True))
+    timeout_seconds = request_timeout_config(spec.config)
+    verify_tls = bool_config(spec.config, "verify_tls", True)
 
     include_device_classes = spec.config.get(
         "include_device_classes", ["temperature", "humidity"]
@@ -852,8 +862,8 @@ def _execute_http_json_metric_spec(
     collector_host = str(
         spec.config.get("collector_host", host_id or "external")
     ).strip()
-    timeout_seconds = int(spec.config.get("request_timeout_seconds", 10))
-    verify_tls = bool(spec.config.get("verify_tls", True))
+    timeout_seconds = request_timeout_config(spec.config)
+    verify_tls = bool_config(spec.config, "verify_tls", True)
 
     if not url:
         return StatusLevel.CRITICAL, 0, 0, "config.url is required"
@@ -957,6 +967,19 @@ def _build_http_page_probe_point(
     )
 
 
+class _PageProbeLimitExceeded(Exception):
+    """The page probe hit its total deadline or body size cap."""
+
+
+def _page_probe_remaining(deadline: float, total_timeout_seconds: float) -> float:
+    remaining = deadline - time.monotonic()
+    if remaining <= 0:
+        raise _PageProbeLimitExceeded(
+            f"response exceeded total_timeout_seconds={total_timeout_seconds:g}"
+        )
+    return remaining
+
+
 def _execute_http_page_probe_spec(
     spec: MetricCollectionSpec,
 ) -> tuple[str, int, int, str]:
@@ -972,31 +995,22 @@ def _execute_http_page_probe_spec(
         spec.config.get("collector_service", "graphyard-agent")
     ).strip()
     collector_host = str(spec.config.get("collector_host", "external")).strip()
-    timeout_raw = spec.config.get("request_timeout_seconds", 10)
-    verify_tls = bool(spec.config.get("verify_tls", True))
-    follow_redirects = bool(spec.config.get("follow_redirects", True))
+    timeout_seconds = request_timeout_config(spec.config)
+    total_timeout_seconds = positive_float_config(
+        spec.config,
+        "total_timeout_seconds",
+        DEFAULT_PAGE_PROBE_TOTAL_TIMEOUT_SECONDS,
+    )
+    max_body_bytes = positive_int_config(
+        spec.config, "max_body_bytes", DEFAULT_PAGE_PROBE_MAX_BODY_BYTES
+    )
+    verify_tls = bool_config(spec.config, "verify_tls", True)
+    follow_redirects = bool_config(spec.config, "follow_redirects", True)
 
     if not url:
         return StatusLevel.CRITICAL, 0, 0, "config.url is required"
     if not subject_id:
         return StatusLevel.CRITICAL, 0, 0, "config.subject_id is required"
-
-    try:
-        timeout_seconds = float(timeout_raw)
-    except (TypeError, ValueError):
-        return (
-            StatusLevel.CRITICAL,
-            0,
-            0,
-            f"invalid request_timeout_seconds: {timeout_raw!r}",
-        )
-    if timeout_seconds <= 0:
-        return (
-            StatusLevel.CRITICAL,
-            0,
-            0,
-            "config.request_timeout_seconds must be greater than 0",
-        )
 
     tags: dict[str, str] = {
         "spec_name": spec.name,
@@ -1027,29 +1041,60 @@ def _execute_http_page_probe_spec(
         )
 
     try:
+        # Per-operation timeouts alone let a slow-drip endpoint (even one
+        # dripping headers) hold the single-threaded agent loop indefinitely;
+        # the transport clamps every socket operation to the total deadline.
+        deadline = time.monotonic() + total_timeout_seconds
+        transport = DeadlineTransport(
+            verify=verify_tls,
+            deadline=deadline,
+            label=f"total_timeout_seconds={total_timeout_seconds:g}",
+        )
+        # Redirects are followed by hand: httpx reads redirect bodies in full
+        # before yielding the final response, which would bypass the byte cap.
         with httpx.Client(
             timeout=timeout_seconds,
             verify=verify_tls,
-            follow_redirects=follow_redirects,
+            follow_redirects=False,
+            transport=transport,
         ) as client:
             started_at = time.perf_counter()
-            with client.stream("GET", url) as response:
-                headers_received_at = time.perf_counter()
-                chunks = response.iter_bytes()
+            body_bytes = 0
+            redirect_count = 0
+            request = client.build_request("GET", url)
+            while True:
+                _page_probe_remaining(deadline, total_timeout_seconds)
+                response = client.send(request, stream=True, follow_redirects=False)
                 try:
-                    first_chunk = next(chunks)
-                except StopIteration:
-                    pass
-                else:
-                    del first_chunk
-                    for _chunk in chunks:
-                        del _chunk
-                # TTFB is measured to response headers. With follow_redirects=true,
-                # redirect round-trips are intentionally included in this end-to-end value.
-                ttfb_seconds = headers_received_at - started_at
-                total_seconds = time.perf_counter() - started_at
-                status_code = response.status_code
-                redirect_count = len(response.history)
+                    headers_received_at = time.perf_counter()
+                    _page_probe_remaining(deadline, total_timeout_seconds)
+                    for chunk in response.iter_bytes():
+                        body_bytes += len(chunk)
+                        del chunk
+                        if body_bytes > max_body_bytes:
+                            raise _PageProbeLimitExceeded(
+                                "response body exceeded "
+                                f"max_body_bytes={max_body_bytes}"
+                            )
+                        _page_probe_remaining(deadline, total_timeout_seconds)
+                    _page_probe_remaining(deadline, total_timeout_seconds)
+                finally:
+                    response.close()
+                next_request = response.next_request
+                if not follow_redirects or next_request is None:
+                    break
+                redirect_count += 1
+                if redirect_count > client.max_redirects:
+                    raise httpx.TooManyRedirects(
+                        "Exceeded maximum allowed redirects.", request=request
+                    )
+                request = next_request
+            # TTFB is measured to the final response headers. With
+            # follow_redirects=true, redirect round-trips are intentionally
+            # included in this end-to-end value.
+            ttfb_seconds = headers_received_at - started_at
+            total_seconds = time.perf_counter() - started_at
+            status_code = response.status_code
 
         now = datetime.now(UTC)
         success_value = 1.0 if 200 <= status_code < 400 else 0.0
@@ -1085,7 +1130,7 @@ def _execute_http_page_probe_spec(
         if success_value == 1.0:
             return StatusLevel.OK, written, 0, ""
         return StatusLevel.WARNING, written, 0, f"unexpected status code: {status_code}"
-    except httpx.HTTPError as err:
+    except (httpx.HTTPError, _PageProbeLimitExceeded) as err:
         now = datetime.now(UTC)
         points = [
             _point(
@@ -1346,8 +1391,8 @@ def _execute_unifi_device_traffic_spec(
         or "graphyard-agent"
     )
     collector_host = str(spec.config.get("collector_host", "macmini")).strip()
-    timeout_seconds = int(spec.config.get("request_timeout_seconds", 10))
-    verify_tls = bool(spec.config.get("verify_tls", True))
+    timeout_seconds = request_timeout_config(spec.config)
+    verify_tls = bool_config(spec.config, "verify_tls", True)
     auth_mode = str(spec.config.get("auth_mode", "auto")).strip().lower() or "auto"
     receive_metric_name = str(
         spec.config.get(
@@ -1489,18 +1534,36 @@ def _execute_unifi_device_traffic_spec(
 def _run_single_metric_collection_spec(
     spec: MetricCollectionSpec,
 ) -> tuple[str, int, int, str]:
-    if spec.spec_type == MetricCollectionSpecType.HOME_ASSISTANT_SENSOR:
-        return _execute_home_assistant_sensor_spec(spec)
-    if spec.spec_type == MetricCollectionSpecType.HOME_ASSISTANT_ENV_SCAN:
-        return _execute_home_assistant_env_scan_spec(spec)
-    if spec.spec_type == MetricCollectionSpecType.HTTP_JSON_METRIC:
-        return _execute_http_json_metric_spec(spec)
-    if spec.spec_type == MetricCollectionSpecType.HTTP_PAGE_PROBE:
-        return _execute_http_page_probe_spec(spec)
-    if spec.spec_type == MetricCollectionSpecType.UNIFI_DEVICE_TRAFFIC:
-        return _execute_unifi_device_traffic_spec(spec)
+    executor = _SPEC_EXECUTORS.get(spec.spec_type)
+    if executor is None:
+        return StatusLevel.CRITICAL, 0, 0, f"unsupported spec_type: {spec.spec_type}"
+    try:
+        return executor(spec)
+    except SpecConfigError as err:
+        return StatusLevel.CRITICAL, 0, 0, str(err)
+    except Exception as err:
+        # Isolate collectors: one spec's bug or malformed config must not stop
+        # the specs after it, or keep its own schedule stuck on "due".
+        logger.exception(
+            "Metric collection spec %r (%s) raised", spec.name, spec.spec_type
+        )
+        return (
+            StatusLevel.CRITICAL,
+            0,
+            0,
+            f"collector raised {type(err).__name__}: {err}",
+        )
 
-    return StatusLevel.CRITICAL, 0, 0, f"unsupported spec_type: {spec.spec_type}"
+
+_SPEC_EXECUTORS: dict[
+    str, Callable[[MetricCollectionSpec], tuple[str, int, int, str]]
+] = {
+    MetricCollectionSpecType.HOME_ASSISTANT_SENSOR: _execute_home_assistant_sensor_spec,
+    MetricCollectionSpecType.HOME_ASSISTANT_ENV_SCAN: _execute_home_assistant_env_scan_spec,
+    MetricCollectionSpecType.HTTP_JSON_METRIC: _execute_http_json_metric_spec,
+    MetricCollectionSpecType.HTTP_PAGE_PROBE: _execute_http_page_probe_spec,
+    MetricCollectionSpecType.UNIFI_DEVICE_TRAFFIC: _execute_unifi_device_traffic_spec,
+}
 
 
 def run_metric_collection_specs_once(

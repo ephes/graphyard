@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- Isolate metric collection specs. A spec whose collector raises, for example on a
+  malformed `request_timeout_seconds`, is now marked `critical` with the error and
+  rescheduled, and the remaining specs and the `metric_collectors` heartbeat still
+  run. Previously one bad spec aborted every tick at the same place and silently
+  stopped all collectors after it. Spec configs are now validated on save in the
+  admin and in `apply_metric_collection_specs`: timeouts must be positive numbers
+  and `verify_tls`/`follow_redirects` must be real booleans (`"false"` used to mean
+  `true`). HTTP page probes gain a total deadline (`total_timeout_seconds`, default
+  30) and a body cap (`max_body_bytes`, default 10 MiB).
+
 - Reject NaN and +/-Infinity metric values. `POST /v1/metrics` now answers `400`
   instead of counting them as ingested (InfluxDB dropped them silently), and
   collection specs skip them, so a sensor reporting only NaN no longer looks alive
