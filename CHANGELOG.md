@@ -14,6 +14,11 @@
   v3 query now selects all columns so custom tags separate series there too.
   Single-series conditions are unchanged.
 
+- Update locked dependencies with known advisories to their patched releases:
+  Django 6.0.8, granian 2.7.4, urllib3 2.8.0, sqlparse 0.6.0, idna 3.15, anyio 4.14.2
+  and click 8.3.3, plus dev tooling (pytest 9.0.3, pygments 2.20.0, virtualenv 21.7.13).
+  `pip-audit` reports no known vulnerabilities in the lockfile.
+
 - Accept dedicated read-only Basic authentication on inventory status for Nyxmon,
   alongside the existing Bearer credential, without widening writer access.
 
