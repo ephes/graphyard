@@ -162,6 +162,7 @@ Typed config values are validated on save (Django admin and
 file, including specs whose stored row is otherwise unchanged):
 
 - `request_timeout_seconds` must be a number greater than 0 (numeric strings such as `"15"` are accepted; `"5s"` or `null` are not).
+- `total_timeout_seconds` (HTTP page probe) must be a number greater than 0.
 - `max_body_bytes` must be a positive integer.
 - `verify_tls` and `follow_redirects` must be JSON booleans. Strings such as
   `"false"` are rejected instead of silently meaning `true`.
@@ -302,6 +303,7 @@ Example `config` JSON for an HTTP page probe spec:
   "collector_service": "graphyard-agent",
   "collector_host": "macmini",
   "request_timeout_seconds": 15,
+  "total_timeout_seconds": 45,
   "follow_redirects": true,
   "verify_tls": true
 }
@@ -322,9 +324,19 @@ Timeouts and transport errors emit `status_code=0` and `success=0`, while keepin
 `request_timeout_seconds` is httpx's per-operation timeout: it bounds each
 connect, write and read, not the whole probe. The response body is streamed and
 capped by `max_body_bytes` (default `10485760`), counted across redirect hops;
-exceeding it records the same `status_code=0`/`success=0` failure. There is no
-total deadline yet, so an endpoint that keeps dripping bytes can still hold the
-agent loop for longer than `request_timeout_seconds` (see `BACKLOG.md`).
+exceeding it records the same `status_code=0`/`success=0` failure.
+`total_timeout_seconds` (default: three times `request_timeout_seconds`) is a
+wall-clock deadline for the whole probe: DNS, connect, TLS, headers, body and
+redirects. An endpoint that drips bytes resets the per-operation timeout on every
+read, so the probe runs in a worker thread; at the deadline the agent cancels it
+(shutting down the probe's open sockets, closing its HTTP client, and making a
+connection that only completes later, for example after a slow DNS lookup, close
+itself before a request is sent), records the same `status_code=0`/`success=0`
+failure with a `total_timeout_seconds` error, and moves on to the next spec. The
+agent loop is held for at most the deadline plus about a second. A worker that
+cannot be interrupted at once (a blocking DNS lookup) finishes in the background;
+while four such workers are still running, further page probes fail immediately
+with the same failure metrics instead of starting another thread.
 
 Example `config` JSON for a UniFi device traffic spec:
 

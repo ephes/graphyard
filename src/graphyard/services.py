@@ -5,6 +5,8 @@ from datetime import UTC, datetime, timedelta
 import logging
 import math
 import re
+import socket
+import threading
 import time
 from typing import Callable
 
@@ -18,6 +20,7 @@ from .spec_config import (
     DEFAULT_PAGE_PROBE_MAX_BODY_BYTES,
     SpecConfigError,
     bool_config,
+    page_probe_total_timeout_config,
     positive_int_config,
     request_timeout_config,
 )
@@ -1024,6 +1027,213 @@ class _PageProbeLimitExceeded(Exception):
     """The page probe response body exceeded its size cap."""
 
 
+class _PageProbeDeadlineExceeded(Exception):
+    """The whole page probe ran past its total deadline."""
+
+
+class _PageProbeCancelled(Exception):
+    """The worker noticed that the caller gave up on this probe."""
+
+
+# After the deadline the caller cancels the probe and waits at most this long
+# for the worker thread to notice and exit.
+_PAGE_PROBE_CLOSE_JOIN_SECONDS = 1.0
+# Workers that outlive that join (for example stuck in a blocking DNS lookup)
+# are tracked. While this many are still running, new probes fail fast instead
+# of starting another thread.
+_PAGE_PROBE_MAX_ABANDONED_WORKERS = 4
+
+_abandoned_page_probe_workers: set[threading.Thread] = set()
+_abandoned_page_probe_workers_lock = threading.Lock()
+
+
+class _PageProbeCancellation:
+    """Cooperative cancellation of one page probe, using public APIs only.
+
+    ``trace`` is installed as httpx's documented ``trace`` request extension.
+    httpcore calls it around each connection phase from the worker thread, so
+    it sees every network stream the probe opens (``connect_tcp`` and
+    ``start_tls`` return values). ``cancel`` runs in the caller at the
+    deadline: it shuts down the sockets of the streams seen so far, which
+    wakes a blocked read, and makes any later trace event (for example a
+    connect that only completes after a slow DNS lookup) close its new stream
+    and abort the worker before it sends anything.
+    """
+
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self._cancelled = False
+        self._streams: list[object] = []
+
+    def check(self) -> None:
+        if self._cancelled:
+            raise _PageProbeCancelled("page probe cancelled at its deadline")
+
+    def trace(self, event_name: str, info: dict[str, object]) -> None:
+        if event_name.endswith(("connect_tcp.complete", "start_tls.complete")):
+            stream = info.get("return_value")
+            if stream is not None:
+                with self._lock:
+                    if not self._cancelled:
+                        self._streams.append(stream)
+                        return
+                close = getattr(stream, "close", None)
+                if callable(close):
+                    close()
+        self.check()
+
+    def cancel(self) -> None:
+        with self._lock:
+            self._cancelled = True
+            streams = list(self._streams)
+        for stream in streams:
+            get_extra_info = getattr(stream, "get_extra_info", None)
+            sock = get_extra_info("socket") if callable(get_extra_info) else None
+            shutdown = getattr(sock, "shutdown", None)
+            if callable(shutdown):
+                try:
+                    shutdown(socket.SHUT_RDWR)
+                except OSError:
+                    pass
+
+
+@dataclass(frozen=True)
+class _PageProbeResult:
+    ttfb_seconds: float
+    total_seconds: float
+    status_code: int
+    redirect_count: int
+
+
+def _run_http_page_probe(
+    client: httpx.Client,
+    *,
+    url: str,
+    max_body_bytes: int,
+    follow_redirects: bool,
+    cancellation: _PageProbeCancellation,
+) -> _PageProbeResult:
+    # Redirects are followed by hand: httpx reads redirect bodies in full
+    # before yielding the final response, which would bypass the byte cap.
+    with client:
+        started_at = time.perf_counter()
+        body_bytes = 0
+        redirect_count = 0
+        request = client.build_request("GET", url)
+        while True:
+            cancellation.check()
+            request.extensions["trace"] = cancellation.trace
+            response = client.send(request, stream=True, follow_redirects=False)
+            try:
+                headers_received_at = time.perf_counter()
+                for chunk in response.iter_bytes():
+                    cancellation.check()
+                    body_bytes += len(chunk)
+                    del chunk
+                    if body_bytes > max_body_bytes:
+                        raise _PageProbeLimitExceeded(
+                            f"response body exceeded max_body_bytes={max_body_bytes}"
+                        )
+            finally:
+                response.close()
+            next_request = response.next_request
+            if not follow_redirects or next_request is None:
+                break
+            redirect_count += 1
+            if redirect_count > client.max_redirects:
+                raise httpx.TooManyRedirects(
+                    "Exceeded maximum allowed redirects.", request=request
+                )
+            request = next_request
+        # TTFB is measured to the final response headers. With
+        # follow_redirects=true, redirect round-trips are intentionally
+        # included in this end-to-end value.
+        return _PageProbeResult(
+            ttfb_seconds=headers_received_at - started_at,
+            total_seconds=time.perf_counter() - started_at,
+            status_code=response.status_code,
+            redirect_count=redirect_count,
+        )
+
+
+def _live_abandoned_page_probe_workers() -> int:
+    with _abandoned_page_probe_workers_lock:
+        for thread in [t for t in _abandoned_page_probe_workers if not t.is_alive()]:
+            _abandoned_page_probe_workers.discard(thread)
+        return len(_abandoned_page_probe_workers)
+
+
+def _run_http_page_probe_with_deadline(
+    client: httpx.Client,
+    *,
+    url: str,
+    max_body_bytes: int,
+    follow_redirects: bool,
+    total_timeout_seconds: float,
+) -> _PageProbeResult:
+    """Run the probe in a worker thread and give up at a wall-clock deadline.
+
+    httpx's timeouts bound each connect, write and read, so an endpoint that
+    drips one byte per read never trips them. The worker runs the whole probe
+    (DNS, connect, TLS, headers, body, redirects). If it is still running at
+    the deadline, the caller cancels it (see ``_PageProbeCancellation``),
+    closes the client through its public ``close()``, waits briefly for the
+    worker to exit and records a deadline failure. The worker is a daemon
+    thread that only talks HTTP; it never writes metrics. A worker that is
+    still alive after that wait is tracked, and at most
+    ``_PAGE_PROBE_MAX_ABANDONED_WORKERS`` of them may exist at once.
+    """
+    abandoned = _live_abandoned_page_probe_workers()
+    if abandoned >= _PAGE_PROBE_MAX_ABANDONED_WORKERS:
+        client.close()
+        raise _PageProbeDeadlineExceeded(
+            f"{abandoned} earlier page probes are still running past "
+            "total_timeout_seconds; not starting another"
+        )
+
+    cancellation = _PageProbeCancellation()
+    results: list[_PageProbeResult] = []
+    errors: list[BaseException] = []
+
+    def _worker() -> None:
+        try:
+            results.append(
+                _run_http_page_probe(
+                    client,
+                    url=url,
+                    max_body_bytes=max_body_bytes,
+                    follow_redirects=follow_redirects,
+                    cancellation=cancellation,
+                )
+            )
+        except BaseException as err:  # noqa: BLE001 - handed to the caller
+            errors.append(err)
+
+    worker = threading.Thread(target=_worker, name="graphyard-page-probe", daemon=True)
+    worker.start()
+    worker.join(timeout=total_timeout_seconds)
+    if worker.is_alive():
+        cancellation.cancel()
+        try:
+            client.close()
+        except Exception:  # noqa: BLE001 - best effort, the deadline wins
+            logger.debug("closing a timed-out page probe client failed", exc_info=True)
+        worker.join(timeout=_PAGE_PROBE_CLOSE_JOIN_SECONDS)
+        if worker.is_alive():
+            with _abandoned_page_probe_workers_lock:
+                _abandoned_page_probe_workers.add(worker)
+            logger.warning(
+                "page probe worker for %s still running after it was cancelled",
+                url,
+            )
+        raise _PageProbeDeadlineExceeded(
+            f"page probe exceeded total_timeout_seconds={total_timeout_seconds:g}"
+        )
+    if errors:
+        raise errors[0]
+    return results[0]
+
+
 def _execute_http_page_probe_spec(
     spec: MetricCollectionSpec,
 ) -> tuple[str, int, int, str]:
@@ -1040,6 +1250,9 @@ def _execute_http_page_probe_spec(
     ).strip()
     collector_host = str(spec.config.get("collector_host", "external")).strip()
     timeout_seconds = request_timeout_config(spec.config)
+    total_timeout_seconds = page_probe_total_timeout_config(
+        spec.config, timeout_seconds
+    )
     max_body_bytes = positive_int_config(
         spec.config, "max_body_bytes", DEFAULT_PAGE_PROBE_MAX_BODY_BYTES
     )
@@ -1080,46 +1293,22 @@ def _execute_http_page_probe_spec(
         )
 
     try:
-        # Redirects are followed by hand: httpx reads redirect bodies in full
-        # before yielding the final response, which would bypass the byte cap.
-        with httpx.Client(
+        client = httpx.Client(
             timeout=timeout_seconds,
             verify=verify_tls,
             follow_redirects=False,
-        ) as client:
-            started_at = time.perf_counter()
-            body_bytes = 0
-            redirect_count = 0
-            request = client.build_request("GET", url)
-            while True:
-                response = client.send(request, stream=True, follow_redirects=False)
-                try:
-                    headers_received_at = time.perf_counter()
-                    for chunk in response.iter_bytes():
-                        body_bytes += len(chunk)
-                        del chunk
-                        if body_bytes > max_body_bytes:
-                            raise _PageProbeLimitExceeded(
-                                "response body exceeded "
-                                f"max_body_bytes={max_body_bytes}"
-                            )
-                finally:
-                    response.close()
-                next_request = response.next_request
-                if not follow_redirects or next_request is None:
-                    break
-                redirect_count += 1
-                if redirect_count > client.max_redirects:
-                    raise httpx.TooManyRedirects(
-                        "Exceeded maximum allowed redirects.", request=request
-                    )
-                request = next_request
-            # TTFB is measured to the final response headers. With
-            # follow_redirects=true, redirect round-trips are intentionally
-            # included in this end-to-end value.
-            ttfb_seconds = headers_received_at - started_at
-            total_seconds = time.perf_counter() - started_at
-            status_code = response.status_code
+        )
+        probe = _run_http_page_probe_with_deadline(
+            client,
+            url=url,
+            max_body_bytes=max_body_bytes,
+            follow_redirects=follow_redirects,
+            total_timeout_seconds=total_timeout_seconds,
+        )
+        ttfb_seconds = probe.ttfb_seconds
+        total_seconds = probe.total_seconds
+        status_code = probe.status_code
+        redirect_count = probe.redirect_count
 
         now = datetime.now(UTC)
         success_value = 1.0 if 200 <= status_code < 400 else 0.0
@@ -1155,7 +1344,11 @@ def _execute_http_page_probe_spec(
         if success_value == 1.0:
             return StatusLevel.OK, written, 0, ""
         return StatusLevel.WARNING, written, 0, f"unexpected status code: {status_code}"
-    except (httpx.HTTPError, _PageProbeLimitExceeded) as err:
+    except (
+        httpx.HTTPError,
+        _PageProbeLimitExceeded,
+        _PageProbeDeadlineExceeded,
+    ) as err:
         now = datetime.now(UTC)
         points = [
             _point(

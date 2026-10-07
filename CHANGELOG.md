@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+- The HTTP page probe now has a whole-probe deadline, `total_timeout_seconds`
+  (default: three times `request_timeout_seconds`, validated on save as a number
+  greater than 0). Previously `request_timeout_seconds` bounded only each
+  connect, write and read, so an endpoint that dripped header or body bytes
+  could hold the shared agent loop, and with it every other collector and every
+  condition evaluation, for as long as it kept dripping (18.7 s for a 2 s
+  timeout in one test, indefinitely in the worst case). The probe now runs in a
+  worker thread; at the deadline the agent cancels it (shuts down its sockets,
+  closes its HTTP client, and aborts a connection that completes later, for
+  example after a slow DNS lookup) and records `service.http_page_status_code=0` and `service.http_page_success=0`
+  with a `total_timeout_seconds` error, as for other timeouts. While four
+  cancelled workers are still stuck (for example in DNS), further page probes
+  fail immediately instead of starting more threads. Fast probes are unchanged. **Upgrade note:** a slow page that used to finish after more than
+  three request timeouts now reports a failure; raise `total_timeout_seconds`
+  for it if that is expected.
+
 - Add a per-condition staleness allowance. `ConditionDefinition` gains
   `stale_after_seconds` (empty means the global
   `GRAPHYARD_CONDITION_DATA_STALE_WARNING_SECONDS`) and `alert_when_stale`
