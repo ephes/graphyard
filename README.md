@@ -398,6 +398,17 @@ Defaults: warning `0.80`, critical `0.90`, operator `gte`, metric `host.filesyst
 
 Example supported condition: humidity above threshold for N minutes.
 
+A condition breaches when its value is past the threshold for the whole breach
+duration (`breach_minutes`). Each sample's value counts until the next sample,
+so the last sample before the breach window covers the window start: the
+condition breaches when that sample and every sample inside the window are past
+the threshold. This works for series sampled every few minutes as well as every
+minute; with a breach duration shorter than the sampling interval, the carried
+sample alone decides. The carried sample may be at most `CONDITION_DATA_STALE_WARNING_SECONDS`
+(default 600 s) older than the window start; without one (for example a series
+that started recently), the first sample in the window must lie within one
+minute of its start.
+
 ### Conditions that match several series
 
 A condition matches more than one time series when its filters do not pin every

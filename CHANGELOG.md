@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+- Conditions on series sampled less often than once a minute now breach
+  consistently. The breach check carries the last sample before the breach
+  window forward: the condition breaches when that sample and every sample in
+  the window breach. Previously the first in-window sample had to land within
+  one minute of the window start, so a 5-minute series (storage-pool ratio,
+  IPMI/lm_sensors temperatures, fan RPMs) breached only about one evaluation in
+  five and its status flapped between `ok` and `warning`/`critical`. The carried
+  sample may be at most `CONDITION_DATA_STALE_WARNING_SECONDS` older than the
+  window start, and the condition query now looks back that far beyond
+  `breach_minutes`. A series with no such sample (for example one younger than
+  the window) keeps the one-minute grace rule. **Upgrade note:** conditions on
+  sparse series that were silently flapping now stay `warning`/`critical` while
+  the breach lasts, so Nyxmon, which polls `/v1/conditions`, alerts on them.
+
 - Isolate metric collection specs. A spec whose collector raises, for example on a
   malformed `request_timeout_seconds`, is now marked `critical` with the error and
   rescheduled, and the remaining specs and the `metric_collectors` heartbeat still
