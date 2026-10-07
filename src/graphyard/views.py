@@ -423,6 +423,9 @@ def condition_detail(request: HttpRequest, condition_id: int) -> JsonResponse:
         "critical_threshold": condition.critical_threshold,
         "window_minutes": condition.window_minutes,
         "breach_minutes": condition.breach_minutes,
+        "stale_after_seconds": condition.stale_after_seconds,
+        "stale_limit_seconds": condition.stale_limit_seconds(),
+        "alert_when_stale": condition.alert_when_stale,
     }
     payload["last_value"] = condition.last_value
 

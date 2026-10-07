@@ -629,6 +629,30 @@ def test_conditions_endpoints(client):
     assert detail["config"]["metric_name"] == condition.metric_name
     assert "subject_type_filter" in detail["config"]
     assert "subject_id_filter" in detail["config"]
+    assert detail["config"]["stale_after_seconds"] is None
+    assert detail["config"]["alert_when_stale"] is True
+    assert detail["config"]["stale_limit_seconds"] == 600
+
+
+@pytest.mark.django_db
+def test_condition_detail_exposes_staleness_allowance(client):
+    condition = ConditionDefinition.objects.create(
+        name="Laptop disk",
+        metric_name="host.filesystem_used_ratio",
+        operator="gte",
+        warning_threshold=0.8,
+        stale_after_seconds=43200,
+        alert_when_stale=False,
+        enabled=True,
+    )
+
+    detail = client.get(
+        reverse("graphyard:condition_detail", kwargs={"condition_id": condition.id})
+    ).json()
+
+    assert detail["config"]["stale_after_seconds"] == 43200
+    assert detail["config"]["stale_limit_seconds"] == 43200
+    assert detail["config"]["alert_when_stale"] is False
 
 
 @pytest.mark.django_db

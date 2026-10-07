@@ -159,3 +159,47 @@ def test_seed_disk_usage_condition_different_scope_creates_new_condition():
     assert len(conditions) == 2
     mountpoints = {item.tags_filter.get("mountpoint") for item in conditions}
     assert mountpoints == {"/", "/data"}
+
+
+@pytest.mark.django_db
+def test_seed_disk_usage_condition_defaults_keep_global_staleness():
+    call_command("seed_disk_usage_condition", "--host", "macmini")
+
+    condition = ConditionDefinition.objects.get()
+    assert condition.stale_after_seconds is None
+    assert condition.alert_when_stale is True
+
+
+@pytest.mark.django_db
+def test_seed_disk_usage_condition_round_trips_staleness_flags():
+    call_command(
+        "seed_disk_usage_condition",
+        "--host",
+        "atlas",
+        "--stale-after-seconds",
+        "43200",
+        "--intermittent",
+    )
+    condition = ConditionDefinition.objects.get()
+    assert condition.stale_after_seconds == 43200
+    assert condition.alert_when_stale is False
+
+    # Re-seeding without the flags restores the defaults, like every other field.
+    call_command("seed_disk_usage_condition", "--host", "atlas")
+    condition.refresh_from_db()
+    assert condition.stale_after_seconds is None
+    assert condition.alert_when_stale is True
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("value", ["0", "-5"])
+def test_seed_disk_usage_condition_rejects_non_positive_stale_allowance(value):
+    with pytest.raises(CommandError, match="--stale-after-seconds"):
+        call_command(
+            "seed_disk_usage_condition",
+            "--host",
+            "atlas",
+            "--stale-after-seconds",
+            value,
+        )
+    assert not ConditionDefinition.objects.exists()

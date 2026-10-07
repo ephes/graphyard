@@ -199,7 +199,14 @@ def _evaluate_series(
     """Evaluate one time-ordered series; returns (status, message, last_value)."""
     latest = samples[-1]
     stale_seconds = int((now_utc - latest.ts).total_seconds())
-    if stale_seconds > settings.CONDITION_DATA_STALE_WARNING_SECONDS:
+    if stale_seconds > condition.stale_limit_seconds():
+        if not condition.alert_when_stale:
+            return (
+                StatusLevel.OK,
+                f"Latest sample is stale ({stale_seconds}s old), "
+                "not alerting (intermittent)",
+                latest.value,
+            )
         return (
             StatusLevel.WARNING,
             f"Latest sample is stale ({stale_seconds}s old)",
@@ -259,6 +266,16 @@ def evaluate_condition(
     samples = influx.query_condition_window(condition, now=now_utc)
 
     if not samples:
+        if not condition.alert_when_stale:
+            return ConditionEvaluation(
+                status=StatusLevel.OK,
+                message=(
+                    "No samples available in condition window, "
+                    "not alerting (intermittent)"
+                ),
+                last_value=None,
+                evaluated_at=now_utc,
+            )
         return ConditionEvaluation(
             status=StatusLevel.WARNING,
             message="No samples available in condition window",

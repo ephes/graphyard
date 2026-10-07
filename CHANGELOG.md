@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- Add a per-condition staleness allowance. `ConditionDefinition` gains
+  `stale_after_seconds` (empty means the global
+  `GRAPHYARD_CONDITION_DATA_STALE_WARNING_SECONDS`) and `alert_when_stale`
+  (default on; off reports stale or missing data as `ok`, "not alerting
+  (intermittent)", instead of `warning`). Both are editable in the admin, shown
+  in the `config` of `GET /v1/conditions/<id>` (with the effective
+  `stale_limit_seconds`), and settable with `seed_disk_usage_condition
+  --stale-after-seconds N --intermittent`. The condition query looks back over
+  the allowance. Existing conditions are unchanged. Needs migration
+  `0010_condition_stale_allowance`. This lets the intermittent atlas laptop disk
+  condition be enabled without a nightly Nyxmon warning.
+
 - Conditions on series sampled less often than once a minute now breach
   consistently. The breach check carries the last sample before the breach
   window forward: the condition breaches when that sample and every sample in
