@@ -1435,3 +1435,36 @@ def test_disabled_monitor_rejects_nonempty_bearer(client, settings):
         ).status_code
         == 401
     )
+
+
+@pytest.mark.parametrize("spelling", ["upper", "hex"])
+@pytest.mark.parametrize("legacy", [False, True])
+def test_uuid_spelling_retries_preserve_identity(client, enrolled, spelling, legacy):
+    from uuid import UUID
+    from graphyard.inventory import canonical
+
+    data = report()
+    identity = UUID(data["snapshot_id"])
+    alternate = str(identity).upper() if spelling == "upper" else identity.hex
+    data["snapshot_id"] = alternate
+    assert send(client, enrolled, data).status_code == 200
+    if legacy:
+        # Recreate the pre-normalization report and digest stored by older code.
+        InventorySnapshot.objects.update(
+            report=data, digest=hashlib.sha256(canonical(data)).hexdigest()
+        )
+    before = InventorySnapshot.objects.get()
+    for value in [str(identity), str(identity).upper(), identity.hex]:
+        retry = copy.deepcopy(data)
+        retry["snapshot_id"] = value
+        response = send(client, enrolled, retry)
+        assert response.status_code == 200
+        assert response.json()["duplicate"] is True
+        retry["gaps"] = ["changed content"]
+        assert send(client, enrolled, retry).status_code == 409
+    after = InventorySnapshot.objects.get()
+    assert after.report == before.report
+    assert after.digest == before.digest
+    assert InventorySnapshot.objects.count() == 1
+    if not legacy:
+        assert after.report["snapshot_id"] == str(identity)

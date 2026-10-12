@@ -90,7 +90,7 @@ def validate(report, now):
     ]:
         if not isinstance(report[name], str) or not 1 <= len(report[name]) <= length:
             raise ValueError("invalid identity")
-    UUID(report["snapshot_id"])
+    report["snapshot_id"] = str(UUID(report["snapshot_id"]))
     observed = parse_datetime(report["observed_at"])
     if (
         observed is None
@@ -191,10 +191,18 @@ def ingest(request):
             )
             if previous:
                 if not hmac.compare_digest(previous.digest, digest):
-                    return JsonResponse(
-                        {"error": "snapshot identity reused with different content"},
-                        status=409,
-                    )
+                    # Older rows hashed the wire spelling. Normalize only the
+                    # stored identity for comparison; preserve historical data.
+                    stored = previous.report.copy()
+                    stored["snapshot_id"] = str(UUID(stored["snapshot_id"]))
+                    stored_digest = hashlib.sha256(canonical(stored)).hexdigest()
+                    if not hmac.compare_digest(stored_digest, digest):
+                        return JsonResponse(
+                            {
+                                "error": "snapshot identity reused with different content"
+                            },
+                            status=409,
+                        )
                 duplicate = True
             else:
                 snapshot = InventorySnapshot.objects.create(
