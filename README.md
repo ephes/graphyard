@@ -220,7 +220,7 @@ file, including specs whose stored row is otherwise unchanged):
 
 - Timeouts must be finite and no greater than 86400 seconds (one day), a portable transport/wait limit. The derived three-request total budget is validated too.
 - `request_timeout_seconds` must be a number greater than 0 (numeric strings such as `"15"` are accepted; `"5s"` or `null` are not).
-- `total_timeout_seconds` (HTTP page probe and HTTP JSON metric) must be a number greater than 0.
+- `total_timeout_seconds` (HTTP page probe, HTTP JSON metric and Home Assistant) must be a number greater than 0.
 - `max_body_bytes` must be a positive integer.
 - `verify_tls` and `follow_redirects` must be JSON booleans. Strings such as
   `"false"` are rejected instead of silently meaning `true`.
@@ -330,6 +330,16 @@ plus optional metric remapping for selected infrastructure traffic sensors):
   "verify_tls": true
 }
 ```
+
+Both Home Assistant collectors stream decoded response bytes with `max_body_bytes`
+(default `10485760`, 10 MiB) and `total_timeout_seconds` (default: three request
+timeouts, normally 30 seconds). Set these in either HA config when a legitimate
+state inventory needs more room or time; both limits must be positive and total
+budgets cannot exceed 86400 seconds. The deadline includes connection setup,
+headers, body reads and JSON decoding. Budget exhaustion closes the response,
+marks the spec critical and writes no points; the next spec still runs. HA shares
+HTTP JSON/page probe cancellation and the four abandoned-worker limit below,
+so the agent returns within the deadline plus about a second.
 
 Example `config` JSON for an HTTP JSON metric spec:
 

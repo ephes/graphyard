@@ -114,7 +114,12 @@ def validate_spec_config(spec_type: str, config: object) -> list[str]:
     errors: list[str] = []
 
     def total_timeout_check() -> float:
-        if spec_type not in {"http_page_probe", "http_json_metric"}:
+        if spec_type not in {
+            "http_page_probe",
+            "http_json_metric",
+            "home_assistant_sensor",
+            "home_assistant_env_scan",
+        }:
             return positive_float_config(config, "total_timeout_seconds", 1.0)
         try:
             request_timeout = request_timeout_config(config)

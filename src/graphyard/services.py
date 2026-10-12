@@ -763,6 +763,12 @@ def _execute_home_assistant_sensor_spec(
 
     metric_name = str(spec.config.get("metric_name", ""))
     timeout_seconds = request_timeout_config(spec.config)
+    total_timeout_seconds = page_probe_total_timeout_config(
+        spec.config, timeout_seconds
+    )
+    max_body_bytes = positive_int_config(
+        spec.config, "max_body_bytes", DEFAULT_PAGE_PROBE_MAX_BODY_BYTES
+    )
     verify_tls = bool_config(spec.config, "verify_tls", True)
 
     headers = {
@@ -771,14 +777,20 @@ def _execute_home_assistant_sensor_spec(
     }
 
     try:
-        with httpx.Client(
+        client = httpx.Client(
             timeout=timeout_seconds, headers=headers, verify=verify_tls
-        ) as client:
-            resp = client.get(f"{base_url}/api/states/{entity_id}")
-            resp.raise_for_status()
-            state_payload = resp.json()
-            if not isinstance(state_payload, dict):
-                return StatusLevel.WARNING, 0, 1, "invalid JSON payload"
+        )
+        url = f"{base_url}/api/states/{entity_id}"
+        state_payload = _run_http_with_deadline(
+            client,
+            url=url,
+            operation=lambda cancellation: _read_http_json(
+                client, url, max_body_bytes, cancellation
+            ),
+            total_timeout_seconds=total_timeout_seconds,
+        )
+        if not isinstance(state_payload, dict):
+            return StatusLevel.WARNING, 0, 1, "invalid JSON payload"
 
         point = _normalize_home_assistant_sensor_state(
             state_payload,
@@ -816,6 +828,12 @@ def _execute_home_assistant_env_scan_spec(
 
     metric_prefix = str(spec.config.get("metric_prefix", "ha."))
     timeout_seconds = request_timeout_config(spec.config)
+    total_timeout_seconds = page_probe_total_timeout_config(
+        spec.config, timeout_seconds
+    )
+    max_body_bytes = positive_int_config(
+        spec.config, "max_body_bytes", DEFAULT_PAGE_PROBE_MAX_BODY_BYTES
+    )
     verify_tls = bool_config(spec.config, "verify_tls", True)
 
     include_device_classes = spec.config.get(
@@ -841,12 +859,18 @@ def _execute_home_assistant_env_scan_spec(
     }
 
     try:
-        with httpx.Client(
+        client = httpx.Client(
             timeout=timeout_seconds, headers=headers, verify=verify_tls
-        ) as client:
-            resp = client.get(f"{base_url}/api/states")
-            resp.raise_for_status()
-            payload = resp.json()
+        )
+        url = f"{base_url}/api/states"
+        payload = _run_http_with_deadline(
+            client,
+            url=url,
+            operation=lambda cancellation: _read_http_json(
+                client, url, max_body_bytes, cancellation
+            ),
+            total_timeout_seconds=total_timeout_seconds,
+        )
 
         if not isinstance(payload, list):
             return StatusLevel.CRITICAL, 0, 0, "states response is not a list"
@@ -1078,12 +1102,22 @@ class _PageProbeCancellation:
     and abort the worker before it sends anything.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, total_timeout_seconds: float | None = None) -> None:
+        self._total_timeout_seconds = total_timeout_seconds
+        self._deadline = (
+            time.monotonic() + total_timeout_seconds
+            if total_timeout_seconds is not None
+            else None
+        )
         self._lock = threading.Lock()
         self._cancelled = False
         self._streams: list[object] = []
 
     def check(self) -> None:
+        if self._deadline is not None and time.monotonic() >= self._deadline:
+            raise _PageProbeDeadlineExceeded(
+                f"HTTP collector exceeded total_timeout_seconds={self._total_timeout_seconds:g}"
+            )
         if self._cancelled:
             raise _PageProbeCancelled("HTTP collector cancelled at its deadline")
 
@@ -1240,7 +1274,9 @@ def _read_http_json(
                     )
                 body.extend(chunk)
             cancellation.check()
-            return json.loads(body)
+            payload = json.loads(body)
+            cancellation.check()
+            return payload
         finally:
             response.close()
 
@@ -1261,7 +1297,7 @@ def _run_http_with_deadline(
             "total_timeout_seconds; not starting another"
         )
 
-    cancellation = _PageProbeCancellation()
+    cancellation = _PageProbeCancellation(total_timeout_seconds)
     results: list[_HTTPResult] = []
     errors: list[BaseException] = []
 

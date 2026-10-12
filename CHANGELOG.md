@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Bound both Home Assistant collectors by decoded response size (10 MiB by
+  default) and a total deadline (three request timeouts by default), using the
+  shared HTTP cancellation and worker limits. Budget failures close responses,
+  write no points and allow remaining specs to run. Configure `max_body_bytes`
+  and `total_timeout_seconds` for larger legitimate state inventories.
+
 - Add an optional host scope to ingest tokens. Until now any ingest token could
   write metrics for any host. A token can now carry a list of allowed host
   identifiers (exact names, or a prefix with one trailing `*`), set with
