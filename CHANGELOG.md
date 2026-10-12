@@ -19,6 +19,9 @@
   oversized legacy specs: they now fail validation and collection. HTTP request
   timeouts above 28800 seconds require an explicit total budget within the limit.
 
+- Report unreadable or invalid UTF-8 collection spec files as command errors
+  with the source path and bounded diagnostics before any database changes.
+
 - Bound HTTP JSON collectors by decoded body size and a total request deadline;
   budget failures write no metric and allow the agent to continue.
 

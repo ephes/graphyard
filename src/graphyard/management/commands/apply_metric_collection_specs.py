@@ -16,6 +16,16 @@ def _load_specs_file(path: Path) -> list[dict[str, Any]]:
         payload = json.loads(path.read_text(encoding="utf-8"))
     except FileNotFoundError as err:
         raise CommandError(f"Spec file not found: {path}") from err
+    except UnicodeDecodeError as err:
+        raise CommandError(f"Spec file is not valid UTF-8: {path}") from err
+    except OSError as err:
+        if isinstance(err, IsADirectoryError):
+            detail = "path is a directory"
+        elif isinstance(err, PermissionError):
+            detail = "permission denied"
+        else:
+            detail = "filesystem read failed"
+        raise CommandError(f"Cannot read spec file {path}: {detail}") from err
     except json.JSONDecodeError as err:
         raise CommandError(f"Invalid JSON in {path}: {err}") from err
 

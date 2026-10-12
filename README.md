@@ -207,6 +207,9 @@ The file may be either a JSON list of spec objects or an object with a
 just manage apply_metric_collection_specs --file /etc/graphyard/metric-collection-specs.json --prune
 ```
 
+Unreadable files (including directories and permission failures) and invalid UTF-8
+fail with a command error naming the source path before any rows are changed.
+
 Prune is opt-in and keyed only by `name`. Without `--prune`, unspecified specs
 are left untouched. With `--prune`, the command refuses an empty desired spec
 set so a broken render cannot wipe every spec row in one shot.
