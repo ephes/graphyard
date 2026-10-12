@@ -65,6 +65,15 @@ This setting is a rollout prerequisite, not silently changed for existing metric
 Storage failures return 503 so Vector can retry. 400/401/403/409/413/415 are permanent
 problems requiring operator action; do not assume Vector retries these defaults.
 
+UUID snapshot identities accept lowercase, uppercase and hyphenless spellings.
+They are normalized to lowercase hyphenated UUIDs before hashing and new storage.
+The acknowledgment echoes the submitted spelling so senders can match it exactly.
+New report downloads contain the normalized identity; all other source evidence
+is preserved.
+Existing reports keep their original bytes and digests; on a digest mismatch,
+the stored report is compared with only its UUID spelling normalized. Same-content
+retries therefore remain duplicates across this transition; changed content is 409.
+
 Equal snapshot identity and canonical content is accepted without another write
 or refreshed timestamps. Reusing a retained snapshot identity with other content
 returns 409. The writer must preserve snapshot ID across retries. Delayed reports
@@ -184,8 +193,10 @@ category attempts/successes. The detail page links the latest report even when
 all probes failed; older successful reports retain separately labelled links.
 
 The ingest path compares snapshot timestamps and duplicate digests without loading
-stored report JSON. Regression tests cover this for new and duplicate deliveries,
-wrong content types, the disabled monitor credential and invalid freshness settings.
+stored report JSON when digests match. A digest mismatch loads that one report
+for the legacy UUID comparison described above. Regression tests cover this for
+new and duplicate deliveries, wrong content types, the disabled monitor credential
+and invalid freshness settings.
 
 Pilot follow-ups: summary/status views still decode retained report payloads and
 should receive compact stored summaries before frequent fleet monitoring. Host
@@ -235,7 +246,9 @@ from the disk buffer with only the synthetic source removed, a dropped committed
 response with idempotent retry, last-success preservation after a failed category,
 host binding, revoked writers, a working separate monitor credential that writers
 cannot substitute, and actual cookie/CSRF login. With `--report`, an
-authenticated download must equal the input JSON exactly. A `result.json`, private
+authenticated download must equal the input JSON exactly, so supply a report with
+a lowercase hyphenated snapshot UUID (other accepted spellings are normalized
+in new report downloads). A `result.json`, private
 HTML captures, database and Vector log remain at the printed artifact path. Treat
 that directory as private inventory data; saved HTML is a capture, not a running
 service. The probe stops its Vector child and both listeners on exit and removes the

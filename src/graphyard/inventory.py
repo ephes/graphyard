@@ -174,6 +174,8 @@ def ingest(request):
         if isinstance(report, list) and len(report) == 1:
             report = report[0]
         observed = validate(report, timezone.now())
+        submitted_snapshot_id = report["snapshot_id"]
+        report["snapshot_id"] = str(UUID(submitted_snapshot_id))
         if report["host"] != credential.host.host.host_id:
             return JsonResponse({"error": "credential host mismatch"}, status=403)
         digest = hashlib.sha256(canonical(report)).hexdigest()
@@ -191,10 +193,18 @@ def ingest(request):
             )
             if previous:
                 if not hmac.compare_digest(previous.digest, digest):
-                    return JsonResponse(
-                        {"error": "snapshot identity reused with different content"},
-                        status=409,
-                    )
+                    # Older rows hashed the wire spelling. Normalize only the
+                    # stored identity for comparison; preserve historical data.
+                    stored = previous.report.copy()
+                    stored["snapshot_id"] = str(UUID(stored["snapshot_id"]))
+                    stored_digest = hashlib.sha256(canonical(stored)).hexdigest()
+                    if not hmac.compare_digest(stored_digest, digest):
+                        return JsonResponse(
+                            {
+                                "error": "snapshot identity reused with different content"
+                            },
+                            status=409,
+                        )
                 duplicate = True
             else:
                 snapshot = InventorySnapshot.objects.create(
@@ -244,7 +254,7 @@ def ingest(request):
         return JsonResponse(
             {
                 "status": "stored",
-                "snapshot_id": report["snapshot_id"],
+                "snapshot_id": submitted_snapshot_id,
                 "duplicate": duplicate,
             }
         )
