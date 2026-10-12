@@ -124,6 +124,12 @@ Rotate a token for a host/service name:
 just manage create_ingest_token --name macmini --rotate
 ```
 
+Rotation is atomic: either the new token exists and the previous one is revoked, or the command
+fails and nothing changed, so the previous token stays valid. Token names are unique, so the
+previous row is kept as history under the name `<name> (retired #<id>)` (revoked, with its
+`revoked_at` and `last_used_at`). Creating a token for a name whose token was already revoked
+retires that row the same way; `--rotate` is only needed while the existing token is still enabled.
+
 Revoke by id or name:
 
 ```bash

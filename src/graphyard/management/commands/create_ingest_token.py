@@ -3,8 +3,15 @@ from __future__ import annotations
 import secrets
 
 from django.core.management.base import BaseCommand, CommandError
+from django.db import IntegrityError, transaction
 
 from graphyard.models import IngestToken
+
+
+def retired_token_name(token: IngestToken) -> str:
+    suffix = f" (retired #{token.pk})"
+    max_length = IngestToken._meta.get_field("name").max_length or 128
+    return f"{token.name[: max_length - len(suffix)]}{suffix}"
 
 
 class Command(BaseCommand):
@@ -22,18 +29,32 @@ class Command(BaseCommand):
         name: str = options["name"]
         rotate: bool = options["rotate"]
 
-        existing = IngestToken.objects.filter(name=name, enabled=True).first()
-        if existing is not None:
-            if not rotate:
-                raise CommandError(
-                    f"Enabled token with name '{name}' exists. Use --rotate to replace it."
-                )
-            existing.revoke()
-
         plaintext_token = secrets.token_urlsafe(32)
         ingest_token = IngestToken(name=name)
         ingest_token.set_token(plaintext_token)
-        ingest_token.save()
+        try:
+            # One transaction: either the new token exists and the previous one
+            # is revoked, or nothing changed and the previous one stays valid.
+            with transaction.atomic():
+                previous = (
+                    IngestToken.objects.select_for_update().filter(name=name).first()
+                )
+                if previous is not None:
+                    if previous.enabled:
+                        if not rotate:
+                            raise CommandError(
+                                f"Enabled token with name '{name}' exists. Use --rotate to replace it."
+                            )
+                        previous.revoke()
+                    # Names are unique: the retired row keeps its history under
+                    # a derived name and frees the name for the new token.
+                    previous.name = retired_token_name(previous)
+                    previous.save(update_fields=["name"])
+                ingest_token.save()
+        except IntegrityError as err:
+            raise CommandError(
+                f"Could not create token '{name}'; no token was changed: {err}"
+            ) from err
 
         self.stdout.write(self.style.SUCCESS("Created ingest token"))
         self.stdout.write(f"id={ingest_token.id}")
