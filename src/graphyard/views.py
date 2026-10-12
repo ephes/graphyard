@@ -21,11 +21,17 @@ from .influx import normalize_metric_point, parse_finite_float, write_points
 from .models import (
     ConditionDefinition,
     HostRegistry,
+    IngestToken,
     PipelineHeartbeat,
     ServiceRegistry,
     StatusLevel,
 )
-from .services import record_heartbeat, touch_registry_from_points
+from .services import (
+    record_heartbeat,
+    record_token_host_usage,
+    touch_registry_from_points,
+)
+from .token_scope import host_in_scope, is_scoped
 
 logger = logging.getLogger(__name__)
 
@@ -285,6 +291,25 @@ def _parse_metrics_payload(payload: object) -> list[MetricPoint]:
     return points
 
 
+def _point_host_identifiers(point: MetricPoint) -> tuple[str, ...]:
+    # Every identifier a point claims to speak for. ``host`` is either absent or
+    # equal to ``subject_id`` after normalization.
+    return (point.subject_id, point.collector_host)
+
+
+def _first_out_of_scope_index(
+    token: IngestToken, points: list[MetricPoint]
+) -> int | None:
+    scope = token.host_scope
+    if not is_scoped(scope):
+        return None
+    for idx, point in enumerate(points):
+        for identifier in _point_host_identifiers(point):
+            if not host_in_scope(scope, identifier):
+                return idx
+    return None
+
+
 def _serialize_condition(condition: ConditionDefinition) -> dict[str, object]:
     return {
         "id": condition.id,
@@ -388,6 +413,32 @@ def metrics_ingest(request: HttpRequest) -> JsonResponse:
         )
         return _json_error(str(err), status=400)
 
+    out_of_scope_index = _first_out_of_scope_index(token, points)
+    if out_of_scope_index is not None:
+        # All or nothing, like payload validation: nothing is written, no
+        # registry row is touched.
+        logger.warning(
+            "metrics_ingest_rejected category=scope rejected_requests=1 rejected_count=1 total_metrics=%s token_id=%s index=%s",
+            len(points),
+            token.pk,
+            out_of_scope_index,
+        )
+        # Fixed text only: the heartbeat is readable without a credential.
+        _record_heartbeat_safe(
+            "metric_ingest",
+            status=StatusLevel.WARNING,
+            last_error="Metrics rejected: outside the token host scope",
+            details={
+                "category": "scope",
+                "rejected_count": 1,
+                "total_metrics": len(points),
+            },
+        )
+        return _json_error(
+            f"Metric at index {out_of_scope_index} is outside the host scope of this token",
+            status=403,
+        )
+
     try:
         written = write_points(points)
     except InfluxConfigurationError as err:
@@ -414,6 +465,20 @@ def metrics_ingest(request: HttpRequest) -> JsonResponse:
             raise
         # Ingest must remain available even if local metadata tables are briefly locked.
         logger.exception("Failed to touch registry rows due to SQLite lock")
+
+    try:
+        record_token_host_usage(
+            token,
+            {
+                identifier
+                for point in points
+                for identifier in _point_host_identifiers(point)
+            },
+        )
+    except OperationalError as err:
+        if "database is locked" not in str(err).lower():
+            raise
+        logger.exception("Failed to record token host usage due to SQLite lock")
 
     _record_heartbeat_safe(
         "metric_ingest",

@@ -137,6 +137,54 @@ just manage revoke_ingest_token --id 1
 just manage revoke_ingest_token --name macmini
 ```
 
+### Host scope (optional)
+
+By default an ingest token may write metrics for any host. A token can be limited to the hosts it
+is meant for:
+
+```bash
+just manage create_ingest_token --name edge --host-scope edge
+just manage create_ingest_token --name webfarm --host-scope 'web-*,lb1'
+```
+
+- A scope is a list of host identifiers: exact names, or a prefix followed by one trailing `*`.
+  Nothing else is accepted (letters, digits, `.`, `_`, `-`; at most 64 entries). `--host-scope` is
+  comma-separated and may be repeated.
+- An empty scope means unrestricted. Tokens created before this feature have an empty scope and
+  keep working unchanged.
+- For a scoped token every point is checked on **both** `subject_id` and `collector_host`, for every
+  `subject_type`. A token that also writes service, sensor or network-device subjects needs those
+  subject ids in its scope as well.
+- Names are compared the way `subject_id` is normalized (lowercase, other characters folded to
+  `_`), so `mac-mini.lan` and `mac_mini_lan` are the same host. `web-*` matches `web-1` and
+  `web_1` but not `web`; `web*` also matches `web` and `webserver`.
+- A request with any point outside the scope is rejected with `403`; nothing is written and no
+  registry row is touched. The rejection is logged as `metrics_ingest_rejected category=scope` and
+  sets the `metric_ingest` heartbeat to warning (without host names).
+- `--rotate`, and re-creating a revoked name, keep the scope of the replaced token. Pass
+  `--host-scope` to change it or `--unrestricted` to drop it. The scope can also be edited in the
+  Django admin (ingest token → host scope, one entry per line or comma-separated).
+- A stored scope that is not a valid list (damaged by hand, for example) allows nothing. Rotating
+  or re-creating such a token fails and changes nothing until `--host-scope` or `--unrestricted`
+  is given.
+
+To choose scopes, see what each token really writes:
+
+```bash
+just manage report_ingest_token_hosts --days 30
+```
+
+The report is read-only. Per enabled token (`--include-disabled` adds revoked ones) it lists the
+host identifiers written in the period, marks those outside the token's current scope, and prints a
+matching `--host-scope` value. For a token with more than 64 identifiers it prints no suggestion,
+because a scope holds at most 64 entries: choose prefixes (for example `web-*`) or split the token.
+Usage is recorded at ingest from this release onwards (table
+`ingest_token_host_usage`, `last_seen` updated at most hourly, at most 500 identifiers per token),
+so let it collect for a while before scoping existing tokens.
+
+The scope does not limit metric names, `service` tags or timestamps, and it does not apply to the
+inventory API, which has its own per-host credentials.
+
 Graphyard stores token hashes only.
 Ingest tokens use a fast SHA-256 digest with the `graphyard-sha256$...` prefix (constant-time compare), and legacy hashes are upgraded on first successful use.
 Hash upgrades are one-way; if you revert to code that only understands Django password hash formats, rotate ingest tokens.
@@ -392,6 +440,8 @@ UTF-8 or whose JSON is nested too deeply to parse returns `400`, and a body larg
 `DATA_UPLOAD_MAX_MEMORY_SIZE` (2.5 MB by default) returns `413`. Each response is JSON with a fixed
 `error` message, counts as one parse rejection in the `metrics_ingest_rejected` log line and the
 `metric_ingest` heartbeat, and writes nothing.
+A token with a host scope (see "Host scope" above) gets `403` when any point names a host outside
+its scope; that request writes nothing either.
 Metric values must be finite numbers: `NaN`, `Infinity`, `-Infinity` (as JSON literals or strings
 such as `"nan"`/`"inf"`) are rejected as invalid values, since InfluxDB cannot store them. Collection
 specs skip such values like other non-numeric readings, and they are never counted as ingested nor
