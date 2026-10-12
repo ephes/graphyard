@@ -10,6 +10,7 @@ from django.db import models
 from django.utils import timezone
 
 from graphyard.spec_config import validate_spec_config
+from graphyard.token_scope import validate_host_scope
 
 PREFERRED_FAST_TOKEN_HASH_PREFIX = "graphyard-sha256"
 LEGACY_FAST_TOKEN_HASH_PREFIXES = ("sha256",)
@@ -54,6 +55,15 @@ class IngestToken(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     revoked_at = models.DateTimeField(blank=True, null=True)
     last_used_at = models.DateTimeField(blank=True, null=True)
+    host_scope = models.JSONField(
+        default=list,
+        blank=True,
+        validators=[validate_host_scope],
+        help_text=(
+            "Host identifiers this token may write metrics for: exact names, "
+            "or a prefix with one trailing '*'. Empty means unrestricted."
+        ),
+    )
 
     class Meta:
         db_table = "ingest_token"
@@ -84,6 +94,34 @@ class IngestToken(models.Model):
         self.enabled = False
         self.revoked_at = timezone.now()
         self.save(update_fields=["enabled", "revoked_at"])
+
+
+class IngestTokenHostUsage(models.Model):
+    """Which host identifiers a token wrote metrics for, and when.
+
+    Feeds the read-only ``report_ingest_token_hosts`` command, so the owner can
+    choose a host scope from what each token really writes.
+    """
+
+    token = models.ForeignKey(
+        IngestToken, on_delete=models.CASCADE, related_name="host_usage"
+    )
+    host_id = models.CharField(max_length=128)
+    first_seen_at = models.DateTimeField()
+    last_seen_at = models.DateTimeField()
+
+    class Meta:
+        db_table = "ingest_token_host_usage"
+        ordering = ["token_id", "host_id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["token", "host_id"],
+                name="ingest_token_host_usage_unique_host",
+            )
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.token_id}:{self.host_id}"
 
 
 class HostRegistry(models.Model):

@@ -13,7 +13,7 @@ from typing import Callable, TypeVar
 
 import httpx
 from django.conf import settings
-from django.db import OperationalError
+from django.db import OperationalError, connection, transaction
 from django.utils import timezone
 
 from . import influx
@@ -29,6 +29,8 @@ from .models import (
     ComparisonOperator,
     ConditionDefinition,
     HostRegistry,
+    IngestToken,
+    IngestTokenHostUsage,
     MetricCollectionSpec,
     MetricCollectionSpecType,
     PipelineHeartbeat,
@@ -37,6 +39,7 @@ from .models import (
     SubjectRegistry,
     SubjectType,
 )
+from .token_scope import canonical_host_identifier
 
 logger = logging.getLogger(__name__)
 _subject_mapping_warning_keys: set[str] = set()
@@ -1971,6 +1974,75 @@ def record_heartbeat(
             time.sleep(0.05 * attempt)
 
     raise RuntimeError("unreachable")
+
+
+TOKEN_HOST_USAGE_UPDATE_INTERVAL = timedelta(hours=1)
+MAX_TOKEN_HOST_USAGE_ROWS = 500
+MAX_TOKEN_HOST_USAGE_ID_LENGTH = 128  # IngestTokenHostUsage.host_id
+
+
+def record_token_host_usage(token: IngestToken, identifiers: set[str]) -> None:
+    """Remember which host identifiers ``token`` wrote metrics for.
+
+    Bounded on purpose: ``last_seen_at`` moves at most once per interval, and a
+    token keeps at most ``MAX_TOKEN_HOST_USAGE_ROWS`` identifiers, so a token
+    holder cannot grow this table without limit.
+    """
+    now = timezone.now()
+    host_ids = {
+        canonical
+        for canonical in (canonical_host_identifier(item) for item in identifiers)
+        if canonical and len(canonical) <= MAX_TOKEN_HOST_USAGE_ID_LENGTH
+    }
+    if not host_ids:
+        return
+
+    known = {
+        usage.host_id: usage
+        for usage in IngestTokenHostUsage.objects.filter(
+            token=token, host_id__in=host_ids
+        )
+    }
+    stale_ids = [
+        usage.pk
+        for usage in known.values()
+        if now - usage.last_seen_at >= TOKEN_HOST_USAGE_UPDATE_INTERVAL
+    ]
+    if stale_ids:
+        IngestTokenHostUsage.objects.filter(pk__in=stale_ids).update(last_seen_at=now)
+
+    new_ids = sorted(host_ids - known.keys())
+    if not new_ids:
+        return
+    with transaction.atomic():
+        if connection.features.has_select_for_update:
+            # Serialize writers of one token where the database can.
+            IngestToken.objects.select_for_update().filter(pk=token.pk).first()
+        # Insert first, then trim: on SQLite the insert takes the write lock, so
+        # the count below sees every row committed by a concurrent request and
+        # the cap holds without row locks.
+        IngestTokenHostUsage.objects.bulk_create(
+            [
+                IngestTokenHostUsage(
+                    token=token, host_id=host_id, first_seen_at=now, last_seen_at=now
+                )
+                for host_id in new_ids
+            ],
+            ignore_conflicts=True,
+        )
+        surplus_ids = list(
+            IngestTokenHostUsage.objects.filter(token=token)
+            .order_by("pk")
+            .values_list("pk", flat=True)[MAX_TOKEN_HOST_USAGE_ROWS:]
+        )
+        if surplus_ids:
+            IngestTokenHostUsage.objects.filter(pk__in=surplus_ids).delete()
+            logger.warning(
+                "Ingest token host usage is full: token_id=%s limit=%s dropped=%s",
+                token.pk,
+                MAX_TOKEN_HOST_USAGE_ROWS,
+                len(surplus_ids),
+            )
 
 
 def touch_registry_from_points(points: list[influx.MetricPoint]) -> None:

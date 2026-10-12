@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- Add an optional host scope to ingest tokens. Until now any ingest token could
+  write metrics for any host. A token can now carry a list of allowed host
+  identifiers (exact names, or a prefix with one trailing `*`), set with
+  `create_ingest_token --host-scope` or in the admin. A scoped token gets `403`
+  from `POST /v1/metrics` when any point has a `subject_id` or `collector_host`
+  outside its scope, and nothing is written. Tokens without a scope behave as
+  before, and `--rotate` keeps the scope of the replaced token. The new
+  read-only command `report_ingest_token_hosts --days N` lists the hosts each
+  token wrote, recorded from this release onwards, to help choose scopes.
+  Migration `0011` adds `ingest_token.host_scope` and the
+  `ingest_token_host_usage` table; it is reversible.
+
 - Bound HTTP JSON collectors by decoded body size and a total request deadline;
   budget failures write no metric and allow the agent to continue.
 
