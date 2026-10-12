@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Fix `create_ingest_token --rotate`. It revoked the existing token and then
+  failed with an `IntegrityError` on the unique token name, leaving the host
+  without any valid token; creating a token for a name that had been revoked
+  with `revoke_ingest_token` failed the same way. Rotation now runs in one
+  transaction: the previous row is revoked and kept as history under the name
+  `<name> (retired #<id>)`, and the new token takes the name. If anything fails,
+  nothing changes and the previous token stays valid. No migration.
+
 - `POST /v1/metrics` now rejects malformed request bodies with a bounded JSON
   error instead of an unhandled server error. An authenticated body that is not
   valid UTF-8, or whose JSON is nested too deeply to parse (also as one NDJSON
