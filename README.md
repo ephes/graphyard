@@ -168,7 +168,7 @@ Typed config values are validated on save (Django admin and
 file, including specs whose stored row is otherwise unchanged):
 
 - `request_timeout_seconds` must be a number greater than 0 (numeric strings such as `"15"` are accepted; `"5s"` or `null` are not).
-- `total_timeout_seconds` (HTTP page probe) must be a number greater than 0.
+- `total_timeout_seconds` (HTTP page probe and HTTP JSON metric) must be a number greater than 0.
 - `max_body_bytes` must be a positive integer.
 - `verify_tls` and `follow_redirects` must be JSON booleans. Strings such as
   `"false"` are rejected instead of silently meaning `true`.
@@ -296,6 +296,13 @@ Example `config` JSON for an HTTP JSON metric spec:
   }
 }
 ```
+
+HTTP JSON collectors stream decoded response bytes with `max_body_bytes` (default
+`10485760`) and a monotonic `total_timeout_seconds` deadline (default: three
+request timeouts), including connection setup and JSON parsing. Authentication and
+TLS settings are preserved. Budget exhaustion marks the collector critical and
+writes no metric. They share the page probe cancellation and four abandoned-worker
+limit described below; the agent returns within the deadline plus about a second.
 
 Example `config` JSON for an HTTP page probe spec:
 

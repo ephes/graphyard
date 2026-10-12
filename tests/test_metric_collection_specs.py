@@ -27,19 +27,13 @@ class _FakeResponse:
         return self._payload
 
 
-class _FakeClient:
+class _FakeClient(httpx.Client):
     def __init__(self, payload: object) -> None:
-        self._payload = payload
-
-    def __enter__(self) -> _FakeClient:
-        return self
-
-    def __exit__(self, exc_type, exc, tb) -> None:
-        del exc_type, exc, tb
-
-    def get(self, url: str) -> _FakeResponse:
-        del url
-        return _FakeResponse(self._payload)
+        super().__init__(
+            transport=httpx.MockTransport(
+                lambda request: httpx.Response(200, json=payload)
+            )
+        )
 
 
 class _FakeRequest:

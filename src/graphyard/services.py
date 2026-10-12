@@ -2,13 +2,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+import json
 import logging
 import math
 import re
 import socket
 import threading
 import time
-from typing import Callable
+from typing import Callable, TypeVar
 
 import httpx
 from django.conf import settings
@@ -919,6 +920,12 @@ def _execute_http_json_metric_spec(
         spec.config.get("collector_host", host_id or "external")
     ).strip()
     timeout_seconds = request_timeout_config(spec.config)
+    total_timeout_seconds = page_probe_total_timeout_config(
+        spec.config, timeout_seconds
+    )
+    max_body_bytes = positive_int_config(
+        spec.config, "max_body_bytes", DEFAULT_PAGE_PROBE_MAX_BODY_BYTES
+    )
     verify_tls = bool_config(spec.config, "verify_tls", True)
 
     if not url:
@@ -947,15 +954,23 @@ def _execute_http_json_metric_spec(
     )
 
     try:
-        with httpx.Client(
+        client = httpx.Client(
             timeout=timeout_seconds,
             headers=headers,
             verify=verify_tls,
             auth=auth,
-        ) as client:
-            resp = client.get(url)
-            resp.raise_for_status()
-            payload = resp.json()
+        )
+        payload = _run_http_with_deadline(
+            client,
+            url=url,
+            operation=lambda cancellation: _read_http_json(
+                client,
+                url,
+                max_body_bytes,
+                cancellation,
+            ),
+            total_timeout_seconds=total_timeout_seconds,
+        )
 
         raw_value = _resolve_json_path(payload, metric_path)
         if raw_value is None:
@@ -1067,7 +1082,7 @@ class _PageProbeCancellation:
 
     def check(self) -> None:
         if self._cancelled:
-            raise _PageProbeCancelled("page probe cancelled at its deadline")
+            raise _PageProbeCancelled("HTTP collector cancelled at its deadline")
 
     def trace(self, event_name: str, info: dict[str, object]) -> None:
         if event_name.endswith(("connect_tcp.complete", "start_tls.complete")):
@@ -1183,29 +1198,73 @@ def _run_http_page_probe_with_deadline(
     still alive after that wait is tracked, and at most
     ``_PAGE_PROBE_MAX_ABANDONED_WORKERS`` of them may exist at once.
     """
+    return _run_http_with_deadline(
+        client,
+        url=url,
+        operation=lambda cancellation: _run_http_page_probe(
+            client,
+            url=url,
+            max_body_bytes=max_body_bytes,
+            follow_redirects=follow_redirects,
+            cancellation=cancellation,
+        ),
+        total_timeout_seconds=total_timeout_seconds,
+    )
+
+
+_HTTPResult = TypeVar("_HTTPResult")
+
+
+def _read_http_json(
+    client: httpx.Client,
+    url: str,
+    max_body_bytes: int,
+    cancellation: _PageProbeCancellation,
+) -> object:
+    with client:
+        request = client.build_request("GET", url)
+        request.extensions["trace"] = cancellation.trace
+        cancellation.check()
+        response = client.send(request, stream=True, follow_redirects=False)
+        try:
+            response.raise_for_status()
+            body = bytearray()
+            for chunk in response.iter_bytes():
+                cancellation.check()
+                if len(body) + len(chunk) > max_body_bytes:
+                    raise _PageProbeLimitExceeded(
+                        f"response body exceeded max_body_bytes={max_body_bytes}"
+                    )
+                body.extend(chunk)
+            cancellation.check()
+            return json.loads(body)
+        finally:
+            response.close()
+
+
+def _run_http_with_deadline(
+    client: httpx.Client,
+    *,
+    url: str,
+    operation: Callable[[_PageProbeCancellation], _HTTPResult],
+    total_timeout_seconds: float,
+) -> _HTTPResult:
+    """Bound an HTTP-only worker using shared cancellation and worker limits."""
     abandoned = _live_abandoned_page_probe_workers()
     if abandoned >= _PAGE_PROBE_MAX_ABANDONED_WORKERS:
         client.close()
         raise _PageProbeDeadlineExceeded(
-            f"{abandoned} earlier page probes are still running past "
+            f"{abandoned} earlier HTTP collectors are still running past "
             "total_timeout_seconds; not starting another"
         )
 
     cancellation = _PageProbeCancellation()
-    results: list[_PageProbeResult] = []
+    results: list[_HTTPResult] = []
     errors: list[BaseException] = []
 
     def _worker() -> None:
         try:
-            results.append(
-                _run_http_page_probe(
-                    client,
-                    url=url,
-                    max_body_bytes=max_body_bytes,
-                    follow_redirects=follow_redirects,
-                    cancellation=cancellation,
-                )
-            )
+            results.append(operation(cancellation))
         except BaseException as err:  # noqa: BLE001 - handed to the caller
             errors.append(err)
 
@@ -1223,11 +1282,11 @@ def _run_http_page_probe_with_deadline(
             with _abandoned_page_probe_workers_lock:
                 _abandoned_page_probe_workers.add(worker)
             logger.warning(
-                "page probe worker for %s still running after it was cancelled",
+                "HTTP collector worker for %s still running after it was cancelled",
                 url,
             )
         raise _PageProbeDeadlineExceeded(
-            f"page probe exceeded total_timeout_seconds={total_timeout_seconds:g}"
+            f"HTTP collector exceeded total_timeout_seconds={total_timeout_seconds:g}"
         )
     if errors:
         raise errors[0]

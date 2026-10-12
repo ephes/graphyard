@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Bound HTTP JSON collectors by decoded body size and a total request deadline;
+  budget failures write no metric and allow the agent to continue.
+
 - Prevent older inventory release refreshes from overwriting newer completed
   attempts, including when an older lookup fails after a newer success.
 
