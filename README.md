@@ -167,6 +167,7 @@ Typed config values are validated on save (Django admin and
 `apply_metric_collection_specs`, which aborts on the first invalid spec in the
 file, including specs whose stored row is otherwise unchanged):
 
+- Timeouts must be finite and no greater than 86400 seconds (one day), a portable transport/wait limit. The derived three-request total budget is validated too.
 - `request_timeout_seconds` must be a number greater than 0 (numeric strings such as `"15"` are accepted; `"5s"` or `null` are not).
 - `total_timeout_seconds` (HTTP page probe and HTTP JSON metric) must be a number greater than 0.
 - `max_body_bytes` must be a positive integer.

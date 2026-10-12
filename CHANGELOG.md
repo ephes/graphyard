@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Validate derived HTTP deadlines and limit request timeouts for all collectors
+  and HTTP total budgets to 86400 seconds (one day) before collection. Upgrade
+  oversized legacy specs: they now fail validation and collection. HTTP request
+  timeouts above 28800 seconds require an explicit total budget within the limit.
+
 - Bound HTTP JSON collectors by decoded body size and a total request deadline;
   budget failures write no metric and allow the agent to continue.
 
