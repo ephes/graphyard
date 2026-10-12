@@ -90,7 +90,7 @@ def validate(report, now):
     ]:
         if not isinstance(report[name], str) or not 1 <= len(report[name]) <= length:
             raise ValueError("invalid identity")
-    report["snapshot_id"] = str(UUID(report["snapshot_id"]))
+    UUID(report["snapshot_id"])
     observed = parse_datetime(report["observed_at"])
     if (
         observed is None
@@ -174,6 +174,8 @@ def ingest(request):
         if isinstance(report, list) and len(report) == 1:
             report = report[0]
         observed = validate(report, timezone.now())
+        submitted_snapshot_id = report["snapshot_id"]
+        report["snapshot_id"] = str(UUID(submitted_snapshot_id))
         if report["host"] != credential.host.host.host_id:
             return JsonResponse({"error": "credential host mismatch"}, status=403)
         digest = hashlib.sha256(canonical(report)).hexdigest()
@@ -252,7 +254,7 @@ def ingest(request):
         return JsonResponse(
             {
                 "status": "stored",
-                "snapshot_id": report["snapshot_id"],
+                "snapshot_id": submitted_snapshot_id,
                 "duplicate": duplicate,
             }
         )

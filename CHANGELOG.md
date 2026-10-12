@@ -7,6 +7,7 @@
 
 - Normalize inventory snapshot UUID spellings for idempotent retries, including
   existing reports hashed before normalization; changed content still returns 409.
+  Acknowledgments echo the submitted UUID spelling for sender compatibility.
 
 - Prevent older inventory release refreshes from overwriting newer completed
   attempts, including when an older lookup fails after a newer success.

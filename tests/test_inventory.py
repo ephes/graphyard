@@ -1447,7 +1447,9 @@ def test_uuid_spelling_retries_preserve_identity(client, enrolled, spelling, leg
     identity = UUID(data["snapshot_id"])
     alternate = str(identity).upper() if spelling == "upper" else identity.hex
     data["snapshot_id"] = alternate
-    assert send(client, enrolled, data).status_code == 200
+    response = send(client, enrolled, data)
+    assert response.status_code == 200
+    assert response.json()["snapshot_id"] == alternate
     if legacy:
         # Recreate the pre-normalization report and digest stored by older code.
         InventorySnapshot.objects.update(
@@ -1460,6 +1462,7 @@ def test_uuid_spelling_retries_preserve_identity(client, enrolled, spelling, leg
         response = send(client, enrolled, retry)
         assert response.status_code == 200
         assert response.json()["duplicate"] is True
+        assert response.json()["snapshot_id"] == value
         retry["gaps"] = ["changed content"]
         assert send(client, enrolled, retry).status_code == 409
     after = InventorySnapshot.objects.get()
