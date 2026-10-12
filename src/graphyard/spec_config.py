@@ -11,6 +11,7 @@ import math
 import re
 from collections.abc import Mapping
 
+MAX_TIMEOUT_SECONDS = 86400.0
 DEFAULT_REQUEST_TIMEOUT_SECONDS = 10.0
 DEFAULT_PAGE_PROBE_MAX_BODY_BYTES = 10 * 1024 * 1024
 DEFAULT_PAGE_PROBE_TOTAL_TIMEOUT_FACTOR = 3
@@ -32,9 +33,7 @@ def positive_float_config(
     config: Mapping[str, object], key: str, default: float
 ) -> float:
     """Return a finite number > 0. Numbers and numeric strings are accepted."""
-    if key not in config:
-        return default
-    raw = config[key]
+    raw = config.get(key, default)
     value: float | None = None
     if isinstance(raw, int | float | str) and not isinstance(raw, bool):
         try:
@@ -78,20 +77,29 @@ def bool_config(config: Mapping[str, object], key: str, default: bool) -> bool:
 
 
 def request_timeout_config(config: Mapping[str, object]) -> float:
-    return positive_float_config(
+    value = positive_float_config(
         config, "request_timeout_seconds", DEFAULT_REQUEST_TIMEOUT_SECONDS
     )
+    return _supported_timeout("request_timeout_seconds", value)
 
 
 def page_probe_total_timeout_config(
     config: Mapping[str, object], request_timeout_seconds: float
 ) -> float:
     """Whole-probe deadline; defaults to three request timeouts."""
-    return positive_float_config(
+    value = positive_float_config(
         config,
         "total_timeout_seconds",
         request_timeout_seconds * DEFAULT_PAGE_PROBE_TOTAL_TIMEOUT_FACTOR,
     )
+    return _supported_timeout("total_timeout_seconds", value)
+
+
+def _supported_timeout(key: str, value: float) -> float:
+    """Reject timeouts that Python transport/wait primitives cannot represent."""
+    if value > MAX_TIMEOUT_SECONDS:
+        raise SpecConfigError(f"config.{key} must be <= {MAX_TIMEOUT_SECONDS} seconds")
+    return value
 
 
 def validate_spec_config(spec_type: str, config: object) -> list[str]:
@@ -100,14 +108,24 @@ def validate_spec_config(spec_type: str, config: object) -> list[str]:
     Only checks the typed knobs the collectors parse; required string fields
     such as ``url`` keep being reported by the collectors at run time.
     """
-    del spec_type  # The typed keys mean the same thing for every collector.
     if not isinstance(config, dict):
         return ["config must be an object"]
 
     errors: list[str] = []
+
+    def total_timeout_check() -> float:
+        if spec_type not in {"http_page_probe", "http_json_metric"}:
+            return positive_float_config(config, "total_timeout_seconds", 1.0)
+        try:
+            request_timeout = request_timeout_config(config)
+        except SpecConfigError:
+            # Report the request error once, while still checking an explicit total.
+            request_timeout = DEFAULT_REQUEST_TIMEOUT_SECONDS
+        return page_probe_total_timeout_config(config, request_timeout)
+
     checks = (
         lambda: request_timeout_config(config),
-        lambda: positive_float_config(config, "total_timeout_seconds", 1.0),
+        total_timeout_check,
         lambda: bool_config(config, "verify_tls", True),
         lambda: bool_config(config, "follow_redirects", True),
         lambda: positive_int_config(

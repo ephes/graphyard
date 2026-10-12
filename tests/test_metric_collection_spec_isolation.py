@@ -287,3 +287,103 @@ def test_page_probe_follows_redirects_with_real_client(db, monkeypatch):
     assert by_metric["service.http_page_redirect_count"] == 1.0
     spec.refresh_from_db()
     assert spec.last_status == StatusLevel.OK
+
+
+@pytest.mark.parametrize("spec_type", ["http_page_probe", "http_json_metric"])
+@pytest.mark.parametrize("total", [None, 30.0])
+def test_impractical_timeout_rejected_before_collection(
+    db, monkeypatch, spec_type, total
+):
+    config = {
+        "url": "https://example.test/",
+        "subject_id": "example",
+        "metric_path": "$.value",
+        "metric_name": "service.value",
+        "request_timeout_seconds": 1e308,
+    }
+    if total is not None:
+        config["total_timeout_seconds"] = total
+    spec = MetricCollectionSpec.objects.create(
+        name="overflow", spec_type=spec_type, config=config
+    )
+    with pytest.raises(ValidationError, match="request_timeout_seconds"):
+        spec.full_clean()
+    calls = []
+    monkeypatch.setattr(services.httpx, "Client", lambda **kwargs: calls.append(kwargs))
+    monkeypatch.setattr(
+        services.influx, "write_points", lambda points: pytest.fail("unexpected write")
+    )
+    result = run_metric_collection_specs_once()
+    assert result.failed == 1
+    assert calls == []
+    spec.refresh_from_db()
+    assert "request_timeout_seconds" in spec.last_error
+
+
+def test_derived_timeout_defaults_are_validated():
+    from graphyard.spec_config import (
+        SpecConfigError,
+        page_probe_total_timeout_config,
+        positive_float_config,
+    )
+
+    with pytest.raises(SpecConfigError, match="total_timeout_seconds"):
+        page_probe_total_timeout_config({}, 1e308)
+    for default in [float("inf"), float("nan"), 0.0, -1.0]:
+        with pytest.raises(SpecConfigError):
+            positive_float_config({}, "timeout", default)
+    assert page_probe_total_timeout_config({}, 10.0) == 30.0
+    assert (
+        page_probe_total_timeout_config({"total_timeout_seconds": 45.0}, 10.0) == 45.0
+    )
+
+
+@pytest.mark.parametrize("spec_type", ["http_page_probe", "http_json_metric"])
+def test_model_validates_derived_wait_limit(db, spec_type):
+    from graphyard.spec_config import MAX_TIMEOUT_SECONDS
+
+    spec = MetricCollectionSpec(
+        name="large budget",
+        spec_type=spec_type,
+        config={"request_timeout_seconds": MAX_TIMEOUT_SECONDS / 2},
+    )
+    with pytest.raises(ValidationError, match="total_timeout_seconds"):
+        spec.full_clean()
+    spec.config["total_timeout_seconds"] = 30.0
+    spec.full_clean()
+
+
+@pytest.mark.parametrize("spec_type", ["http_page_probe", "http_json_metric"])
+def test_invalid_timeouts_report_each_key_once(spec_type):
+    errors = validate_spec_config(
+        spec_type, {"request_timeout_seconds": "5s", "total_timeout_seconds": "abc"}
+    )
+    assert errors == [
+        "config.request_timeout_seconds must be a number greater than 0, got '5s'",
+        "config.total_timeout_seconds must be a number greater than 0, got 'abc'",
+    ]
+    assert len(validate_spec_config(spec_type, {"request_timeout_seconds": "5s"})) == 1
+
+
+@pytest.mark.parametrize("spec_type", ["http_page_probe", "http_json_metric"])
+def test_explicit_oversized_total_rejected_before_transport(db, monkeypatch, spec_type):
+    spec = MetricCollectionSpec.objects.create(
+        name="total overflow",
+        spec_type=spec_type,
+        config={
+            "url": "https://example.test/",
+            "subject_id": "example",
+            "total_timeout_seconds": 1e308,
+            "metric_path": "$.value",
+            "metric_name": "service.value",
+        },
+    )
+    with pytest.raises(ValidationError, match="total_timeout_seconds"):
+        spec.full_clean()
+    calls = []
+    monkeypatch.setattr(services.httpx, "Client", lambda **kwargs: calls.append(kwargs))
+    assert run_metric_collection_specs_once().failed == 1
+    assert calls == []
+
+    spec.refresh_from_db()
+    assert "total_timeout_seconds" in spec.last_error
