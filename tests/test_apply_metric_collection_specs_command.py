@@ -491,3 +491,46 @@ def test_apply_metric_collection_specs_rejects_unchanged_legacy_malformed_spec(
 
     with pytest.raises(CommandError, match="verify_tls"):
         call_command("apply_metric_collection_specs", "--file", spec_file)
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("failure", ["utf8", "directory", "permission"])
+def test_spec_file_read_errors_leave_rows_unchanged(tmp_path, monkeypatch, failure):
+    from pathlib import Path
+
+    spec = MetricCollectionSpec.objects.create(
+        name="keep",
+        spec_type=MetricCollectionSpecType.HTTP_PAGE_PROBE,
+        config={"url": "https://example.test/"},
+        next_run_time=123,
+    )
+    before = list(MetricCollectionSpec.objects.values())
+    path = tmp_path / "specs.json"
+    if failure == "utf8":
+        path.write_bytes(b"\xff")
+        detail = "UTF-8"
+    elif failure == "directory":
+        path.mkdir()
+        detail = "directory"
+    else:
+        path.write_text("[]", encoding="utf-8")
+        calls = []
+
+        def denied(self, *args, **kwargs):
+            assert self == path
+            calls.append(self)
+            raise PermissionError("private detail\n" + "x" * 10000)
+
+        monkeypatch.setattr(Path, "read_text", denied)
+        detail = "permission denied"
+    with pytest.raises(CommandError) as excinfo:
+        call_command("apply_metric_collection_specs", "--file", str(path), "--prune")
+    message = str(excinfo.value)
+    assert str(path) in message
+    assert detail in message
+    assert "private detail" not in message
+    assert len(message) < len(str(path)) + 120
+    if failure == "permission":
+        assert calls == [path]
+    assert list(MetricCollectionSpec.objects.values()) == before
+    assert MetricCollectionSpec.objects.get(pk=spec.pk).next_run_time == 123
