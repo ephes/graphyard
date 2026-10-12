@@ -16,29 +16,13 @@ from graphyard.services import run_metric_collection_specs_once
 from graphyard.spec_config import validate_spec_config
 
 
-class _JsonResponse:
-    status_code = 200
-
-    def raise_for_status(self) -> None:
-        return None
-
-    def json(self) -> object:
-        return {"value": 7}
-
-
-class _JsonClient:
+class _JsonClient(httpx.Client):
     def __init__(self, **kwargs: object) -> None:
-        del kwargs
-
-    def __enter__(self) -> _JsonClient:
-        return self
-
-    def __exit__(self, exc_type, exc, tb) -> None:
-        del exc_type, exc, tb
-
-    def get(self, url: str, **kwargs: object) -> _JsonResponse:
-        del url, kwargs
-        return _JsonResponse()
+        super().__init__(
+            transport=httpx.MockTransport(
+                lambda request: httpx.Response(200, json={"value": 7})
+            )
+        )
 
 
 def _json_spec(name: str, **config: object) -> MetricCollectionSpec:
