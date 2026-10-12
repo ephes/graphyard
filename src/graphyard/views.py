@@ -6,6 +6,7 @@ import logging
 
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import RequestDataTooBig
 from django.db import connection
 from django.db import OperationalError
 from django.http import HttpRequest, HttpResponse, JsonResponse
@@ -84,10 +85,32 @@ def _parse_timestamp(value: str) -> datetime:
     return parsed.astimezone(UTC)
 
 
-def _decode_metrics_ingest_body(body: bytes) -> object:
-    decoded = body.decode("utf-8")
+def _load_metrics_json(text: str, *, total_metrics: int = 0) -> object:
     try:
-        return json.loads(decoded)
+        return json.loads(text)
+    except RecursionError:
+        # No exception chaining: the traceback is as deep as the payload.
+        raise MetricsPayloadValidationError(
+            "JSON payload is nested too deeply",
+            parse_rejected=1,
+            total_metrics=total_metrics,
+        ) from None
+
+
+def _decode_metrics_ingest_body(body: bytes) -> object:
+    # Every malformed body becomes the same bounded validation error with a
+    # fixed message, so no decoder exception text reaches responses or the
+    # persisted heartbeat.
+    try:
+        decoded = body.decode("utf-8")
+    except UnicodeDecodeError as decode_err:
+        raise MetricsPayloadValidationError(
+            "Payload is not valid UTF-8",
+            parse_rejected=1,
+            total_metrics=0,
+        ) from decode_err
+    try:
+        return _load_metrics_json(decoded)
     except json.JSONDecodeError as json_err:
         # Vector batched payloads may be sent as newline-delimited JSON objects.
         lines = [line.strip() for line in decoded.splitlines() if line.strip()]
@@ -101,7 +124,7 @@ def _decode_metrics_ingest_body(body: bytes) -> object:
         parsed_lines: list[object] = []
         for line in lines:
             try:
-                parsed_lines.append(json.loads(line))
+                parsed_lines.append(_load_metrics_json(line, total_metrics=len(lines)))
             except json.JSONDecodeError as ndjson_err:
                 raise MetricsPayloadValidationError(
                     "Invalid JSON payload",
@@ -297,8 +320,17 @@ def metrics_ingest(request: HttpRequest) -> JsonResponse:
         )
         return _json_error("Missing or invalid bearer token", status=401)
 
+    status = 400
     try:
-        payload = _decode_metrics_ingest_body(request.body)
+        try:
+            # Django reads at most DATA_UPLOAD_MAX_MEMORY_SIZE bytes here.
+            body = request.body
+        except RequestDataTooBig:
+            status = 413
+            raise MetricsPayloadValidationError(
+                "Payload too large", parse_rejected=1, total_metrics=0
+            ) from None
+        payload = _decode_metrics_ingest_body(body)
     except MetricsPayloadValidationError as err:
         logger.warning(
             "metrics_ingest_rejected category=parse parse_rejected=%s normalization_rejected=0 rejected_count=%s total_metrics=%s reason=%s",
@@ -319,7 +351,7 @@ def metrics_ingest(request: HttpRequest) -> JsonResponse:
                 "total_metrics": err.total_metrics,
             },
         )
-        return _json_error(str(err), status=400)
+        return _json_error(str(err), status=status)
 
     try:
         points = _parse_metrics_payload(payload)

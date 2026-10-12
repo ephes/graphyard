@@ -374,6 +374,11 @@ Write-path behavior is partial-success: invalid points are rejected per-point, w
 same batch are still written.
 For `POST /v1/metrics`, request-level payload validation is fail-fast: if any point fails ingest payload
 parsing/normalization before write, the request is rejected with `400` and no points are written.
+Malformed bodies get the same bounded rejection instead of a server error: a body that is not valid
+UTF-8 or whose JSON is nested too deeply to parse returns `400`, and a body larger than Django's
+`DATA_UPLOAD_MAX_MEMORY_SIZE` (2.5 MB by default) returns `413`. Each response is JSON with a fixed
+`error` message, counts as one parse rejection in the `metrics_ingest_rejected` log line and the
+`metric_ingest` heartbeat, and writes nothing.
 Metric values must be finite numbers: `NaN`, `Infinity`, `-Infinity` (as JSON literals or strings
 such as `"nan"`/`"inf"`) are rejected as invalid values, since InfluxDB cannot store them. Collection
 specs skip such values like other non-numeric readings, and they are never counted as ingested nor

@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- `POST /v1/metrics` now rejects malformed request bodies with a bounded JSON
+  error instead of an unhandled server error. An authenticated body that is not
+  valid UTF-8, or whose JSON is nested too deeply to parse (also as one NDJSON
+  line), returns `400`; a body larger than `DATA_UPLOAD_MAX_MEMORY_SIZE` returns
+  `413` with a JSON error instead of Django's generic `400` page. All three are
+  logged and recorded in the `metric_ingest` heartbeat as one parse rejection
+  with a fixed message (no decoder exception text), and nothing is written to
+  InfluxDB. Valid JSON and NDJSON bodies are unchanged.
+
 - The HTTP page probe now has a whole-probe deadline, `total_timeout_seconds`
   (default: three times `request_timeout_seconds`, validated on save as a number
   greater than 0). Previously `request_timeout_seconds` bounded only each

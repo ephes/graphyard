@@ -776,3 +776,111 @@ def test_metrics_endpoint_rejects_non_finite_values(client, monkeypatch, raw_val
     assert captured["status"] == StatusLevel.WARNING
     assert captured["details"]["parse_rejected"] == 1
     assert captured["details"]["total_metrics"] == 1
+
+
+VALID_POINT_JSON = (
+    '{"ts": "2026-03-04T12:00:00Z", "host": "macmini", '
+    '"metric": "host.cpu_usage", "value": 1.5}'
+)
+DEEPLY_NESTED_JSON = "[" * 200_000 + "]" * 200_000
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("body", "expected_status", "expected_error", "expected_total"),
+    [
+        (b"\xff\xfe not utf-8", 400, "Payload is not valid UTF-8", 0),
+        (DEEPLY_NESTED_JSON.encode(), 400, "JSON payload is nested too deeply", 0),
+        (
+            f"{VALID_POINT_JSON}\n{DEEPLY_NESTED_JSON}\n".encode(),
+            400,
+            "JSON payload is nested too deeply",
+            2,
+        ),
+        (b"[" + b" " * 4096 + b"]", 413, "Payload too large", 0),
+    ],
+    ids=["invalid-utf8", "deep-json", "deep-ndjson-line", "oversized"],
+)
+def test_metrics_endpoint_rejects_malformed_bodies_with_bounded_errors(
+    client,
+    monkeypatch,
+    settings,
+    caplog,
+    body,
+    expected_status,
+    expected_error,
+    expected_total,
+):
+    if expected_status == 413:
+        settings.DATA_UPLOAD_MAX_MEMORY_SIZE = 1024
+    ingest_token = IngestToken(name="collector")
+    ingest_token.set_token("secret-token")
+    ingest_token.save()
+    written: list[object] = []
+    monkeypatch.setattr(
+        "graphyard.views.write_points",
+        lambda points: written.extend(points) or len(points),
+    )
+    captured: dict[str, object] = {}
+
+    def fake_record_heartbeat_safe(*args, **kwargs):  # noqa: ANN002, ANN003
+        del args
+        captured.update(kwargs)
+
+    monkeypatch.setattr(
+        "graphyard.views._record_heartbeat_safe", fake_record_heartbeat_safe
+    )
+
+    response = client.post(
+        reverse("graphyard:metrics_ingest"),
+        data=body,
+        content_type="application/json",
+        HTTP_AUTHORIZATION="Bearer secret-token",
+    )
+
+    assert response.status_code == expected_status
+    assert response.json() == {"error": expected_error}
+    assert written == []
+    assert captured["status"] == StatusLevel.WARNING
+    assert captured["last_error"] == expected_error
+    assert captured["details"] == {
+        "category": "parse",
+        "parse_rejected": 1,
+        "normalization_rejected": 0,
+        "rejected_count": 1,
+        "total_metrics": expected_total,
+    }
+    assert any(
+        "metrics_ingest_rejected category=parse parse_rejected=1" in record.getMessage()
+        for record in caplog.records
+    )
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "body",
+    [f"[{VALID_POINT_JSON}]", f"{VALID_POINT_JSON}\n{VALID_POINT_JSON}\n"],
+    ids=["json-array", "ndjson"],
+)
+def test_metrics_endpoint_still_ingests_valid_bodies_below_the_size_limit(
+    client, monkeypatch, settings, body
+):
+    settings.DATA_UPLOAD_MAX_MEMORY_SIZE = 1024
+    ingest_token = IngestToken(name="collector")
+    ingest_token.set_token("secret-token")
+    ingest_token.save()
+    written: list[object] = []
+    monkeypatch.setattr(
+        "graphyard.views.write_points",
+        lambda points: written.extend(points) or len(points),
+    )
+
+    response = client.post(
+        reverse("graphyard:metrics_ingest"),
+        data=body,
+        content_type="application/json",
+        HTTP_AUTHORIZATION="Bearer secret-token",
+    )
+
+    assert response.status_code == 202
+    assert len(written) == body.count("host.cpu_usage")
