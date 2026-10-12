@@ -6,30 +6,54 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('graphyard', '0010_condition_stale_allowance'),
+        ("graphyard", "0010_condition_stale_allowance"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='ingesttoken',
-            name='host_scope',
-            field=models.JSONField(blank=True, default=list, help_text="Host identifiers this token may write metrics for: exact names, or a prefix with one trailing '*'. Empty means unrestricted.", validators=[graphyard.token_scope.validate_host_scope]),
+            model_name="ingesttoken",
+            name="host_scope",
+            field=models.JSONField(
+                blank=True,
+                default=list,
+                help_text="Host identifiers this token may write metrics for: exact names, or a prefix with one trailing '*'. Empty means unrestricted.",
+                validators=[graphyard.token_scope.validate_host_scope],
+            ),
         ),
         migrations.CreateModel(
-            name='IngestTokenHostUsage',
+            name="IngestTokenHostUsage",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('host_id', models.CharField(max_length=128)),
-                ('first_seen_at', models.DateTimeField()),
-                ('last_seen_at', models.DateTimeField()),
-                ('token', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='host_usage', to='graphyard.ingesttoken')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("host_id", models.CharField(max_length=128)),
+                ("first_seen_at", models.DateTimeField()),
+                ("last_seen_at", models.DateTimeField()),
+                (
+                    "token",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="host_usage",
+                        to="graphyard.ingesttoken",
+                    ),
+                ),
             ],
             options={
-                'db_table': 'ingest_token_host_usage',
-                'ordering': ['token_id', 'host_id'],
-                'constraints': [models.UniqueConstraint(fields=('token', 'host_id'), name='ingest_token_host_usage_unique_host')],
+                "db_table": "ingest_token_host_usage",
+                "ordering": ["token_id", "host_id"],
+                "constraints": [
+                    models.UniqueConstraint(
+                        fields=("token", "host_id"),
+                        name="ingest_token_host_usage_unique_host",
+                    )
+                ],
             },
         ),
     ]

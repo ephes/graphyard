@@ -345,19 +345,24 @@ def test_report_lists_recent_hosts_per_token_and_changes_nothing():
     output = run_report(days=7)
 
     assert f"token id={edge.pk} name=edge enabled host_scope=edge" in output
-    assert f"token id={central.pk} name=central enabled host_scope=unrestricted" in output
+    assert (
+        f"token id={central.pk} name=central enabled host_scope=unrestricted" in output
+    )
     edge_block = output.split("name=edge ")[1].split("token id=")[0]
     assert "  edge  last_seen=" in edge_block
-    assert "outside current scope" in [
-        line for line in edge_block.splitlines() if line.startswith("  victim")
-    ][0]
+    assert (
+        "outside current scope"
+        in [line for line in edge_block.splitlines() if line.startswith("  victim")][0]
+    )
     assert "ancient" not in output
     assert "suggested --host-scope edge,victim" in edge_block
     assert "switch_1" in output
     assert "gone" not in output
     assert "gone" in run_report(days=7, include_disabled=True)
     assert "ancient" in run_report(days=60)
-    assert list(IngestTokenHostUsage.objects.values_list("pk", "last_seen_at")) == before
+    assert (
+        list(IngestTokenHostUsage.objects.values_list("pk", "last_seen_at")) == before
+    )
     assert list(IngestToken.objects.values()) == tokens_before
 
 
@@ -476,9 +481,9 @@ def test_usage_cap_holds_when_rows_appear_between_check_and_insert(monkeypatch):
 
     services.record_token_host_usage(token, {f"b{idx}" for idx in range(5)})
 
-    assert sorted(
-        IngestTokenHostUsage.objects.values_list("host_id", flat=True)
-    ) == [f"a{idx}" for idx in range(5)]
+    assert sorted(IngestTokenHostUsage.objects.values_list("host_id", flat=True)) == [
+        f"a{idx}" for idx in range(5)
+    ]
 
 
 # --- admin ------------------------------------------------------------------
