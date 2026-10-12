@@ -528,3 +528,75 @@ def test_monitor_status_reports_cached_release_failures_without_fetch(
     ).json()
     assert status["releases"]["status"] == "not_configured"
     assert status["releases"]["total"] == 0
+
+
+@pytest.mark.parametrize("old_failure", [False, True])
+def test_older_refresh_cannot_overwrite_newer_completion(monkeypatch, old_failure):
+    old = timezone.now()
+    newer = old + timedelta(seconds=1)
+    times = iter([old, newer, newer, old + timedelta(seconds=2)])
+    monkeypatch.setattr(releases.timezone, "now", lambda: next(times))
+    nested = False
+
+    def fetch(client, item):
+        nonlocal nested
+        if nested:
+            return "6.2"
+        nested = True
+        assert releases.refresh([definition()], force=True) == 0
+        if old_failure:
+            raise ValueError("old request failed")
+        return "6.1"
+
+    monkeypatch.setattr(releases, "fetch", fetch)
+    assert releases.refresh([definition()], force=True) == int(old_failure)
+    row = InventoryRelease.objects.get(pk="pypi:django")
+    assert row.version == "6.2"
+    assert row.checked_at == newer
+    assert row.attempted_at == newer
+    assert row.error == ""
+
+
+def test_slow_stream_exhausts_budget_preserves_success_and_continues(monkeypatch):
+    row = cache()
+    checked = row.checked_at
+    clock = [0.0]
+    monkeypatch.setattr(releases, "monotonic", lambda: clock[0], raising=False)
+    closed = []
+
+    class SlowStream(httpx.SyncByteStream):
+        def __iter__(self):
+            for _ in range(10):
+                clock[0] += 19
+                yield b" "
+            yield b'{"info":{"name":"django","version":"6.1","yanked":false},"urls":[{"yanked":false}]}'
+
+        def close(self):
+            closed.append(True)
+
+    def handler(request):
+        if "/django/" in str(request.url):
+            return httpx.Response(200, stream=SlowStream())
+        return httpx.Response(
+            200,
+            json={
+                "info": {"name": "flask", "version": "3.1", "yanked": False},
+                "urls": [{"yanked": False}],
+            },
+        )
+
+    factory = httpx.Client
+    monkeypatch.setattr(
+        releases.httpx,
+        "Client",
+        lambda **kw: factory(transport=httpx.MockTransport(handler), **kw),
+    )
+    assert (
+        releases.refresh([definition(), definition(project="flask")], force=True) == 1
+    )
+    row.refresh_from_db()
+    assert row.version == "6.0" and row.checked_at == checked
+    assert row.error == "Release lookup failed"
+    assert InventoryRelease.objects.get(pk="pypi:flask").version == "3.1"
+    assert closed == [True]
+    assert clock[0] == 76

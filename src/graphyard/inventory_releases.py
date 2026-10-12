@@ -3,9 +3,11 @@
 import json
 import re
 from datetime import timedelta
+from time import monotonic
 
 import httpx
 from django.db import transaction
+from django.db.models import Q
 from django.utils import timezone
 from packaging.version import InvalidVersion, Version
 
@@ -14,6 +16,7 @@ from .models import InventoryRelease
 MAX_AGE = timedelta(days=8)
 REFRESH_AFTER = timedelta(days=6)
 MAX_BODY = 16 * 1024 * 1024
+FETCH_BUDGET_SECONDS = 60
 NAME = re.compile(r"[a-zA-Z0-9][a-zA-Z0-9_.@+-]{0,99}")
 
 
@@ -88,13 +91,22 @@ def stable(value):
 
 
 def fetch(client, definition):
+    deadline = monotonic() + FETCH_BUDGET_SECONDS
+
+    def check_deadline():
+        if monotonic() >= deadline:
+            raise ValueError("Release lookup elapsed budget exceeded")
+
     with client.stream("GET", url(definition)) as response:
+        check_deadline()
         response.raise_for_status()
         raw = bytearray()
         for chunk in response.iter_bytes():
+            check_deadline()
             raw.extend(chunk)
             if len(raw) > MAX_BODY:
                 raise ValueError("Release response too large")
+    check_deadline()
     data = json.loads(raw)
     if not isinstance(data, dict):
         raise ValueError("Invalid release response")
@@ -160,7 +172,9 @@ def refresh(data, force=False):
                 values = {"error": "Release lookup failed"}
             # Failed attempts preserve the last success and never renew its timestamp.
             values["attempted_at"] = started
-            InventoryRelease.objects.filter(pk=key).update(**values)
+            InventoryRelease.objects.filter(pk=key).filter(
+                Q(attempted_at__isnull=True) | Q(attempted_at__lte=started)
+            ).update(**values)
     return failures
 
 

@@ -395,7 +395,17 @@ each target has `{kind, name}`. Sources support `pypi`, `github`, `brew` (formul
 and target kinds are `python`, `application`, `brew`. Registry identifiers are
 validated; URLs are constructed for fixed public HTTPS endpoints. Inventory content
 cannot register sources, select destinations, or send private package names outward.
-Each public response is bounded to 16 MiB after decompression.
+Overlapping refreshes publish results only when the cached attempt is not newer
+than their start time. A late older success or failure cannot overwrite a newer
+completed attempt. Network I/O stays outside database transactions.
+
+Each public response is bounded to 16 MiB after decompression. Each source has
+a 60-second monotonic elapsed budget, checked after headers and each streamed
+chunk (without accumulating fixed-size read buffers). The 20-second HTTP
+operation timeout bounds an in-progress operation; budget detection can lag
+until that operation returns. An exhausted budget records a bounded lookup
+failure, retains the last success and its timestamp, and continues to the next
+source.
 HTTP redirects, proxy environment settings, prereleases/dev/local versions, yanked
 PyPI releases, disabled formulae and oversized responses are refused. No GitHub
 credential is used; rate limits appear as failed checks. PyPI's latest project

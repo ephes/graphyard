@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Prevent older inventory release refreshes from overwriting newer completed
+  attempts, including when an older lookup fails after a newer success.
+
+- Bound public inventory release body fetching with a 60-second monotonic
+  elapsed budget in addition to the 20-second HTTP operation timeout and
+  16 MiB decoded body limit. Budget failures preserve the last successful
+  version and timestamp and allow remaining sources to refresh.
+
 - Fix `create_ingest_token --rotate`. It revoked the existing token and then
   failed with an `IntegrityError` on the unique token name, leaving the host
   without any valid token; creating a token for a name that had been revoked
