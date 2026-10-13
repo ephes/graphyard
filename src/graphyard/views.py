@@ -312,10 +312,10 @@ def _parse_metrics_payload(payload: object) -> list[MetricPoint]:
             )
         except ValueError as err:
             logger.warning(
-                "Rejected metric payload at index=%s metric=%s: %s",
+                "Rejected metric payload at index=%s metric=%r: %r",
                 idx,
-                metric,
-                err,
+                metric[:256],
+                str(err)[:512],
             )
             raise _normalization_error(
                 f"Metric at index {idx} failed validation: {err}"

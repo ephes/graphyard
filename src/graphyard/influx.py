@@ -239,7 +239,7 @@ def _ensure_utc(ts: datetime) -> datetime:
 
 
 def _flux_escape(value: str) -> str:
-    return value.replace("\\", "\\\\").replace('"', '\\"')
+    return value.replace("\\", "\\\\").replace('"', '\\"').replace("${", "\\${")
 
 
 def _flux_record_access(key: str) -> str:

@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Escape Flux string interpolation markers in configured query filters and
+  escape/cap rejected metric names in ingest validation logs.
+
 - Lower inventory ingest bodies from 8 to 2 MiB and check streaming element
   and nesting budgets before materializing JSON reports. Require UTF-8 JSON
   without a BOM; Vector framing preserves the report nesting allowance.
