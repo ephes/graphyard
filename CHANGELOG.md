@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Lower inventory ingest bodies from 8 to 2 MiB and check streaming element
+  and nesting budgets before materializing JSON reports. Require UTF-8 JSON
+  without a BOM; Vector framing preserves the report nesting allowance.
+
 - Look up fast ingest token hashes directly and restrict password checks to
   legacy rows; warn about enabled legacy hashes in database system checks.
 

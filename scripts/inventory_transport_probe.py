@@ -172,7 +172,7 @@ class ForwardRequest(BaseHTTPRequestHandler):
         try:
             require(self.path == "/v1/inventory", "Unexpected proxy path")
             length = int(self.headers.get("Content-Length", "0"))
-            require(0 < length <= 8 * 1024 * 1024, "Invalid request size")
+            require(0 < length <= 2 * 1024 * 1024, "Invalid request size")
             body = self.rfile.read(length)
             value = json.loads(body)
             if isinstance(value, list):
@@ -491,10 +491,13 @@ def main():
         large = fixture()
         large["categories"]["packages"]["items"] = [
             {"name": f"Größe-测试-{i}", "version": "1.2.3", "metadata": "x" * 180}
-            for i in range(22000)
+            for i in range(6000)
         ]
         source = emit.write_report(large, spool)
-        require(source.stat().st_size > 4 * 1024 * 1024, "Large report fixture")
+        require(
+            1024 * 1024 < source.stat().st_size < 2 * 1024 * 1024,
+            "Large report fixture",
+        )
         process = start(target, env)
         wait_for(lambda: confirmed(large), "large report delivery")
         require(
@@ -503,7 +506,7 @@ def main():
             "Full report JSON equality",
         )
         result["large_report_bytes"] = source.stat().st_size
-        check("generated Vector pipeline delivers >4 MiB Unicode report exactly")
+        check("generated Vector pipeline delivers >1 MiB Unicode report exactly")
 
         retry = fixture()
         retry["observed_at"] = (datetime.now(UTC) - timedelta(minutes=4)).isoformat()
