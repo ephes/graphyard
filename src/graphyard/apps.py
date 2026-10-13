@@ -48,6 +48,8 @@ class GraphyardConfig(AppConfig):
     name = "graphyard"
 
     def ready(self) -> None:
+        from . import checks  # noqa: F401
+
         from . import login_throttle  # noqa: F401
 
         connection_created.connect(

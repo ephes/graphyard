@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Look up fast ingest token hashes directly and restrict password checks to
+  legacy rows; warn about enabled legacy hashes in database system checks.
+
 - Throttle failed application and admin logins by username/client and client
   address, with configurable trusted proxy hops and fixed cache windows. Reject
   invalid window/address/proxy settings at startup; locked attempts do not churn

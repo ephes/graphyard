@@ -5,10 +5,11 @@ import logging
 from typing import Optional
 
 from django.db import OperationalError
+from django.db.models import Q
 from django.http import HttpRequest
 from django.utils import timezone
 
-from .models import IngestToken
+from .models import FAST_TOKEN_HASH_PREFIXES, IngestToken, _fast_token_hash
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +34,20 @@ def authenticate_ingest_token(request: HttpRequest) -> Optional[IngestToken]:
         return None
 
     now = timezone.now()
-    for ingest_token in IngestToken.objects.filter(enabled=True):
+    enabled = IngestToken.objects.filter(enabled=True)
+    fast_matches = list(
+        enabled.filter(
+            token_hash__in=[
+                _fast_token_hash(raw_token, prefix=prefix)
+                for prefix in FAST_TOKEN_HASH_PREFIXES
+            ]
+        )
+    )
+    fast_prefixes = Q()
+    for prefix in FAST_TOKEN_HASH_PREFIXES:
+        fast_prefixes |= Q(token_hash__startswith=f"{prefix}$")
+    candidates = fast_matches or enabled.exclude(fast_prefixes)
+    for ingest_token in candidates:
         if ingest_token.check_token(raw_token):
             update_fields: list[str] = []
 
