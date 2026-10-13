@@ -527,6 +527,17 @@ marks the condition `critical` with an evaluation error; the previous
 `last_value` and successful `last_evaluated` remain, rather than presenting an
 older valid sample as fresh evidence.
 
+InfluxDB 3 SQL evaluation responses are streamed with a fixed 10 MiB decoded
+body limit and a 30-second monotonic total deadline covering connection,
+headers, and body reads. OS DNS resolution is an exception: cancellation stops
+the request, but Python's event-loop cleanup may wait for the resolver thread to
+finish. JSON decoding is size-bounded and its elapsed time is
+checked before accepting the result. These limits are independent of
+`INFLUX_TIMEOUT_MS`, the per-operation transport timeout. Limit exhaustion closes
+the response and rejects the whole query with an evaluation error as above.
+Narrow the condition filters or query window if a legitimate result exceeds the
+limit; partial results are never evaluated.
+
 Example supported condition: humidity above threshold for N minutes.
 
 A condition breaches when its value is past the threshold for the whole breach

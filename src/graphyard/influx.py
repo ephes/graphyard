@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
+import json
 import logging
 import math
 import re
+import time
 from typing import TYPE_CHECKING, Any
 
 from django.conf import settings
@@ -553,6 +556,67 @@ _V3_NON_TAG_COLUMNS = frozenset(
 )
 
 
+# Fixed evaluation limits, independent of the per-operation transport timeout.
+SQL_QUERY_MAX_BODY_BYTES = 10 * 1024 * 1024
+SQL_QUERY_TOTAL_TIMEOUT_SECONDS = 30.0
+
+
+async def _read_v3_sql_rows(payload: dict[str, str], headers: dict[str, str]) -> Any:
+    deadline = time.monotonic() + SQL_QUERY_TOTAL_TIMEOUT_SECONDS
+    try:
+        async with asyncio.timeout(SQL_QUERY_TOTAL_TIMEOUT_SECONDS):
+            async with httpx.AsyncClient(
+                timeout=max(1.0, settings.INFLUX_TIMEOUT_MS / 1000)
+            ) as client:
+                async with client.stream(
+                    "POST",
+                    f"{settings.INFLUX_URL.rstrip('/')}/api/v3/query_sql",
+                    json=payload,
+                    headers=headers,
+                ) as response:
+                    if response.status_code == 404:
+                        raise InfluxConfigurationError(
+                            "InfluxDB v3 SQL endpoint not found. "
+                            "Set INFLUX_API_MODE=v2 for InfluxDB 2."
+                        )
+                    response.raise_for_status()
+                    body = bytearray()
+                    async for chunk in response.aiter_bytes():
+                        if time.monotonic() >= deadline:
+                            raise TimeoutError
+                        if len(body) + len(chunk) > SQL_QUERY_MAX_BODY_BYTES:
+                            raise InfluxConfigurationError(
+                                "InfluxDB SQL response exceeds the 10 MiB decoded byte limit"
+                            )
+                        body.extend(chunk)
+                    try:
+                        rows = json.loads(body)
+                    except ValueError as err:
+                        raise InfluxConfigurationError(
+                            "InfluxDB SQL query failed: invalid JSON"
+                        ) from err
+                    # JSON decoding is synchronous; check its elapsed time too.
+                    if time.monotonic() >= deadline:
+                        raise TimeoutError
+                    return rows
+    except TimeoutError as err:
+        raise InfluxConfigurationError(
+            "InfluxDB SQL response exceeded the 30-second total deadline"
+        ) from err
+    except httpx.HTTPStatusError as err:
+        raise InfluxConfigurationError(
+            f"InfluxDB SQL query failed: HTTP {err.response.status_code}"
+        ) from err
+    except httpx.HTTPError as err:
+        raise InfluxConfigurationError(
+            f"InfluxDB SQL query failed: {type(err).__name__}"
+        ) from err
+    except ValueError as err:
+        raise InfluxConfigurationError(
+            f"InfluxDB SQL query failed: {type(err).__name__}"
+        ) from err
+
+
 def _query_range_v3_sql(
     metric_name: str,
     start: datetime,
@@ -598,23 +662,7 @@ def _query_range_v3_sql(
         headers["Authorization"] = f"Bearer {settings.INFLUX_TOKEN}"
 
     payload = {"db": settings.INFLUX_BUCKET, "q": sql}
-    try:
-        response = httpx.post(
-            f"{settings.INFLUX_URL.rstrip('/')}/api/v3/query_sql",
-            json=payload,
-            headers=headers,
-            timeout=max(1.0, settings.INFLUX_TIMEOUT_MS / 1000),
-        )
-    except Exception as err:  # noqa: BLE001
-        raise InfluxConfigurationError(str(err)) from err
-
-    if response.status_code == 404:
-        raise InfluxConfigurationError(
-            "InfluxDB v3 SQL endpoint not found. Set INFLUX_API_MODE=v2 for InfluxDB 2."
-        )
-    response.raise_for_status()
-
-    raw_rows = response.json()
+    raw_rows = asyncio.run(_read_v3_sql_rows(payload, headers))
     if not isinstance(raw_rows, list):
         raise InfluxConfigurationError("Invalid response from InfluxDB v3 query API")
 
