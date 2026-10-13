@@ -189,6 +189,12 @@ Graphyard stores token hashes only.
 Ingest tokens use a fast SHA-256 digest with the `graphyard-sha256$...` prefix (constant-time compare), and legacy hashes are upgraded on first successful use.
 Hash upgrades are one-way; if you revert to code that only understands Django password hash formats, rotate ingest tokens.
 
+Ingest authentication looks up the SHA-256 digest by equality before trying only
+enabled legacy password-hash rows. Invalid credentials still cost one password
+check per legacy row until those rows are upgraded or rotated. Run
+`just manage check --database default` to report `graphyard.W001` while enabled
+legacy rows remain. The check tolerates an unmigrated database during setup.
+
 ## Metric Collection Specs
 
 Metric collection is configured in Django admin via `MetricCollectionSpec`.
