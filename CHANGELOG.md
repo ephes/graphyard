@@ -5,6 +5,11 @@
 - Make `evaluate_conditions` exit with status 1 after reporting the summary when
   any evaluation failed; independent conditions still run.
 
+- Reject overlong host, service and subject identities at metric ingest using
+  registry model field limits (128 characters), including normalized values.
+  Validate stored `source_system` too (64 characters), including legacy fallbacks.
+  Return an indexed 400 error before metric writes or registry changes.
+
 - Require finite condition thresholds, preserving optional thresholds and unrestricted
   finite values for other metrics. Order disk seed thresholds by comparison
   direction. Validate before persistence and roll back failed creates/updates.
@@ -28,8 +33,8 @@
   cache keys. Configure the standalone inventory probe too.
 
 - Bound metric ingest timestamps to a configurable seven-day past / five-minute
-  future window and limit supplied tags to 32 and identity/tag strings to 256
-  characters. Invalid points reject the batch with their index.
+  future window and limit supplied tags to 32 and other dimension/tag strings
+  to 256 characters. Invalid points reject the batch with their index.
 
 - Reject nonfinite or invalid numeric query samples from both Flux and SQL as
   evaluation errors. Mixed valid/invalid results cannot appear healthy or refresh
