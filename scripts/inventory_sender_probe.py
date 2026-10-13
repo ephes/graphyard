@@ -140,11 +140,13 @@ def main():
 
         large = fixture()
         large["categories"]["packages"]["items"] = [
-            {"name": f"unicode-{n}", "description": "Größe雪" * 150}
-            for n in range(5000)
+            {"name": f"unicode-{n}", "description": "Größe雪" * 150} for n in range(800)
         ]
         path = emit.write_report(large, spool)
-        require(path.stat().st_size > 5 * 1024 * 1024, "Large report must exceed 5 MiB")
+        require(
+            1024 * 1024 < path.stat().st_size < 2 * 1024 * 1024,
+            "Large report must fit the ingest cap",
+        )
         run(0)
         require(not path.exists(), "Acknowledged report was not retired")
         require(

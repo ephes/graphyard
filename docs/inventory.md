@@ -54,8 +54,19 @@ requirements. The collector must allowlist sources and avoid secrets; the receiv
 cannot infer whether arbitrary text in a producer's metadata contains a secret.
 Host identity must match the credential. The envelope rejects unknown fields,
 invalid identifiers, naive/future timestamps, excessive nesting and non-JSON numbers.
-Maximum body size is 8 MiB, at most 100,000 item objects per category. The private
-reverse proxy must enforce a matching body/request-rate limit before public use.
+Inventory ingest caps the body at 2 MiB. Before building a report object, a
+streaming JSON event pass rejects more than 100000 elements (containers,
+scalar values and object keys, including duplicate keys) or nesting deeper than
+16 levels. Budget failures return 400; byte failures return 413. The base report
+fixture is 429 bytes, and a 10000-package variant is 490380 bytes. Large
+producers must reduce report content to these limits. The element budget includes the optional one-event array wrapper; that framing
+level does not reduce the report's 16-level nesting allowance. Items share the
+100000-event budget across categories: roughly 33000 one-field, just under 20000 two-field,
+or 14000 three-field objects fit, with fewer when other categories or nested
+metadata consume events. Byte size may impose a lower ceiling. Reports must be
+UTF-8 without a BOM; empty bodies and unparseable numeric tokens return 400.
+The private reverse proxy must enforce a matching body/request-rate limit before
+public use.
 
 Reports are stored transactionally in the existing Django database; Influx does
 not hold the inventory documents. HTTP 200 means the transaction committed.
@@ -87,8 +98,8 @@ categories and coverage gaps stay visible, not inferred as fully inventoried.
 Partial application
 probes still mark the entire applications category failed. Producers may attach
 `partial_items` only to an `applications` category with `status: error` and empty
-`items`. This optional list of objects has the same 100,000-entry, nesting and
-whole-request size limits as ordinary items. It contains individual probe results,
+`items`. This optional list of objects shares the whole-report element, nesting and
+byte budgets with ordinary items. It contains individual probe results,
 including their errors and coverage gaps. The private detail page labels these
 latest-attempt results incomplete and keeps the last successful observation
 separate. Partial evidence does not clear category-error alerts. The preview shows
@@ -241,7 +252,7 @@ a reliable workaround; unattended inventory delivery is not approved. The exact
 upstream cause is unresolved; the probe must fail when the stall occurs.
 
 
-Assertions cover a >4 MiB Unicode report, HTTP 503 retries, SIGKILL plus recovery
+Assertions cover a >1 MiB and <2 MiB Unicode report, HTTP 503 retries, SIGKILL plus recovery
 from the disk buffer with only the synthetic source removed, a dropped committed
 response with idempotent retry, last-success preservation after a failed category,
 host binding, revoked writers, a working separate monitor credential that writers
@@ -294,7 +305,7 @@ This new probe records `listeners_stopped` for its own listener threads; sender
 subprocesses are awaited (and killed/reaped by `subprocess.run` on timeout).
 The older Vector probe retains its existing `processes_stopped` field.
 
-Coverage includes >5 MiB Unicode reports, a real 503 rejection followed by a new
+Coverage includes >1 MiB and <2 MiB Unicode reports, a real 503 rejection followed by a new
 sender process, a lost reply after commit followed by idempotent replay, delayed
 snapshots/category errors, package removal, host-binding rejection and credential
 revocation. The retry test first verifies persistent backoff, then advances only

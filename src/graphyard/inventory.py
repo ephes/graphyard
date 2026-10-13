@@ -5,10 +5,13 @@ from __future__ import annotations
 import base64
 import hashlib
 import hmac
+import io
 import json
 import logging
 from datetime import timedelta
 from uuid import UUID
+
+import ijson
 
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
@@ -31,7 +34,38 @@ from .models import (
 
 logger = logging.getLogger(__name__)
 CATEGORIES = ("packages", "units", "containers", "applications")
-MAX_BYTES = 8 * 1024 * 1024
+MAX_BYTES = 2 * 1024 * 1024
+MAX_ELEMENTS = 100000
+MAX_DEPTH = 16
+# The C backend crashes on integer callback failures; use the public Python backend.
+STREAMING_JSON = ijson.get_backend("python")
+
+
+def decode_report(body):
+    # Stream events first: no lists/dicts are materialized until both budgets
+    # pass. Object keys count too, including duplicate keys discarded by loads.
+    depth = 0
+    elements = 0
+    wire_max_depth = MAX_DEPTH
+    try:
+        for event, _ in STREAMING_JSON.basic_parse(io.BytesIO(body)):
+            if elements == 0 and event == "start_array":
+                # Vector adds one framing level; validate the unwrapped report.
+                wire_max_depth += 1
+            if event in ("end_map", "end_array"):
+                depth -= 1
+                continue
+            elements += 1
+            if elements > MAX_ELEMENTS:
+                raise ValueError("report element limit")
+            if depth > wire_max_depth:
+                raise ValueError("report nesting limit")
+            if event in ("start_map", "start_array"):
+                depth += 1
+    except (ijson.JSONError, ArithmeticError):
+        # Decimal rejects exponents outside its supported range.
+        raise ValueError("invalid inventory JSON") from None
+    return json.loads(body)
 
 
 def canonical(report):
@@ -117,10 +151,8 @@ def validate(report, now):
             raise ValueError("invalid category")
         if category["status"] not in ("ok", "error", "unsupported"):
             raise ValueError("invalid category status")
-        if (
-            not isinstance(category["items"], list)
-            or len(category["items"]) > 100000
-            or any(not isinstance(item, dict) for item in category["items"])
+        if not isinstance(category["items"], list) or any(
+            not isinstance(item, dict) for item in category["items"]
         ):
             raise ValueError("invalid category items")
         if category["status"] != "ok" and category["items"]:
@@ -131,7 +163,6 @@ def validate(report, now):
                 name != "applications"
                 or category["status"] != "error"
                 or not isinstance(partial, list)
-                or len(partial) > 100000
                 or any(not isinstance(item, dict) for item in partial)
             ):
                 raise ValueError("invalid partial application evidence")
@@ -143,7 +174,7 @@ def validate(report, now):
     stack = [(report, 0)]
     while stack:
         item, depth = stack.pop()
-        if depth > 16:
+        if depth > MAX_DEPTH:
             raise ValueError("report nesting limit")
         if isinstance(item, dict):
             stack.extend((value, depth + 1) for value in item.values())
@@ -169,7 +200,7 @@ def ingest(request):
         body = request.read(MAX_BYTES + 1)
         if len(body) > MAX_BYTES:
             return JsonResponse({"error": "report too large"}, status=413)
-        report = json.loads(body)
+        report = decode_report(body)
         # Vector JSON encoding can frame one event as a one-element array.
         if isinstance(report, list) and len(report) == 1:
             report = report[0]

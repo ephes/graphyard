@@ -239,22 +239,22 @@ def test_partial_coverage_preview_is_bounded_for_untrusted_shapes(
 ):
     data = report()
     coverage = (
-        {f"gap-{i}": "x" for i in range(5000)}
+        {f"gap-{i}": "x" for i in range(500)}
         if shape == "dict"
-        else ("x" * 100000 if shape == "string" else ["<" * 1000] * 100)
+        else ("x" * 10000 if shape == "string" else ["<" * 1000] * 20)
     )
     data["categories"]["applications"] = {
         "status": "error",
         "items": [],
         "partial_items": [{"id": "app", "items": {"coverage": coverage}}] * 50,
     }
-    # All shapes fit the unchanged 8 MiB request limit.
+    # Keep hostile preview shapes within the ingest byte and element budgets.
     assert send(client, enrolled, data).status_code == 200
     client.force_login(django_user_model.objects.create_user(username="shape-reader"))
     html = client.get(reverse("graphyard:inventory_detail", args=["studio"])).content
     assert html.count(b"<li>") <= 501
     assert len(html) < 500000
-    assert b"gap-4999" not in html
+    assert b"gap-499" not in html
     assert b"app" in html
     if shape == "list":
         assert b"&lt;" * 160 in html
@@ -317,9 +317,9 @@ def test_malformed_failed_and_deep_reports(client, enrolled):
 def test_large_report_and_limit(client, enrolled):
     data = report()
     data["categories"]["packages"]["items"] = [
-        {"name": f"pkg-{i}", "metadata": "x" * 150} for i in range(25000)
+        {"name": f"pkg-{i}", "metadata": "x" * 150} for i in range(7500)
     ]
-    assert len(json.dumps(data)) > 4 * 1024 * 1024
+    assert 1024 * 1024 < len(json.dumps(data)) < MAX_BYTES
     assert send(client, enrolled, data).status_code == 200
     assert InventorySnapshot.objects.get().report == data
     oversized = client.post(
@@ -1471,3 +1471,131 @@ def test_uuid_spelling_retries_preserve_identity(client, enrolled, spelling, leg
     assert InventorySnapshot.objects.count() == 1
     if not legacy:
         assert after.report["snapshot_id"] == str(identity)
+
+
+def test_inventory_element_budget_stops_before_materialization(
+    client, enrolled, monkeypatch
+):
+    from graphyard import inventory
+
+    real_parse = inventory.STREAMING_JSON.basic_parse
+    events = []
+
+    def counted(*args, **kwargs):
+        for event in real_parse(*args, **kwargs):
+            events.append(event[0])
+            yield event
+
+    monkeypatch.setattr(inventory.STREAMING_JSON, "basic_parse", counted)
+    monkeypatch.setattr(
+        inventory.json,
+        "loads",
+        lambda *a, **kw: pytest.fail("oversized report materialized"),
+    )
+    # Almost 2 MiB, many tiny arrays: reject before decoding the whole body.
+    body = b"[" + b"[]," * ((inventory.MAX_BYTES - 2) // 3 - 1) + b"[]]"
+    assert send(client, enrolled, body).status_code == 400
+    assert len(events) <= inventory.MAX_ELEMENTS * 2 + 1
+    assert len(events) < len(body) // 2
+    assert not InventorySnapshot.objects.exists()
+
+
+def test_inventory_nesting_budget_precedes_materialization(
+    client, enrolled, monkeypatch
+):
+    from graphyard import inventory
+
+    monkeypatch.setattr(
+        inventory.json,
+        "loads",
+        lambda *a, **kw: pytest.fail("deep report materialized"),
+    )
+    assert send(client, enrolled, b"[" * 100 + b"0" + b"]" * 100).status_code == 400
+
+
+def test_inventory_event_boundaries(monkeypatch):
+    from graphyard import inventory
+
+    monkeypatch.setattr(inventory, "MAX_ELEMENTS", 3)
+    assert inventory.decode_report(b"[1,2]") == [1, 2]
+    with pytest.raises(ValueError, match="element limit"):
+        inventory.decode_report(b"[1,2,3]")
+    # Count keys even if normal JSON decoding would discard duplicates.
+    with pytest.raises(ValueError, match="element limit"):
+        inventory.decode_report(b'{"a":1,"a":2}')
+
+
+def test_inventory_representative_fixture_size():
+    from graphyard import inventory
+
+    data = report()
+    size = len(json.dumps(data).encode())
+    assert size < 1024
+    data["categories"]["packages"]["items"] *= 10000
+    body = json.dumps(data).encode()
+    assert len(body) < inventory.MAX_BYTES
+    assert inventory.decode_report(body) == data
+
+
+def test_inventory_reduced_body_cap(client, enrolled):
+    assert send(client, enrolled, b" " * (2 * 1024 * 1024 + 1)).status_code == 413
+
+
+def test_inventory_depth_boundaries(monkeypatch):
+    from graphyard import inventory
+
+    monkeypatch.setattr(inventory, "MAX_DEPTH", 1)
+    assert inventory.decode_report(b"[[]]") == [[]]
+    with pytest.raises(ValueError, match="nesting limit"):
+        inventory.decode_report(b"[[[[]]]]")
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        b"1e1000000000000000000",
+        b"1" * 5000,
+        b"",
+        b"\xef\xbb\xbf{}",
+        "{}".encode("utf-16"),
+        "{}".encode("utf-32"),
+    ],
+)
+def test_inventory_decoder_failures_return_400(client, enrolled, value):
+    response = client.generic(
+        "POST",
+        reverse("graphyard:inventory_ingest"),
+        data=value,
+        content_type="application/json",
+        CONTENT_TYPE="application/json",
+        HTTP_AUTHORIZATION=enrolled[2],
+    )
+    assert response.status_code == 400
+    assert not InventorySnapshot.objects.exists()
+
+
+@pytest.mark.parametrize("wrapped", [False, True])
+@pytest.mark.parametrize("depth,expected", [(16, 200), (17, 400)])
+def test_inventory_report_depth_matches_wrapped_report(
+    client, enrolled, wrapped, depth, expected
+):
+    data = report()
+    nested = "leaf"
+    for _ in range(depth - 4):
+        nested = {"child": nested}
+    data["categories"]["packages"]["items"] = [nested]
+    assert send(client, enrolled, [data] if wrapped else data).status_code == expected
+
+
+def test_inventory_object_root_depth_precedes_materialization(monkeypatch):
+    from graphyard import inventory
+
+    monkeypatch.setattr(inventory, "MAX_DEPTH", 2)
+    assert inventory.decode_report(b'{"a":{"b":1}}') == {"a": {"b": 1}}
+    monkeypatch.setattr(
+        inventory.json,
+        "loads",
+        lambda *a, **kw: pytest.fail("deep object materialized"),
+    )
+    with pytest.raises(ValueError, match="nesting limit"):
+        inventory.decode_report(b'{"a":{"b":{"c":1}}}')
