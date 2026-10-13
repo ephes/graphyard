@@ -1,12 +1,17 @@
 from __future__ import annotations
 
+import math
+
 from django.core.exceptions import ValidationError
 from django.core.management.base import BaseCommand, CommandError
+from django.db import DatabaseError, transaction
 
 from graphyard.models import ComparisonOperator, ConditionDefinition, SubjectType
 
 
 def _validate_threshold(name: str, value: float) -> None:
+    if not math.isfinite(value):
+        raise CommandError(f"{name} must be finite")
     if value < 0 or value > 1:
         raise CommandError(f"{name} must be between 0 and 1 for ratio metrics")
 
@@ -42,7 +47,7 @@ class Command(BaseCommand):
                 ComparisonOperator.LTE,
             ],
             default=ComparisonOperator.GTE,
-            help="Comparison operator (default: gte)",
+            help="Comparison operator (default: gte; lt/lte require warning >= critical)",
         )
         parser.add_argument(
             "--warning-threshold",
@@ -118,7 +123,12 @@ class Command(BaseCommand):
 
         _validate_threshold("warning-threshold", warning_threshold)
         _validate_threshold("critical-threshold", critical_threshold)
-        if warning_threshold > critical_threshold:
+        low_value_alert = operator in (ComparisonOperator.LT, ComparisonOperator.LTE)
+        if low_value_alert and warning_threshold < critical_threshold:
+            raise CommandError(
+                "--warning-threshold must be greater than or equal to --critical-threshold"
+            )
+        if not low_value_alert and warning_threshold > critical_threshold:
             raise CommandError(
                 "--warning-threshold must be less than or equal to --critical-threshold"
             )
@@ -150,19 +160,22 @@ class Command(BaseCommand):
             "alert_when_stale": not intermittent,
         }
 
-        condition, created = ConditionDefinition.objects.get_or_create(
-            name=condition_name,
-            defaults=defaults,
-        )
-        if not created:
-            for field_name, field_value in defaults.items():
-                setattr(condition, field_name, field_value)
-
         try:
-            condition.full_clean()
-        except ValidationError as err:
+            with transaction.atomic():
+                condition = (
+                    ConditionDefinition.objects.select_for_update()
+                    .filter(name=condition_name)
+                    .first()
+                )
+                created = condition is None
+                if condition is None:
+                    condition = ConditionDefinition(name=condition_name)
+                for field_name, field_value in defaults.items():
+                    setattr(condition, field_name, field_value)
+                condition.full_clean()
+                condition.save()
+        except (ValidationError, DatabaseError) as err:
             raise CommandError(str(err)) from err
-        condition.save()
 
         action = "Created" if created else "Updated"
         self.stdout.write(self.style.SUCCESS(f"{action} condition"))

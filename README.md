@@ -489,7 +489,7 @@ Create conditions in Django admin (`ConditionDefinition`) using:
 - optional `subject_type_filter` / `subject_id_filter`
 - legacy `host_filter` (host-subject compatibility)
 - operator (`gt|gte|lt|lte`)
-- warning/critical thresholds
+- warning/critical thresholds (finite numbers; either threshold may be empty)
 - breach duration window
 - optional staleness allowance (`stale_after_seconds`) and `alert_when_stale`
   (see "Intermittent sources" below)
@@ -505,6 +505,13 @@ Seed (or update) a practical host disk-usage condition:
 ```bash
 just manage seed_disk_usage_condition --host macmini --mountpoint /
 ```
+
+Seed ratios must be finite and between 0 and 1. For `gt`/`gte`, warning must
+be at most critical (defaults: 0.8/0.9). For `lt`/`lte`, warning must be at
+least critical, for example `--operator lte --warning-threshold 0.2
+--critical-threshold 0.1`; 0.15 then reports warning.
+Seeding validates before saving and creates/updates atomically by unique name.
+Validation or database save failures leave new and existing conditions unchanged.
 
 Defaults: warning `0.80`, critical `0.90`, operator `gte`, metric `host.filesystem_used_ratio`.
 

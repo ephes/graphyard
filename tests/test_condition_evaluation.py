@@ -649,3 +649,46 @@ def test_stale_allowance_must_be_positive():
     condition.stale_after_seconds = 0
     with pytest.raises(ValidationError):
         condition.clean()
+
+
+@pytest.mark.parametrize("field", ["warning_threshold", "critical_threshold"])
+@pytest.mark.parametrize("value", [float("nan"), float("inf"), float("-inf")])
+def test_condition_clean_rejects_nonfinite_threshold(field, value):
+    condition = _condition()
+    setattr(condition, field, value)
+    with pytest.raises(ValidationError) as error:
+        condition.clean()
+    assert field in error.value.message_dict
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("field", ["warning_threshold", "critical_threshold"])
+@pytest.mark.parametrize("value", ["nan", "inf", "-inf"])
+def test_condition_admin_form_rejects_nonfinite_threshold(field, value):
+    from django.contrib.admin.sites import AdminSite
+
+    from graphyard.admin import ConditionDefinitionAdmin
+
+    model_admin = ConditionDefinitionAdmin(ConditionDefinition, AdminSite())
+    form_class = model_admin.get_form(None)
+    form = form_class(
+        data={
+            "name": "fixture",
+            "metric_name": "fixture.metric",
+            "operator": "gt",
+            "warning_threshold": "60",
+            "critical_threshold": "75",
+            "window_minutes": "30",
+            "breach_minutes": "5",
+            "status": "ok",
+            field: value,
+        }
+    )
+    assert not form.is_valid()
+    assert field in form.errors
+    assert not ConditionDefinition.objects.exists()
+
+
+def test_condition_clean_preserves_optional_unbounded_finite_thresholds():
+    _condition(warning_threshold=None, critical_threshold=-1000).clean()
+    _condition(warning_threshold=1000, critical_threshold=None).clean()

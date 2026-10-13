@@ -203,3 +203,103 @@ def test_seed_disk_usage_condition_rejects_non_positive_stale_allowance(value):
             value,
         )
     assert not ConditionDefinition.objects.exists()
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("field", ["warning_threshold", "critical_threshold"])
+@pytest.mark.parametrize("value", [float("nan"), float("inf"), float("-inf")])
+@pytest.mark.parametrize("existing", [False, True])
+def test_seed_rejects_nonfinite_threshold_without_changes(field, value, existing):
+    if existing:
+        call_command("seed_disk_usage_condition", host="fixture", name="fixture")
+    before = list(ConditionDefinition.objects.values())
+    with pytest.raises(CommandError):
+        call_command(
+            "seed_disk_usage_condition",
+            host="fixture",
+            name="fixture",
+            **{field: value},
+        )
+    assert list(ConditionDefinition.objects.values()) == before
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("operator", ["gt", "gte", "lt", "lte"])
+def test_seed_threshold_order_and_warning_interval(operator, monkeypatch):
+    from datetime import UTC, datetime, timedelta
+
+    from graphyard import influx
+    from graphyard.models import StatusLevel
+    from graphyard.services import evaluate_condition
+
+    warning, critical, sample = (
+        (0.8, 0.9, 0.85) if operator in ("gt", "gte") else (0.2, 0.1, 0.15)
+    )
+    call_command(
+        "seed_disk_usage_condition",
+        host="fixture",
+        operator=operator,
+        warning_threshold=warning,
+        critical_threshold=critical,
+    )
+    condition = ConditionDefinition.objects.get()
+    now = datetime.now(UTC)
+    samples = [
+        influx.MetricSample(
+            ts=now - timedelta(minutes=i),
+            value=sample,
+            host="fixture",
+            metric=condition.metric_name,
+            service="",
+            tags={"mountpoint": "/"},
+        )
+        for i in range(6)
+    ]
+    monkeypatch.setattr(
+        "graphyard.services.influx.query_condition_window", lambda *a, **k: samples
+    )
+    assert evaluate_condition(condition, now=now).status == StatusLevel.WARNING
+    before = list(ConditionDefinition.objects.values())
+    with pytest.raises(CommandError, match="warning-threshold"):
+        call_command(
+            "seed_disk_usage_condition",
+            host="fixture",
+            operator=operator,
+            warning_threshold=critical,
+            critical_threshold=warning,
+        )
+    assert list(ConditionDefinition.objects.values()) == before
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("existing", [False, True])
+def test_seed_validates_host_before_persistence(existing):
+    if existing:
+        call_command("seed_disk_usage_condition", host="fixture", name="fixture")
+    before = list(ConditionDefinition.objects.values())
+    with pytest.raises(CommandError, match="128"):
+        call_command("seed_disk_usage_condition", host="x" * 129, name="fixture")
+    assert list(ConditionDefinition.objects.values()) == before
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("existing", [False, True])
+def test_seed_rolls_back_save_failure(existing, monkeypatch):
+    from django.db import DatabaseError
+
+    if existing:
+        call_command("seed_disk_usage_condition", host="fixture", name="fixture")
+    before = list(ConditionDefinition.objects.values())
+    original_save = ConditionDefinition.save
+    saves = []
+
+    def failing_save(self, *args, **kwargs):
+        original_save(self, *args, **kwargs)
+        saves.append(self.pk)
+        raise DatabaseError("injected save failure")
+
+    monkeypatch.setattr(ConditionDefinition, "save", failing_save)
+    with pytest.raises(CommandError, match="injected save failure"):
+        call_command("seed_disk_usage_condition", host="changed", name="fixture")
+    assert saves
+    assert list(ConditionDefinition.objects.values()) == before
