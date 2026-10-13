@@ -500,6 +500,11 @@ Run evaluator once:
 just manage evaluate_conditions
 ```
 
+The command evaluates independent conditions even if one fails, then prints the
+summary. It exits with status 1 if any evaluation failed and 0 otherwise, so
+schedulers and operators can detect evaluation errors. A condition reporting
+warning or critical after a successful evaluation is not a command failure.
+
 Seed (or update) a practical host disk-usage condition:
 
 ```bash

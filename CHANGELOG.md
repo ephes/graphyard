@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Make `evaluate_conditions` exit with status 1 after reporting the summary when
+  any evaluation failed; independent conditions still run.
+
 - Require finite condition thresholds, preserving optional thresholds and unrestricted
   finite values for other metrics. Order disk seed thresholds by comparison
   direction. Validate before persistence and roll back failed creates/updates.
