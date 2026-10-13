@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 
 from graphyard.services import evaluate_conditions_once
 
@@ -23,6 +23,7 @@ class Command(BaseCommand):
                     f"Condition evaluation completed with failures ({run.failed}/{run.total})."
                 )
             )
+            raise CommandError(f"{run.failed} condition evaluation(s) failed.")
         else:
             self.stdout.write(
                 self.style.SUCCESS(f"Condition evaluation completed ({run.total}).")
