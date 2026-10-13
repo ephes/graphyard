@@ -884,3 +884,11 @@ def test_metrics_endpoint_still_ingests_valid_bodies_below_the_size_limit(
 
     assert response.status_code == 202
     assert len(written) == body.count("host.cpu_usage")
+
+
+@pytest.fixture(autouse=True)
+def fixed_ingest_clock(monkeypatch):
+    # Historical payload fixtures use this instant.
+    monkeypatch.setattr(
+        "graphyard.views._ingest_now", lambda: datetime(2026, 3, 4, 12, tzinfo=UTC)
+    )

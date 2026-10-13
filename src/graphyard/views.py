@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 import logging
 
 from django.conf import settings
@@ -83,12 +83,27 @@ def _record_heartbeat_safe(
         )
 
 
+def _ingest_now() -> datetime:
+    return timezone.now()
+
+
 def _parse_timestamp(value: str) -> datetime:
     normalized = value.replace("Z", "+00:00")
     parsed = datetime.fromisoformat(normalized)
     if parsed.tzinfo is None:
         parsed = parsed.replace(tzinfo=UTC)
-    return parsed.astimezone(UTC)
+    try:
+        parsed = parsed.astimezone(UTC)
+    except OverflowError:
+        raise ValueError("timestamp outside ingest window") from None
+    now = _ingest_now()
+    if not (
+        now - timedelta(seconds=settings.GRAPHYARD_INGEST_MAX_AGE_SECONDS)
+        <= parsed
+        <= now + timedelta(seconds=settings.GRAPHYARD_INGEST_MAX_FUTURE_SECONDS)
+    ):
+        raise ValueError("timestamp outside ingest window")
+    return parsed
 
 
 def _load_metrics_json(text: str, *, total_metrics: int = 0) -> object:
@@ -200,9 +215,29 @@ def _parse_metrics_payload(payload: object) -> list[MetricPoint]:
         if raw_tags is None:
             tags: dict[str, str] = {}
         elif isinstance(raw_tags, dict):
+            if len(raw_tags) > 32:
+                raise _parse_error(f"Metric at index {idx} exceeds 32 tags")
             tags = {str(key): str(tag_value) for key, tag_value in raw_tags.items()}
         else:
             raise _parse_error(f"Metric at index {idx} has invalid tags")
+
+        for name in (
+            "metric",
+            "host",
+            "service",
+            "subject_type",
+            "subject_id",
+            "source_system",
+            "source_instance",
+            "source_entity_id",
+            "collector_service",
+            "collector_host",
+        ):
+            dimension = item.get(name)
+            if isinstance(dimension, str) and len(dimension) > 256:
+                raise _parse_error(f"Metric at index {idx} has overlong {name}")
+        if any(len(key) > 256 or len(value) > 256 for key, value in tags.items()):
+            raise _parse_error(f"Metric at index {idx} has overlong tag key or value")
 
         host_raw = host.strip() if isinstance(host, str) else ""
         service_raw = service.strip() if isinstance(service, str) else ""

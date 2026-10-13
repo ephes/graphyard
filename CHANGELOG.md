@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Bound metric ingest timestamps to a configurable seven-day past / five-minute
+  future window and limit supplied tags to 32 and identity/tag strings to 256
+  characters. Invalid points reject the batch with their index.
+
 - Reject nonfinite or invalid numeric query samples from both Flux and SQL as
   evaluation errors. Mixed valid/invalid results cannot appear healthy or refresh
   the last successful evidence, including for intermittent conditions.
