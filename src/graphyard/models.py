@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import math
 
 from django.contrib.auth.hashers import check_password
 from django.core.exceptions import ValidationError
@@ -334,6 +335,18 @@ class ConditionDefinition(models.Model):
             raise ValidationError(
                 "ConditionDefinition requires warning_threshold or critical_threshold"
             )
+        errors = {}
+        for field in ("warning_threshold", "critical_threshold"):
+            value = getattr(self, field)
+            if value is not None:
+                try:
+                    valid = math.isfinite(value)
+                except (TypeError, ValueError, OverflowError):
+                    valid = False
+                if not valid:
+                    errors[field] = "Must be a finite number."
+        if errors:
+            raise ValidationError(errors)
         if self.stale_after_seconds is not None and self.stale_after_seconds <= 0:
             raise ValidationError(
                 {

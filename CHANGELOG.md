@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Require finite condition thresholds, preserving optional thresholds and unrestricted
+  finite values for other metrics. Order disk seed thresholds by comparison
+  direction. Validate before persistence and roll back failed creates/updates.
+
 - Escape Flux string interpolation markers in configured query filters and
   escape/cap rejected metric names in ingest validation logs.
 
