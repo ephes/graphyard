@@ -25,6 +25,7 @@ from .models import (
     PipelineHeartbeat,
     ServiceRegistry,
     StatusLevel,
+    SubjectRegistry,
 )
 from .services import (
     record_heartbeat,
@@ -167,6 +168,12 @@ def _parse_metrics_payload(payload: object) -> list[MetricPoint]:
 
     points: list[MetricPoint] = []
     payload_size = len(payload)
+    identity_limits = {
+        "subject_id": SubjectRegistry._meta.get_field("subject_id").max_length,
+        "host": HostRegistry._meta.get_field("host_id").max_length,
+        "service": ServiceRegistry._meta.get_field("service_id").max_length,
+        "source_system": SubjectRegistry._meta.get_field("source_system").max_length,
+    }
 
     def _parse_error(message: str) -> MetricsPayloadValidationError:
         return MetricsPayloadValidationError(
@@ -234,8 +241,11 @@ def _parse_metrics_payload(payload: object) -> list[MetricPoint]:
             "collector_host",
         ):
             dimension = item.get(name)
-            if isinstance(dimension, str) and len(dimension) > 256:
-                raise _parse_error(f"Metric at index {idx} has overlong {name}")
+            limit = identity_limits.get(name, 256)
+            if isinstance(dimension, str) and len(dimension) > limit:
+                raise _parse_error(
+                    f"Metric at index {idx} has overlong {name} (max {limit} characters)"
+                )
         if any(len(key) > 256 or len(value) > 256 for key, value in tags.items()):
             raise _parse_error(f"Metric at index {idx} has overlong tag key or value")
 
@@ -320,6 +330,15 @@ def _parse_metrics_payload(payload: object) -> list[MetricPoint]:
             raise _normalization_error(
                 f"Metric at index {idx} failed validation: {err}"
             ) from err
+
+        # Validate the values actually persisted, including legacy fallbacks and
+        # Unicode normalization that can expand a subject identifier.
+        for name, limit in identity_limits.items():
+            dimension = getattr(normalized, name)
+            if dimension is not None and len(dimension) > limit:
+                raise _normalization_error(
+                    f"Metric at index {idx} has overlong {name} (max {limit} characters)"
+                )
 
         points.append(normalized)
 

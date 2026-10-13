@@ -461,8 +461,13 @@ seven days through now plus five minutes. Configure
 `GRAPHYARD_INGEST_MAX_FUTURE_SECONDS` (300), in seconds, for deliberate backfills
 or collector clock tolerance. Both settings accept 0 through 3153600000 (100 years). Collectors here emit current timestamps and have
 no metrics retry buffer; external buffered senders must fit this window.
-Each point accepts at most 32 supplied tags; metric, host, service, canonical
-identity fields, tag keys and stringified tag values are limited to 256 characters.
+Each point accepts at most 32 supplied tags. Host, service and subject identifiers
+are limited to their registry model fields' maximum lengths (currently 128
+characters); `source_system` is limited to 64. Limits also apply after normalization
+and legacy fallbacks. A service name longer than 64 characters needs an explicit
+`source_system` within its limit, since the default uses the service name.
+Other metric/dimension strings, tag keys and stringified tag values are limited
+to 256 characters.
 An invalid point reports its index and rejects the whole request before writes.
 
 Malformed bodies get the same bounded rejection instead of a server error: a body that is not valid

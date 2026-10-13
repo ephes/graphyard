@@ -2,7 +2,12 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from graphyard.models import IngestToken
+from graphyard.models import (
+    HostRegistry,
+    IngestToken,
+    ServiceRegistry,
+    SubjectRegistry,
+)
 
 NOW = datetime(2026, 10, 13, 12, tzinfo=UTC)
 
@@ -53,19 +58,69 @@ def test_configured_backfill(ingest, settings):
 
 @pytest.mark.parametrize(
     "field",
-    ["metric", "host", "service", "subject_id", "collector_host", "source_instance"],
+    ["metric", "collector_host", "source_instance"],
 )
 @pytest.mark.parametrize("length,expected", [(256, 202), (257, 400)])
 def test_identity_lengths(ingest, field, length, expected):
     post, written = ingest
     changes = {field: "a" * length}
-    if field == "subject_id":
-        changes["host"] = changes[field]
     response = post(changes)
     assert response.status_code == expected
     if expected == 400:
         assert "index 1" in response.json()["error"]
         assert not written
+
+
+@pytest.mark.parametrize(
+    "field,model,model_field",
+    [
+        ("host", HostRegistry, "host_id"),
+        ("service", ServiceRegistry, "service_id"),
+        ("subject_id", SubjectRegistry, "subject_id"),
+        ("source_system", SubjectRegistry, "source_system"),
+    ],
+)
+@pytest.mark.parametrize("extra", [0, 1, 128])
+def test_registry_identity_lengths(ingest, field, model, model_field, extra):
+    post, written = ingest
+    limit = model._meta.get_field(model_field).max_length
+    changes = {"source_system": "legacy"}
+    changes[field] = "a" * (limit + extra)
+    if field == "subject_id":
+        changes.update(subject_type="service", host=None)
+    response = post(changes)
+    assert response.status_code == (400 if extra else 202)
+    if extra:
+        error = response.json()["error"]
+        assert "index 1" in error
+        assert field in error
+        assert str(limit) in error
+        assert not written
+        assert not HostRegistry.objects.exists()
+        assert not ServiceRegistry.objects.exists()
+        assert not SubjectRegistry.objects.exists()
+    else:
+        assert len(written) == 2
+        assert model.objects.filter(**{model_field: changes[field]}).exists()
+
+
+@pytest.mark.parametrize("subject_type", ["host", "service"])
+def test_normalized_subject_identity_length(ingest, subject_type):
+    post, written = ingest
+    # Lowercasing can expand Unicode: İ becomes i + a combining dot, then i_.
+    response = post(
+        {
+            "host": None,
+            "subject_type": subject_type,
+            "subject_id": "İ" * 65,
+            "collector_host": "edge",
+        }
+    )
+    assert response.status_code == 400
+    assert "subject_id" in response.json()["error"]
+    assert "128" in response.json()["error"]
+    assert not written
+    assert not SubjectRegistry.objects.exists()
 
 
 @pytest.mark.parametrize(
@@ -96,3 +151,13 @@ def test_extreme_timezone_timestamp_is_indexed_error(ingest, timestamp):
     assert response.status_code == 400
     assert "index 1" in response.json()["error"]
     assert not written
+
+
+def test_service_fallback_source_system_length(ingest):
+    post, written = ingest
+    response = post({"service": "a" * 65})
+    assert response.status_code == 400
+    assert "source_system" in response.json()["error"]
+    assert "64" in response.json()["error"]
+    assert not written
+    assert not SubjectRegistry.objects.exists()
