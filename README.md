@@ -520,6 +520,13 @@ relax this for intermittent sources:
 
 Conditions that set neither field behave exactly as before.
 
+Influx query samples must be finite numbers on both Flux and SQL backends. A
+NaN, infinity, or invalid numeric value rejects the whole query, including when
+other series are valid or the condition permits stale data. The evaluation run
+marks the condition `critical` with an evaluation error; the previous
+`last_value` and successful `last_evaluated` remain, rather than presenting an
+older valid sample as fresh evidence.
+
 Example supported condition: humidity above threshold for N minutes.
 
 A condition breaches when its value is past the threshold for the whole breach
