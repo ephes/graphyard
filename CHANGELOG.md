@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Throttle failed application and admin logins by username/client and client
+  address, with configurable trusted proxy hops and fixed cache windows. Reject
+  invalid window/address/proxy settings at startup; locked attempts do not churn
+  cache keys. Configure the standalone inventory probe too.
+
 - Bound metric ingest timestamps to a configurable seven-day past / five-minute
   future window and limit supplied tags to 32 and identity/tag strings to 256
   characters. Invalid points reject the batch with their index.

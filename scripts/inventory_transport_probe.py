@@ -55,6 +55,22 @@ def configure(root, monitor_credential):
         LOGIN_URL="/login/",
         LOGIN_REDIRECT_URL="/inventory/",
         USE_TZ=True,
+        AUTHENTICATION_BACKENDS=[
+            "graphyard.login_throttle.LoginThrottleBackend",
+            "django.contrib.auth.backends.ModelBackend",
+        ],
+        LOGIN_FAILURE_LIMIT=5,
+        LOGIN_ADDRESS_FAILURE_LIMIT=50,
+        LOGIN_FAILURE_WINDOW_S=900,
+        LOGIN_THROTTLE_PROXY_HOPS=0,
+        CACHES={
+            "default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"},
+            "login_throttle": {
+                "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+                "OPTIONS": {"MAX_ENTRIES": 10000},
+                "LOCATION": "graphyard-probe-login-throttle",
+            },
+        },
         INSTALLED_APPS=[
             "django.contrib.admin",
             "django.contrib.auth",

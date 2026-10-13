@@ -13,8 +13,13 @@ PASSWORD_HASHERS = [
 ]
 
 CACHES = {
+    "login_throttle": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "OPTIONS": {"MAX_ENTRIES": 10000},
+        "LOCATION": "graphyard-login-throttle-test",
+    },
     "default": {
         "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
         "LOCATION": "",
-    }
+    },
 }

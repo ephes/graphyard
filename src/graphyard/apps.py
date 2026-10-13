@@ -48,6 +48,8 @@ class GraphyardConfig(AppConfig):
     name = "graphyard"
 
     def ready(self) -> None:
+        from . import login_throttle  # noqa: F401
+
         connection_created.connect(
             _configure_sqlite_connection,
             dispatch_uid="graphyard.sqlite_connection_pragmas",
