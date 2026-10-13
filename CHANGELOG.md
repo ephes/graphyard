@@ -5,6 +5,12 @@
 - Reject nonfinite or invalid numeric query samples from both Flux and SQL as
   evaluation errors. Mixed valid/invalid results cannot appear healthy or refresh
   the last successful evidence, including for intermittent conditions.
+- Stream InfluxDB 3 SQL results under a 10 MiB decoded response limit and a
+  30-second total read deadline; close failed responses and reject partial data.
+  These fixed limits also apply when `INFLUX_TIMEOUT_MS` is higher. Narrow existing
+  condition filters/windows if results exceed the limit. OS DNS cleanup can
+  outlast the deadline (see README). SQL errors retain safe HTTP status or
+  transport exception categories without including response bodies or URLs.
 
 - Bound both Home Assistant collectors by decoded response size (10 MiB by
   default) and a total deadline (three request timeouts by default), using the

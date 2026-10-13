@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime, timedelta
 
+import httpx
 from influxdb_client.rest import ApiException
 import pytest
 
@@ -137,11 +139,6 @@ def test_query_range_v3_sql_selects_and_returns_dimension_columns(
     captured: dict[str, object] = {}
 
     class _FakeResponse:
-        status_code = 200
-
-        def raise_for_status(self) -> None:
-            return None
-
         def json(self):
             return [
                 {
@@ -162,20 +159,27 @@ def test_query_range_v3_sql_selects_and_returns_dimension_columns(
                 }
             ]
 
-    def _fake_post(url: str, json: dict, headers: dict, timeout: float):
-        captured["url"] = url
-        captured["query"] = json["q"]
-        captured["headers"] = headers
-        captured["timeout"] = timeout
-        return _FakeResponse()
+    real_client = httpx.AsyncClient
 
-    monkeypatch.setattr(influx.httpx, "post", _fake_post)
+    def handle(request):
+        captured["url"] = str(request.url)
+        captured["query"] = json.loads(request.content)["q"]
+        captured["headers"] = request.headers
+        return httpx.Response(200, json=_FakeResponse().json())
+
+    monkeypatch.setattr(
+        influx.httpx,
+        "AsyncClient",
+        lambda **kwargs: real_client(transport=httpx.MockTransport(handle), **kwargs),
+    )
 
     start = datetime(2026, 3, 4, 11, 0, tzinfo=UTC)
     stop = datetime(2026, 3, 4, 12, 0, tzinfo=UTC)
     samples = influx._query_range_v3_sql("ha.sensor.office_temperature", start, stop)
 
     assert str(captured["query"]).startswith("select * ")
+    assert captured["url"] == "http://influx.local/api/v3/query_sql"
+    assert captured["headers"]["Authorization"] == "Bearer token"
     assert len(samples) == 1
     assert samples[0].subject_type == "environment_sensor"
     assert samples[0].subject_id == "office_temperature"
