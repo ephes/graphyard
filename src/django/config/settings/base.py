@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 import environ
+from django.core.exceptions import ImproperlyConfigured
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
@@ -178,3 +179,32 @@ for _window_setting in (
         raise ValueError(
             "Metric ingest window settings must be between 0 and 3153600000 seconds"
         )
+
+# The first backend gates both application and admin authentication.
+AUTHENTICATION_BACKENDS = [
+    "graphyard.login_throttle.LoginThrottleBackend",
+    "django.contrib.auth.backends.ModelBackend",
+]
+LOGIN_FAILURE_LIMIT = env.int("GRAPHYARD_LOGIN_FAILURE_LIMIT", default=5)
+LOGIN_ADDRESS_FAILURE_LIMIT = env.int(
+    "GRAPHYARD_LOGIN_ADDRESS_FAILURE_LIMIT", default=50
+)
+LOGIN_FAILURE_WINDOW_S = env.int("GRAPHYARD_LOGIN_FAILURE_WINDOW_SECONDS", default=900)
+LOGIN_THROTTLE_PROXY_HOPS = env.int("GRAPHYARD_LOGIN_THROTTLE_PROXY_HOPS", default=0)
+CACHES = {
+    "default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"},
+    "login_throttle": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "OPTIONS": {"MAX_ENTRIES": 10000},
+        "LOCATION": "graphyard-login-throttle",
+    },
+}
+
+
+for _name, _value, _minimum in (
+    ("GRAPHYARD_LOGIN_ADDRESS_FAILURE_LIMIT", LOGIN_ADDRESS_FAILURE_LIMIT, 1),
+    ("GRAPHYARD_LOGIN_FAILURE_WINDOW_SECONDS", LOGIN_FAILURE_WINDOW_S, 1),
+    ("GRAPHYARD_LOGIN_THROTTLE_PROXY_HOPS", LOGIN_THROTTLE_PROXY_HOPS, 0),
+):
+    if _value < _minimum:
+        raise ImproperlyConfigured(f"{_name} must be at least {_minimum}, got {_value}")

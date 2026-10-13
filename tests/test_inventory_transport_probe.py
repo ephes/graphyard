@@ -87,3 +87,34 @@ def test_non_json_backend_keeps_status_without_private_response_body():
         }
     ]
     assert "private backend" not in json.dumps(proxy.errors)
+
+
+def test_isolated_probe_configuration_supports_real_login(tmp_path):
+    import os
+    import subprocess
+    import sys
+
+    environment = os.environ.copy()
+    environment.pop("DJANGO_SETTINGS_MODULE", None)
+    code = """
+import sys
+from pathlib import Path
+sys.path.insert(0, "scripts")
+from inventory_transport_probe import configure
+configure(Path(sys.argv[1]), "test-monitor")
+from django.contrib.auth import get_user_model
+from django.test import Client
+get_user_model().objects.create_user("probe", password="correct")
+client = Client(HTTP_HOST="127.0.0.1")
+assert client.post("/login/", {"username":"probe", "password":"wrong"}).status_code == 200
+assert client.post("/login/", {"username":"probe", "password":"correct"}).status_code == 302
+"""
+    result = subprocess.run(
+        [sys.executable, "-c", code, str(tmp_path)],
+        cwd=Path(__file__).resolve().parents[1],
+        env=environment,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    assert result.returncode == 0, result.stderr

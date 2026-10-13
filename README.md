@@ -635,3 +635,28 @@ See `docs/influx_grafana.md` for retention/downsampling notes and Grafana linkin
 Migration note: dashboards now filter primarily on canonical `subject_*`/`source_*` tags. Historical
 series written before this migration may not have those tags, so old data can be absent from the new
 subject-aware panels until fresh points are ingested.
+
+## Login throttling
+
+Both `/login/` and the Django admin refuse authentication after five failed
+attempts per username/client address, or 50 per address, in a fixed 15-minute
+window. A successful login clears the username/address counter. Configure
+`GRAPHYARD_LOGIN_FAILURE_LIMIT`, `GRAPHYARD_LOGIN_ADDRESS_FAILURE_LIMIT` and
+`GRAPHYARD_LOGIN_FAILURE_WINDOW_SECONDS`; a nonpositive username limit disables
+throttling. Blocked attempts show the standard invalid-credentials form response
+and do not check the password. Counters use a separate local-memory cache:
+limits apply per process and reset on restart. Use a shared Django cache backend
+for the `login_throttle` alias if multiple workers must share limits. Supported
+backends are local memory and Memcached, whose atomic increments preserve
+expiry; other cache backends are not supported. The local cache holds
+up to 10000 keys; exceeding capacity can evict active counters. Already locked
+attempts do not create new keys. Address limits and window seconds must be
+positive; proxy hops must be nonnegative. Invalid settings abort startup.
+`GRAPHYARD_LOGIN_THROTTLE_PROXY_HOPS` defaults to 0 (use REMOTE_ADDR without reading forwarded headers in the throttle).
+The shipped `config.wsgi_proxy` Granian wrapper already rewrites REMOTE_ADDR
+for trusted loopback proxies; keep hops at 0 with that wrapper. With plain
+`config.wsgi` behind a proxy that does not rewrite REMOTE_ADDR, hops 0 shares
+one address bucket among all clients of the proxy.
+Set it to the number of trusted proxy hops only when direct access to the app
+is restricted and those proxies append/replace X-Forwarded-For. With one hop,
+the rightmost address is used; spoofed entries to its left are ignored.
