@@ -614,6 +614,10 @@ Status values are always `ok|warning|critical`.
 
 ## Production Runtime Pattern (systemd)
 
+Required production entrypoint: `config.wsgi_proxy:application`.
+See [web service deployment](docs/deployment.md) for the proxy and login throttle
+address contract.
+
 Use units in `deploy/systemd/`:
 
 - `graphyard-web.service` (Django + Granian)
@@ -643,6 +647,10 @@ series written before this migration may not have those tags, so old data can be
 subject-aware panels until fresh points are ingested.
 
 ## Login throttling
+
+Required production entrypoint: `config.wsgi_proxy:application`.
+See [web service deployment](docs/deployment.md) for the trusted loopback proxy
+contract and its REMOTE_ADDR dependency.
 
 Both `/login/` and the Django admin refuse authentication after five failed
 attempts per username/client address, or 50 per address, in a fixed 15-minute

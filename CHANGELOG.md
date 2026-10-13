@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Pin the production Granian proxy wrapper, trusted client address rewriting, and
+  required deployment entrypoint with regression tests for login throttling.
+
 - Escape Flux string interpolation markers in configured query filters and
   escape/cap rejected metric names in ingest validation logs.
 
