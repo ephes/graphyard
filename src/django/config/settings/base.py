@@ -161,3 +161,20 @@ CONDITION_DATA_STALE_WARNING_SECONDS = env.int(
 
 # Separate read-only credential for central inventory monitoring, disabled if empty.
 GRAPHYARD_INVENTORY_MONITOR_TOKEN = env("GRAPHYARD_INVENTORY_MONITOR_TOKEN", default="")
+
+# Inclusive metric ingest bounds; increase age deliberately for backfills.
+GRAPHYARD_INGEST_MAX_AGE_SECONDS = env.int(
+    "GRAPHYARD_INGEST_MAX_AGE_SECONDS", default=604800
+)
+GRAPHYARD_INGEST_MAX_FUTURE_SECONDS = env.int(
+    "GRAPHYARD_INGEST_MAX_FUTURE_SECONDS", default=300
+)
+
+for _window_setting in (
+    GRAPHYARD_INGEST_MAX_AGE_SECONDS,
+    GRAPHYARD_INGEST_MAX_FUTURE_SECONDS,
+):
+    if not 0 <= _window_setting <= 3153600000:
+        raise ValueError(
+            "Metric ingest window settings must be between 0 and 3153600000 seconds"
+        )

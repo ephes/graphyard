@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import io
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from django.core.exceptions import ValidationError
@@ -582,3 +582,11 @@ def test_host_scope_migration_is_reversible_and_keeps_tokens():
         executor = MigrationExecutor(connection)
         executor.migrate(executor.loader.graph.leaf_nodes())
         IngestToken.objects.all().delete()
+
+
+@pytest.fixture(autouse=True)
+def fixed_ingest_clock(monkeypatch):
+    # Historical payload fixtures use this instant.
+    monkeypatch.setattr(
+        "graphyard.views._ingest_now", lambda: datetime(2026, 3, 4, 12, tzinfo=UTC)
+    )

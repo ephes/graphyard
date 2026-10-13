@@ -182,7 +182,7 @@ Usage is recorded at ingest from this release onwards (table
 `ingest_token_host_usage`, `last_seen` updated at most hourly, at most 500 identifiers per token),
 so let it collect for a while before scoping existing tokens.
 
-The scope does not limit metric names, `service` tags or timestamps, and it does not apply to the
+The scope does not limit metric names or `service` tags, and it does not apply to the
 inventory API, which has its own per-host credentials.
 
 Graphyard stores token hashes only.
@@ -449,6 +449,16 @@ Write-path behavior is partial-success: invalid points are rejected per-point, w
 same batch are still written.
 For `POST /v1/metrics`, request-level payload validation is fail-fast: if any point fails ingest payload
 parsing/normalization before write, the request is rejected with `400` and no points are written.
+Metric ingest timestamps must fall within the inclusive window of now minus
+seven days through now plus five minutes. Configure
+`GRAPHYARD_INGEST_MAX_AGE_SECONDS` (604800) and
+`GRAPHYARD_INGEST_MAX_FUTURE_SECONDS` (300), in seconds, for deliberate backfills
+or collector clock tolerance. Both settings accept 0 through 3153600000 (100 years). Collectors here emit current timestamps and have
+no metrics retry buffer; external buffered senders must fit this window.
+Each point accepts at most 32 supplied tags; metric, host, service, canonical
+identity fields, tag keys and stringified tag values are limited to 256 characters.
+An invalid point reports its index and rejects the whole request before writes.
+
 Malformed bodies get the same bounded rejection instead of a server error: a body that is not valid
 UTF-8 or whose JSON is nested too deeply to parse returns `400`, and a body larger than Django's
 `DATA_UPLOAD_MAX_MEMORY_SIZE` (2.5 MB by default) returns `413`. Each response is JSON with a fixed
