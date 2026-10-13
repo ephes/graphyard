@@ -29,6 +29,15 @@ Graphyard runtime supports both InfluxDB v2 and v3 query paths:
 For normal development, keep `INFLUX_API_MODE=auto`.
 For production on the current InfluxDB v2 baseline, set `INFLUX_API_MODE=v2`.
 
+### Query strings and logs
+
+Flux queries treat configured names, buckets and tag filters as string literals,
+including `${...}` text. Escaping follows the
+[Flux string specification](https://docs.influxdata.com/flux/v0/spec/lexical-elements/).
+The ingest normalization rejection record escapes metric names using at most
+256 source characters before formatting, so newlines cannot forge log lines.
+Error details in that record use at most 512 source characters before formatting.
+
 ## Grafana Provisioning and Compatibility
 
 Graphyard includes Grafana provisioning:
