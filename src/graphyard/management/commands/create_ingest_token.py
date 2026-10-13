@@ -87,6 +87,7 @@ class Command(BaseCommand):
                         previous.revoke()
                     # Names are unique: the retired row keeps its history under
                     # a derived name and frees the name for the new token.
+                    ingest_token.bound_subject_id = previous.bound_subject_id
                     previous.name = retired_token_name(previous)
                     previous.save(update_fields=["name"])
                     if host_scope is None:

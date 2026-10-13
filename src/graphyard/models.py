@@ -6,6 +6,7 @@ import math
 
 from django.contrib.auth.hashers import check_password
 from django.core.exceptions import ValidationError
+from django.core.validators import RegexValidator
 from django.conf import settings
 from django.db import models
 from django.utils import timezone
@@ -56,6 +57,18 @@ class IngestToken(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     revoked_at = models.DateTimeField(blank=True, null=True)
     last_used_at = models.DateTimeField(blank=True, null=True)
+    bound_subject_id = models.CharField(
+        max_length=128,
+        null=True,
+        blank=True,
+        validators=[
+            RegexValidator(
+                r"^[a-z0-9]+(?:_[a-z0-9]+)*$",
+                "Use a canonical subject identifier (lowercase snake_case).",
+            )
+        ],
+        help_text="Single subject/host this token may write for. Empty means legacy/unbound.",
+    )
     host_scope = models.JSONField(
         default=list,
         blank=True,

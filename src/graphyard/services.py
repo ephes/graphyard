@@ -13,6 +13,7 @@ from typing import Callable, TypeVar
 
 import httpx
 from django.conf import settings
+from django.db.models import Q
 from django.db import OperationalError, connection, transaction
 from django.utils import timezone
 
@@ -2081,7 +2082,9 @@ def record_token_host_usage(token: IngestToken, identifiers: set[str]) -> None:
             )
 
 
-def touch_registry_from_points(points: list[influx.MetricPoint]) -> None:
+def touch_registry_from_points(
+    points: list[influx.MetricPoint], *, bound_subject_id: str | None = None
+) -> None:
     now = timezone.now()
     for point in points:
         normalized = influx.normalize_metric_point(point)
@@ -2130,6 +2133,17 @@ def touch_registry_from_points(points: list[influx.MetricPoint]) -> None:
                     "host": service_host,
                 },
             )
+            if bound_subject_id is not None:
+                # Conditional update also protects against ownership changes after
+                # request validation. Never re-parent or touch a foreign service.
+                allowed = ServiceRegistry.objects.filter(pk=service.pk).filter(
+                    Q(host__isnull=True) | Q(host__host_id=bound_subject_id)
+                )
+                updates: dict[str, object] = {"last_seen_at": now}
+                if service_host is not None:
+                    updates["host_id"] = service_host.pk
+                allowed.update(**updates)
+                continue
             changed_fields: list[str] = []
             if service_host is not None and service.host_id != service_host.id:
                 service.host = service_host

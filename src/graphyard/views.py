@@ -32,7 +32,7 @@ from .services import (
     record_token_host_usage,
     touch_registry_from_points,
 )
-from .token_scope import host_in_scope, is_scoped
+from .token_scope import canonical_host_identifier, host_in_scope, is_scoped
 
 logger = logging.getLogger(__name__)
 
@@ -82,6 +82,33 @@ def _record_heartbeat_safe(
             name,
             status,
         )
+
+
+def _reject_binding(
+    token: IngestToken,
+    message: str,
+    *,
+    total_metrics: int = 0,
+    index: int | None = None,
+) -> JsonResponse:
+    logger.warning(
+        "metrics_ingest_rejected category=binding rejected_requests=1 rejected_count=1 total_metrics=%s token_id=%s index=%s",
+        total_metrics,
+        token.pk,
+        index,
+    )
+    # Health is public: do not persist the token name or subject/service identities.
+    _record_heartbeat_safe(
+        "metric_ingest",
+        status=StatusLevel.WARNING,
+        last_error="Metrics rejected: token subject/host binding",
+        details={
+            "category": "binding",
+            "rejected_count": 1,
+            "total_metrics": total_metrics,
+        },
+    )
+    return _json_error(message, status=403)
 
 
 def _ingest_now() -> datetime:
@@ -399,6 +426,11 @@ def metrics_ingest(request: HttpRequest) -> JsonResponse:
         )
         return _json_error("Missing or invalid bearer token", status=401)
 
+    if not token.bound_subject_id and settings.GRAPHYARD_REQUIRE_BOUND_INGEST_TOKENS:
+        return _reject_binding(
+            token, "This ingest token requires a subject/host binding"
+        )
+
     status = 400
     try:
         try:
@@ -431,6 +463,29 @@ def metrics_ingest(request: HttpRequest) -> JsonResponse:
             },
         )
         return _json_error(str(err), status=status)
+
+    if token.bound_subject_id:
+        # Check explicit identities before normalization can discard a legacy
+        # host or reject inconsistent host/subject claims with a generic 400.
+        items = payload.get("metrics") if isinstance(payload, dict) else payload
+        if isinstance(items, list):
+            for idx, item in enumerate(items):
+                if not isinstance(item, dict):
+                    continue  # Ordinary payload validation reports malformed points.
+                for field in ("host", "subject_id", "collector_host"):
+                    value = item.get(field)
+                    if field == "host" and isinstance(value, str) and not value.strip():
+                        continue  # Legacy blank host is absent when canonical fields exist.
+                    if (
+                        isinstance(value, str)
+                        and canonical_host_identifier(value) != token.bound_subject_id
+                    ):
+                        return _reject_binding(
+                            token,
+                            f"Metric at index {idx} is outside this token subject/host binding",
+                            total_metrics=len(items),
+                            index=idx,
+                        )
 
     try:
         points = _parse_metrics_payload(payload)
@@ -466,6 +521,37 @@ def metrics_ingest(request: HttpRequest) -> JsonResponse:
             },
         )
         return _json_error(str(err), status=400)
+
+    if token.bound_subject_id:
+        binding = token.bound_subject_id
+        # Validate actual persisted identities too, including inferred fallbacks.
+        for idx, point in enumerate(points):
+            identifiers = _point_host_identifiers(point)
+            if not binding or any(
+                canonical_host_identifier(value) != binding for value in identifiers
+            ):
+                return _reject_binding(
+                    token,
+                    f"Metric at index {idx} is outside this token subject/host binding",
+                    total_metrics=len(points),
+                    index=idx,
+                )
+        service_ids = {point.service for point in points if point.service}
+        foreign_services = set(
+            ServiceRegistry.objects.filter(
+                service_id__in=service_ids, host__isnull=False
+            )
+            .exclude(host__host_id=binding)
+            .values_list("service_id", flat=True)
+        )
+        for idx, point in enumerate(points):
+            if point.service in foreign_services:
+                return _reject_binding(
+                    token,
+                    f"Metric at index {idx} names a service that belongs to another host",
+                    total_metrics=len(points),
+                    index=idx,
+                )
 
     out_of_scope_index = _first_out_of_scope_index(token, points)
     if out_of_scope_index is not None:
@@ -513,7 +599,10 @@ def metrics_ingest(request: HttpRequest) -> JsonResponse:
         return _json_error("Failed to persist metrics", status=503)
 
     try:
-        touch_registry_from_points(points)
+        if not token.bound_subject_id:
+            touch_registry_from_points(points)
+        else:
+            touch_registry_from_points(points, bound_subject_id=token.bound_subject_id)
     except OperationalError as err:
         if "database is locked" not in str(err).lower():
             raise
