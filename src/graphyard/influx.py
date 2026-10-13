@@ -117,6 +117,15 @@ def parse_finite_float(raw: object) -> float:
     return value
 
 
+def _parse_query_value(raw: object) -> float:
+    try:
+        return parse_finite_float(raw)
+    except (TypeError, ValueError, OverflowError) as err:
+        raise InfluxConfigurationError(
+            "InfluxDB query sample must be a finite number"
+        ) from err
+
+
 def normalize_metric_point(item: MetricPoint) -> MetricPoint:
     metric_name = str(item.metric).strip()
     if not metric_name:
@@ -452,7 +461,7 @@ def _query_range_v2_flux(
             samples.append(
                 MetricSample(
                     ts=_ensure_utc(record_time),
-                    value=float(value),
+                    value=_parse_query_value(value),
                     host=str(record.values.get("host", "")),
                     metric=str(record.values.get("metric", metric_name)),
                     service=(
@@ -621,14 +630,13 @@ def _query_range_v3_sql(
 
         try:
             ts = _parse_influx_ts(str(row_time))
-            float_value = float(str(row_value))
         except (TypeError, ValueError):
             continue
 
         samples.append(
             MetricSample(
                 ts=ts,
-                value=float_value,
+                value=_parse_query_value(row_value),
                 host=str(row.get("host", "")),
                 metric=str(row.get("metric", metric_name)),
                 service=(

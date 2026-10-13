@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Reject nonfinite or invalid numeric query samples from both Flux and SQL as
+  evaluation errors. Mixed valid/invalid results cannot appear healthy or refresh
+  the last successful evidence, including for intermittent conditions.
+
 - Bound both Home Assistant collectors by decoded response size (10 MiB by
   default) and a total deadline (three request timeouts by default), using the
   shared HTTP cancellation and worker limits. Budget failures close responses,
