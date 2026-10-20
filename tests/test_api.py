@@ -593,8 +593,16 @@ def test_metrics_endpoint_reraises_non_lock_registry_errors(client, monkeypatch)
     assert response.status_code == 500
 
 
+@pytest.fixture
+def user_client(client, django_user_model):
+    user = django_user_model.objects.create_user(username="operator", password="pw")
+    client.force_login(user)
+    return client
+
+
 @pytest.mark.django_db
-def test_conditions_endpoints(client):
+def test_conditions_endpoints(user_client):
+    client = user_client
     condition = ConditionDefinition.objects.create(
         name="Humidity too high",
         metric_name="ha.sensor.living_room_humidity",
@@ -613,6 +621,7 @@ def test_conditions_endpoints(client):
     assert list_response.status_code == 200
     payload = list_response.json()
     assert payload["conditions"][0]["status"] == "warning"
+    assert payload["conditions"][0]["message"] == "humidity > 65 for 10m"
     assert payload["summary"] == {
         "total": 1,
         "ok": 0,
@@ -632,10 +641,53 @@ def test_conditions_endpoints(client):
     assert detail["config"]["stale_after_seconds"] is None
     assert detail["config"]["alert_when_stale"] is True
     assert detail["config"]["stale_limit_seconds"] == 600
+    assert detail["message"] == "humidity > 65 for 10m"
+    assert "last_value" in detail
 
 
 @pytest.mark.django_db
-def test_condition_detail_exposes_staleness_allowance(client):
+def test_conditions_endpoints_hide_details_from_anonymous_callers(client):
+    condition = ConditionDefinition.objects.create(
+        name="Host filesystem usage (macmini /)",
+        metric_name="host.filesystem_used_ratio",
+        host_filter="macmini",
+        operator="gte",
+        warning_threshold=0.8,
+        critical_threshold=0.9,
+        status=StatusLevel.CRITICAL,
+        last_evaluated=datetime(2026, 3, 4, 10, 0, tzinfo=UTC),
+        last_value=0.95,
+        message="evaluation error: http://influx.internal:8086 refused",
+        enabled=True,
+    )
+
+    payload = client.get(reverse("graphyard:conditions_list")).json()
+    # Nyxmon and the ops-control seed playbook rely on these fields anonymously.
+    assert payload["conditions"] == [
+        {
+            "id": condition.id,
+            "name": "Host filesystem usage (macmini /)",
+            "status": "critical",
+            "last_evaluated": "2026-03-04T10:00:00+00:00",
+        }
+    ]
+    assert payload["summary"] == {"total": 1, "ok": 0, "warning": 0, "critical": 1}
+
+    detail_response = client.get(
+        reverse("graphyard:condition_detail", kwargs={"condition_id": condition.id})
+    )
+    assert detail_response.status_code == 200
+    assert detail_response.json() == {
+        "id": condition.id,
+        "name": "Host filesystem usage (macmini /)",
+        "status": "critical",
+        "last_evaluated": "2026-03-04T10:00:00+00:00",
+    }
+
+
+@pytest.mark.django_db
+def test_condition_detail_exposes_staleness_allowance(user_client):
+    client = user_client
     condition = ConditionDefinition.objects.create(
         name="Laptop disk",
         metric_name="host.filesystem_used_ratio",
@@ -726,6 +778,71 @@ def test_health_endpoint_shape(client, monkeypatch):
     assert "database" in payload["components"]
     assert "influxdb" in payload["components"]
     assert "pipelines" in payload["components"]
+
+
+def _seed_failing_health(monkeypatch):
+    from graphyard.models import PipelineHeartbeat
+
+    monkeypatch.setattr(
+        "graphyard.views.influx_health",
+        lambda: {
+            "status": "fail",
+            "message": "secret-influx-message",
+            "name": "influx-a",
+        },
+    )
+    PipelineHeartbeat.objects.create(
+        name="metric_collectors",
+        status=StatusLevel.WARNING,
+        last_error="collector http://collector.internal:9100 failed",
+        details={"failed_specs": ["internal-spec"]},
+    )
+
+
+@pytest.mark.django_db
+def test_health_endpoint_hides_details_from_anonymous_callers(client, monkeypatch):
+    _seed_failing_health(monkeypatch)
+
+    response = client.get(reverse("graphyard:health"))
+    assert response.status_code == 200
+    payload = response.json()
+    body = response.content.decode()
+
+    assert payload["status"] == "warning"
+    assert payload["components"]["database"] == {"status": "ok"}
+    assert payload["components"]["influxdb"] == {"status": "warning"}
+    pipelines = payload["components"]["pipelines"]
+    assert set(pipelines) == {
+        "metric_ingest",
+        "metric_collectors",
+        "condition_evaluator",
+    }
+    assert pipelines["metric_collectors"] == {
+        "status": "warning",
+        "last_success": None,
+        "age_seconds": None,
+    }
+    assert set(payload["conditions"]) == {"total", "ok", "warning", "critical"}
+    for leaked in (
+        "secret-influx-message",
+        "influx-a",
+        "collector.internal",
+        "internal-spec",
+    ):
+        assert leaked not in body
+
+
+@pytest.mark.django_db
+def test_health_endpoint_shows_details_to_logged_in_users(user_client, monkeypatch):
+    _seed_failing_health(monkeypatch)
+
+    payload = user_client.get(reverse("graphyard:health")).json()
+
+    assert payload["components"]["influxdb"]["message"] == "secret-influx-message"
+    assert payload["components"]["influxdb"]["name"] == "influx-a"
+    collectors = payload["components"]["pipelines"]["metric_collectors"]
+    assert collectors["message"] == "collector http://collector.internal:9100 failed"
+    assert collectors["details"] == {"failed_specs": ["internal-spec"]}
 
 
 @pytest.mark.django_db
