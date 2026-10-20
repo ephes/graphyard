@@ -105,6 +105,7 @@ class IngestTokenAdmin(admin.ModelAdmin):
         "name",
         "enabled",
         "host_scope_display",
+        "bound_subject_id",
         "last_used_at",
         "created_at",
         "revoked_at",

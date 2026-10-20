@@ -163,6 +163,10 @@ CONDITION_DATA_STALE_WARNING_SECONDS = env.int(
 # Separate read-only credential for central inventory monitoring, disabled if empty.
 GRAPHYARD_INVENTORY_MONITOR_TOKEN = env("GRAPHYARD_INVENTORY_MONITOR_TOKEN", default="")
 
+GRAPHYARD_REQUIRE_BOUND_INGEST_TOKENS = env.bool(
+    "GRAPHYARD_REQUIRE_BOUND_INGEST_TOKENS", default=False
+)
+
 # Inclusive metric ingest bounds; increase age deliberately for backfills.
 GRAPHYARD_INGEST_MAX_AGE_SECONDS = env.int(
     "GRAPHYARD_INGEST_MAX_AGE_SECONDS", default=604800

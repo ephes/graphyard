@@ -291,6 +291,13 @@ Enforcement point: ingest/write boundary before point persistence.
 - Normalize/validate `subject_id` format.
 - Ensure `source_instance` is always present (use `default` fallback).
 - Emit warning/error counters for mapping failures and rejected points.
+- Bearer ingest tokens may have one `bound_subject_id`; all claimed subject/host
+  identities must match it and whole batches are checked before writes. Existing
+  host scopes remain additional restrictions. Bound tokens cannot re-parent
+  services registered to other hosts. Unbound tokens retain legacy behavior
+  unless `GRAPHYARD_REQUIRE_BOUND_INGEST_TOKENS` is enabled. See the
+  [binding rollout](../README.md#single-subjecthost-binding-and-rollout) before
+  assigning bindings or enabling the requirement.
 
 ## Cardinality Guardrails
 

@@ -137,6 +137,73 @@ just manage revoke_ingest_token --id 1
 just manage revoke_ingest_token --name macmini
 ```
 
+### Single subject/host binding and rollout
+
+Each ingest token now has an optional `bound_subject_id` (one canonical subject/host
+identifier, no wildcards). A bound token may write only points whose normalized
+`subject_id` **and** `collector_host` equal that binding. An explicit legacy `host`
+must also match, including on non-host subjects. Names use the existing subject
+normalization (`Edge.LAN` becomes `edge_lan`). These checks apply to every subject
+type, so producers reporting distinct service/sensor/device subjects need separate
+tokens and matching collector identities before binding. Existing multi-host scopes
+remain additional restrictions; setting a binding does not widen them.
+
+The whole JSON/NDJSON batch is checked before writing. A binding mismatch or a
+service already registered to another host returns a clear `403`, writes no metrics,
+and changes no registry or usage rows. Bound ingests cannot take over foreign services,
+including when ownership changes after validation. Unbound tokens keep the current
+behavior while `GRAPHYARD_REQUIRE_BOUND_INGEST_TOKENS=false` (the default). Setting it
+to `true` rejects all unbound tokens with `403`, even those with a host scope.
+Binding rejections log `metrics_ingest_rejected category=binding` with the token id
+and point index (when known), and set a fixed-text warning heartbeat without host,
+service or token names. Check web logs during rollout; the global heartbeat can later
+return to OK when another producer succeeds.
+Bindings are editable and visible in Django admin; an empty admin binding means unbound.
+Rotation/re-creation of a revoked token retains its binding, even with `--unrestricted`
+(which clears only the older multi-host scope).
+
+Roll out in this order, **after the owner reviews the token-to-host mapping**:
+
+1. Deploy the code and run migrations, including `0012_ingest_token_subject_binding`,
+   with `GRAPHYARD_REQUIRE_BOUND_INGEST_TOKENS=false`. Existing tokens migrate to NULL
+   bindings; no bindings are inferred by migration.
+2. Run the read-only report: `just manage report_ingest_token_bindings --days 30`.
+   It lists every token by **name only**, including disabled tokens, recent identifiers,
+   last-seen times and a proposed binding only when exactly one identifier was observed.
+   It never prints a credential or hash, and identifies tokens by stored name only.
+   Retired names include their existing retirement suffix; their usage stays with
+   the disabled row, not the new token. A fresh rotated token needs new observations.
+3. Review each proposal against the intended producer/host mapping, then assign:
+   `just manage bind_ingest_token --name macmini --subject macmini`.
+   This command sets one exact binding by token name without printing credentials.
+   Resolve multiple-identifier producers and review tokens with no observations;
+   proposals are not automatic assignments. In admin, review the ServiceRegistry
+   host mapping for every `service` tag the producers send. Service identifiers are
+   globally unique: producers on different hosts must use distinct service names
+   (for example `edge_mail` and `core_mail`). A conflicting service rejects the whole
+   batch with an indexed 403, including unrelated points. Resolve conflicts and
+   host-less service ownership before binding; a bound producer can claim an
+   unregistered or host-less service. Legacy unbound producers and internal
+   collectors keep their existing re-parenting behavior and can move a service away
+   from a bound host, causing subsequent 403s. Coordinate their service names too;
+   bindings do not reserve service names.
+4. Once every active producer has a binding and has successfully ingested, set
+   `GRAPHYARD_REQUIRE_BOUND_INGEST_TOKENS=true` and restart the web app.
+
+Report data comes from the existing `ingest_token_host_usage.last_seen_at` table,
+which records normalized **subject_id and collector_host** for accepted ingests since
+host-usage recording was introduced. Host/subject registry last-seen rows alone cannot
+attribute writes to tokens. Usage updates at most hourly, retains at most 500 identifiers
+per token, and may miss writes during SQLite contention; there is no historical backfill.
+A single observed identifier is evidence to review, not proof of exclusive ownership.
+Wait for representative writes if the report is empty or incomplete.
+
+For rollback, disable the requirement setting first. Clear individual bindings in admin
+only after reviewing the resulting access. Migration 0012 is reversible and preserves
+tokens, hashes and older scopes, but reversing it discards bindings. Older code cannot
+enforce the new bindings. This feature applies to bearer metric ingest; inventory has
+its own credentials and internal scheduled collectors do not use ingest tokens.
+
 ### Host scope (optional)
 
 By default an ingest token may write metrics for any host. A token can be limited to the hosts it

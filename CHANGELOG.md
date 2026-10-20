@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Add nullable single subject/host bindings for ingest tokens (reversible migration
+  `0012_ingest_token_subject_binding`). Validate entire batches before writing and
+  prevent bound tokens from taking over another host's services. Preserve legacy
+  behavior by default; `GRAPHYARD_REQUIRE_BOUND_INGEST_TOKENS=true` rejects unbound
+  tokens. Add a credential-free binding report and assignment command, admin
+  binding display/editing, and staged rollout/rollback documentation. Rotation
+  preserves bindings.
+
 - Make `evaluate_conditions` exit with status 1 after reporting the summary when
   any evaluation failed; independent conditions still run.
 

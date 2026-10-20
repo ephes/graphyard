@@ -570,7 +570,10 @@ def test_host_scope_migration_is_reversible_and_keeps_tokens():
 
         executor = MigrationExecutor(connection)
         executor.migrate(after)
-        token = IngestToken.objects.get(name="legacy")
+        migrated_token = executor.loader.project_state(after).apps.get_model(
+            "graphyard", "IngestToken"
+        )
+        token = migrated_token.objects.get(name="legacy")
         assert token.host_scope == []
         assert token.enabled is True
 
