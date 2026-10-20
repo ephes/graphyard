@@ -696,6 +696,15 @@ Nyxmon can poll:
 
 Status values are always `ok|warning|critical`.
 
+These endpoints need no credential, but unauthenticated callers get a reduced
+payload: `/v1/health` returns the overall `status`, `checked_at`, each
+component's `status` (pipelines also `last_success` and `age_seconds`) and the
+condition counts; `/v1/conditions` and `/v1/conditions/<id>` return `id`,
+`name`, `status` and `last_evaluated` per condition plus the `summary` counts.
+Messages, error texts, heartbeat details, the InfluxDB instance name, a
+condition's `config` and `last_value` can contain internal hosts, URLs and
+token names, so they are only included for a logged-in session (`/login/`).
+
 ## Production Runtime Pattern (systemd)
 
 Required production entrypoint: `config.wsgi_proxy:application`.

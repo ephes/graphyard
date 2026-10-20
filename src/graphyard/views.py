@@ -391,16 +391,20 @@ def _first_out_of_scope_index(
     return None
 
 
-def _serialize_condition(condition: ConditionDefinition) -> dict[str, object]:
-    return {
+def _serialize_condition(
+    condition: ConditionDefinition, *, detailed: bool
+) -> dict[str, object]:
+    payload: dict[str, object] = {
         "id": condition.id,
         "name": condition.name,
         "status": condition.status,
         "last_evaluated": (
             condition.last_evaluated.isoformat() if condition.last_evaluated else None
         ),
-        "message": condition.message,
     }
+    if detailed:
+        payload["message"] = condition.message
+    return payload
 
 
 def _summarize_conditions(conditions: list[ConditionDefinition]) -> dict[str, int]:
@@ -635,11 +639,13 @@ def metrics_ingest(request: HttpRequest) -> JsonResponse:
 
 @require_GET
 def conditions_list(request: HttpRequest) -> JsonResponse:
-    del request
+    detailed = request.user.is_authenticated
     conditions = list(ConditionDefinition.objects.filter(enabled=True).order_by("id"))
     return JsonResponse(
         {
-            "conditions": [_serialize_condition(item) for item in conditions],
+            "conditions": [
+                _serialize_condition(item, detailed=detailed) for item in conditions
+            ],
             "summary": _summarize_conditions(conditions),
         }
     )
@@ -647,10 +653,12 @@ def conditions_list(request: HttpRequest) -> JsonResponse:
 
 @require_GET
 def condition_detail(request: HttpRequest, condition_id: int) -> JsonResponse:
-    del request
     condition = get_object_or_404(ConditionDefinition, id=condition_id, enabled=True)
 
-    payload = _serialize_condition(condition)
+    detailed = request.user.is_authenticated
+    payload = _serialize_condition(condition, detailed=detailed)
+    if not detailed:
+        return JsonResponse(payload)
     payload["config"] = {
         "metric_name": condition.metric_name,
         "host_filter": condition.host_filter,
@@ -716,9 +724,33 @@ def _heartbeat_component(name: str, now: datetime) -> dict[str, object]:
     }
 
 
+def _public_health_components(
+    database_component: dict[str, object],
+    influx_component: dict[str, object],
+    pipelines: dict[str, dict[str, object]],
+) -> dict[str, object]:
+    """Status-only view of the health components for unauthenticated callers.
+
+    Messages, error texts, heartbeat details and the InfluxDB instance name can
+    contain internal hosts, URLs and token names, so they are only returned to
+    logged-in users.
+    """
+    return {
+        "database": {"status": database_component["status"]},
+        "influxdb": {"status": influx_component["status"]},
+        "pipelines": {
+            name: {
+                "status": component["status"],
+                "last_success": component["last_success"],
+                "age_seconds": component["age_seconds"],
+            }
+            for name, component in pipelines.items()
+        },
+    }
+
+
 @require_GET
 def health(request: HttpRequest) -> JsonResponse:
-    del request
     now = timezone.now()
 
     database_component: dict[str, object]
@@ -773,15 +805,21 @@ def health(request: HttpRequest) -> JsonResponse:
         ).count(),
     }
 
+    components: dict[str, object] = {
+        "database": database_component,
+        "influxdb": influx_component,
+        "pipelines": pipelines,
+    }
+    if not request.user.is_authenticated:
+        components = _public_health_components(
+            database_component, influx_component, pipelines
+        )
+
     return JsonResponse(
         {
             "status": overall,
             "checked_at": now.isoformat(),
-            "components": {
-                "database": database_component,
-                "influxdb": influx_component,
-                "pipelines": pipelines,
-            },
+            "components": components,
             "conditions": {
                 "total": sum(condition_counts.values()),
                 "ok": condition_counts[StatusLevel.OK],

@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Return only statuses, timestamps and counts from `/v1/health`, `/v1/conditions`
+  and `/v1/conditions/<id>` to unauthenticated callers. Component messages, error
+  texts, heartbeat details, the InfluxDB name, condition messages, `config` and
+  `last_value` now require a logged-in session. The fields Nyxmon and the deploy
+  and backup health checks read (`status`, component and pipeline `status`,
+  `summary`, condition `name`) stay public.
+
 - Add nullable single subject/host bindings for ingest tokens (reversible migration
   `0012_ingest_token_subject_binding`). Validate entire batches before writing and
   prevent bound tokens from taking over another host's services. Preserve legacy
