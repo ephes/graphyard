@@ -172,6 +172,9 @@ that differs is a bug.
   Rust accepts ASCII digits only and strips Unicode `White_Space` plus
   `\x1c`–`\x1f` (matching `str.isspace`). A Unicode-digit path segment is
   "metric_path not found" in Rust (Python: `int()` raises → `critical`).
+  The same holds for Django's `datetime_re` fallback when reading a stored
+  datetime (5.3): its `\d` matches Unicode digits, Rust's ASCII only, so
+  such text loads as NULL in Rust (`fromisoformat` is ASCII-only in both).
 - **D-7 Django command plumbing.** No Django system checks, no Django global
   options, clap usage text on bad flags (exit 2 as argparse). Settings that
   only the web reads (secret key, login throttle, ingest windows) are not
@@ -211,6 +214,12 @@ that differs is a bug.
     error>`. Production configs have neither (depth ≤ 5, ASCII escapes only;
     re-checked by `shadow_prepare.py`, which scans the copied rows and lists
     any spec or condition that would hit one of these cases).
+  - `pipeline_heartbeat.details` is never parsed by Rust: the heartbeat
+    upsert overwrites it (5.4). Python's `update_or_create` loads it first,
+    so a stored document `json.loads` cannot read for one of the reasons
+    above (4300-digit integers, nesting beyond Python's recursion limit)
+    fails Python's heartbeat write while Rust replaces it. Both writers
+    store small flat objects of integers.
 - **D-12 TLS trust anchors** (Q1, decided 2026-10-21). Python verifies
   against certifi; Rust verifies against the system CA store (Ubuntu
   `ca-certificates`), so a CA incident is fixed by the ops trust rollout plus
@@ -218,6 +227,16 @@ that differs is a bug.
   added to macmini's `restart_units` in ops-control
   `playbooks/ca-trust-consumers.yml` (S11c), so the `ca_trust_consumers`
   rollout restarts the agent after a CA update.
+- **D-13 Stored values of another SQLite storage class.** Rust reads the
+  `integer` columns of the agent tables (ids, `interval_seconds`,
+  `next_run_time`, `window_minutes`, `breach_minutes`,
+  `stale_after_seconds`) as INTEGER, the `real` columns (thresholds,
+  `last_value`) as REAL or INTEGER, the text and JSON columns as TEXT.
+  A value of another storage class can only be written with raw SQL past
+  Django's field conversion; Rust fails the load (stderr `Metric collection
+  failed: …` / `Condition eval failed: …`), where Python hands the value on
+  and may coerce it or fail later. The `bool` and `datetime` columns follow
+  Python's converters exactly, whatever the storage class (5.3).
 
 ---
 
@@ -467,6 +486,7 @@ keep every fixture-tested function in `graphyard-core`.
 | JSON | `serde_json` (`preserve_order`, `arbitrary_precision`) | key order of configs and payloads (rule order, tag order), big integers survive like in Python |
 | Python integers | `num-bigint` (+ `num-traits`) | exact `int` of any size where Python keeps one: `py_int` and the integer settings (3.3), `int == float` in `py_eq`; same crate as nyxmon's `pyjson` |
 | regex | `fancy-regex` | user regexes from spec configs need lookaround/backreference support like Python `re` (D-5) |
+| fixed regexes | `regex` | Django's `datetime_re` fallback when reading stored datetimes (5.3); `fancy-regex` builds on it |
 | time | `chrono` | Django datetime text, ISO parsing of HA `last_updated`, RFC 3339 of Flux |
 | CLI | `clap` (derive) | |
 | logging | `log` + a 20-line stderr logger printing the bare message | matches the production format; no `tracing` stack needed |
@@ -515,49 +535,84 @@ renders such integers with all digits (they never pass the loader) and
 ### 5.1 Schema ownership and startup check
 
 Django migrations own the schema. The Rust agent runs no DDL. At startup
-(and for `--check-schema`) it verifies with `PRAGMA table_info`:
+(and for `--check-schema`) it verifies with `PRAGMA table_info` that every
+column of the six agent tables exists. Django loads whole rows (and converts
+their datetimes, 5.3), so the store selects every column too, including
+`created_at`/`updated_at` of specs and conditions, which it never writes:
 
-- `metric_collection_spec`: `id, name, enabled, spec_type, interval_seconds, next_run_time, config, last_run_at, last_status, last_error`
-- `condition_definition`: `id, name, enabled, metric_name, host_filter, service_filter, subject_type_filter, subject_id_filter, tags_filter, operator, warning_threshold, critical_threshold, window_minutes, breach_minutes, stale_after_seconds, alert_when_stale, status, message, last_value, last_evaluated`
+- `metric_collection_spec`: `id, name, enabled, spec_type, interval_seconds, next_run_time, config, last_run_at, last_status, last_error, created_at, updated_at`
+- `condition_definition`: `id, name, enabled, metric_name, host_filter, service_filter, tags_filter, operator, warning_threshold, critical_threshold, window_minutes, breach_minutes, status, last_evaluated, message, last_value, created_at, updated_at, subject_id_filter, subject_type_filter, alert_when_stale, stale_after_seconds`
 - `pipeline_heartbeat`: `id, name, status, last_success, last_error, details, updated_at`
 - `subject_registry`: `id, subject_type, subject_id, display_name, source_system, last_seen_at`
 - `host_registry`: `id, host_id, display_name, grafana_url, enabled, last_seen_at`
-- `service_registry`: `id, service_id, host_id, display_name, grafana_url, enabled, last_seen_at`
+- `service_registry`: `id, service_id, display_name, grafana_url, enabled, last_seen_at, host_id`
 - `django_migrations` contains `('graphyard', MIN_GRAPHYARD_MIGRATION)`,
-  initially `0010_condition_stale_allowance` (the last migration that changes
-  an agent table; `0011`/`0012` touch only `ingest_token*`; S3a confirms by
-  reading the migrations).
+  `0010_condition_stale_allowance`: the last migration that changes an agent
+  table (`0011`/`0012` touch only `ingest_token*`).
 
-`agent-rs/fixtures/schema/schema.sql` is the `.schema` dump of a database
-freshly migrated with the test settings plus its `django_migrations` rows;
-`agent_tables.json` lists the columns above and the minimum migration. A
-Python test `tests/test_agent_rs_schema_contract.py` regenerates both in
-memory and fails with "run `just rs-fixtures` and update the Rust schema
-contract" when they differ, so a migration touching an agent table cannot
-merge without a conscious Rust change. Every Rust store test builds its
-database from `schema.sql`.
+Extra columns are accepted (a newer, compatible schema). A failed check is
+one line naming every missing table, column and the migration, e.g.
+`database schema is older than the agent contract; missing columns:
+condition_definition.stale_after_seconds; missing migration:
+graphyard.0010_condition_stale_allowance; run `manage.py migrate` before
+starting the agent`; a passing one reads `database schema satisfies the agent
+contract (graphyard.0010_condition_stale_allowance, journal_mode=wal)`.
+
+`agent-rs/fixtures/gen_schema.py` (part of `just rs-fixtures`) migrates a
+temporary database with the test settings and writes
+`agent-rs/fixtures/schema/schema.sql` (the DDL in `sqlite_master` order plus
+the `django_migrations` rows) and `agent_tables.json` (the columns of the six
+tables in `PRAGMA table_info` order and the minimum migration, computed as
+the last graphyard migration whose operations name an agent model; an
+operation without a model, `RunPython`/`RunSQL`, counts as touching one). The
+Python test `tests/test_agent_rs_schema_contract.py` regenerates both and
+fails with "run `just rs-fixtures` and update the Rust schema contract" when
+they differ; `graphyard-store`'s tests assert that `REQUIRED_COLUMNS` and
+`MIN_GRAPHYARD_MIGRATION` equal `agent_tables.json`. So a migration touching
+an agent table cannot merge without a conscious Rust change. Every Rust store
+test builds its database from `schema.sql`.
 
 ### 5.2 Connection
 
 One `rusqlite` connection for the process lifetime, owned by the dedicated
 DB thread of section 4.1 (Django keeps one connection in a management
-command). Opened `SQLITE_OPEN_READ_WRITE` (no
-create), `PRAGMA foreign_keys = ON` (Django's SQLite backend sets it), then
-the three graphyard pragmas of 3.3. Single statements run in autocommit, as
-Django's `save(update_fields=…)` does; multi-statement operations run in
-`BEGIN IMMEDIATE` (settings `transaction_mode: IMMEDIATE`). The web app and
-the agent share the WAL database exactly as today.
+command). Opened `SQLITE_OPEN_READ_WRITE` (no create) with Django's
+connection setup (`sqlite3.connect(timeout=GRAPHYARD_SQLITE_TIMEOUT_SECONDS)`,
+`PRAGMA foreign_keys = ON`, `PRAGMA legacy_alter_table = OFF`), then the
+three graphyard pragmas of 3.3 (a failure logs `Failed to apply SQLite
+pragmas on new DB connection: <err>` on one line). `--check-schema` opens
+`SQLITE_OPEN_READ_ONLY` and applies only the busy timeouts, so it never
+changes the journal mode. Single statements run in autocommit, as Django's
+`save(update_fields=…)` does; multi-statement operations run in `BEGIN
+IMMEDIATE` (settings `transaction_mode: IMMEDIATE`). The web app and the
+agent share the WAL database exactly as today. On shutdown the DB thread
+finishes the operation it is running (a cancelled caller never cuts a
+statement or transaction short) and closes the connection.
 
 ### 5.3 Value formats (P1)
 
 - Datetimes: Django stores aware datetimes as naive UTC text
   `YYYY-MM-DD HH:MM:SS.ffffff`, and **without** `.ffffff` when the
-  microsecond is 0 (`str(datetime)`). Reads accept that form and the forms
-  Django's `parse_datetime` accepts; an unparseable stored value counts as
-  NULL.
-- `pipeline_heartbeat.details`: `json.dumps` default separators
-  (`{"evaluated": 2, "failed": 0}`), key order as in 3.4/3.5.
-- Booleans `0/1`; `last_value` REAL; `next_run_time` integer.
+  microsecond is 0 (`str(datetime)`). Reads reproduce Django's loader: the
+  backend registers `parse_datetime` as the `sqlite3` converter of the
+  `datetime` declared type, so the value's text form (also of an INTEGER or
+  REAL value) goes through CPython 3.12's `datetime.fromisoformat` (the C
+  implementation, ported byte for byte), then Django's `datetime_re`, then
+  `convert_datetimefield_value` (naive is UTC). Text neither accepts loads as
+  NULL; text `datetime_re` matches with out-of-range fields (`2026-13-01
+  00:00:00`) raises `ValueError`, which fails the whole load of specs or
+  conditions (P2 message) as in Python. Writing a loaded value back (the
+  heartbeat's `last_success`, 5.4) uses the UTC text and raises
+  `OverflowError: date value out of range` outside Python's years 1–9999.
+  Pinned by `datetime_codec.json` (curated plus a seeded random corpus).
+- Booleans: written `0/1`; read through Django's `bool` converter
+  `b"1".__eq__`, so only a stored `1` loads as true. `WHERE enabled` still
+  selects any truthy value (a stored `2` is loaded, with `enabled` false).
+- `pipeline_heartbeat.details`: `json.dumps` default separators and
+  `ensure_ascii` (`{"evaluated": 2, "failed": 0}`), key order as in 3.4/3.5.
+- `last_value` REAL (NaN is stored as NULL by SQLite in both); `next_run_time`
+  integer; `config`/`tags_filter` are handed to their parsers as the stored
+  text (D-11).
 
 ### 5.4 Writes per operation (P1, Django ORM as the oracle)
 
@@ -570,12 +625,18 @@ the agent share the WAL database exactly as today.
   **condition failure** — `status, message` only. Same 0-row rule.
 - **Heartbeat** (`record_heartbeat`, `min_update_interval_seconds=0`) —
   Django 6 `update_or_create(name=…, defaults)` inside `BEGIN IMMEDIATE`:
-  existing row → update `status, last_error, details` (+ `last_success=now`
-  when success) and `updated_at` (Django adds `auto_now` fields to
-  `update_fields`); missing row → insert with `last_success` NULL unless
-  success. Up to 3 attempts, retrying only on `database is locked` with
-  sleeps of 50 ms and 100 ms. The exact column set per path is pinned by the
-  `store_ops.json` fixture, not by this paragraph.
+  load the row (all columns, datetimes converted: an out-of-range stored
+  value fails the call); existing row → update `status, last_error, details`
+  plus every field whose class overrides `pre_save`, which Django adds to
+  `update_fields`: `updated_at` (`auto_now`, `now`) and `last_success`
+  (`now` after a success, otherwise the loaded value written back in
+  Django's text form, so an unparseable stored value becomes NULL and an
+  offset form is rewritten in UTC); missing row → insert with `last_success`
+  NULL unless success. Python reads the clock separately for `last_success`
+  and `updated_at`; Rust writes one `now` (P2). Up to 3 attempts, retrying
+  only on `database is locked` with sleeps of 50 ms and 100 ms (await points
+  in Rust, so a shutdown never waits for them). The exact column set per path
+  is pinned by the `store_ops.json` fixture, not by this paragraph.
 - **Registry** (`touch_registry_from_points(points)`, `bound_subject_id=None`)
   — section 5.5.
 
@@ -653,8 +714,8 @@ ingest API, never reads or writes `ingest_token`/`ingest_token_host_usage`,
 and never runs the bound-subject registry branch. The `<host>_host_metrics`
 services and the per-host ingest tokens (ops-control `4394ecd`) are therefore
 outside its reach, and `GRAPHYARD_REQUIRE_BOUND_INGEST_TOKENS` does not affect
-it. S3a adds a Rust test that greps the store's SQL for `ingest_token` and
-fails if found.
+it. A Rust test (S3a) greps every source file of `graphyard-store`, which
+holds all of the agent's SQL, for `ingest_token` and fails if found.
 
 ---
 
@@ -1067,7 +1128,8 @@ and `INFLUX_*` variables from its environment and keeps django-environ from
 reading `src/django/.env` (builders set what they need). Files are rendered
 with `json.dumps(indent=1, ensure_ascii=True, allow_nan=False)` in the key
 order the builder wrote (key order is contract in configs and tags);
-non-finite floats are encoded explicitly by the builder.
+non-finite floats are encoded explicitly by the builder. A builder returning
+a string produces a text file written verbatim (`schema/schema.sql`).
 
 | Fixture | Python source | Content |
 | --- | --- | --- |
@@ -1084,8 +1146,9 @@ non-finite floats are encoded explicitly by the builder.
 | `flux.json` | `_query_range_v2_flux` (query text), `FluxCsvParser` on canned CSV, `query_condition_window` | condition × now → query text; CSV → samples |
 | `sql_v3.json` | `_query_range_v3_sql` (SQL text, row decoding) | |
 | `conditions.json` | `evaluate_condition` with stubbed samples | condition × samples × now → evaluation |
-| `store_ops.json` | spec/condition updates, `record_heartbeat`, `touch_registry_from_points` on a temp DB | rows before → rows after |
-| `schema/` | `manage.py migrate` | section 5.1 |
+| `store_ops.json` | spec/condition loads and updates, `record_heartbeat` (S3a), `touch_registry_from_points` (S3b) on a temp DB | rows before → loaded values or exception, rows after |
+| `datetime_codec.json` | `parse_datetime` through the `sqlite3` converter, `convert_datetimefield_value`, `adapt_datetimefield_value` | stored text → loaded instant or exception, text written back |
+| `schema/` (`gen_schema.py`) | `manage.py migrate`, the migration operations | section 5.1 |
 
 Library-derived (P2) messages are stored as `{"class": …, "p2": true}` and
 the Rust tests check only the class. A drift test
@@ -1331,7 +1394,7 @@ excluding generated fixtures.
 | --- | --- | --- | --- | --- | --- | --- |
 | S1 | Scaffold | workspace, toolchain pin, deny.toml, CI `rust` job, just recipes, shared model types (`MetricPoint`, `MetricSample`, statuses, subject/spec types), fixture generator skeleton (Django test settings bootstrap) + drift test, TESTMAP.md, README | — | with S11a | no | 2.5 |
 | S2 | Python compat + settings | `pycompat` (4.4), env readers (3.3), `spec_config` helpers; fixtures `pycompat`, `settings`, `spec_config` | S1 | with S3a, S10a, S11a, S11b | no | 3.5 |
-| S3a | Store core | DB thread owning the rusqlite connection + pragmas, schema contract + Python contract test, `--check-schema` core, datetime codec, spec/condition reads and updates (0-row rule), heartbeat upsert + retry; `store_ops.json` (non-registry part); `ingest_token` grep test | S1 | with S2, S10a, S11a, S11b | no | 4 |
+| S3a | Store core | DB thread owning the rusqlite connection + pragmas, schema contract + Python contract test, `--check-schema` core, datetime codec, spec/condition reads and updates (0-row rule), heartbeat upsert + retry; `store_ops.json` (non-registry part), `datetime_codec.json`, `schema/`; `ingest_token` grep test | S1 | with S2, S10a, S11a, S11b | no | 4 |
 | S4a | Normalisation + writes | `normalize_*`, `parse_finite_float`, line protocol formatter, write client (6.4), lazy config errors; `normalize.json`, `line_protocol.json` | S2 | with S4b, S5, S6, S3a | no | 3.5 |
 | S4b | Queries | window computation, Flux text + annotated CSV, v3 SQL with caps/deadline/errors, auto fallback; `flux.json`, `sql_v3.json`; fake InfluxDB | S2 | with S4a, S5, S6 | no | 4 |
 | S5 | Condition evaluation | section 7, pure, sample source trait; `conditions.json` | S2 | with S4a, S4b, S6 | no | 3 |

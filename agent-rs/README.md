@@ -7,7 +7,7 @@ target. Nothing runs this code in production yet: the deployment selects it
 only through a systemd drop-in that later slices add (PLAN.md 8.3), and
 deploys ship `agent-rs/` only as a release archive.
 
-Status: slices S1 (scaffold) and S2. S1: the workspace, the toolchain pin,
+Status: slices S1 (scaffold), S2, S3a and S10a. S1: the workspace, the toolchain pin,
 the cargo-deny policy, the CI `rust` job, the `just rs-*` recipes, the shared
 model types (`graphyard_core::model`) and the fixture pipeline with its drift
 test. S2: the CPython compatibility helpers (`graphyard_core::pycompat`), the
@@ -21,6 +21,12 @@ Slice S10a adds the release pipeline (PLAN.md 8.2): the workflow
 `.github/workflows/agent-rs-release.yml`, the checks in
 `scripts/release_checks.py` and the commit stamp of `--version`
 (`crates/graphyard-agent/build.rs`); see [Releases](#releases).
+
+Slice S3a adds the store core in `graphyard-store` (PLAN.md 5): the DB thread
+owning the connection, Django's connection setup and the graphyard pragmas,
+the schema contract and `check_schema`, Django's datetime column conversion,
+spec and condition loads and updates, and the heartbeat upsert with its lock
+retry.
 
 The slice table is PLAN.md section 12; the test coverage per slice is
 [`TESTMAP.md`](TESTMAP.md).
@@ -40,7 +46,9 @@ agent-rs/
                         settings, spec_config (S2); normalisation, line
                         protocol, JSON path, mappings, condition evaluation
                         (S4-S7)
-    graphyard-store/    rusqlite store, schema contract, registry (S3a/S3b)
+    graphyard-store/    rusqlite store: DB thread, schema contract, datetime
+                        codec, specs, conditions, heartbeats (S3a); registry
+                        (S3b)
     graphyard-influx/   InfluxDB write and query clients (S4a/S4b)
     graphyard-collect/  HTTP layer and the five executors (S6/S7a/S7b)
     graphyard-agent/    the binary: CLI, scheduler, runs, signals (S8)
@@ -48,6 +56,9 @@ agent-rs/
     generate.py         fixture driver (`just rs-fixtures`)
     gen_*.py            builder modules, one or more per slice
     *.json              generated fixtures, embedded by the Rust tests
+    schema/             the Django schema contract (gen_schema.py): schema.sql,
+                        from which every store test builds its database, and
+                        agent_tables.json
   scripts/
     release_checks.py   release workflow checks (version, GLIBC floor, smoke, pack)
 ```
@@ -84,8 +95,8 @@ the Rust ones. The parity harness recipe `rs-parity` arrives with slice S9a.
 The Python code is the oracle (PLAN.md 9.2). `fixtures/generate.py`
 discovers every `fixtures/gen_*.py` module, calls the builders of its
 `GENERATORS` mapping (fixture file name → function) under the Django test
-settings, and writes the JSON files. It re-executes itself with
-`PYTHONHASHSEED=0`, removes `DJANGO_*`, `GRAPHYARD_*` and `INFLUX_*`
+settings, and writes the files (JSON, and `schema/schema.sql` as text). It
+re-executes itself with `PYTHONHASHSEED=0`, removes `DJANGO_*`, `GRAPHYARD_*` and `INFLUX_*`
 variables and keeps django-environ from reading `src/django/.env`, so a
 developer environment cannot change a fixture. Files are rendered with
 `indent=1`, ASCII escapes, the key order the builder wrote, and no NaN or
@@ -106,7 +117,20 @@ loading the file in Rust with `include_str!`.
 
 Rust tests parse fixtures with `serde_json` (`preserve_order`,
 `arbitrary_precision`) through the helpers in
-`crates/graphyard-core/src/fixture.rs`.
+`crates/graphyard-core/src/fixture.rs` (the store tests through
+`crates/graphyard-store/tests/common`).
+
+## Schema contract
+
+The agent runs no DDL; Django's migrations own the schema (PLAN.md 5.1).
+`fixtures/gen_schema.py` migrates a temporary database and writes
+`fixtures/schema/schema.sql` and `fixtures/schema/agent_tables.json` (the
+columns of the six agent tables and the minimum graphyard migration, the last
+one whose operations touch an agent model). `tests/test_agent_rs_schema_contract.py`
+fails when a migration changes them; then run `just rs-fixtures`, update
+`REQUIRED_COLUMNS` / `MIN_GRAPHYARD_MIGRATION` in
+`crates/graphyard-store/src/schema.rs` (its tests compare them with
+`agent_tables.json`) and the store code that uses the changed columns.
 
 ## Releases
 

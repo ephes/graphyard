@@ -30,6 +30,15 @@
   `just typecheck` now also run the Rust checks. Nothing is deployed; the Python
   agent is unchanged.
 
+- Add the Rust agent's store core (`agent-rs/crates/graphyard-store`): the
+  database thread with Django's connection setup and the graphyard SQLite
+  pragmas, the schema contract check for `--check-schema`, Django's datetime
+  column conversion, the spec and condition loads and updates, and the
+  heartbeat upsert with its lock retry, all pinned by fixtures generated from
+  the Django ORM. A new test, `tests/test_agent_rs_schema_contract.py`, fails
+  when a migration changes the agent's tables until the Rust contract is
+  updated (`just rs-fixtures`). Nothing is deployed.
+
 - Fix slow metric ingest for bound ingest tokens. The registry update issued one
   `UPDATE service_registry` per point, each a separate SQLite commit, so a
   50-point batch took several seconds under load and Vector producers fell

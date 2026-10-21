@@ -1,0 +1,80 @@
+{
+ "min_graphyard_migration": [
+  "graphyard",
+  "0010_condition_stale_allowance"
+ ],
+ "tables": {
+  "metric_collection_spec": [
+   "id",
+   "name",
+   "enabled",
+   "spec_type",
+   "interval_seconds",
+   "next_run_time",
+   "config",
+   "last_run_at",
+   "last_status",
+   "last_error",
+   "created_at",
+   "updated_at"
+  ],
+  "condition_definition": [
+   "id",
+   "name",
+   "enabled",
+   "metric_name",
+   "host_filter",
+   "service_filter",
+   "tags_filter",
+   "operator",
+   "warning_threshold",
+   "critical_threshold",
+   "window_minutes",
+   "breach_minutes",
+   "status",
+   "last_evaluated",
+   "message",
+   "last_value",
+   "created_at",
+   "updated_at",
+   "subject_id_filter",
+   "subject_type_filter",
+   "alert_when_stale",
+   "stale_after_seconds"
+  ],
+  "pipeline_heartbeat": [
+   "id",
+   "name",
+   "status",
+   "last_success",
+   "last_error",
+   "details",
+   "updated_at"
+  ],
+  "subject_registry": [
+   "id",
+   "subject_type",
+   "subject_id",
+   "display_name",
+   "source_system",
+   "last_seen_at"
+  ],
+  "host_registry": [
+   "id",
+   "host_id",
+   "display_name",
+   "grafana_url",
+   "enabled",
+   "last_seen_at"
+  ],
+  "service_registry": [
+   "id",
+   "service_id",
+   "display_name",
+   "grafana_url",
+   "enabled",
+   "last_seen_at",
+   "host_id"
+  ]
+ }
+}
