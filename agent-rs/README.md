@@ -7,13 +7,16 @@ target. Nothing runs this code in production yet: the deployment selects it
 only through a systemd drop-in that later slices add (PLAN.md 8.3), and
 deploys ship `agent-rs/` only as a release archive.
 
-Status: slices S1 (scaffold), S2, S3a and S10a. S1: the workspace, the toolchain pin,
+Status: slices S1 (scaffold), S2, S3a, S5 and S10a. S1: the workspace, the toolchain pin,
 the cargo-deny policy, the CI `rust` job, the `just rs-*` recipes, the shared
 model types (`graphyard_core::model`) and the fixture pipeline with its drift
 test. S2: the CPython compatibility helpers (`graphyard_core::pycompat`), the
 environment settings with django-environ semantics and the SQLite pragma
 values (`graphyard_core::settings`), and the typed spec config knobs
-(`graphyard_core::spec_config`), each pinned by its fixture. The
+(`graphyard_core::spec_config`), each pinned by its fixture. S5: the
+condition evaluation (`graphyard_core::conditions`: `evaluate_condition`
+over a `SampleSource`, `evaluate_samples` on samples already read), pinned
+by `conditions.json`. The
 `graphyard-agent` binary is a placeholder that exits 1 until slice S8; it
 answers only `--version`.
 
@@ -43,9 +46,9 @@ agent-rs/
   TESTMAP.md            Python test -> Rust counterpart, per slice
   crates/
     graphyard-core/     pure logic, no I/O: model types (S1); pycompat,
-                        settings, spec_config (S2); normalisation, line
-                        protocol, JSON path, mappings, condition evaluation
-                        (S4-S7)
+                        settings, spec_config (S2); conditions (S5);
+                        normalisation, line protocol, JSON path, mappings
+                        (S4a, S7a, S7b)
     graphyard-store/    rusqlite store: DB thread, schema contract, datetime
                         codec, specs, conditions, heartbeats (S3a); registry
                         (S3b)

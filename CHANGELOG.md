@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Rust agent port (`agent-rs/`, slice S5): condition evaluation
+  (`graphyard_core::conditions`, a port of `services.py:evaluate_condition`
+  and its series, anchor and staleness helpers) behind a sample source trait,
+  with Python's `datetime`/`timedelta` range errors and
+  `timedelta.total_seconds()` rounding, pinned by `conditions.json`, which is
+  generated from `evaluate_condition` with the query stubbed and covers every
+  `evaluate_condition` scenario of `tests/test_condition_evaluation.py`.
+  Nothing runs the Rust code yet; the Python agent is unchanged.
+
 - Rust agent port (`agent-rs/`, slice S2): CPython compatibility helpers
   (`repr(float)`, `format(x, "g")`, `int()`/`float()` of strings, `str()`/
   `repr()` of JSON values, `==`), the agent's environment settings with
