@@ -965,3 +965,63 @@ def test_prepare_record_compare_chain_on_two_databases(tmp_path, capsys):
         == 1
     )
     assert "[conditions] disk" in capsys.readouterr().out
+
+
+def test_quotes_are_literal_in_the_series_part_of_a_line():
+    measurement, tags, fields, ts = compare.parse_line(
+        'm"x,spec_name=sensor"one,t="a\\ b value=1.5,s="x y" 7'
+    )
+    assert measurement == 'm"x'
+    assert tags == {"spec_name": 'sensor"one', "t": '"a b'}
+    assert fields == {"value": 1.5, "s": "x y"}
+    assert ts == 7
+
+
+def test_prepare_scans_heartbeat_details(tmp_path, capsys):
+    source = tmp_path / "prod.sqlite3"
+    connection = _database(source)
+    connection.execute(
+        "UPDATE pipeline_heartbeat SET details = ? WHERE name = 'metric_ingest'",
+        ('{"n": ' + "9" * 4301 + "}",),
+    )
+    connection.commit()
+    connection.close()
+    shadow = _shadow_dir(tmp_path)
+    assert prepare.main(["--source", str(source), "--shadow-dir", str(shadow)]) == 2
+    findings = json.loads((shadow / "shadow.json").read_text())["findings"]
+    assert [(f["table"], f["name"], f["column"]) for f in findings] == [
+        ("pipeline_heartbeat", "metric_ingest", "details")
+    ]
+
+
+def test_values_that_cannot_be_paired_are_an_inconclusive_finding(tmp_path, capsys):
+    shadow = _write_run(tmp_path, [200] * 10)
+    # Shift every shadow point by 20 minutes: same series, no pair in reach.
+    lines = []
+    for line in (shadow / "points.lp").read_text().splitlines():
+        if line.startswith("#"):
+            lines.append(line)
+            continue
+        head, ts = line.rsplit(" ", 1)
+        lines.append(f"{head} {int(ts) - 1200 * 10**9}")
+    (shadow / "points.lp").write_text("\n".join(lines) + "\n")
+    report_path = tmp_path / "r.json"
+    compare.main(
+        [
+            "--shadow-dir",
+            str(shadow),
+            "--prod-csv",
+            str(tmp_path / "prod.csv"),
+            "--start",
+            compare.ns_text((T0 - 1200) * 10**9),
+            "--json",
+            str(report_path),
+        ]
+    )
+    report = json.loads(report_path.read_text())
+    inconclusive = {
+        f["subject"]
+        for f in report["findings"]
+        if f["detail"] == "no value pair to compare (inconclusive)"
+    }
+    assert inconclusive == {"ha env", "json temp"}

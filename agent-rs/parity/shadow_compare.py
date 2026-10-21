@@ -174,8 +174,11 @@ def series_text(series: Series) -> str:
     return f"{series[0]}{{{tags}}}"
 
 
-def _split(text: str, separator: str, limit: int = -1) -> list[str]:
-    """Split on ``separator`` outside backslash escapes and double quotes."""
+def _split(
+    text: str, separator: str, limit: int = -1, quotes: bool = False
+) -> list[str]:
+    """Split on ``separator`` outside backslash escapes and, with ``quotes``
+    (the field section, where string values are quoted), double quotes."""
     parts: list[str] = []
     current: list[str] = []
     quoted = False
@@ -186,7 +189,7 @@ def _split(text: str, separator: str, limit: int = -1) -> list[str]:
             current.append(text[index : index + 2])
             index += 2
             continue
-        if char == '"':
+        if quotes and char == '"':
             quoted = not quoted
         if char == separator and not quoted and (limit < 0 or len(parts) < limit):
             parts.append("".join(current))
@@ -206,11 +209,15 @@ def _unescape(text: str, specials: str) -> str:
 
 def parse_line(line: str) -> tuple[str, dict[str, str], dict[str, Any], int | None]:
     """One line of InfluxDB line protocol."""
-    sections = _split(line, " ", 2)
-    if len(sections) < 2:
+    # Quotes are literal in the measurement and the tags; only string field
+    # values are quoted.
+    head = _split(line, " ", 1)
+    if len(head) < 2:
         raise ValueError(f"not line protocol: {line!r}")
-    key, fields_text = sections[0], sections[1]
-    timestamp = int(sections[2]) if len(sections) > 2 and sections[2] else None
+    key = head[0]
+    sections = _split(head[1], " ", 1, quotes=True)
+    fields_text = sections[0]
+    timestamp = int(sections[1]) if len(sections) > 1 and sections[1] else None
     parts = _split(key, ",")
     measurement = _unescape(parts[0], ", ")
     tags: dict[str, str] = {}
@@ -221,7 +228,7 @@ def parse_line(line: str) -> tuple[str, dict[str, str], dict[str, Any], int | No
         name, value = pieces
         tags[_unescape(name, ",= ")] = _unescape(value, ",= ")
     fields: dict[str, Any] = {}
-    for pair in _split(fields_text, ","):
+    for pair in _split(fields_text, ",", quotes=True):
         pieces = _split(pair, "=", 1)
         if len(pieces) != 2:
             raise ValueError(f"field without value: {pair!r}")
@@ -732,6 +739,11 @@ def compare_points(
             entry.update(_compare_aligned(report, spec, sides, tolerance, align_ns))
         elif spec_type == PAGE_PROBE:
             entry.update(_compare_page_probe(report, spec, sides))
+        compared = entry.get("matched", entry.get("pairs"))
+        if compared == 0 and all(sides.values()):
+            # Values were written on both sides but none could be compared:
+            # the comparison proved nothing about them.
+            report.finding("values", spec, "no value pair to compare (inconclusive)")
     report.sections["points"] = summary
 
 

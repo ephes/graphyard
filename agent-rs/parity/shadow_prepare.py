@@ -12,7 +12,8 @@
    controller limits logins; it is then compared through one ``--run-once``).
 3. Scan the rows the agent loads from the copy for the documents and values
    on which the Rust agent and Python disagree (PLAN.md D-11, D-13): stored
-   JSON (``config``, ``tags_filter``) that Python cannot load, integer tokens
+   JSON (``config``, ``tags_filter``, heartbeat ``details``) that Python
+   cannot load, integer tokens
    beyond CPython's 4300-digit limit, lone UTF-16 surrogate escapes, nesting
    at or beyond ``serde_json``'s 128 levels, ``NaN``/``Infinity`` tokens, and
    values of another SQLite storage class than the column's declared type.
@@ -63,10 +64,13 @@ AGENT_TABLES = {
     "host_registry": None,
     "service_registry": None,
 }
-#: Stored JSON columns the agent parses (D-11).
+#: Stored JSON columns of D-11.
 JSON_COLUMNS = {
     "metric_collection_spec": "config",
     "condition_definition": "tags_filter",
+    # Never parsed by Rust, but Python loads it before its heartbeat update
+    # and fails on such a document (D-11).
+    "pipeline_heartbeat": "details",
 }
 
 

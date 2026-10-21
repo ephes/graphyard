@@ -193,7 +193,7 @@ agreed with the coordinator first (PLAN.md 8.4).
   write file);
 - Parity: `just rs-parity` (CI job `parity`, PLAN.md 9.4) runs
   `manage.py start_agent --run-once` and `graphyard-agent --run-once` on two
-  copies of one seeded database against the same scripted fakes and fails on
+  copies of one seeded database against identical scripted fakes and fails on
   any unmasked difference (`agent-rs/parity/run_parity.py`, see
   `agent-rs/README.md`);
 - Python: `uv run pytest` includes the fixture drift test, the schema
