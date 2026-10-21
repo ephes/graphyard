@@ -743,7 +743,8 @@ All three also run the Rust agent's checks (`just rs-lint`, `cargo check`,
 
 GitHub Actions (`.github/workflows/ci.yml`) runs the same lint, typecheck and test
 commands on every push and pull request (the Rust agent in its own `rust` job,
-which also runs `cargo deny`). It needs no secrets or InfluxDB.
+which also runs `cargo deny`, and the Python/Rust parity harness
+`just rs-parity` in the `parity` job). It needs no secrets or InfluxDB.
 
 ## Influx + Grafana
 

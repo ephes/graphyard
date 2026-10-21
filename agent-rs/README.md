@@ -7,7 +7,7 @@ target. Nothing runs this code in production yet: the deployment selects it
 only through a systemd drop-in that later slices add (PLAN.md 8.3), and
 deploys ship `agent-rs/` only as a release archive.
 
-Status: slices S1 (scaffold), S2, S3a, S3b, S4a, S5, S6, S7a, S7b, S8 and S10a. S1: the workspace, the toolchain pin,
+Status: slices S1 (scaffold), S2, S3a, S3b, S4a, S5, S6, S7a, S7b, S8, S9a and S10a. S1: the workspace, the toolchain pin,
 the cargo-deny policy, the CI `rust` job, the `just rs-*` recipes, the shared
 model types (`graphyard_core::model`) and the fixture pipeline with its drift
 test. S2: the CPython compatibility helpers (`graphyard_core::pycompat`), the
@@ -33,6 +33,12 @@ stdout/stderr report lines, signals and `--run-once`, `--check-schema`,
 `--version` and the shadow mode `--influx-write-file`; see
 [Running the agent](#running-the-agent). The runs are pinned by `runs.json`
 (the Python runs with stubbed executors and condition samples).
+
+Slice S9a adds the offline parity harness (PLAN.md 9.4, `just rs-parity`,
+CI job `parity`): the Python agent (`manage.py start_agent --run-once`) and
+the Rust agent run on two copies of one seeded database against their own
+fake collector endpoints and fake InfluxDB, round by round, and every
+unmasked difference fails the run; see [Parity harness](#parity-harness).
 
 Slice S4b adds the condition queries in `graphyard-influx` (PLAN.md 6.5):
 the lookback window of a condition, the v2 Flux text and request, the
@@ -132,6 +138,11 @@ agent-rs/
     schema/             the Django schema contract (gen_schema.py): schema.sql,
                         from which every store test builds its database, and
                         agent_tables.json
+  parity/
+    run_parity.py       offline parity harness (`just rs-parity`): corpus,
+                        rounds, comparison
+    fakes.py            scripted collector endpoints and fake InfluxDB
+    settings_parity.py  Django settings of the Python agent in the harness
   scripts/
     release_checks.py   release workflow checks (version, GLIBC floor, smoke, pack)
 ```
@@ -145,6 +156,8 @@ agent-rs/
   and checks its sha256).
 - `uv` for the fixture generator (the Python project's environment).
 - Docker only for `just rs-build-linux`.
+- `openssl` (the CLI) for `just rs-parity`, which makes the TLS certificate
+  of its fake UniFi controller.
 
 ## Commands
 
@@ -157,11 +170,12 @@ From the repository root:
 | `just rs-fmt` | format the workspace |
 | `just rs-deny` | `cargo deny --locked check` |
 | `just rs-fixtures` | regenerate every fixture from the Python code |
+| `just rs-parity` | debug build, then the parity harness (`--keep` keeps the databases and per-round output) |
 | `just rs-build` | release build for this host |
 | `just rs-build-linux` | release build for macmini (`x86_64-unknown-linux-gnu`, glibc 2.36 in `rust:1.99.0-bookworm`), output in `target/docker-linux-amd64` |
 
 `just test`, `just lint` and `just typecheck` run the Python checks and then
-the Rust ones. The parity harness recipe `rs-parity` arrives with slice S9a.
+the Rust ones. `just rs-parity` runs separately (CI job `parity`).
 
 ## Running the agent
 
@@ -192,6 +206,43 @@ failed: ...` / `Condition eval failed: ...` lines. Exit codes: 0 for
 schema check; 2 for a usage error. `--influx-write-file PATH` appends every
 batch the agent would write as `# write <utc> points=<n>` followed by its
 line protocol and counts it as written; queries still go to InfluxDB.
+
+## Parity harness
+
+`agent-rs/parity/run_parity.py` (PLAN.md 9.4) runs both implementations on
+identical inputs and compares what they did:
+
+```bash
+just rs-parity                 # cargo build, then the harness
+just rs-parity --keep          # keep the work directory (databases, stdout/stderr per round)
+uv run python agent-rs/parity/run_parity.py --rust-binary agent-rs/target/debug/graphyard-agent
+```
+
+Two databases built from `fixtures/schema/schema.sql` get the same corpus:
+every spec type (Home Assistant sensor and env scan with macmini's
+production mapping, HTTP JSON metrics with basic and bearer auth, page probes
+with redirects, a redirect loop, slow, dripping and oversized bodies, UniFi
+legacy and UniFi OS login over TLS with `verify_tls: false`), config errors,
+an unknown spec type, a disabled spec and condition, and conditions for every
+branch of the evaluation (thresholds, several series, staleness, the anchor
+carry, a sample at the window start, a non-host `host_filter`, an unknown
+operator, a `tags_filter` that is no object, a v3 query error). Each agent
+gets its own fakes (`fakes.py`), which answer by request index; the fake
+InfluxDB places its samples relative to the `stop` of each query. The five
+rounds run `manage.py start_agent --run-once` (settings
+`parity/settings_parity.py`) and `graphyard-agent --run-once --db` at the
+same time with `INFLUX_API_MODE` `v2`, `v2`, `v3`, `auto` (the Flux endpoint
+answers 404) and finally without `INFLUX_TOKEN`.
+
+After each round the harness compares the rows of the six agent tables, the
+stdout lines, the operator log lines on stderr, and every request the fakes
+received (target, headers, body; written lines parsed). Only the
+documented masks apply: `now`-based timestamps, page-probe durations, the
+query bounds (the window length is compared) and the fakes' port numbers.
+The Python results must also match the statuses the corpus was written for,
+so a corpus that stops exercising its branches fails too. A failing run
+prints every difference per round and exits 1. The helpers are tested in
+`tests/test_agent_rs_parity.py`.
 
 ## Fixtures
 

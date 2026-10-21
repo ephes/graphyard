@@ -2,7 +2,8 @@ name: CI
 
 # Same checks as `just lint`, `just typecheck` and `just test`: the Python
 # parts (incl. the Rust fixture drift test) in the `python` job, the Rust
-# agent in agent-rs/ in the `rust` job.
+# agent in agent-rs/ in the `rust` job, and `just rs-parity` (the Python and
+# Rust agents on the same corpus and fake servers) in the `parity` job.
 # Lint runs the pre-commit Ruff hooks (check and format) exactly as locally.
 # Tests use config.settings.test (SQLite, InfluxDB mocked), so no secrets or
 # external services are needed. The opt-in inventory probes are not run here.
@@ -111,3 +112,49 @@ jobs:
           size=$(stat -c %s target/release/graphyard-agent)
           echo "graphyard-agent release binary: ${size} bytes"
           echo "graphyard-agent release binary: ${size} bytes" >> "$GITHUB_STEP_SUMMARY"
+
+  parity:
+    name: Rust agent parity harness (just rs-parity)
+    needs: [python, rust]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CARGO_TERM_COLOR: always
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - name: Set up uv
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          version: "0.12.23"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: Sync locked dependencies
+        run: uv sync
+      - name: Install the pinned toolchain (agent-rs/rust-toolchain.toml)
+        working-directory: agent-rs
+        run: |
+          rustup toolchain install
+          rustc --version
+          openssl version
+      - name: Cache cargo registry and build
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            agent-rs/target
+          key: rust-parity-${{ runner.os }}-${{ hashFiles('agent-rs/rust-toolchain.toml', 'agent-rs/Cargo.lock') }}
+          restore-keys: rust-parity-${{ runner.os }}-
+      - name: Build the agent
+        working-directory: agent-rs
+        run: cargo build --locked
+      - name: Parity harness
+        run: uv run python agent-rs/parity/run_parity.py --rust-binary agent-rs/target/debug/graphyard-agent

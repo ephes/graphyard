@@ -164,6 +164,13 @@ counterpart. Its tests:
 | D-2 startup check, `--check-schema`, a missing database never created; `--version`; `--influx-write-file` (no write request, comment line, counts, the same configuration, timeout, URL and `Authorization` header errors as a real write) | `process.rs::check_schema_reports_in_one_line`, `::a_missing_database_exits_1_and_is_never_created`, `tests/version.rs`, `graphyard-influx/tests/write_file.rs` | done |
 | Report lines: `Metric specs: ...`, `Condition eval: ...`, `Metric collection failed: <err>` with its error record, run-once exit 0 after a failed run | `process.rs::run_once_calls_both_loops_and_writes_only_to_the_file`, `::a_failed_run_is_reported_and_run_once_still_exits_0` | done |
 
+## S9a — offline parity harness
+
+| Python behaviour / test | Rust counterpart | Status |
+| --- | --- | --- |
+| `manage.py start_agent --run-once` end to end on a seeded database (PLAN.md 9.4): every spec type and its outcomes, the condition branches, `INFLUX_API_MODE` `v2`/`v3`/`auto`, the lazy InfluxDB configuration errors, spec/condition/heartbeat/registry rows, stdout and operator log lines, collector and InfluxDB requests | `agent-rs/parity/run_parity.py` (`just rs-parity`, CI job `parity`): the Rust binary on the same corpus and fakes, zero unmasked differences | done |
+| Harness helpers: request-index scripts, the fake InfluxDB read by the real `influx.query_range` (v2, v3, auto), masks of written lines, query bounds and rows, operator line filter, difference report, corpus coverage | `tests/test_agent_rs_parity.py` | done |
+
 ## Planned counterparts (PLAN.md 9.5)
 
 | Python tests | Rust counterpart | Slice | Status |

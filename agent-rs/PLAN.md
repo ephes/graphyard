@@ -1501,6 +1501,28 @@ bounds differ between runs; the harness compares the window length
 including bounds is pinned by the `flux.json`/`sql_v3.json` fixtures with an
 injected clock, not by the harness. Gate: zero unmasked differences.
 
+As implemented in S9a: five rounds, each a `--run-once` of both agents at
+the same time with the same environment, varying `INFLUX_API_MODE` (`v2`,
+`v2`, `v3`, `auto` with the fake's Flux endpoint answering 404) and ending
+without `INFLUX_TOKEN` (the lazy configuration errors of 3.3, also on the
+page probe's warning path, `collector raised …`). The collector fakes script
+by request index per path; the fake InfluxDB keys its query scripts by the
+queried metric and advances one entry per answered query (Flux or SQL), so
+an `auto` round's 404 does not consume one. The UniFi fakes serve TLS with a
+certificate the harness makes with the `openssl` CLI (`verify_tls: false`).
+`settings_parity.py` is the base settings with the production `LOGGING` and
+no `.env` (D-9), so stderr also carries the operator log lines of 3.6, which
+are compared too (`HTTP Request: …`, the mapping, validation and reserved-key
+warnings, `metrics_write_rejected`, the host-filter warning, `Metric
+collection spec … raised` up to `raised`). Masks beyond the list above:
+`next_run_time` is compared as its distance to `last_run_at`; a written
+timestamp is masked only when it lies within the agent's run (payload
+timestamps such as Home Assistant's `last_updated` are compared exactly);
+`Content-Length` of InfluxDB requests is not compared (the bodies hold
+`now`-based values). Each round also checks that the Python agent reached
+the status the corpus expects for every spec and condition, so the
+comparison cannot pass on a corpus that no longer exercises its branches.
+
 ### 9.5 TESTMAP (Python test → Rust counterpart)
 
 S1 creates `agent-rs/TESTMAP.md` from this table; every slice updates its
