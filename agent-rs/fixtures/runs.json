@@ -1650,6 +1650,1386 @@
      }
     ]
    }
+  },
+  {
+   "name": "condition_id_selects_one_condition",
+   "kind": "conditions",
+   "condition_id": 2,
+   "seed": {
+    "condition_definition": [
+     {
+      "id": 1,
+      "name": "a other",
+      "enabled": 1,
+      "metric_name": "host.filesystem_used_ratio",
+      "host_filter": "",
+      "service_filter": "",
+      "tags_filter": "{}",
+      "operator": "gte",
+      "warning_threshold": 0.8,
+      "critical_threshold": 0.9,
+      "window_minutes": 30,
+      "breach_minutes": 5,
+      "status": "ok",
+      "last_evaluated": null,
+      "message": "",
+      "last_value": null,
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901",
+      "subject_id_filter": "",
+      "subject_type_filter": "",
+      "alert_when_stale": 1,
+      "stale_after_seconds": null
+     },
+     {
+      "id": 2,
+      "name": "b selected",
+      "enabled": 1,
+      "metric_name": "host.filesystem_used_ratio",
+      "host_filter": "",
+      "service_filter": "",
+      "tags_filter": "{}",
+      "operator": "gte",
+      "warning_threshold": 0.8,
+      "critical_threshold": 0.9,
+      "window_minutes": 30,
+      "breach_minutes": 5,
+      "status": "critical",
+      "last_evaluated": null,
+      "message": "",
+      "last_value": null,
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901",
+      "subject_id_filter": "",
+      "subject_type_filter": "",
+      "alert_when_stale": 1,
+      "stale_after_seconds": null
+     },
+     {
+      "id": 3,
+      "name": "c disabled",
+      "enabled": 0,
+      "metric_name": "host.filesystem_used_ratio",
+      "host_filter": "",
+      "service_filter": "",
+      "tags_filter": "{}",
+      "operator": "gte",
+      "warning_threshold": 0.8,
+      "critical_threshold": 0.9,
+      "window_minutes": 30,
+      "breach_minutes": 5,
+      "status": "ok",
+      "last_evaluated": null,
+      "message": "",
+      "last_value": null,
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901",
+      "subject_id_filter": "",
+      "subject_type_filter": "",
+      "alert_when_stale": 1,
+      "stale_after_seconds": null
+     },
+     {
+      "id": 4,
+      "name": "d failing",
+      "enabled": 1,
+      "metric_name": "host.filesystem_used_ratio",
+      "host_filter": "",
+      "service_filter": "",
+      "tags_filter": "{}",
+      "operator": "gte",
+      "warning_threshold": 0.8,
+      "critical_threshold": 0.9,
+      "window_minutes": 30,
+      "breach_minutes": 5,
+      "status": "ok",
+      "last_evaluated": null,
+      "message": "",
+      "last_value": null,
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901",
+      "subject_id_filter": "",
+      "subject_type_filter": "",
+      "alert_when_stale": 1,
+      "stale_after_seconds": null
+     }
+    ],
+    "pipeline_heartbeat": [
+     {
+      "id": 1,
+      "name": "condition_evaluator",
+      "status": "ok",
+      "last_success": "2026-10-20 07:00:00.250000",
+      "last_error": "",
+      "details": "{\"total\": 1}",
+      "updated_at": "2026-10-20 07:00:00.250001"
+     }
+    ]
+   },
+   "scripts": {
+    "a other": {
+     "samples": [
+      {
+       "ts": "2026-10-21T08:09:00+00:00",
+       "value": 0.95,
+       "host": "macmini",
+       "metric": "host.filesystem_used_ratio"
+      },
+      {
+       "ts": "2026-10-21T08:14:30+00:00",
+       "value": 0.95,
+       "host": "macmini",
+       "metric": "host.filesystem_used_ratio"
+      }
+     ]
+    },
+    "b selected": {
+     "samples": [
+      {
+       "ts": "2026-10-21T08:14:30+00:00",
+       "value": 0.5,
+       "host": "macmini",
+       "metric": "host.filesystem_used_ratio"
+      }
+     ]
+    },
+    "c disabled": {
+     "samples": [
+      {
+       "ts": "2026-10-21T08:14:30+00:00",
+       "value": 0.5,
+       "host": "macmini",
+       "metric": "host.filesystem_used_ratio"
+      }
+     ]
+    },
+    "d failing": {
+     "raise": {
+      "class": "InfluxConfigurationError",
+      "message": "Influx setting missing: INFLUX_URL is required"
+     }
+    }
+   },
+   "result": {
+    "total": 1,
+    "failed": 0
+   },
+   "after": {
+    "metric_collection_spec": [],
+    "condition_definition": [
+     {
+      "id": 1,
+      "name": "a other",
+      "enabled": 1,
+      "metric_name": "host.filesystem_used_ratio",
+      "host_filter": "",
+      "service_filter": "",
+      "tags_filter": "{}",
+      "operator": "gte",
+      "warning_threshold": 0.8,
+      "critical_threshold": 0.9,
+      "window_minutes": 30,
+      "breach_minutes": 5,
+      "status": "ok",
+      "last_evaluated": null,
+      "message": "",
+      "last_value": null,
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901",
+      "subject_id_filter": "",
+      "subject_type_filter": "",
+      "alert_when_stale": 1,
+      "stale_after_seconds": null
+     },
+     {
+      "id": 2,
+      "name": "b selected",
+      "enabled": 1,
+      "metric_name": "host.filesystem_used_ratio",
+      "host_filter": "",
+      "service_filter": "",
+      "tags_filter": "{}",
+      "operator": "gte",
+      "warning_threshold": 0.8,
+      "critical_threshold": 0.9,
+      "window_minutes": 30,
+      "breach_minutes": 5,
+      "status": "ok",
+      "last_evaluated": "2026-10-21 08:15:30.123456",
+      "message": "Condition is within thresholds",
+      "last_value": 0.5,
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901",
+      "subject_id_filter": "",
+      "subject_type_filter": "",
+      "alert_when_stale": 1,
+      "stale_after_seconds": null
+     },
+     {
+      "id": 3,
+      "name": "c disabled",
+      "enabled": 0,
+      "metric_name": "host.filesystem_used_ratio",
+      "host_filter": "",
+      "service_filter": "",
+      "tags_filter": "{}",
+      "operator": "gte",
+      "warning_threshold": 0.8,
+      "critical_threshold": 0.9,
+      "window_minutes": 30,
+      "breach_minutes": 5,
+      "status": "ok",
+      "last_evaluated": null,
+      "message": "",
+      "last_value": null,
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901",
+      "subject_id_filter": "",
+      "subject_type_filter": "",
+      "alert_when_stale": 1,
+      "stale_after_seconds": null
+     },
+     {
+      "id": 4,
+      "name": "d failing",
+      "enabled": 1,
+      "metric_name": "host.filesystem_used_ratio",
+      "host_filter": "",
+      "service_filter": "",
+      "tags_filter": "{}",
+      "operator": "gte",
+      "warning_threshold": 0.8,
+      "critical_threshold": 0.9,
+      "window_minutes": 30,
+      "breach_minutes": 5,
+      "status": "ok",
+      "last_evaluated": null,
+      "message": "",
+      "last_value": null,
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901",
+      "subject_id_filter": "",
+      "subject_type_filter": "",
+      "alert_when_stale": 1,
+      "stale_after_seconds": null
+     }
+    ],
+    "pipeline_heartbeat": [
+     {
+      "id": 1,
+      "name": "condition_evaluator",
+      "status": "ok",
+      "last_success": "2026-10-21 08:15:30.123456",
+      "last_error": "",
+      "details": "{\"evaluated\": 1, \"failed\": 0}",
+      "updated_at": "2026-10-21 08:15:30.123456"
+     }
+    ]
+   }
+  },
+  {
+   "name": "condition_id_of_a_failing_condition",
+   "kind": "conditions",
+   "condition_id": 4,
+   "seed": {
+    "condition_definition": [
+     {
+      "id": 1,
+      "name": "a other",
+      "enabled": 1,
+      "metric_name": "host.filesystem_used_ratio",
+      "host_filter": "",
+      "service_filter": "",
+      "tags_filter": "{}",
+      "operator": "gte",
+      "warning_threshold": 0.8,
+      "critical_threshold": 0.9,
+      "window_minutes": 30,
+      "breach_minutes": 5,
+      "status": "ok",
+      "last_evaluated": null,
+      "message": "",
+      "last_value": null,
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901",
+      "subject_id_filter": "",
+      "subject_type_filter": "",
+      "alert_when_stale": 1,
+      "stale_after_seconds": null
+     },
+     {
+      "id": 2,
+      "name": "b selected",
+      "enabled": 1,
+      "metric_name": "host.filesystem_used_ratio",
+      "host_filter": "",
+      "service_filter": "",
+      "tags_filter": "{}",
+      "operator": "gte",
+      "warning_threshold": 0.8,
+      "critical_threshold": 0.9,
+      "window_minutes": 30,
+      "breach_minutes": 5,
+      "status": "critical",
+      "last_evaluated": null,
+      "message": "",
+      "last_value": null,
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901",
+      "subject_id_filter": "",
+      "subject_type_filter": "",
+      "alert_when_stale": 1,
+      "stale_after_seconds": null
+     },
+     {
+      "id": 3,
+      "name": "c disabled",
+      "enabled": 0,
+      "metric_name": "host.filesystem_used_ratio",
+      "host_filter": "",
+      "service_filter": "",
+      "tags_filter": "{}",
+      "operator": "gte",
+      "warning_threshold": 0.8,
+      "critical_threshold": 0.9,
+      "window_minutes": 30,
+      "breach_minutes": 5,
+      "status": "ok",
+      "last_evaluated": null,
+      "message": "",
+      "last_value": null,
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901",
+      "subject_id_filter": "",
+      "subject_type_filter": "",
+      "alert_when_stale": 1,
+      "stale_after_seconds": null
+     },
+     {
+      "id": 4,
+      "name": "d failing",
+      "enabled": 1,
+      "metric_name": "host.filesystem_used_ratio",
+      "host_filter": "",
+      "service_filter": "",
+      "tags_filter": "{}",
+      "operator": "gte",
+      "warning_threshold": 0.8,
+      "critical_threshold": 0.9,
+      "window_minutes": 30,
+      "breach_minutes": 5,
+      "status": "ok",
+      "last_evaluated": null,
+      "message": "",
+      "last_value": null,
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901",
+      "subject_id_filter": "",
+      "subject_type_filter": "",
+      "alert_when_stale": 1,
+      "stale_after_seconds": null
+     }
+    ],
+    "pipeline_heartbeat": [
+     {
+      "id": 1,
+      "name": "condition_evaluator",
+      "status": "ok",
+      "last_success": "2026-10-20 07:00:00.250000",
+      "last_error": "",
+      "details": "{\"total\": 1}",
+      "updated_at": "2026-10-20 07:00:00.250001"
+     }
+    ]
+   },
+   "scripts": {
+    "a other": {
+     "samples": [
+      {
+       "ts": "2026-10-21T08:09:00+00:00",
+       "value": 0.95,
+       "host": "macmini",
+       "metric": "host.filesystem_used_ratio"
+      },
+      {
+       "ts": "2026-10-21T08:14:30+00:00",
+       "value": 0.95,
+       "host": "macmini",
+       "metric": "host.filesystem_used_ratio"
+      }
+     ]
+    },
+    "b selected": {
+     "samples": [
+      {
+       "ts": "2026-10-21T08:14:30+00:00",
+       "value": 0.5,
+       "host": "macmini",
+       "metric": "host.filesystem_used_ratio"
+      }
+     ]
+    },
+    "c disabled": {
+     "samples": [
+      {
+       "ts": "2026-10-21T08:14:30+00:00",
+       "value": 0.5,
+       "host": "macmini",
+       "metric": "host.filesystem_used_ratio"
+      }
+     ]
+    },
+    "d failing": {
+     "raise": {
+      "class": "InfluxConfigurationError",
+      "message": "Influx setting missing: INFLUX_URL is required"
+     }
+    }
+   },
+   "result": {
+    "total": 1,
+    "failed": 1
+   },
+   "after": {
+    "metric_collection_spec": [],
+    "condition_definition": [
+     {
+      "id": 1,
+      "name": "a other",
+      "enabled": 1,
+      "metric_name": "host.filesystem_used_ratio",
+      "host_filter": "",
+      "service_filter": "",
+      "tags_filter": "{}",
+      "operator": "gte",
+      "warning_threshold": 0.8,
+      "critical_threshold": 0.9,
+      "window_minutes": 30,
+      "breach_minutes": 5,
+      "status": "ok",
+      "last_evaluated": null,
+      "message": "",
+      "last_value": null,
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901",
+      "subject_id_filter": "",
+      "subject_type_filter": "",
+      "alert_when_stale": 1,
+      "stale_after_seconds": null
+     },
+     {
+      "id": 2,
+      "name": "b selected",
+      "enabled": 1,
+      "metric_name": "host.filesystem_used_ratio",
+      "host_filter": "",
+      "service_filter": "",
+      "tags_filter": "{}",
+      "operator": "gte",
+      "warning_threshold": 0.8,
+      "critical_threshold": 0.9,
+      "window_minutes": 30,
+      "breach_minutes": 5,
+      "status": "critical",
+      "last_evaluated": null,
+      "message": "",
+      "last_value": null,
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901",
+      "subject_id_filter": "",
+      "subject_type_filter": "",
+      "alert_when_stale": 1,
+      "stale_after_seconds": null
+     },
+     {
+      "id": 3,
+      "name": "c disabled",
+      "enabled": 0,
+      "metric_name": "host.filesystem_used_ratio",
+      "host_filter": "",
+      "service_filter": "",
+      "tags_filter": "{}",
+      "operator": "gte",
+      "warning_threshold": 0.8,
+      "critical_threshold": 0.9,
+      "window_minutes": 30,
+      "breach_minutes": 5,
+      "status": "ok",
+      "last_evaluated": null,
+      "message": "",
+      "last_value": null,
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901",
+      "subject_id_filter": "",
+      "subject_type_filter": "",
+      "alert_when_stale": 1,
+      "stale_after_seconds": null
+     },
+     {
+      "id": 4,
+      "name": "d failing",
+      "enabled": 1,
+      "metric_name": "host.filesystem_used_ratio",
+      "host_filter": "",
+      "service_filter": "",
+      "tags_filter": "{}",
+      "operator": "gte",
+      "warning_threshold": 0.8,
+      "critical_threshold": 0.9,
+      "window_minutes": 30,
+      "breach_minutes": 5,
+      "status": "critical",
+      "last_evaluated": null,
+      "message": "evaluation error: Influx setting missing: INFLUX_URL is required",
+      "last_value": null,
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901",
+      "subject_id_filter": "",
+      "subject_type_filter": "",
+      "alert_when_stale": 1,
+      "stale_after_seconds": null
+     }
+    ],
+    "pipeline_heartbeat": [
+     {
+      "id": 1,
+      "name": "condition_evaluator",
+      "status": "warning",
+      "last_success": "2026-10-20 07:00:00.250000",
+      "last_error": "1 condition(s) failed",
+      "details": "{\"evaluated\": 1, \"failed\": 1}",
+      "updated_at": "2026-10-21 08:15:30.123456"
+     }
+    ]
+   }
+  },
+  {
+   "name": "condition_id_of_a_disabled_condition",
+   "kind": "conditions",
+   "condition_id": 3,
+   "seed": {
+    "condition_definition": [
+     {
+      "id": 1,
+      "name": "a other",
+      "enabled": 1,
+      "metric_name": "host.filesystem_used_ratio",
+      "host_filter": "",
+      "service_filter": "",
+      "tags_filter": "{}",
+      "operator": "gte",
+      "warning_threshold": 0.8,
+      "critical_threshold": 0.9,
+      "window_minutes": 30,
+      "breach_minutes": 5,
+      "status": "ok",
+      "last_evaluated": null,
+      "message": "",
+      "last_value": null,
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901",
+      "subject_id_filter": "",
+      "subject_type_filter": "",
+      "alert_when_stale": 1,
+      "stale_after_seconds": null
+     },
+     {
+      "id": 2,
+      "name": "b selected",
+      "enabled": 1,
+      "metric_name": "host.filesystem_used_ratio",
+      "host_filter": "",
+      "service_filter": "",
+      "tags_filter": "{}",
+      "operator": "gte",
+      "warning_threshold": 0.8,
+      "critical_threshold": 0.9,
+      "window_minutes": 30,
+      "breach_minutes": 5,
+      "status": "critical",
+      "last_evaluated": null,
+      "message": "",
+      "last_value": null,
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901",
+      "subject_id_filter": "",
+      "subject_type_filter": "",
+      "alert_when_stale": 1,
+      "stale_after_seconds": null
+     },
+     {
+      "id": 3,
+      "name": "c disabled",
+      "enabled": 0,
+      "metric_name": "host.filesystem_used_ratio",
+      "host_filter": "",
+      "service_filter": "",
+      "tags_filter": "{}",
+      "operator": "gte",
+      "warning_threshold": 0.8,
+      "critical_threshold": 0.9,
+      "window_minutes": 30,
+      "breach_minutes": 5,
+      "status": "ok",
+      "last_evaluated": null,
+      "message": "",
+      "last_value": null,
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901",
+      "subject_id_filter": "",
+      "subject_type_filter": "",
+      "alert_when_stale": 1,
+      "stale_after_seconds": null
+     },
+     {
+      "id": 4,
+      "name": "d failing",
+      "enabled": 1,
+      "metric_name": "host.filesystem_used_ratio",
+      "host_filter": "",
+      "service_filter": "",
+      "tags_filter": "{}",
+      "operator": "gte",
+      "warning_threshold": 0.8,
+      "critical_threshold": 0.9,
+      "window_minutes": 30,
+      "breach_minutes": 5,
+      "status": "ok",
+      "last_evaluated": null,
+      "message": "",
+      "last_value": null,
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901",
+      "subject_id_filter": "",
+      "subject_type_filter": "",
+      "alert_when_stale": 1,
+      "stale_after_seconds": null
+     }
+    ],
+    "pipeline_heartbeat": [
+     {
+      "id": 1,
+      "name": "condition_evaluator",
+      "status": "ok",
+      "last_success": "2026-10-20 07:00:00.250000",
+      "last_error": "",
+      "details": "{\"total\": 1}",
+      "updated_at": "2026-10-20 07:00:00.250001"
+     }
+    ]
+   },
+   "scripts": {
+    "a other": {
+     "samples": [
+      {
+       "ts": "2026-10-21T08:09:00+00:00",
+       "value": 0.95,
+       "host": "macmini",
+       "metric": "host.filesystem_used_ratio"
+      },
+      {
+       "ts": "2026-10-21T08:14:30+00:00",
+       "value": 0.95,
+       "host": "macmini",
+       "metric": "host.filesystem_used_ratio"
+      }
+     ]
+    },
+    "b selected": {
+     "samples": [
+      {
+       "ts": "2026-10-21T08:14:30+00:00",
+       "value": 0.5,
+       "host": "macmini",
+       "metric": "host.filesystem_used_ratio"
+      }
+     ]
+    },
+    "c disabled": {
+     "samples": [
+      {
+       "ts": "2026-10-21T08:14:30+00:00",
+       "value": 0.5,
+       "host": "macmini",
+       "metric": "host.filesystem_used_ratio"
+      }
+     ]
+    },
+    "d failing": {
+     "raise": {
+      "class": "InfluxConfigurationError",
+      "message": "Influx setting missing: INFLUX_URL is required"
+     }
+    }
+   },
+   "result": {
+    "total": 0,
+    "failed": 0
+   },
+   "after": {
+    "metric_collection_spec": [],
+    "condition_definition": [
+     {
+      "id": 1,
+      "name": "a other",
+      "enabled": 1,
+      "metric_name": "host.filesystem_used_ratio",
+      "host_filter": "",
+      "service_filter": "",
+      "tags_filter": "{}",
+      "operator": "gte",
+      "warning_threshold": 0.8,
+      "critical_threshold": 0.9,
+      "window_minutes": 30,
+      "breach_minutes": 5,
+      "status": "ok",
+      "last_evaluated": null,
+      "message": "",
+      "last_value": null,
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901",
+      "subject_id_filter": "",
+      "subject_type_filter": "",
+      "alert_when_stale": 1,
+      "stale_after_seconds": null
+     },
+     {
+      "id": 2,
+      "name": "b selected",
+      "enabled": 1,
+      "metric_name": "host.filesystem_used_ratio",
+      "host_filter": "",
+      "service_filter": "",
+      "tags_filter": "{}",
+      "operator": "gte",
+      "warning_threshold": 0.8,
+      "critical_threshold": 0.9,
+      "window_minutes": 30,
+      "breach_minutes": 5,
+      "status": "critical",
+      "last_evaluated": null,
+      "message": "",
+      "last_value": null,
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901",
+      "subject_id_filter": "",
+      "subject_type_filter": "",
+      "alert_when_stale": 1,
+      "stale_after_seconds": null
+     },
+     {
+      "id": 3,
+      "name": "c disabled",
+      "enabled": 0,
+      "metric_name": "host.filesystem_used_ratio",
+      "host_filter": "",
+      "service_filter": "",
+      "tags_filter": "{}",
+      "operator": "gte",
+      "warning_threshold": 0.8,
+      "critical_threshold": 0.9,
+      "window_minutes": 30,
+      "breach_minutes": 5,
+      "status": "ok",
+      "last_evaluated": null,
+      "message": "",
+      "last_value": null,
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901",
+      "subject_id_filter": "",
+      "subject_type_filter": "",
+      "alert_when_stale": 1,
+      "stale_after_seconds": null
+     },
+     {
+      "id": 4,
+      "name": "d failing",
+      "enabled": 1,
+      "metric_name": "host.filesystem_used_ratio",
+      "host_filter": "",
+      "service_filter": "",
+      "tags_filter": "{}",
+      "operator": "gte",
+      "warning_threshold": 0.8,
+      "critical_threshold": 0.9,
+      "window_minutes": 30,
+      "breach_minutes": 5,
+      "status": "ok",
+      "last_evaluated": null,
+      "message": "",
+      "last_value": null,
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901",
+      "subject_id_filter": "",
+      "subject_type_filter": "",
+      "alert_when_stale": 1,
+      "stale_after_seconds": null
+     }
+    ],
+    "pipeline_heartbeat": [
+     {
+      "id": 1,
+      "name": "condition_evaluator",
+      "status": "ok",
+      "last_success": "2026-10-21 08:15:30.123456",
+      "last_error": "",
+      "details": "{\"evaluated\": 0, \"failed\": 0}",
+      "updated_at": "2026-10-21 08:15:30.123456"
+     }
+    ]
+   }
+  },
+  {
+   "name": "condition_id_unknown",
+   "kind": "conditions",
+   "condition_id": -1,
+   "seed": {
+    "condition_definition": [
+     {
+      "id": 1,
+      "name": "a other",
+      "enabled": 1,
+      "metric_name": "host.filesystem_used_ratio",
+      "host_filter": "",
+      "service_filter": "",
+      "tags_filter": "{}",
+      "operator": "gte",
+      "warning_threshold": 0.8,
+      "critical_threshold": 0.9,
+      "window_minutes": 30,
+      "breach_minutes": 5,
+      "status": "ok",
+      "last_evaluated": null,
+      "message": "",
+      "last_value": null,
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901",
+      "subject_id_filter": "",
+      "subject_type_filter": "",
+      "alert_when_stale": 1,
+      "stale_after_seconds": null
+     },
+     {
+      "id": 2,
+      "name": "b selected",
+      "enabled": 1,
+      "metric_name": "host.filesystem_used_ratio",
+      "host_filter": "",
+      "service_filter": "",
+      "tags_filter": "{}",
+      "operator": "gte",
+      "warning_threshold": 0.8,
+      "critical_threshold": 0.9,
+      "window_minutes": 30,
+      "breach_minutes": 5,
+      "status": "critical",
+      "last_evaluated": null,
+      "message": "",
+      "last_value": null,
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901",
+      "subject_id_filter": "",
+      "subject_type_filter": "",
+      "alert_when_stale": 1,
+      "stale_after_seconds": null
+     },
+     {
+      "id": 3,
+      "name": "c disabled",
+      "enabled": 0,
+      "metric_name": "host.filesystem_used_ratio",
+      "host_filter": "",
+      "service_filter": "",
+      "tags_filter": "{}",
+      "operator": "gte",
+      "warning_threshold": 0.8,
+      "critical_threshold": 0.9,
+      "window_minutes": 30,
+      "breach_minutes": 5,
+      "status": "ok",
+      "last_evaluated": null,
+      "message": "",
+      "last_value": null,
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901",
+      "subject_id_filter": "",
+      "subject_type_filter": "",
+      "alert_when_stale": 1,
+      "stale_after_seconds": null
+     },
+     {
+      "id": 4,
+      "name": "d failing",
+      "enabled": 1,
+      "metric_name": "host.filesystem_used_ratio",
+      "host_filter": "",
+      "service_filter": "",
+      "tags_filter": "{}",
+      "operator": "gte",
+      "warning_threshold": 0.8,
+      "critical_threshold": 0.9,
+      "window_minutes": 30,
+      "breach_minutes": 5,
+      "status": "ok",
+      "last_evaluated": null,
+      "message": "",
+      "last_value": null,
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901",
+      "subject_id_filter": "",
+      "subject_type_filter": "",
+      "alert_when_stale": 1,
+      "stale_after_seconds": null
+     }
+    ],
+    "pipeline_heartbeat": [
+     {
+      "id": 1,
+      "name": "condition_evaluator",
+      "status": "ok",
+      "last_success": "2026-10-20 07:00:00.250000",
+      "last_error": "",
+      "details": "{\"total\": 1}",
+      "updated_at": "2026-10-20 07:00:00.250001"
+     }
+    ]
+   },
+   "scripts": {
+    "a other": {
+     "samples": [
+      {
+       "ts": "2026-10-21T08:09:00+00:00",
+       "value": 0.95,
+       "host": "macmini",
+       "metric": "host.filesystem_used_ratio"
+      },
+      {
+       "ts": "2026-10-21T08:14:30+00:00",
+       "value": 0.95,
+       "host": "macmini",
+       "metric": "host.filesystem_used_ratio"
+      }
+     ]
+    },
+    "b selected": {
+     "samples": [
+      {
+       "ts": "2026-10-21T08:14:30+00:00",
+       "value": 0.5,
+       "host": "macmini",
+       "metric": "host.filesystem_used_ratio"
+      }
+     ]
+    },
+    "c disabled": {
+     "samples": [
+      {
+       "ts": "2026-10-21T08:14:30+00:00",
+       "value": 0.5,
+       "host": "macmini",
+       "metric": "host.filesystem_used_ratio"
+      }
+     ]
+    },
+    "d failing": {
+     "raise": {
+      "class": "InfluxConfigurationError",
+      "message": "Influx setting missing: INFLUX_URL is required"
+     }
+    }
+   },
+   "result": {
+    "total": 0,
+    "failed": 0
+   },
+   "after": {
+    "metric_collection_spec": [],
+    "condition_definition": [
+     {
+      "id": 1,
+      "name": "a other",
+      "enabled": 1,
+      "metric_name": "host.filesystem_used_ratio",
+      "host_filter": "",
+      "service_filter": "",
+      "tags_filter": "{}",
+      "operator": "gte",
+      "warning_threshold": 0.8,
+      "critical_threshold": 0.9,
+      "window_minutes": 30,
+      "breach_minutes": 5,
+      "status": "ok",
+      "last_evaluated": null,
+      "message": "",
+      "last_value": null,
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901",
+      "subject_id_filter": "",
+      "subject_type_filter": "",
+      "alert_when_stale": 1,
+      "stale_after_seconds": null
+     },
+     {
+      "id": 2,
+      "name": "b selected",
+      "enabled": 1,
+      "metric_name": "host.filesystem_used_ratio",
+      "host_filter": "",
+      "service_filter": "",
+      "tags_filter": "{}",
+      "operator": "gte",
+      "warning_threshold": 0.8,
+      "critical_threshold": 0.9,
+      "window_minutes": 30,
+      "breach_minutes": 5,
+      "status": "critical",
+      "last_evaluated": null,
+      "message": "",
+      "last_value": null,
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901",
+      "subject_id_filter": "",
+      "subject_type_filter": "",
+      "alert_when_stale": 1,
+      "stale_after_seconds": null
+     },
+     {
+      "id": 3,
+      "name": "c disabled",
+      "enabled": 0,
+      "metric_name": "host.filesystem_used_ratio",
+      "host_filter": "",
+      "service_filter": "",
+      "tags_filter": "{}",
+      "operator": "gte",
+      "warning_threshold": 0.8,
+      "critical_threshold": 0.9,
+      "window_minutes": 30,
+      "breach_minutes": 5,
+      "status": "ok",
+      "last_evaluated": null,
+      "message": "",
+      "last_value": null,
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901",
+      "subject_id_filter": "",
+      "subject_type_filter": "",
+      "alert_when_stale": 1,
+      "stale_after_seconds": null
+     },
+     {
+      "id": 4,
+      "name": "d failing",
+      "enabled": 1,
+      "metric_name": "host.filesystem_used_ratio",
+      "host_filter": "",
+      "service_filter": "",
+      "tags_filter": "{}",
+      "operator": "gte",
+      "warning_threshold": 0.8,
+      "critical_threshold": 0.9,
+      "window_minutes": 30,
+      "breach_minutes": 5,
+      "status": "ok",
+      "last_evaluated": null,
+      "message": "",
+      "last_value": null,
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901",
+      "subject_id_filter": "",
+      "subject_type_filter": "",
+      "alert_when_stale": 1,
+      "stale_after_seconds": null
+     }
+    ],
+    "pipeline_heartbeat": [
+     {
+      "id": 1,
+      "name": "condition_evaluator",
+      "status": "ok",
+      "last_success": "2026-10-21 08:15:30.123456",
+      "last_error": "",
+      "details": "{\"evaluated\": 0, \"failed\": 0}",
+      "updated_at": "2026-10-21 08:15:30.123456"
+     }
+    ]
+   }
+  },
+  {
+   "name": "condition_id_beyond_64_bits",
+   "kind": "conditions",
+   "condition_id": 9223372036854775808,
+   "seed": {
+    "condition_definition": [
+     {
+      "id": 1,
+      "name": "a other",
+      "enabled": 1,
+      "metric_name": "host.filesystem_used_ratio",
+      "host_filter": "",
+      "service_filter": "",
+      "tags_filter": "{}",
+      "operator": "gte",
+      "warning_threshold": 0.8,
+      "critical_threshold": 0.9,
+      "window_minutes": 30,
+      "breach_minutes": 5,
+      "status": "ok",
+      "last_evaluated": null,
+      "message": "",
+      "last_value": null,
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901",
+      "subject_id_filter": "",
+      "subject_type_filter": "",
+      "alert_when_stale": 1,
+      "stale_after_seconds": null
+     },
+     {
+      "id": 2,
+      "name": "b selected",
+      "enabled": 1,
+      "metric_name": "host.filesystem_used_ratio",
+      "host_filter": "",
+      "service_filter": "",
+      "tags_filter": "{}",
+      "operator": "gte",
+      "warning_threshold": 0.8,
+      "critical_threshold": 0.9,
+      "window_minutes": 30,
+      "breach_minutes": 5,
+      "status": "critical",
+      "last_evaluated": null,
+      "message": "",
+      "last_value": null,
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901",
+      "subject_id_filter": "",
+      "subject_type_filter": "",
+      "alert_when_stale": 1,
+      "stale_after_seconds": null
+     },
+     {
+      "id": 3,
+      "name": "c disabled",
+      "enabled": 0,
+      "metric_name": "host.filesystem_used_ratio",
+      "host_filter": "",
+      "service_filter": "",
+      "tags_filter": "{}",
+      "operator": "gte",
+      "warning_threshold": 0.8,
+      "critical_threshold": 0.9,
+      "window_minutes": 30,
+      "breach_minutes": 5,
+      "status": "ok",
+      "last_evaluated": null,
+      "message": "",
+      "last_value": null,
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901",
+      "subject_id_filter": "",
+      "subject_type_filter": "",
+      "alert_when_stale": 1,
+      "stale_after_seconds": null
+     },
+     {
+      "id": 4,
+      "name": "d failing",
+      "enabled": 1,
+      "metric_name": "host.filesystem_used_ratio",
+      "host_filter": "",
+      "service_filter": "",
+      "tags_filter": "{}",
+      "operator": "gte",
+      "warning_threshold": 0.8,
+      "critical_threshold": 0.9,
+      "window_minutes": 30,
+      "breach_minutes": 5,
+      "status": "ok",
+      "last_evaluated": null,
+      "message": "",
+      "last_value": null,
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901",
+      "subject_id_filter": "",
+      "subject_type_filter": "",
+      "alert_when_stale": 1,
+      "stale_after_seconds": null
+     }
+    ],
+    "pipeline_heartbeat": [
+     {
+      "id": 1,
+      "name": "condition_evaluator",
+      "status": "ok",
+      "last_success": "2026-10-20 07:00:00.250000",
+      "last_error": "",
+      "details": "{\"total\": 1}",
+      "updated_at": "2026-10-20 07:00:00.250001"
+     }
+    ]
+   },
+   "scripts": {
+    "a other": {
+     "samples": [
+      {
+       "ts": "2026-10-21T08:09:00+00:00",
+       "value": 0.95,
+       "host": "macmini",
+       "metric": "host.filesystem_used_ratio"
+      },
+      {
+       "ts": "2026-10-21T08:14:30+00:00",
+       "value": 0.95,
+       "host": "macmini",
+       "metric": "host.filesystem_used_ratio"
+      }
+     ]
+    },
+    "b selected": {
+     "samples": [
+      {
+       "ts": "2026-10-21T08:14:30+00:00",
+       "value": 0.5,
+       "host": "macmini",
+       "metric": "host.filesystem_used_ratio"
+      }
+     ]
+    },
+    "c disabled": {
+     "samples": [
+      {
+       "ts": "2026-10-21T08:14:30+00:00",
+       "value": 0.5,
+       "host": "macmini",
+       "metric": "host.filesystem_used_ratio"
+      }
+     ]
+    },
+    "d failing": {
+     "raise": {
+      "class": "InfluxConfigurationError",
+      "message": "Influx setting missing: INFLUX_URL is required"
+     }
+    }
+   },
+   "result": {
+    "total": 0,
+    "failed": 0
+   },
+   "after": {
+    "metric_collection_spec": [],
+    "condition_definition": [
+     {
+      "id": 1,
+      "name": "a other",
+      "enabled": 1,
+      "metric_name": "host.filesystem_used_ratio",
+      "host_filter": "",
+      "service_filter": "",
+      "tags_filter": "{}",
+      "operator": "gte",
+      "warning_threshold": 0.8,
+      "critical_threshold": 0.9,
+      "window_minutes": 30,
+      "breach_minutes": 5,
+      "status": "ok",
+      "last_evaluated": null,
+      "message": "",
+      "last_value": null,
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901",
+      "subject_id_filter": "",
+      "subject_type_filter": "",
+      "alert_when_stale": 1,
+      "stale_after_seconds": null
+     },
+     {
+      "id": 2,
+      "name": "b selected",
+      "enabled": 1,
+      "metric_name": "host.filesystem_used_ratio",
+      "host_filter": "",
+      "service_filter": "",
+      "tags_filter": "{}",
+      "operator": "gte",
+      "warning_threshold": 0.8,
+      "critical_threshold": 0.9,
+      "window_minutes": 30,
+      "breach_minutes": 5,
+      "status": "critical",
+      "last_evaluated": null,
+      "message": "",
+      "last_value": null,
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901",
+      "subject_id_filter": "",
+      "subject_type_filter": "",
+      "alert_when_stale": 1,
+      "stale_after_seconds": null
+     },
+     {
+      "id": 3,
+      "name": "c disabled",
+      "enabled": 0,
+      "metric_name": "host.filesystem_used_ratio",
+      "host_filter": "",
+      "service_filter": "",
+      "tags_filter": "{}",
+      "operator": "gte",
+      "warning_threshold": 0.8,
+      "critical_threshold": 0.9,
+      "window_minutes": 30,
+      "breach_minutes": 5,
+      "status": "ok",
+      "last_evaluated": null,
+      "message": "",
+      "last_value": null,
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901",
+      "subject_id_filter": "",
+      "subject_type_filter": "",
+      "alert_when_stale": 1,
+      "stale_after_seconds": null
+     },
+     {
+      "id": 4,
+      "name": "d failing",
+      "enabled": 1,
+      "metric_name": "host.filesystem_used_ratio",
+      "host_filter": "",
+      "service_filter": "",
+      "tags_filter": "{}",
+      "operator": "gte",
+      "warning_threshold": 0.8,
+      "critical_threshold": 0.9,
+      "window_minutes": 30,
+      "breach_minutes": 5,
+      "status": "ok",
+      "last_evaluated": null,
+      "message": "",
+      "last_value": null,
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901",
+      "subject_id_filter": "",
+      "subject_type_filter": "",
+      "alert_when_stale": 1,
+      "stale_after_seconds": null
+     }
+    ],
+    "pipeline_heartbeat": [
+     {
+      "id": 1,
+      "name": "condition_evaluator",
+      "status": "ok",
+      "last_success": "2026-10-21 08:15:30.123456",
+      "last_error": "",
+      "details": "{\"evaluated\": 0, \"failed\": 0}",
+      "updated_at": "2026-10-21 08:15:30.123456"
+     }
+    ]
+   }
   }
  ]
 }

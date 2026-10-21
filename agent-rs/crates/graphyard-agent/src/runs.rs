@@ -307,7 +307,10 @@ async fn evaluate<S: ConditionSamples, C: Clock>(
         .map_err(|err| err.to_string())
 }
 
-/// `evaluate_conditions_once()`.
+/// `evaluate_conditions_once(condition_id=...)`: the agent's runs pass
+/// `None`, `graphyard-agent evaluate-conditions --condition-id N` the id.
+/// The heartbeat is written for a single-condition run too, also when the
+/// id selects nothing.
 ///
 /// # Errors
 /// A failed load, a failed failure update (after a failed evaluation or
@@ -317,8 +320,15 @@ pub async fn run_conditions<S: ConditionSamples, C: Clock>(
     samples: &S,
     clock: &C,
     stale_warning_seconds: &BigInt,
+    condition_id: Option<&BigInt>,
 ) -> Result<ConditionEvaluationRun, RunError> {
-    let conditions = store.load_conditions(None).await?;
+    let conditions = match condition_id.map(i64::try_from) {
+        None => store.load_conditions(None).await?,
+        Some(Ok(id)) => store.load_conditions(Some(id)).await?,
+        // `filter(id=...)` with a value outside the 64-bit range of the
+        // `BigAutoField` is Django's empty result: no query, no rows.
+        Some(Err(_)) => Vec::new(),
+    };
     let mut run = ConditionEvaluationRun::default();
     for condition in &conditions {
         run.total += 1;

@@ -143,7 +143,7 @@ async fn every_run_scenario_matches_python() {
     let now: DateTime<Utc> = fixture["now"].as_str().unwrap().parse().unwrap();
     assert_eq!(now.timestamp(), fixture["now_ts"].as_i64().unwrap());
     let scenarios = fixture["scenarios"].as_array().unwrap();
-    assert_eq!(scenarios.len(), 10);
+    assert_eq!(scenarios.len(), 15);
     for scenario in scenarios {
         let name = scenario["name"].as_str().unwrap();
         let db = TestDb::new();
@@ -182,7 +182,12 @@ async fn every_run_scenario_matches_python() {
             }
         } else {
             let stale = BigInt::from(600);
-            match run_conditions(&store, &scripted, &clock, &stale).await {
+            // `evaluate_conditions_once(condition_id=...)` (S15a); the id
+            // may lie beyond 64 bits.
+            let condition_id: Option<BigInt> = scenario
+                .get("condition_id")
+                .map(|id| id.to_string().parse().unwrap());
+            match run_conditions(&store, &scripted, &clock, &stale, condition_id.as_ref()).await {
                 Ok(run) => {
                     assert_eq!(run.total, expected["total"].as_u64().unwrap(), "{name}");
                     assert_eq!(run.failed, expected["failed"].as_u64().unwrap(), "{name}");

@@ -25,7 +25,7 @@ use graphyard_core::settings::Settings;
 use graphyard_influx::{InfluxWriter, QueryClient};
 use graphyard_store::{Store, check_schema};
 
-use crate::cli::{Cli, Loops};
+use crate::cli::{Cli, Command, Loops};
 use crate::collectors::{AgentSink, Collectors, InfluxSamples};
 use crate::runs::{
     Clock, ConditionSamples, SpecExecutors, SystemClock, run_conditions, run_metric_specs,
@@ -45,7 +45,7 @@ pub const VERSION: &str = concat!(
 pub const INTERRUPTED_LINE: &str = "graphyard-agent interrupted, exiting";
 
 /// The runtime's grace for blocking work at shutdown (PLAN.md 4.1).
-const SHUTDOWN_GRACE: Duration = Duration::from_millis(500);
+pub(crate) const SHUTDOWN_GRACE: Duration = Duration::from_millis(500);
 
 /// One stdout line, flushed at once (D-8); a closed stdout is ignored.
 pub fn print_stdout(line: &str) {
@@ -140,6 +140,7 @@ impl<E: SpecExecutors, S: ConditionSamples, C: Clock> Runner for Agent<E, S, C> 
             &self.samples,
             &self.clock,
             &self.stale_warning_seconds,
+            None,
         )
         .await;
         match run {
@@ -168,7 +169,7 @@ pub struct AgentConfig {
     pub writer: InfluxWriter,
 }
 
-fn database_error(db: &Path, err: impl std::fmt::Display) -> ExitCode {
+pub(crate) fn database_error(db: &Path, err: impl std::fmt::Display) -> ExitCode {
     print_stderr(&format!("cannot open database {}: {err}", db.display()));
     ExitCode::FAILURE
 }
@@ -198,8 +199,12 @@ fn describe_loop(enabled: bool, interval: &BigInt) -> String {
 
 /// Open the database off the runtime thread (a locked database can hold
 /// the open up to the busy timeout) and verify the schema (D-2); the error
-/// is the exit code after the reported failure.
-async fn open_and_verify(db: &Path, settings: &Settings, loops: &Loops) -> Result<Store, ExitCode> {
+/// is the exit code after the reported failure. The passing schema report
+/// is returned for the startup log.
+pub(crate) async fn open_verified(
+    db: &Path,
+    settings: &Settings,
+) -> Result<(Store, String), ExitCode> {
     let (path, open_settings) = (db.to_path_buf(), settings.clone());
     let opened = tokio::task::spawn_blocking(move || Store::open(&path, &open_settings)).await;
     let store = match opened {
@@ -208,17 +213,7 @@ async fn open_and_verify(db: &Path, settings: &Settings, loops: &Loops) -> Resul
         Err(err) => return Err(database_error(db, err)),
     };
     match store.verify_schema().await {
-        Ok(report) if report.is_ok() => {
-            log::info!("graphyard-agent {VERSION}");
-            log::info!("{report}");
-            log::info!(
-                "metrics {}, conditions {}{}",
-                describe_loop(loops.run_metrics, &loops.metrics_interval),
-                describe_loop(loops.run_conditions, &loops.condition_interval),
-                if loops.run_once { ", run once" } else { "" }
-            );
-            Ok(store)
-        }
+        Ok(report) if report.is_ok() => Ok((store, report.to_string())),
         Ok(report) => {
             print_stderr(&report.to_string());
             store.close();
@@ -229,6 +224,20 @@ async fn open_and_verify(db: &Path, settings: &Settings, loops: &Loops) -> Resul
             Err(database_error(db, err))
         }
     }
+}
+
+/// [`open_verified`] plus the agent's three startup log lines.
+async fn open_and_verify(db: &Path, settings: &Settings, loops: &Loops) -> Result<Store, ExitCode> {
+    let (store, report) = open_verified(db, settings).await?;
+    log::info!("graphyard-agent {VERSION}");
+    log::info!("{report}");
+    log::info!(
+        "metrics {}, conditions {}{}",
+        describe_loop(loops.run_metrics, &loops.metrics_interval),
+        describe_loop(loops.run_conditions, &loops.condition_interval),
+        if loops.run_once { ", run once" } else { "" }
+    );
+    Ok(store)
 }
 
 /// End the runtime with the grace for blocking work and report the signal.
@@ -326,7 +335,8 @@ where
     finish(runtime, ended, ExitCode::SUCCESS)
 }
 
-/// The binary: parse, validate, start (PLAN.md 3.1).
+/// The binary: parse, validate, start (PLAN.md 3.1); or the one-shot
+/// `evaluate-conditions` (PLAN.md 11.4).
 pub fn main_entry() -> ExitCode {
     let parsed = Cli::try_parse();
     if let Ok(cli) = &parsed
@@ -348,6 +358,9 @@ pub fn main_entry() -> ExitCode {
         Ok(cli) => cli,
         Err(err) => err.exit(),
     };
+    if let Some(Command::EvaluateConditions(args)) = cli.command {
+        return crate::evaluate::evaluate_conditions(&args, &settings);
+    }
     if cli.check_schema {
         return check_schema_only(&cli.db, &settings);
     }

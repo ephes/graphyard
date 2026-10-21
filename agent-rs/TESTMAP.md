@@ -81,6 +81,18 @@ checked by hand (README "Published releases"): checksum, archive contents and
 modes, byte-identity with a dry build of the same commit, GLIBC floor on the
 extracted binary.
 
+## S15a — `evaluate-conditions` subcommand
+
+| Python behaviour / test | Rust counterpart | Status |
+| --- | --- | --- |
+| `services.py:evaluate_conditions_once(condition_id=...)`: only the given enabled condition, the heartbeat for a single condition and for an id that selects nothing (disabled, unknown, beyond the 64-bit `BigAutoField` range: Django's empty result) | `graphyard-agent/tests/runs.rs::every_run_scenario_matches_python` (`runs.json` `condition_id_*` scenarios) | done |
+| `test_evaluate_conditions_command.py::test_evaluate_conditions_command_handle_reports_summary` (both parameters: summary lines, `CommandError` text, `condition_id` passed on) | `graphyard-agent/tests/evaluate_conditions.rs::a_run_without_failures_reports_the_summary_and_exits_0`, `::failed_conditions_report_a_command_error_and_exit_1`, `::condition_id_evaluates_only_that_condition`; `src/evaluate.rs::report_follows_handle` | done |
+| `test_evaluate_conditions_command.py::test_evaluate_conditions_command_cli_exit_status` (exit 0 with empty stderr, exit 1 with `CommandError:` on stderr) | `evaluate_conditions.rs` (same tests, on the binary) | done |
+| `evaluate_conditions.py:add_arguments` (`--condition-id`, argparse `type=int`, prefixes, last flag wins, negative values), the settings read before the flags, usage errors (exit 2), the agent flags not accepted with the subcommand | `src/cli.rs::evaluate_conditions_takes_an_optional_python_int_id_and_the_db`, `::the_agent_flags_and_the_subcommand_exclude_each_other`; `evaluate_conditions.rs::environment_and_usage_errors` | done |
+| Rust-only: a failure outside a condition (one stderr line instead of a traceback, P2, no heartbeat), a missing database never created and the schema check (D-2) | `evaluate_conditions.rs::a_failure_outside_a_condition_exits_1_with_one_line`, `::the_database_is_checked_before_the_run` | done |
+| The command end to end with samples from a fake InfluxDB (rows, heartbeat, log line, no spec run, `--condition-id`) | `graphyard-agent/tests/e2e.rs::evaluate_conditions_writes_the_condition_rows_and_the_heartbeat` | done |
+| `manage.py evaluate_conditions` against `graphyard-agent evaluate-conditions` on identical inputs (all conditions with failures, one by id in `v3` mode, a disabled id): exit codes, stdout, `CommandError` and operator lines, rows, requests | `agent-rs/parity/run_parity.py` rounds 6 to 8 (`just rs-parity`); `tests/test_agent_rs_parity.py::test_evaluate_rounds_run_both_commands_on_their_database` | done |
+
 ## S3a — store core
 
 | Python behaviour / test | Rust counterpart | Status |
@@ -222,5 +234,5 @@ extracted binary.
 | `test_registry_write_batching.py` bound-token parts (`binding="edge"`, the view's ownership read, `::test_bound_stale_refresh_skips_service_taken_after_validation`) | — (bound-subject branch, web ingest only, PLAN.md 5.7) | — | n/a |
 | `test_query_and_ingest_log_escaping.py::test_flux_interpolation_literal_in_query` | `flux.json` | S4b | done |
 | `test_query_and_ingest_log_escaping.py::test_metric_log_escapes_newline`, `::test_ingest_normalization_record_caps_error_details` | — (web ingest) | — | n/a |
-| `test_evaluate_conditions_command.py` | `evaluate-conditions` subcommand tests + e2e (PLAN.md 11.4) | S15a | pending |
+| `test_evaluate_conditions_command.py` | `graphyard-agent/tests/evaluate_conditions.rs`, `e2e.rs::evaluate_conditions_writes_the_condition_rows_and_the_heartbeat`, `runs.json` `condition_id_*`, parity rounds 6 to 8 (PLAN.md 11.4) | S15a | done |
 | web/ingest/inventory/token/admin/login tests | — (web only) | — | n/a |

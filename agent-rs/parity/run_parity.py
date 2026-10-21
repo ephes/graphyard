@@ -10,8 +10,13 @@ a fake InfluxDB. Per round, ``manage.py start_agent --run-once`` (settings
 on copy B, at the same time and with the same environment; the rounds vary
 ``INFLUX_API_MODE`` (``v2``, ``v3``, ``auto`` with the Flux endpoint
 answering 404) and end with a round without ``INFLUX_TOKEN`` (the lazy
-configuration errors). The fakes answer by request index, so round n sees
-the n-th scripted answer in both agents.
+configuration errors). Three more rounds run ``manage.py
+evaluate_conditions`` against ``graphyard-agent evaluate-conditions --db``
+(slice S15a, PLAN.md 11.4) on the same databases: all enabled conditions,
+one condition by ``--condition-id`` (v3, so the SQL request line is
+logged) and the id of the disabled condition (nothing evaluated, the
+heartbeat still written). The fakes answer by request index, so round n
+sees the n-th scripted answer in both agents.
 
 Compared after every round, with only these masks:
 
@@ -19,8 +24,10 @@ Compared after every round, with only these masks:
   ``last_run_at``, ``last_evaluated``, ``last_success``, ``updated_at`` of
   heartbeats and ``last_seen_at`` as null/non-null, ``next_run_time`` as its
   distance to ``last_run_at`` (both are ``now``-based);
-- stdout lines, and the operator log lines of PLAN.md 3.6 on stderr
-  (``OPERATOR_LINE``; ``Metric collection spec … raised`` up to ``raised``);
+- the exit code (each round's ``expect_code``), stdout lines, and the
+  operator log lines of PLAN.md 3.6 on stderr (``OPERATOR_LINE``; ``Metric
+  collection spec … raised`` up to ``raised``; the ``CommandError`` line of
+  ``evaluate_conditions``);
 - the requests every fake received, in order: method, target, the headers
   of ``COMPARED_HEADERS`` and the body. Written lines are parsed: the
   timestamp is masked when it lies within the agent's run (a ``now()``
@@ -30,7 +37,8 @@ Compared after every round, with only these masks:
 - each agent's port numbers are replaced by placeholders first.
 
 The Python results must also match the corpus expectations (the status of
-every spec and condition per round), so the comparison cannot pass on a
+every spec and condition per round, the exit code and the summary line of
+the ``evaluate_conditions`` rounds), so the comparison cannot pass on a
 corpus that stopped exercising its branches. Every unmasked difference fails
 the run (exit 1). Run with ``just rs-parity`` (builds the Rust binary first)
 or::
@@ -96,7 +104,7 @@ INFLUX_UNCOMPARED_HEADERS = {"content-length"}
 #: Operator log lines of PLAN.md 3.6 compared on stderr.
 OPERATOR_LINE = re.compile(
     r"^(HTTP Request: |Spec |Ignoring |Metric point validation failed |"
-    r"metrics_write_rejected |Metric collection spec .* raised)"
+    r"metrics_write_rejected |Metric collection spec .* raised|CommandError: )"
 )
 PROCESS_TIMEOUT = 120.0
 
@@ -110,6 +118,15 @@ class Round:
     env: dict[str, str]
     #: The fake InfluxDB answers every Flux query with 404.
     v2_missing: bool = False
+    #: ``False``: the agents' ``--run-once``; ``True``: ``evaluate_conditions``
+    #: / ``evaluate-conditions`` (S15a), with ``--condition-id`` of the
+    #: condition named ``condition`` when that is set.
+    evaluate: bool = False
+    condition: str | None = None
+    #: The exit code both commands must end with.
+    expect_code: int = 0
+    #: The Python command's stdout (checked for the ``evaluate`` rounds).
+    expect_stdout: str | None = None
 
 
 ROUNDS = (
@@ -118,7 +135,30 @@ ROUNDS = (
     Round("v3", {"INFLUX_API_MODE": "v3"}),
     Round("auto, Flux 404", {"INFLUX_API_MODE": "auto"}, v2_missing=True),
     Round("v2 without INFLUX_TOKEN", {"INFLUX_API_MODE": "v2", "INFLUX_TOKEN": ""}),
+    Round(
+        "evaluate-conditions",
+        {"INFLUX_API_MODE": "v2"},
+        evaluate=True,
+        expect_code=1,
+        expect_stdout="Condition evaluation completed with failures (2/15).\n",
+    ),
+    Round(
+        "evaluate-conditions --condition-id, v3",
+        {"INFLUX_API_MODE": "v3"},
+        evaluate=True,
+        condition="cpu by round",
+        expect_stdout="Condition evaluation completed (1).\n",
+    ),
+    Round(
+        "evaluate-conditions --condition-id of a disabled condition",
+        {"INFLUX_API_MODE": "v2"},
+        evaluate=True,
+        condition="disabled condition",
+        expect_stdout="Condition evaluation completed (0).\n",
+    ),
 )
+#: Rounds of the agents' ``--run-once`` (the spec expectations cover these).
+AGENT_ROUNDS = sum(not round_.evaluate for round_ in ROUNDS)
 
 OK, WARNING, CRITICAL = "ok", "warning", "critical"
 #: Expected status in the config-error round for specs that write.
@@ -659,7 +699,7 @@ def build_corpus(http: HttpFake, https: HttpFake, influx: InfluxFake) -> Corpus:
         Condition(
             "cpu by round",
             "host.cpu_percent",
-            [OK, WARNING, CRITICAL, OK, CRITICAL],
+            [OK, WARNING, CRITICAL, OK, CRITICAL, OK, OK, OK],
             [
                 ok_cpu,
                 samples((30, 85.0), (120, 85.0), (330, 81.0)),
@@ -670,7 +710,7 @@ def build_corpus(http: HttpFake, https: HttpFake, influx: InfluxFake) -> Corpus:
         Condition(
             "disk series",
             "host.filesystem_used_ratio",
-            [CRITICAL, OK, WARNING, WARNING, CRITICAL],
+            [CRITICAL, OK, WARNING, WARNING, CRITICAL, WARNING, WARNING, WARNING],
             [
                 samples((60, 0.5), (240, 0.5), mountpoint="/")
                 + samples((60, 0.95), (200, 0.97), (330, 0.96), mountpoint="/data"),
@@ -689,31 +729,31 @@ def build_corpus(http: HttpFake, https: HttpFake, influx: InfluxFake) -> Corpus:
         Condition(
             "stale sample",
             "service.stale_metric",
-            [WARNING, WARNING, WARNING, WARNING, CRITICAL],
+            [WARNING, WARNING, WARNING, WARNING, CRITICAL, WARNING, WARNING, WARNING],
             [samples((900, 1.0), (960, 1.0))],
         ),
         Condition(
             "stale sample intermittent",
             "service.stale_metric_intermittent",
-            [OK, OK, OK, OK, CRITICAL],
+            [OK, OK, OK, OK, CRITICAL, OK, OK, OK],
             [samples((900, 1.0))],
             alert_when_stale=False,
         ),
         Condition(
             "no samples",
             "service.no_samples",
-            [WARNING, WARNING, WARNING, WARNING, CRITICAL],
+            [WARNING, WARNING, WARNING, WARNING, CRITICAL, WARNING, WARNING, WARNING],
         ),
         Condition(
             "no samples intermittent",
             "service.no_samples_intermittent",
-            [OK, OK, OK, OK, CRITICAL],
+            [OK, OK, OK, OK, CRITICAL, OK, OK, OK],
             alert_when_stale=False,
         ),
         Condition(
             "non-host host filter",
             "service.http_latency",
-            [OK, OK, OK, OK, CRITICAL],
+            [OK, OK, OK, OK, CRITICAL, OK, OK, OK],
             [samples((30, 0.2), (150, 0.3))],
             host_filter="macmini",
             service_filter="mail",
@@ -723,7 +763,7 @@ def build_corpus(http: HttpFake, https: HttpFake, influx: InfluxFake) -> Corpus:
         Condition(
             "host filter and tags",
             "host.load",
-            [WARNING, WARNING, WARNING, WARNING, CRITICAL],
+            [WARNING, WARNING, WARNING, WARNING, CRITICAL, WARNING, WARNING, WARNING],
             [samples((30, 85.0), (100, 86.0), (200, 87.0), (290, 88.0))],
             host_filter="macmini",
             subject_type_filter="host",
@@ -732,27 +772,27 @@ def build_corpus(http: HttpFake, https: HttpFake, influx: InfluxFake) -> Corpus:
         Condition(
             "unknown operator",
             "host.unknown_operator",
-            [CRITICAL] * 5,
+            [CRITICAL] * 8,
             [samples((30, 1.0))],
             operator="bogus",
         ),
         Condition(
             "tags filter not an object",
             "host.tags_list",
-            [CRITICAL] * 5,
+            [CRITICAL] * 8,
             tags_filter=[],
         ),
         Condition(
             "stale allowance",
             "service.hourly",
-            [OK, OK, OK, OK, CRITICAL],
+            [OK, OK, OK, OK, CRITICAL, OK, OK, OK],
             [samples((1800, 3.0))],
             stale_after=3600,
         ),
         Condition(
             "window start sample",
             "host.free_ratio",
-            [CRITICAL, CRITICAL, CRITICAL, CRITICAL, CRITICAL],
+            [CRITICAL] * 8,
             [samples((360, 50.0), (300, 3.0), (120, 2.0), (30, 1.0))],
             operator="lt",
             warning=10.0,
@@ -761,7 +801,7 @@ def build_corpus(http: HttpFake, https: HttpFake, influx: InfluxFake) -> Corpus:
         Condition(
             "anchor carry",
             "host.temperature",
-            [CRITICAL, OK, OK, CRITICAL, CRITICAL],
+            [CRITICAL, OK, OK, CRITICAL, CRITICAL, CRITICAL, CRITICAL, CRITICAL],
             [
                 samples((400, 95.0), (100, 95.0)),
                 samples((1000, 95.0), (200, 95.0)),
@@ -773,7 +813,7 @@ def build_corpus(http: HttpFake, https: HttpFake, influx: InfluxFake) -> Corpus:
         Condition(
             "v3 error",
             "service.v3_error",
-            [OK, OK, CRITICAL, OK, CRITICAL],
+            [OK, OK, CRITICAL, OK, CRITICAL, OK, OK, OK],
             [
                 samples((30, 1.0)),
                 samples((30, 1.0)),
@@ -784,7 +824,7 @@ def build_corpus(http: HttpFake, https: HttpFake, influx: InfluxFake) -> Corpus:
         Condition(
             "flux only tag key",
             "service.flux_only",
-            [OK, OK, CRITICAL, CRITICAL, CRITICAL],
+            [OK, OK, CRITICAL, CRITICAL, CRITICAL, OK, OK, OK],
             [samples((30, 1.0))],
             tags_filter={"mount-point": "/"},
         ),
@@ -1186,7 +1226,17 @@ class Agent:
         env.update(round_.env)
         return env
 
-    def command(self, rust_binary: Path) -> tuple[list[str], dict[str, str], Path]:
+    def condition_args(self, round_: Round) -> list[str]:
+        """``--condition-id <id>`` of the round's condition (seeded ids
+        follow the corpus order)."""
+        if round_.condition is None:
+            return []
+        names = [condition.name for condition in self.corpus.conditions]
+        return ["--condition-id", str(names.index(round_.condition) + 1)]
+
+    def command(
+        self, rust_binary: Path, round_: Round
+    ) -> tuple[list[str], dict[str, str], Path]:
         raise NotImplementedError
 
     def close(self) -> None:
@@ -1195,7 +1245,9 @@ class Agent:
 
 
 class PythonAgent(Agent):
-    def command(self, rust_binary: Path) -> tuple[list[str], dict[str, str], Path]:
+    def command(
+        self, rust_binary: Path, round_: Round
+    ) -> tuple[list[str], dict[str, str], Path]:
         del rust_binary
         extra = {
             "DJANGO_SETTINGS_MODULE": "settings_parity",
@@ -1204,20 +1256,24 @@ class PythonAgent(Agent):
                 str(path) for path in (PARITY_DIR, REPO / "src", DJANGO_DIR)
             ),
         }
-        return (
-            [sys.executable, "manage.py", "start_agent", "--run-once"],
-            extra,
-            DJANGO_DIR,
+        command = (
+            ["evaluate_conditions", *self.condition_args(round_)]
+            if round_.evaluate
+            else ["start_agent", "--run-once"]
         )
+        return ([sys.executable, "manage.py", *command], extra, DJANGO_DIR)
 
 
 class RustAgent(Agent):
-    def command(self, rust_binary: Path) -> tuple[list[str], dict[str, str], Path]:
-        return (
-            [str(rust_binary), "--run-once", "--db", str(self.db)],
-            {},
-            self.db.parent,
+    def command(
+        self, rust_binary: Path, round_: Round
+    ) -> tuple[list[str], dict[str, str], Path]:
+        command = (
+            ["evaluate-conditions", "--db", str(self.db), *self.condition_args(round_)]
+            if round_.evaluate
+            else ["--run-once", "--db", str(self.db)]
         )
+        return ([str(rust_binary), *command], {}, self.db.parent)
 
 
 def run_round(agents: list[Agent], round_: Round, rust_binary: Path) -> dict[str, Run]:
@@ -1225,7 +1281,7 @@ def run_round(agents: list[Agent], round_: Round, rust_binary: Path) -> dict[str
 
     def run(agent: Agent) -> None:
         agent.influx.v2_missing = round_.v2_missing
-        argv, extra, cwd = agent.command(rust_binary)
+        argv, extra, cwd = agent.command(rust_binary, round_)
         env = {**agent.env(round_), **extra}
         start = time.time_ns()
         try:
@@ -1262,10 +1318,11 @@ def compare_round(
 ) -> list[str]:
     differences: list[str] = []
     a, b = runs[python.label], runs[rust.label]
-    prefix = f"round {round_no} ({ROUNDS[round_no - 1].name})"
+    round_ = ROUNDS[round_no - 1]
+    prefix = f"round {round_no} ({round_.name})"
     # Taken first, so the next round compares only its own requests.
     requests_a, requests_b = python.new_requests(), rust.new_requests()
-    if (a.code, b.code) != (0, 0):
+    if (a.code, b.code) != (round_.expect_code, round_.expect_code):
         return [
             f"{prefix}: exit codes python={a.code} rust={b.code}\n"
             f"--- python stderr (tail)\n{a.stderr[-3000:]}\n"
@@ -1299,16 +1356,19 @@ def compare_round(
 def expectation_problems(agent: Agent, round_no: int) -> list[str]:
     """The Python oracle must take the branch the corpus was written for."""
     problems = []
+    # The specs keep the status of the last agent round through the
+    # evaluate_conditions rounds.
+    spec_round = sum(not round_.evaluate for round_ in ROUNDS[:round_no])
     specs = {row["name"]: row for row in _rows(agent.db, "metric_collection_spec")}
     for spec in agent.corpus.specs:
         row = specs[spec.name]
         if spec.expect is None:
             if row["last_run_at"] is not None:
                 problems.append(f"spec {spec.name!r} ran but should never run")
-        elif row["last_status"] != spec.expect[round_no - 1]:
+        elif row["last_status"] != spec.expect[spec_round - 1]:
             problems.append(
                 f"round {round_no}: spec {spec.name!r} is {row['last_status']}"
-                f" ({row['last_error']!r}), the corpus expects {spec.expect[round_no - 1]}"
+                f" ({row['last_error']!r}), the corpus expects {spec.expect[spec_round - 1]}"
             )
     conditions = {row["name"]: row for row in _rows(agent.db, "condition_definition")}
     for condition in agent.corpus.conditions:
@@ -1354,6 +1414,16 @@ def run(args: argparse.Namespace) -> int:
             round_differences = compare_round(python, rust, runs, round_no)
             differences += round_differences
             problems += expectation_problems(python, round_no)
+            python_run = runs[python.label]
+            if round_.expect_stdout is not None and (
+                python_run.code,
+                python_run.stdout,
+            ) != (round_.expect_code, round_.expect_stdout):
+                problems.append(
+                    f"round {round_no}: the Python command exited {python_run.code}"
+                    f" with {python_run.stdout!r}, the corpus expects"
+                    f" {round_.expect_code} with {round_.expect_stdout!r}"
+                )
             print(
                 f"round {round_no} ({round_.name}): {time.monotonic() - started:.1f}s,"
                 f" {len(round_differences)} difference(s)",
@@ -1383,7 +1453,8 @@ def run(args: argparse.Namespace) -> int:
     if problems or differences:
         return 1
     print(
-        f"parity OK: {len(ROUNDS)} rounds, {len(python.corpus.specs)} specs,"
+        f"parity OK: {len(ROUNDS)} rounds ({AGENT_ROUNDS} agent runs,"
+        f" {len(ROUNDS) - AGENT_ROUNDS} evaluate-conditions), {len(python.corpus.specs)} specs,"
         f" {len(python.corpus.conditions)} conditions, {totals['requests']} collector"
         f" requests, {totals['writes']} writes, {totals['queries']} queries;"
         " zero unmasked differences"
