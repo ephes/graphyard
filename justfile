@@ -79,6 +79,11 @@ rs-deny:
 rs-fixtures:
     uv run python agent-rs/fixtures/generate.py
 
+# Offline parity harness: Python and Rust agents on the same corpus and fakes (agent-rs/PLAN.md 9.4)
+rs-parity *ARGS:
+    cd agent-rs && cargo build --locked
+    uv run python agent-rs/parity/run_parity.py --rust-binary agent-rs/target/debug/graphyard-agent {{ARGS}}
+
 # Release build of the Rust agent for this host
 rs-build:
     cd agent-rs && cargo build --release --locked

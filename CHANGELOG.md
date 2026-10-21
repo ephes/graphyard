@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- Rust agent port (`agent-rs/`, slice S9a): an offline parity harness
+  (`agent-rs/parity/`, `just rs-parity`, new CI job `parity`) runs
+  `manage.py start_agent --run-once` and `graphyard-agent --run-once` on two
+  copies of one seeded database against scripted fake collector endpoints
+  (HTTP and TLS) and a fake InfluxDB, over five rounds (`v2`, `v3`, `auto`
+  and missing InfluxDB settings), and fails on any unmasked difference in
+  the database rows, stdout, operator log lines and the requests sent. The
+  helpers are tested in `tests/test_agent_rs_parity.py`. Nothing deploys the
+  Rust agent yet.
+
 - Rust agent port (`agent-rs/`, slice S8): `graphyard-agent` is now the
   agent, a drop-in for `manage.py start_agent`: the same flags, defaults,
   validation messages and exit codes, the scheduler loop, the metrics and
