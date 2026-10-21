@@ -1,0 +1,40 @@
+[workspace]
+resolver = "3"
+members = [
+    "crates/graphyard-core",
+    "crates/graphyard-store",
+    "crates/graphyard-influx",
+    "crates/graphyard-collect",
+    "crates/graphyard-agent",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.99"
+license = "MIT"
+repository = "https://github.com/ephes/graphyard"
+publish = false
+
+# Shared dependency versions (PLAN.md 4.3). Slices add the crates they need
+# here and refer to them with `workspace = true` from their crate manifests.
+[workspace.dependencies]
+graphyard-core = { path = "crates/graphyard-core" }
+graphyard-store = { path = "crates/graphyard-store" }
+graphyard-influx = { path = "crates/graphyard-influx" }
+graphyard-collect = { path = "crates/graphyard-collect" }
+chrono = { version = "0.4", default-features = false, features = ["std"] }
+indexmap = "2"
+serde_json = { version = "1", features = ["preserve_order", "arbitrary_precision"] }
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+dbg_macro = "warn"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = true
+panic = "unwind"

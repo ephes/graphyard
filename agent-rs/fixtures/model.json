@@ -1,0 +1,420 @@
+{
+ "status_levels": [
+  {
+   "value": "ok",
+   "severity": 0
+  },
+  {
+   "value": "warning",
+   "severity": 1
+  },
+  {
+   "value": "critical",
+   "severity": 2
+  }
+ ],
+ "subject_types": [
+  "host",
+  "network_device",
+  "environment_sensor",
+  "service"
+ ],
+ "subject_types_all_sorted": [
+  "environment_sensor",
+  "host",
+  "network_device",
+  "service"
+ ],
+ "spec_types": [
+  "home_assistant_sensor",
+  "home_assistant_env_scan",
+  "http_json_metric",
+  "http_page_probe",
+  "unifi_device_traffic"
+ ],
+ "spec_executors": [
+  "home_assistant_sensor",
+  "home_assistant_env_scan",
+  "http_json_metric",
+  "http_page_probe",
+  "unifi_device_traffic"
+ ],
+ "comparison_operators": [
+  "gt",
+  "gte",
+  "lt",
+  "lte"
+ ],
+ "comparisons": [
+  {
+   "operator": "gt",
+   "left": 1.0,
+   "right": 2.0,
+   "result": false
+  },
+  {
+   "operator": "gt",
+   "left": 2.0,
+   "right": 2.0,
+   "result": false
+  },
+  {
+   "operator": "gt",
+   "left": 3.0,
+   "right": 2.0,
+   "result": true
+  },
+  {
+   "operator": "gt",
+   "left": -0.0,
+   "right": 0.0,
+   "result": false
+  },
+  {
+   "operator": "gt",
+   "left": 0.30000000000000004,
+   "right": 0.3,
+   "result": true
+  },
+  {
+   "operator": "gt",
+   "left": 5e-324,
+   "right": 0.0,
+   "result": true
+  },
+  {
+   "operator": "gt",
+   "left": -1.7976931348623157e+308,
+   "right": 1.7976931348623157e+308,
+   "result": false
+  },
+  {
+   "operator": "gte",
+   "left": 1.0,
+   "right": 2.0,
+   "result": false
+  },
+  {
+   "operator": "gte",
+   "left": 2.0,
+   "right": 2.0,
+   "result": true
+  },
+  {
+   "operator": "gte",
+   "left": 3.0,
+   "right": 2.0,
+   "result": true
+  },
+  {
+   "operator": "gte",
+   "left": -0.0,
+   "right": 0.0,
+   "result": true
+  },
+  {
+   "operator": "gte",
+   "left": 0.30000000000000004,
+   "right": 0.3,
+   "result": true
+  },
+  {
+   "operator": "gte",
+   "left": 5e-324,
+   "right": 0.0,
+   "result": true
+  },
+  {
+   "operator": "gte",
+   "left": -1.7976931348623157e+308,
+   "right": 1.7976931348623157e+308,
+   "result": false
+  },
+  {
+   "operator": "lt",
+   "left": 1.0,
+   "right": 2.0,
+   "result": true
+  },
+  {
+   "operator": "lt",
+   "left": 2.0,
+   "right": 2.0,
+   "result": false
+  },
+  {
+   "operator": "lt",
+   "left": 3.0,
+   "right": 2.0,
+   "result": false
+  },
+  {
+   "operator": "lt",
+   "left": -0.0,
+   "right": 0.0,
+   "result": false
+  },
+  {
+   "operator": "lt",
+   "left": 0.30000000000000004,
+   "right": 0.3,
+   "result": false
+  },
+  {
+   "operator": "lt",
+   "left": 5e-324,
+   "right": 0.0,
+   "result": false
+  },
+  {
+   "operator": "lt",
+   "left": -1.7976931348623157e+308,
+   "right": 1.7976931348623157e+308,
+   "result": true
+  },
+  {
+   "operator": "lte",
+   "left": 1.0,
+   "right": 2.0,
+   "result": true
+  },
+  {
+   "operator": "lte",
+   "left": 2.0,
+   "right": 2.0,
+   "result": true
+  },
+  {
+   "operator": "lte",
+   "left": 3.0,
+   "right": 2.0,
+   "result": false
+  },
+  {
+   "operator": "lte",
+   "left": -0.0,
+   "right": 0.0,
+   "result": true
+  },
+  {
+   "operator": "lte",
+   "left": 0.30000000000000004,
+   "right": 0.3,
+   "result": false
+  },
+  {
+   "operator": "lte",
+   "left": 5e-324,
+   "right": 0.0,
+   "result": false
+  },
+  {
+   "operator": "lte",
+   "left": -1.7976931348623157e+308,
+   "right": 1.7976931348623157e+308,
+   "result": true
+  }
+ ],
+ "unknown_operator": {
+  "operator": "between",
+  "class": "KeyError",
+  "message": "'between'"
+ },
+ "dataclasses": {
+  "MetricPoint": [
+   {
+    "name": "ts",
+    "required": true,
+    "default": null
+   },
+   {
+    "name": "metric",
+    "required": true,
+    "default": null
+   },
+   {
+    "name": "value",
+    "required": true,
+    "default": null
+   },
+   {
+    "name": "subject_type",
+    "required": true,
+    "default": null
+   },
+   {
+    "name": "subject_id",
+    "required": true,
+    "default": null
+   },
+   {
+    "name": "source_system",
+    "required": true,
+    "default": null
+   },
+   {
+    "name": "collector_service",
+    "required": true,
+    "default": null
+   },
+   {
+    "name": "collector_host",
+    "required": true,
+    "default": null
+   },
+   {
+    "name": "source_instance",
+    "required": false,
+    "default": "default"
+   },
+   {
+    "name": "source_entity_id",
+    "required": false,
+    "default": null
+   },
+   {
+    "name": "host",
+    "required": false,
+    "default": null
+   },
+   {
+    "name": "service",
+    "required": false,
+    "default": null
+   },
+   {
+    "name": "tags",
+    "required": false,
+    "default": null
+   }
+  ],
+  "MetricSample": [
+   {
+    "name": "ts",
+    "required": true,
+    "default": null
+   },
+   {
+    "name": "value",
+    "required": true,
+    "default": null
+   },
+   {
+    "name": "host",
+    "required": true,
+    "default": null
+   },
+   {
+    "name": "metric",
+    "required": true,
+    "default": null
+   },
+   {
+    "name": "service",
+    "required": true,
+    "default": null
+   },
+   {
+    "name": "subject_type",
+    "required": false,
+    "default": null
+   },
+   {
+    "name": "subject_id",
+    "required": false,
+    "default": null
+   },
+   {
+    "name": "source_system",
+    "required": false,
+    "default": null
+   },
+   {
+    "name": "source_instance",
+    "required": false,
+    "default": null
+   },
+   {
+    "name": "source_entity_id",
+    "required": false,
+    "default": null
+   },
+   {
+    "name": "collector_service",
+    "required": false,
+    "default": null
+   },
+   {
+    "name": "collector_host",
+    "required": false,
+    "default": null
+   },
+   {
+    "name": "tags",
+    "required": false,
+    "default": {}
+   }
+  ],
+  "ConditionEvaluation": [
+   {
+    "name": "status",
+    "required": true,
+    "default": null
+   },
+   {
+    "name": "message",
+    "required": true,
+    "default": null
+   },
+   {
+    "name": "last_value",
+    "required": true,
+    "default": null
+   },
+   {
+    "name": "evaluated_at",
+    "required": true,
+    "default": null
+   }
+  ],
+  "ConditionEvaluationRun": [
+   {
+    "name": "total",
+    "required": true,
+    "default": null
+   },
+   {
+    "name": "failed",
+    "required": true,
+    "default": null
+   }
+  ],
+  "MetricCollectionSpecRun": [
+   {
+    "name": "total",
+    "required": true,
+    "default": null
+   },
+   {
+    "name": "failed",
+    "required": true,
+    "default": null
+   },
+   {
+    "name": "warning",
+    "required": true,
+    "default": null
+   },
+   {
+    "name": "ingested",
+    "required": true,
+    "default": null
+   },
+   {
+    "name": "skipped",
+    "required": true,
+    "default": null
+   }
+  ]
+ }
+}

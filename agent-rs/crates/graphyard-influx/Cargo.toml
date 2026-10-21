@@ -1,0 +1,15 @@
+[package]
+name = "graphyard-influx"
+description = "InfluxDB write and query clients of the graphyard agent (v2 Flux, v3 SQL, auto)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+graphyard-core.workspace = true
+
+[lints]
+workspace = true

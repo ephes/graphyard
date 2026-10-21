@@ -690,6 +690,11 @@ just manage start_agent --disable-metrics
 just manage start_agent --disable-conditions
 ```
 
+A Rust port of the agent is in progress in `agent-rs/` (contract:
+[`agent-rs/PLAN.md`](agent-rs/PLAN.md), build and test:
+[`agent-rs/README.md`](agent-rs/README.md)). It is not deployed; the Python
+command above remains the agent.
+
 ## Nyxmon Integration Contract
 
 Nyxmon can poll:
@@ -732,8 +737,12 @@ just typecheck
 just lint
 ```
 
+All three also run the Rust agent's checks (`just rs-lint`, `cargo check`,
+`just rs-test`); they need the pinned Rust toolchain (`agent-rs/README.md`).
+
 GitHub Actions (`.github/workflows/ci.yml`) runs the same lint, typecheck and test
-commands on every push and pull request. It needs no secrets or InfluxDB.
+commands on every push and pull request (the Rust agent in its own `rust` job,
+which also runs `cargo deny`). It needs no secrets or InfluxDB.
 
 ## Influx + Grafana
 
