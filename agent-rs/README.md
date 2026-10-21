@@ -9,7 +9,7 @@ deploys ship `agent-rs/` only as a release archive.
 
 Status: slices S1 (scaffold), S2, S3a, S3b, S4a, S5, S6, S7a, S7b, S8, S9a, S9b, S10a, S10b (first release `agent-rs-v0.1.0`, see
 [Published releases](#published-releases)) and S15a (the `evaluate-conditions`
-subcommand, version 0.2.0). S1: the workspace, the toolchain pin,
+subcommand, release `agent-rs-v0.2.0`). S1: the workspace, the toolchain pin,
 the cargo-deny policy, the CI `rust` job, the `just rs-*` recipes, the shared
 model types (`graphyard_core::model`) and the fixture pipeline with its drift
 test. S2: the CPython compatibility helpers (`graphyard_core::pycompat`), the
@@ -409,6 +409,7 @@ slice S11c).
 | Tag | Commit | Archive sha256 |
 | --- | --- | --- |
 | [`agent-rs-v0.1.0`](https://github.com/ephes/graphyard/releases/tag/agent-rs-v0.1.0) | `19f56e666173d9cb51639269e1219fcb7edd3e12` | `42d6dbb5b931599c1b35ab7f19a29823bf9583d65b45e2259a69b5dbc64b80e2` |
+| [`agent-rs-v0.2.0`](https://github.com/ephes/graphyard/releases/tag/agent-rs-v0.2.0) | `17a929f240ddf3f63fc7a2ae404dd3c041e93838` | `d8efcb78fd09f5047d5e747696bc7966c94e70de8a44bbe1d5d34111a7a058d4` |
 
 `agent-rs-v0.1.0` (slice S10b) was checked after publishing: the downloaded
 archive matches its `.sha256` file and is byte-identical to the archive of a
@@ -417,3 +418,10 @@ archive matches its `.sha256` file and is byte-identical to the archive of a
 glibc-floor` passes on the extracted binary (newest symbol version
 `GLIBC_2.34`; `NEEDED`: `libc`, `libm`, `libgcc_s`, `ld-linux-x86-64`); the
 workflow's smoke test printed `graphyard-agent 0.1.0 (19f56e666173d9cb51639269e1219fcb7edd3e12)`.
+
+`agent-rs-v0.2.0` (slice S15a, the `evaluate-conditions` subcommand) was
+checked after publishing: the downloaded archive matches its `.sha256` file;
+it holds `graphyard-agent` (0755, 8958360 bytes) and `LICENSE` (0644), owned
+by root; `release_checks.py glibc-floor --max 2.35` passes on the extracted
+binary (newest symbol version `GLIBC_2.34`, libraries OK); the workflow's
+smoke test printed `graphyard-agent 0.2.0 (17a929f240ddf3f63fc7a2ae404dd3c041e93838)`.

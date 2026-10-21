@@ -703,7 +703,10 @@ environment only). It is not deployed yet; the Python command above
 remains the agent until the cutover. Release archives of the Rust binary are
 built by `.github/workflows/agent-rs-release.yml` from `agent-rs-v<version>`
 tags; the first is
-[`agent-rs-v0.1.0`](https://github.com/ephes/graphyard/releases/tag/agent-rs-v0.1.0).
+[`agent-rs-v0.1.0`](https://github.com/ephes/graphyard/releases/tag/agent-rs-v0.1.0),
+the current one
+[`agent-rs-v0.2.0`](https://github.com/ephes/graphyard/releases/tag/agent-rs-v0.2.0)
+(adds `evaluate-conditions`).
 
 ## Nyxmon Integration Contract
 
