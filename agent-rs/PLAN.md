@@ -1,0 +1,1407 @@
+# Rust port of the graphyard agent — implementation plan
+
+Status: plan, not yet implemented. Stream `rust-graphyard-agent` of the
+campaign "Rust-Ports Runde 2" (umbrella item `rust-ports-campaign`). The
+owner decided the open questions on 2026-10-21 (section 14).
+
+This document is the contract for porting the long-running graphyard agent
+(`src/graphyard/management/commands/start_agent.py`, run by
+`graphyard-agent.service` on macmini) to a Rust binary `graphyard-agent` in
+`agent-rs/`. It is written for the implementers of the slices in section 12
+and for the reviewers of each slice. Every behavioural statement cites the
+Python code that defines it (graphyard `85cdb60`). When this document and the
+Python code disagree, the Python code wins and this document must be
+corrected. The method follows the two Rust ports already in production
+(nyxmon `agent-rs/PLAN.md`, mailgun-relay `rust/PLAN.md`): Python is the
+oracle for the contract and for every decision, not for byte parity of
+internals; maintained crates instead of re-implemented libraries or protocols;
+fixtures generated from the Python code; a parity harness running both
+implementations; a release built on an old glibc baseline with `--locked`, a
+pinned toolchain and `cargo deny`; shadow run before cutover; rollback drill;
+Python retirement as its own later slice.
+
+The Django web app (`graphyard-web.service`, Granian) stays Python and keeps
+owning the database schema. Only the agent process is replaced.
+
+---
+
+## 1. Live facts (read-only, 2026-10-21, `ssh root@macmini`)
+
+| Fact | Value |
+| --- | --- |
+| Host | macmini, Ubuntu 24.04.5 LTS, x86_64, kernel 7.2.9, glibc 2.39, 6 CPUs, 64 GiB RAM; root's login shell is fish (tooling sends `bash -s` scripts) |
+| Other hosts | none: `pyinfra_support/services.py:GRAPHYARD_HOSTS = {"macmini"}` (ops-control); the agent runs only on macmini |
+| Process replaced | `graphyard-agent.service`, `ExecStart=/opt/apps/graphyard/site/.venv/bin/python manage.py start_agent`, `WorkingDirectory=/opt/apps/graphyard/site/src/django`, `User/Group=graphyard` (uid 981), `EnvironmentFile=/etc/graphyard/graphyard.env`, `Restart=always`, `RestartSec=5`, `Requires/After=graphyard-runtime.service`, `TimeoutStopSec=90s`, no drop-ins, no hardening directives |
+| Memory (PID 2401015, up 26 h) | `ps` RSS **94 584 KiB (≈ 92 MiB)**, `VmHWM` 96 340 KiB, `RssAnon` 78 096 KiB, `RssFile` 16 488 KiB, 1 thread; cgroup `MemoryCurrent` 80.4 MB, `MemoryPeak` 83.8 MB; CPU 0.3 % (≈ 4.7 CPU-min/day) |
+| Restarts | `NRestarts=0`; last deploy restart 2026-10-20 08:15 CEST |
+| Runtimes in the venv | Python 3.12, Django 6.0.8, httpx 0.28.1 (no brotli/zstandard/h2 installed, so `Accept-Encoding: gzip, deflate`, HTTP/1.1 only), influxdb-client 1.50.0, certifi **2026.02.25** (the relock to 2026.10.19 is merged as `85cdb60` but not yet deployed; live source commit `7d46493` in `.ops-deploy-source`) |
+| Database | SQLite `/opt/apps/graphyard/site/src/django/db.sqlite3` (14.8 MB + 20.6 MB WAL), `journal_mode=wal`, migrations applied up to `graphyard.0012_ingest_token_subject_binding`, `graphyard:graphyard 0640`; host SQLite CLI 3.45.1 |
+| Env (non-secret values) | `DJANGO_SETTINGS_MODULE=config.settings.production`, `INFLUX_URL=http://127.0.0.1:8086`, `INFLUX_ORG=graphyard`, `INFLUX_BUCKET=graphyard`, `INFLUX_MEASUREMENT=graphyard_metrics`, `INFLUX_TIMEOUT_MS=10000`, `INFLUX_API_MODE=v2`, metric and condition intervals 60 s, `GRAPHYARD_CONDITION_DATA_STALE_WARNING_SECONDS=600`, `GRAPHYARD_SQLITE_TIMEOUT_SECONDS=30`, `GRAPHYARD_SQLITE_BUSY_TIMEOUT_MS=30000`, `GRAPHYARD_SQLITE_JOURNAL_MODE=WAL`, `GRAPHYARD_SQLITE_SYNCHRONOUS=FULL` |
+| Legacy `.env` | `src/django/.env` exists (Mar 2026, **mode 0644**, contains secrets). django-environ loads it with `setdefault` semantics; the only keys it adds beyond the EnvironmentFile are unused `HOME_ASSISTANT_*` legacy keys. The Rust agent does not read it (D-9); its removal is the separate item `graphyard-stale-env-macmini`, not part of this plan (section 14, Q5) |
+| InfluxDB | container `graphyard-influxdb`, `influxdb:2.7` = InfluxDB v2.7.12, on `127.0.0.1:8086`; Grafana container alongside |
+| Specs (`metric_collection_spec`) | 32 enabled: 24 `http_json_metric` (300 s; fractal/macmini storage, thermal, IPMI, fan metrics over HTTP Basic), 6 `http_page_probe` (300 s; public websites), 1 `home_assistant_env_scan` (60 s, `http://macmini.local:10020`, an mDNS name), 1 `unifi_device_traffic` (60 s, `https://127.0.0.1:8443`, `verify_tls: false`); all `last_status=ok` |
+| Conditions | 2 enabled (`host.filesystem_used_ratio`, `gte`, `tags_filter` `mountpoint`), both currently `warning` with "No samples available in condition window" (pre-existing, not caused by the agent; reported to the coordinator) |
+| Heartbeats | agent-owned rows `metric_collectors` and `condition_evaluator` (ok, details `{"total": …}` / `{"evaluated": 2, "failed": 0}`); `metric_ingest` is the web's; `ha_poller` is a stale legacy row from 2026-03 that nothing writes |
+| Registry | 33 subjects, 10 hosts, 15 services. Agent specs touch hosts `fractal`/`macmini` (24 host-subject specs without `service_id`) and services `homeassistant`, `unifi` and the six page-probe services, all parented to host `macmini` via `collector_host`. The agent never touches the Vector services `<host>_host_metrics` |
+| Journal | ≈ 48.6 k lines/7 days, of which 39.6 k are httpx `HTTP Request: …` INFO lines (stderr, real time). The command's own stdout lines (`Metric specs: …`, `Condition eval: …`, even `Starting graphyard-agent …`) are **block-buffered** (no `PYTHONUNBUFFERED` in the unit) and reach the journal in bursts, e.g. the start line 81 min after the start (D-8) |
+| Resolver | `hosts: files mdns4_minimal [NOTFOUND=return] dns`, nameservers `127.0.0.1`, `192.168.178.94`; the HA spec needs nss-mdns for `macmini.local` |
+
+The Python agent is the only long-running Python process this stream
+replaces. Not replaced: `graphyard-web` (Django/Granian, 31 MiB RSS, stays
+Python), the weekly `inventory-releases` oneshot timer (not long-running,
+non-goal).
+
+---
+
+## 2. Scope, non-goals, parity definition
+
+### 2.1 Scope
+
+A Rust binary `graphyard-agent` that is a drop-in for `manage.py start_agent`:
+
+- same CLI flags, defaults, validation and exit codes (section 3.1);
+- same scheduler loop (section 3.2);
+- the five metric collection spec types
+  (`services.py:_SPEC_EXECUTORS`: `home_assistant_sensor`,
+  `home_assistant_env_scan`, `http_json_metric`, `http_page_probe`,
+  `unifi_device_traffic`) with the spec-config parsing of `spec_config.py`;
+- the metric normalisation and InfluxDB writes of `influx.py`
+  (`normalize_metric_point`, `write_points`), the condition queries
+  (`query_condition_window`, `query_range` in the modes `v2`, `v3`, `auto`);
+- condition evaluation (`services.py:evaluate_condition`,
+  `evaluate_conditions_once` and helpers);
+- every write to the shared SQLite database (`metric_collection_spec`,
+  `condition_definition`, `pipeline_heartbeat`, `subject_registry`,
+  `host_registry`, `service_registry`; section 5);
+- stdout/stderr lines and operator log lines (section 3.6).
+
+### 2.2 Non-goals
+
+- No change to Django models, migrations, views, admin or management commands
+  other than the Python retirement slice (S15c). The web app must not be able
+  to tell which agent wrote a row.
+- No port of the web ingest path (`views.py`, `record_token_host_usage`,
+  `touch_registry_from_points(bound_subject_id=…)` with a bound subject),
+  `apply_metric_collection_specs`, the token commands, inventory code,
+  `evaluate_conditions` (manual operator command; replaced by
+  `graphyard-agent evaluate-conditions` in S15a and removed in S15c, Q4).
+- No change to Vector (`graphyard_vector`), the ingest tokens or their
+  bindings. The agent never reads or writes `ingest_token` or
+  `ingest_token_host_usage` (section 5.7).
+- No new features, no behaviour fixes except the divergences of section 2.4.
+  Python quirks are reproduced (section 13.1 R3 lists the notable ones).
+- No unit hardening change (the base unit has none; adding it is a separate
+  change for both implementations).
+- No Django system checks (`BaseCommand.requires_system_checks`), no
+  `--verbosity/--settings/--pythonpath/--traceback/--no-color/--force-color/--skip-checks`
+  options (D-7).
+- No Windows/macOS production target; macOS builds only for development.
+
+### 2.3 Parity classes
+
+Every reviewer finding about parity names its class.
+
+**P1 — exact.** Identical, pinned by fixtures or tests:
+
+- every SQL effect on the six agent tables: which rows, which columns, which
+  values, the datetime text format (section 5.3), JSON text of
+  `pipeline_heartbeat.details`, the order in which specs and conditions are
+  processed, transaction boundaries and the 0-row-update behaviour;
+- InfluxDB **series identity**: measurement, tag set (keys and exact values
+  after escaping and empty-tag dropping), field `value`, timestamp in ns, and
+  the set of points written per spec; the Flux query text and the v3 SQL text;
+- spec statuses (`ok`/`warning`/`critical`), the `(ingested, skipped)` counts,
+  and every graphyard-authored message (required-field messages, config
+  errors, deadline/body-cap messages, condition messages, heartbeat
+  `last_error`, the "evaluation error: …" prefix);
+- CLI flags, defaults, validation messages, exit codes, the stdout lines of
+  section 3.6, the scheduler semantics, environment variable names, defaults
+  and parsing (section 3.3).
+
+**P2 — equivalent.** Same meaning, text may differ:
+
+- messages derived from library exceptions (`str(err)` of httpx, json,
+  influxdb-client `ApiException`, urllib3): connect failure, timeout, TLS
+  failure, JSON decode error position. Where operators see them
+  (`last_error`, heartbeat) Rust renders the Python form when the category is
+  known: `[Errno N] <strerror>` for OS errors, `timed out` for timeouts,
+  httpx's `raise_for_status` text (P1, it is a template, section 6.1);
+- measured durations (page probe TTFB/total) and wall-clock timestamps of
+  `now()`-based points and rows;
+- log lines not listed in section 3.6; tracebacks (Rust logs one line);
+- Python `repr` of strings with non-printable or non-ASCII characters inside
+  config error messages (Rust escapes ASCII control characters like Python,
+  other non-printable code points may differ);
+- HTTP request headers other than those listed in section 6.1.
+
+**P3 — intentional divergence.** Exhaustive list in section 2.4. Anything else
+that differs is a bug.
+
+### 2.4 Intentional divergences (P3, exhaustive)
+
+- **D-1 Signals.** SIGTERM: Python dies by the default signal action at any
+  point; Rust stops at the next await point (an in-flight SQLite statement
+  completes first), prints nothing and exits 0. systemd reports both as
+  "Deactivated successfully". SIGINT behaves like Python's
+  `KeyboardInterrupt` handler: stdout `graphyard-agent interrupted, exiting`,
+  exit 0.
+- **D-2 Startup schema check.** Python starts against any database and fails
+  each run ("no such table …"); Rust verifies the schema contract
+  (section 5.1) before the first run and exits 1 with one error line naming
+  every missing table/column/migration. A missing database file: Django
+  would create an empty file; Rust exits 1 and creates nothing.
+- **D-3 Abandoned HTTP workers.** Python tracks daemon threads that outlive
+  their deadline (`_abandoned_page_probe_workers`, cap 4). Rust cancels the
+  whole request future at the deadline; only a blocking `getaddrinfo` can
+  outlive it, so Rust counts abandoned resolver lookups instead (section
+  6.2). Same cap and same message; the trigger differs only in what is
+  counted.
+- **D-4 Non-standard JSON in HTTP bodies.** Python's `json.loads` accepts
+  `NaN`, `Infinity`, `-Infinity` and UTF-16/32 bodies; `serde_json` does not.
+  Such a body is a JSON decode error in Rust (spec `critical`), where Python
+  parsed it and then usually rejected the non-finite value (`warning`). None
+  of the 32 production endpoints emits them (checked again in the shadow run).
+- **D-5 Regex dialect.** User regexes in spec configs run on `fancy-regex`
+  (backtracking features like Python `re`), not CPython `re`. Patterns valid
+  in one and not the other, and Unicode case-folding corner cases, differ.
+  All production patterns are in the fixtures.
+- **D-6 Unicode digits and spaces.** Python `str.isdigit()` in
+  `_resolve_json_path`, `float()` on Unicode digit strings, and `str.strip()`
+  of non-`White_Space` separators (`\x1c`–`\x1f`) accept more than ASCII.
+  Rust accepts ASCII digits only and strips Unicode `White_Space` plus
+  `\x1c`–`\x1f` (matching `str.isspace`). A Unicode-digit path segment is
+  "metric_path not found" in Rust (Python: `int()` raises → `critical`).
+- **D-7 Django command plumbing.** No Django system checks, no Django global
+  options, clap usage text on bad flags (exit 2 as argparse). Settings that
+  only the web reads (secret key, login throttle, ingest windows) are not
+  validated, so the agent starts even when they are invalid.
+- **D-8 Unbuffered stdout.** Rust writes and flushes every stdout line;
+  Python's lines are block-buffered (section 1).
+- **D-9 No `.env` file.** Rust reads only the process environment (the unit's
+  EnvironmentFile). django-environ's `read_env(src/django/.env)` is not
+  ported; on macmini the file adds only unused keys.
+- **D-10 Log injection.** Rust escapes `\n`/`\r` in values it interpolates
+  into log lines (spec names, entity ids, metric names), like the web ingest
+  path already does (`views.py`, `test_metric_log_escapes_newline`).
+- **D-11 Stored JSON that CPython cannot load.** Rust parses `config` and
+  `tags_filter` with `serde_json` (`arbitrary_precision`), which accepts every
+  RFC 8259 document `JSON_VALID` accepts, including numbers beyond `f64`
+  range: Django can store `10**400` (`json.dumps` writes the digits) and such
+  values flow through the Python conversions exactly (`float(int)` →
+  `OverflowError` → config error message; `float(str(…))` → `inf` → "not a
+  finite number"), pinned by `spec_config.json`/`normalize.json` cases.
+  Documents on which the two parsers disagree, each marking only the
+  affected spec `critical` (condition: evaluation error) in Rust, pinned by
+  fixtures:
+  - integer tokens longer than CPython's 4300-digit `int` string limit (not
+    writable through Django, `json.dumps` raises the same limit; only raw SQL
+    stores them): Python fails the whole run while iterating the queryset;
+    Rust uses the CPython message `Exceeds the limit (4300 digits) for
+    integer string conversion` (fixtures at 4300/4301 digits);
+  - lone UTF-16 surrogate escapes in strings (`{"unused": "\ud800"}`) and
+    nesting deeper than `serde_json`'s 128-level limit: Django can write both
+    (`json.dumps`/`json.loads` round-trip them, `JSON_VALID` accepts them)
+    and Python runs the spec when the value is unused; Rust cannot represent
+    a lone surrogate in a `String` and keeps the default recursion limit
+    (no `unbounded_depth`), so it reports `config is not valid JSON: <serde
+    error>`. Production configs have neither (depth ≤ 5, ASCII escapes only;
+    re-checked by `shadow_prepare.py`, which scans the copied rows and lists
+    any spec or condition that would hit one of these cases).
+- **D-12 TLS trust anchors** (Q1, decided 2026-10-21). Python verifies
+  against certifi; Rust verifies against the system CA store (Ubuntu
+  `ca-certificates`), so a CA incident is fixed by the ops trust rollout plus
+  a restart instead of a new agent release. `graphyard-agent.service` is
+  added to macmini's `restart_units` in ops-control
+  `playbooks/ca-trust-consumers.yml` (S11c), so the `ca_trust_consumers`
+  rollout restarts the agent after a CA update.
+
+---
+
+## 3. Process contract
+
+### 3.1 CLI (`start_agent.py:Command.add_arguments`, `handle`)
+
+| Flag | Default | Rule |
+| --- | --- | --- |
+| `--metrics-interval N` | `GRAPHYARD_METRIC_COLLECTION_INTERVAL_SECONDS` | argparse `type=int` |
+| `--condition-interval N` | `GRAPHYARD_CONDITION_EVAL_INTERVAL_SECONDS` | `type=int` |
+| `--disable-metrics` | off | |
+| `--disable-ha` | off | deprecated alias of `--disable-metrics` |
+| `--disable-conditions` | off | |
+| `--run-once` | off | run the enabled loops once (`due_only=False`), exit 0 |
+
+Validation order and messages (stderr `CommandError: <msg>`, exit 1):
+both loops disabled → `At least one loop must be enabled`; metrics enabled and
+interval ≤ 0 → `--metrics-interval must be greater than 0`; conditions enabled
+and interval ≤ 0 → `--condition-interval must be greater than 0`. A disabled
+loop's interval is not validated. Bad flag syntax: exit 2 (D-7).
+
+Then stdout `Starting graphyard-agent (metrics=True@60s, conditions=True@60s)`
+(Python `bool` repr `True`/`False`, the parsed intervals).
+
+Rust-only additions (absent from the Python CLI, used by deploy and shadow):
+
+- `--db PATH` — the SQLite file; default `db.sqlite3` in the working
+  directory, which is what `BASE_DIR / "db.sqlite3"` resolves to under the
+  unit's `WorkingDirectory`. The drop-in passes the absolute path.
+- `--check-schema` — open read-only, verify section 5.1, print one line,
+  exit 0/1. Used by the deploy before switching.
+- `--version` — `graphyard-agent <version> (<full git commit>)`.
+- `--influx-write-file PATH` — shadow mode: no InfluxDB write request is ever
+  built; every batch that would be written is appended to PATH as line
+  protocol (with a `# write <utc> points=<n>` comment line) and counted as
+  written. Queries still go to InfluxDB.
+
+Exit codes: 0 normal end (`--run-once`, SIGINT, SIGTERM), 1 `CommandError`,
+invalid environment value, schema/database failure, 2 usage error.
+`--run-once` exits 0 even when a run failed (Python catches every exception
+in `_run_metric_specs`/`_run_condition_eval`).
+
+### 3.2 Scheduler loop (`start_agent.py:handle`, P1)
+
+Monotonic clock. `next_metrics = now` if enabled else +∞, likewise
+`next_conditions`. Loop: if metrics enabled and `now >= next_metrics`: run
+metrics (`due_only=True`), `next_metrics += interval`, and if that is already
+in the past, `next_metrics = monotonic() + interval`. Then the same for
+conditions with the `now` taken at the top of the iteration. Then sleep
+`max(0.2, min(1.0, min(next_metrics, next_conditions) - monotonic()))`. Both
+runs are sequential in one task; a slow metrics run delays conditions. The
+`--run-once` path calls metrics (`due_only=False`) then conditions. Pinned by
+Rust tests with an injected clock.
+
+### 3.3 Environment (django-environ semantics, P1)
+
+Read once at startup:
+
+| Variable | Default | Used for |
+| --- | --- | --- |
+| `GRAPHYARD_METRIC_COLLECTION_INTERVAL_SECONDS` | `env.int("GRAPHYARD_HA_POLL_INTERVAL_SECONDS", 60)` (evaluated even when the outer one is set) | `--metrics-interval` default |
+| `GRAPHYARD_CONDITION_EVAL_INTERVAL_SECONDS` | 60 | `--condition-interval` default |
+| `GRAPHYARD_CONDITION_DATA_STALE_WARNING_SECONDS` | 600 | staleness, anchor carry, lookback |
+| `GRAPHYARD_SQLITE_TIMEOUT_SECONDS` | 30 | connect busy timeout (superseded by the pragma below, kept for parity of startup validation) |
+| `GRAPHYARD_SQLITE_BUSY_TIMEOUT_MS` | 30000 | `PRAGMA busy_timeout = max(0, v)` |
+| `GRAPHYARD_SQLITE_JOURNAL_MODE` | `WAL` | `PRAGMA journal_mode`, stripped and upper-cased; not in `DELETE TRUNCATE PERSIST MEMORY WAL OFF` → warning `Invalid GRAPHYARD_SQLITE_JOURNAL_MODE=<v>, falling back to WAL` |
+| `GRAPHYARD_SQLITE_SYNCHRONOUS` | `NORMAL` | `PRAGMA synchronous`; not in `OFF NORMAL FULL EXTRA` → warning `… falling back to NORMAL` |
+| `INFLUX_URL` | "" | required at first use, not at startup |
+| `INFLUX_TOKEN` | "" | v2: required; v3: default `dev-influxdb3-token` |
+| `INFLUX_ORG` | "" | v2: required; v3: default `INFLUX_BUCKET or "graphyard"` |
+| `INFLUX_BUCKET` | `graphyard` | |
+| `INFLUX_MEASUREMENT` | `graphyard_metrics` | |
+| `INFLUX_TIMEOUT_MS` | 10000 | per-request timeout |
+| `INFLUX_API_MODE` | `auto` | lower-cased; `v3`, `auto`, anything else = v2 |
+
+Parsing rules (fixtures `settings.json`): `env.int` is Python `int()` on the
+raw string (surrounding whitespace and `_` between digits accepted, sign
+allowed); a value starting with `$` is a django-environ proxy and resolves the
+named variable; an invalid integer exits 1 at startup (Python: traceback from
+the settings import). Strings are not stripped (only the SQLite modes are).
+The pragmas are applied on the one connection exactly as
+`apps.py:_configure_sqlite_connection` does on every Django connection
+(busy_timeout, journal_mode, synchronous, in that order; a failing pragma
+logs `Failed to apply SQLite pragmas on new DB connection` and continues).
+
+InfluxDB configuration errors surface lazily, per write or query, as in
+`influx.py:_build_client`: `Influx setting missing: INFLUX_URL is required`,
+`Influx settings missing: INFLUX_URL, INFLUX_TOKEN, INFLUX_ORG are required`
+(P1 texts, stored as spec `last_error` / condition message).
+
+### 3.4 Metrics run (`services.py:run_metric_collection_specs_once`, P1)
+
+1. Reset the per-run warn-once set (`_subject_mapping_warning_keys.clear()`).
+2. `now` = current UTC time (µs), `now_ts = floor(now.timestamp())`, taken
+   once for the whole run.
+3. Select `enabled = 1` (and `next_run_time <= now_ts` when `due_only`),
+   `ORDER BY name` (model `Meta.ordering`). Rows are loaded once at the start.
+4. Empty: with `due_only` return all-zero counters without a heartbeat; else
+   raise `No matching enabled metric collection specs` (stderr
+   `Metric collection failed: …`, no heartbeat).
+5. Per spec, sequentially: run its executor (section 6) isolated by
+   `_run_single_metric_collection_spec` (unknown type →
+   `critical`, `unsupported spec_type: <t>`; `SpecConfigError` → `critical`,
+   its message; any other failure → `critical`,
+   `collector raised <Type>: <err>` plus an error log line
+   `Metric collection spec '<name>' (<type>) raised`); then update the spec
+   row (section 5.4) with `last_run_at=now`, `last_status`, `last_error`,
+   `next_run_time = now_ts + max(1, interval_seconds)`. Counters: `total`,
+   `failed` (critical), `warning`, `ingested`, `skipped`; error list entries
+   `"<name>: <msg>"` for every critical and for warnings with a message.
+6. Heartbeat `metric_collectors`: all failed (`failed > 0` and
+   `total - failed == 0`) → `critical`, success false; any failed or warning →
+   `warning`, success true; else `ok`, success true. `last_error` =
+   `"; ".join(errors[:5])`, details
+   `{"total": …, "failed": …, "warning": …, "ingested": …, "skipped": …}`.
+7. stdout `Metric specs: total=<t> failed=<f> warning=<w> ingested=<i> skipped=<s>`.
+
+A failure outside a spec (database error, spec deleted during the run →
+0-row update, section 5.4) aborts the run: error log `Metric collection
+failed`, stderr `Metric collection failed: <err>`, no heartbeat, the loop
+continues.
+
+### 3.5 Conditions run (`services.py:evaluate_conditions_once`, P1)
+
+Select `enabled = 1 ORDER BY name`. Per condition, sequentially:
+`evaluate_condition` (section 7) with its own `now`; success → update
+`status, message, last_value, last_evaluated`; any exception → `failed += 1`,
+update only `status='critical'`, `message='evaluation error: <err>'`. If that
+second update fails too, the run aborts (`Condition evaluation failed`,
+stderr `Condition eval failed: <err>`, no heartbeat). Heartbeat
+`condition_evaluator`: `ok`/`""`/success when nothing failed, else
+`warning`/`"<n> condition(s) failed"`/no success; details
+`{"evaluated": <total>, "failed": <failed>}`. stdout
+`Condition eval: evaluated=<total> failed=<failed>`.
+
+### 3.6 Output and logging
+
+stdout (P1 text, one line each, flushed): the start line, `Metric specs: …`,
+`Condition eval: …`, `graphyard-agent interrupted, exiting`. stderr (P1
+text): `CommandError: …`, `Metric collection failed: <err>`,
+`Condition eval failed: <err>`.
+
+Log records go to stderr as the bare message (production `LOGGING` has a root
+`StreamHandler` without formatter, level INFO). Operator-relevant lines (P1
+text up to the interpolated exception text; D-10 escaping):
+
+- httpx's request line, emitted by Rust for every collector request and every
+  v3 SQL request: `HTTP Request: <METHOD> <url> "HTTP/1.1 <code> <reason>"`
+  (InfluxDB v2 traffic goes through urllib3 in Python and is not logged);
+- subject/metric mapping warnings of `_resolve_subject_mapping` and
+  `_resolve_home_assistant_metric_mapping` (warn-once keys as in Python),
+  `Spec <name> failed subject resolution for entity_id=<id>`;
+- `Metric point validation failed metric=… subject_type=… subject_id=…: <err>`,
+  `Ignoring custom tag override for reserved key <k>`,
+  `metrics_write_rejected category=normalization rejected_points=<r> written_points=<w> total_points=<t>`;
+- `Ignoring host_filter for non-host condition id=<id> name=<name>`;
+- `HTTP collector worker for <url> still running after it was cancelled`;
+- the SQLite pragma warnings of 3.3; `Metric collection failed`,
+  `Condition evaluation failed`, `Metric collection spec … raised` (one line
+  with the error instead of a traceback, P2).
+
+Rust adds three INFO lines at startup (version, schema check result with
+journal mode, effective intervals) and nothing per run beyond the above.
+
+### 3.7 systemd behaviour
+
+Same unit, same `EnvironmentFile`, `WorkingDirectory`, user and restart
+policy; the Rust binary is selected by a drop-in (section 8.3). The agent
+never forks, opens no listening socket, needs no capabilities and writes only
+the database file (plus WAL/SHM) and, in shadow mode, the write file. Stop:
+exits within 1 s of SIGTERM unless an SQLite statement is waiting on a lock
+(bounded by `busy_timeout`, 30 s < `TimeoutStopSec` 90 s); a blocked
+`getaddrinfo` never delays the exit (section 4.1).
+
+---
+
+## 4. Design
+
+### 4.1 Runtime shape
+
+One tokio runtime, `current_thread`, plus tokio's blocking pool for
+`getaddrinfo` and one dedicated thread for SQLite (below). The two loops stay sequential in one task,
+exactly like Python; nothing in the agent needs concurrency, and sequential
+execution is what keeps the P1 ordering (single `now` per run, spec order,
+heartbeat after the last spec). A second task handles SIGTERM/SIGINT and
+cancels the main task.
+
+Shutdown must not wait for blocking work that cannot be cancelled: a
+`getaddrinfo` stuck in tokio's blocking pool would otherwise hold
+`Runtime::drop` until systemd's SIGKILL. SQLite therefore does not run on
+the blocking pool but on one dedicated DB thread owning the connection
+(callers send a closure and await the reply, as in nyxmon `nyxmon-store`).
+On a signal the main task is cancelled, `main` waits for the DB thread to
+finish its current statement (bounded by `busy_timeout`), drops the
+connection, prints the SIGINT line if applicable, and ends the runtime with
+`Runtime::shutdown_timeout(Duration::from_millis(500))`, abandoning resolver
+threads; the process then exits 0. S8 tests SIGTERM with a resolver stub that
+never returns and with a DB thread that holds a statement for a few seconds.
+
+### 4.2 Workspace
+
+```
+agent-rs/
+  Cargo.toml          # workspace; [profile.release] lto="thin", codegen-units=1, strip=true
+  Cargo.lock          # committed; every build --locked
+  rust-toolchain.toml # same pin as nyxmon agent-rs (1.99.0) = MSRV
+  deny.toml           # copied from nyxmon agent-rs, same policy
+  PLAN.md TESTMAP.md README.md
+  crates/
+    graphyard-core/     # pure: pycompat, settings, model types, spec_config,
+                        # normalisation, line protocol, JSON path, mappings,
+                        # condition evaluation; no I/O
+    graphyard-store/    # rusqlite: schema contract, all SQL, registry touch
+    graphyard-influx/   # write and query clients (v2 Flux, v3 SQL, auto)
+    graphyard-collect/  # HTTP layer (deadline, caps, redirects) and the five executors
+    graphyard-agent/    # binary: CLI, scheduler, runs, logging, signals
+  fixtures/           # generate.py + gen_*.py, schema/, *.json (section 9.2)
+  parity/             # offline harness, fakes, shadow tooling (sections 9.4, 10)
+  scripts/release_checks.py
+```
+
+Crate boundaries let slices S2–S7 proceed in parallel with few conflicts and
+keep every fixture-tested function in `graphyard-core`.
+
+### 4.3 Crate choices
+
+| Need | Crate | Justification |
+| --- | --- | --- |
+| async runtime | `tokio` (rt, time, signal, macros) | |
+| HTTP (collectors, Influx) | `reqwest` (no default features; `rustls` TLS, `gzip`, `deflate`, `cookies`, `stream`) | maintained client covering everything httpx does for us: per-connect and per-read timeouts, streaming bodies for byte caps, cookie jar (UniFi session), `danger_accept_invalid_certs` for `verify_tls: false`, redirect policy `none` for the hand-driven page-probe redirects; the rules of section 6.1 are applied on top, not a new HTTP implementation |
+| name resolution | reqwest custom `Resolve` running libc `getaddrinfo` on the blocking pool | `macmini.local` needs nss-mdns, so glibc resolution is mandatory (section 13.1 R2); the wrapper counts abandoned lookups (D-3) |
+| TLS roots | system store via rustls (`rustls-native-certs` or reqwest's platform verifier) | Q1, D-12 |
+| InfluxDB v2 write | plain HTTP `POST /api/v2/write` with our line formatter (section 6.4) | the Python client is itself a thin wrapper over this documented API (`SYNCHRONOUS` write, no batching, no retries); the Rust InfluxDB crates are either unmaintained (`influxdb2`, last release 2024-07) or InfluxQL/v1-oriented (`influxdb`); series identity needs `influxdb_client`'s exact escaping and float rendering, which no crate promises |
+| line protocol parsing (tests only) | `influxdb-line-protocol` (InfluxData) as dev-dependency | semantic comparison of written lines in fixtures, harness and shadow tooling |
+| InfluxDB v2 Flux query | plain HTTP `POST /api/v2/query` + `csv` crate for the annotated CSV | same reasoning; annotated CSV is plain CSV plus `#datatype/#group/#default` rows, read with the maintained `csv` crate |
+| InfluxDB v3 SQL | plain HTTP `POST /api/v3/query_sql` + `serde_json` | mirrors `_read_v3_sql_rows` |
+| SQLite | `rusqlite` (`bundled`) | same as nyxmon; synchronous API keeps Django's statement boundaries reviewable |
+| JSON | `serde_json` (`preserve_order`, `arbitrary_precision`) | key order of configs and payloads (rule order, tag order), big integers survive like in Python |
+| regex | `fancy-regex` | user regexes from spec configs need lookaround/backreference support like Python `re` (D-5) |
+| time | `chrono` | Django datetime text, ISO parsing of HA `last_updated`, RFC 3339 of Flux |
+| CLI | `clap` (derive) | |
+| logging | `log` + a 20-line stderr logger printing the bare message | matches the production format; no `tracing` stack needed |
+| tests | `tempfile`, `tokio-test`, `rcgen` (TLS fake servers) | |
+
+No OpenSSL, no `hickory-resolver`, no musl.
+
+### 4.4 Python compatibility helpers (`graphyard-core::pycompat`, S2)
+
+Small, fixture-pinned functions where no crate reproduces CPython:
+`py_float_repr(f64)` (`repr(float)`), `py_format_g(f64)` (`format(x, "g")`,
+for `total_timeout_seconds={x:g}`), `py_float(&str)` (Python `float()` on
+ASCII input incl. `_`, whitespace, `inf`/`nan` spellings), `py_int(&str)`,
+`py_str(&Value)` (`str()` of a JSON value: `True`, `None`, `1.0`, dict/list
+`repr`), `py_repr(&Value)` (incl. string quote selection and escapes),
+`py_describe` (`spec_config.py:_describe`, 64-char truncation),
+`py_strip`, `py_split_whitespace`, `py_eq(&Value, &Value)` (Python `==`
+across bool/int/float). The nyxmon `pyjson` module implements several of
+these; S2 copies the relevant functions with their fixture cases rather than
+depending on another repository.
+
+---
+
+## 5. Database contract
+
+### 5.1 Schema ownership and startup check
+
+Django migrations own the schema. The Rust agent runs no DDL. At startup
+(and for `--check-schema`) it verifies with `PRAGMA table_info`:
+
+- `metric_collection_spec`: `id, name, enabled, spec_type, interval_seconds, next_run_time, config, last_run_at, last_status, last_error`
+- `condition_definition`: `id, name, enabled, metric_name, host_filter, service_filter, subject_type_filter, subject_id_filter, tags_filter, operator, warning_threshold, critical_threshold, window_minutes, breach_minutes, stale_after_seconds, alert_when_stale, status, message, last_value, last_evaluated`
+- `pipeline_heartbeat`: `id, name, status, last_success, last_error, details, updated_at`
+- `subject_registry`: `id, subject_type, subject_id, display_name, source_system, last_seen_at`
+- `host_registry`: `id, host_id, display_name, grafana_url, enabled, last_seen_at`
+- `service_registry`: `id, service_id, host_id, display_name, grafana_url, enabled, last_seen_at`
+- `django_migrations` contains `('graphyard', MIN_GRAPHYARD_MIGRATION)`,
+  initially `0010_condition_stale_allowance` (the last migration that changes
+  an agent table; `0011`/`0012` touch only `ingest_token*`; S3a confirms by
+  reading the migrations).
+
+`agent-rs/fixtures/schema/schema.sql` is the `.schema` dump of a database
+freshly migrated with the test settings plus its `django_migrations` rows;
+`agent_tables.json` lists the columns above and the minimum migration. A
+Python test `tests/test_agent_rs_schema_contract.py` regenerates both in
+memory and fails with "run `just rs-fixtures` and update the Rust schema
+contract" when they differ, so a migration touching an agent table cannot
+merge without a conscious Rust change. Every Rust store test builds its
+database from `schema.sql`.
+
+### 5.2 Connection
+
+One `rusqlite` connection for the process lifetime, owned by the dedicated
+DB thread of section 4.1 (Django keeps one connection in a management
+command). Opened `SQLITE_OPEN_READ_WRITE` (no
+create), `PRAGMA foreign_keys = ON` (Django's SQLite backend sets it), then
+the three graphyard pragmas of 3.3. Single statements run in autocommit, as
+Django's `save(update_fields=…)` does; multi-statement operations run in
+`BEGIN IMMEDIATE` (settings `transaction_mode: IMMEDIATE`). The web app and
+the agent share the WAL database exactly as today.
+
+### 5.3 Value formats (P1)
+
+- Datetimes: Django stores aware datetimes as naive UTC text
+  `YYYY-MM-DD HH:MM:SS.ffffff`, and **without** `.ffffff` when the
+  microsecond is 0 (`str(datetime)`). Reads accept that form and the forms
+  Django's `parse_datetime` accepts; an unparseable stored value counts as
+  NULL.
+- `pipeline_heartbeat.details`: `json.dumps` default separators
+  (`{"evaluated": 2, "failed": 0}`), key order as in 3.4/3.5.
+- Booleans `0/1`; `last_value` REAL; `next_run_time` integer.
+
+### 5.4 Writes per operation (P1, Django ORM as the oracle)
+
+- **Spec run result** — `UPDATE metric_collection_spec SET last_run_at=?,
+  last_status=?, last_error=?, next_run_time=? WHERE id=?`. `updated_at` is
+  **not** touched (`update_fields` excludes `auto_now` fields). 0 rows →
+  error `Save with update_fields did not affect any rows.`, which aborts the
+  run (3.4).
+- **Condition success** — `status, message, last_value, last_evaluated`;
+  **condition failure** — `status, message` only. Same 0-row rule.
+- **Heartbeat** (`record_heartbeat`, `min_update_interval_seconds=0`) —
+  Django 6 `update_or_create(name=…, defaults)` inside `BEGIN IMMEDIATE`:
+  existing row → update `status, last_error, details` (+ `last_success=now`
+  when success) and `updated_at` (Django adds `auto_now` fields to
+  `update_fields`); missing row → insert with `last_success` NULL unless
+  success. Up to 3 attempts, retrying only on `database is locked` with
+  sleeps of 50 ms and 100 ms. The exact column set per path is pinned by the
+  `store_ops.json` fixture, not by this paragraph.
+- **Registry** (`touch_registry_from_points(points)`, `bound_subject_id=None`)
+  — section 5.5.
+
+The fixture generator (`fixtures/gen_store.py`) runs each Python operation
+against a temporary database built with the test settings and records the
+rows before and after (all columns), so the Rust store tests assert identical
+row images (timestamps injected).
+
+### 5.5 Registry touch (`services.py:touch_registry_from_points`, P1)
+
+One `now` per call; for each point in order, `normalize_metric_point` (a
+`ValueError` propagates and turns the spec `critical`, after the points before
+it were touched and after `write_points` already wrote the valid ones —
+reproduced on purpose):
+
+1. `subject_registry` get-or-create by `(subject_type, subject_id)` with
+   defaults `display_name=subject_id`, `source_system`; then set
+   `last_seen_at=now` if NULL or `now > last_seen_at`, and `source_system` if
+   non-empty and different; save only changed fields.
+2. Subject type `host`: `host_registry` get-or-create by `host_id` with
+   `display_name`; bump `last_seen_at` the same way.
+3. Point with `service`: the service host is the host from step 2, else the
+   first `host_registry` row with `host_id = collector_host` (may be none);
+   `service_registry` get-or-create by `service_id` with `display_name` and
+   that host; then re-parent to it when it differs and is not none, bump
+   `last_seen_at`; save changed fields.
+
+Get-or-create follows Django: select; insert inside a savepoint; on
+`IntegrityError` select again. The bound-subject branch is not ported
+(non-goal).
+
+### 5.6 Coexistence with Django
+
+The agent's UPDATEs touch only the listed columns, so concurrent admin edits
+of `config`, thresholds or `enabled` survive, as today. A spec edited during
+a run is used as it was loaded at run start.
+
+### 5.7 Token binding and Vector boundaries
+
+The agent writes InfluxDB directly with `INFLUX_TOKEN`; it never calls the
+ingest API, never reads or writes `ingest_token`/`ingest_token_host_usage`,
+and never runs the bound-subject registry branch. The `<host>_host_metrics`
+services and the per-host ingest tokens (ops-control `4394ecd`) are therefore
+outside its reach, and `GRAPHYARD_REQUIRE_BOUND_INGEST_TOKENS` does not affect
+it. S3a adds a Rust test that greps the store's SQL for `ingest_token` and
+fails if found.
+
+---
+
+## 6. Collector contract
+
+### 6.1 Common HTTP rules (httpx 0.28.1 as configured by `services.py`)
+
+- One client per spec execution (`httpx.Client(...)`), closed after it; its
+  cookie jar lives for that execution (redirect chains, UniFi login session).
+- Timeout `request_timeout_seconds` for connect and for each read (httpx
+  applies it per operation, not to the whole request); reqwest:
+  `connect_timeout` + `read_timeout`. httpx's write and pool timeouts have no
+  reqwest counterpart (P2).
+- `verify_tls: false` disables certificate and hostname verification.
+- Request headers sent by Python and kept (P1): `Accept` as set by the
+  executor (default `*/*`), `Accept-Encoding: gzip, deflate`,
+  `User-Agent: python-httpx/0.28.1` (kept for zero-change cutover like the
+  nyxmon port; a `graphyard-agent/<ver>` UA is a later, separate change),
+  `Authorization` as set by the executor. Decoded bytes count towards
+  `max_body_bytes`, as `iter_bytes()` yields decoded content.
+- HTTP/1.1 only.
+- `raise_for_status()` text (P1, template from httpx):
+  `Client error '404 Not Found' for url '<url>'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404`
+  (and the `Redirect response` / `Server error` / `Informational response`
+  variants with `Redirect location: '<loc>'` for 3xx); pinned by a fixture
+  built from `httpx.Response(...).raise_for_status()`.
+- Exception classification for the page probe (`except (httpx.HTTPError,
+  _PageProbeLimitExceeded, _PageProbeDeadlineExceeded)`): transport errors,
+  timeouts, `TooManyRedirects`, `UnsupportedProtocol` are `HTTPError`
+  (warning path); `httpx.InvalidURL` and other errors are not (critical
+  path). Pinned by fixture `http_errors.json` (URL and failure corpus
+  classified by the Python code).
+
+### 6.2 Total deadline (`_run_http_with_deadline`, P1 messages)
+
+Used by both HA executors, `http_json_metric` and `http_page_probe` (not by
+UniFi, not by InfluxDB). The whole operation (resolution, connect, TLS,
+headers, body, redirects, JSON parse) runs under
+`total_timeout_seconds` (default 3 × request timeout,
+`spec_config.py:page_probe_total_timeout_config`). Messages:
+`HTTP collector exceeded total_timeout_seconds=<py_format_g>`; when 4 or more
+abandoned workers are still alive before starting:
+`<n> earlier HTTP collectors are still running past total_timeout_seconds; not starting another`.
+A deadline that passes while the JSON body is being parsed still fails the
+probe (Python checks after `json.loads`). Abandoned workers in Rust (D-3):
+resolver lookups whose request was cancelled and that are still running 1 s
+after the cancellation; each one logs the "still running" warning once.
+
+### 6.3 Executors
+
+Each returns `(status, ingested, skipped, message)`; the config is the spec's
+JSON object (non-object → `critical`, `config must be an object`). Typed
+knobs go through `spec_config.py` (`request_timeout_seconds` default 10,
+`total_timeout_seconds`, `max_body_bytes` default 10 MiB, `verify_tls`
+default true, `follow_redirects` default true; their `SpecConfigError`
+messages are P1 including `_describe`). Required-field messages (P1) appear
+in the order the Python code checks them.
+
+- **`home_assistant_sensor`** (`_execute_home_assistant_sensor_spec`): GET
+  `<base_url rstrip "/">/api/states/<entity_id>` with `Authorization: Bearer
+  <access_token>`, `Accept: application/json`, no redirects, body cap,
+  deadline, `raise_for_status`, JSON. Non-object → `warning, 0, 1, "invalid
+  JSON payload"`; normalisation `None` → `warning, 0, 1, "state payload not
+  numeric or mapping failed"`; else write one point, touch the registry,
+  `ok, written, 0, ""`; any exception → `critical, 0, 0, str(err)`.
+- **`home_assistant_env_scan`** (`_execute_home_assistant_env_scan_spec`):
+  GET `/api/states`; `entity_id_regex` compiled case-insensitive (invalid →
+  `critical`, `invalid entity_id_regex: <err>`, P2 after the prefix);
+  non-list → `critical, "states response is not a list"`; filter
+  `sensor.`/`binary_sensor.` entities whose
+  `str(attributes.get("device_class", "")).lower()` is in
+  `include_device_classes` (default temperature, humidity; non-list → default)
+  or whose id matches the regex (`search`); normalise with
+  `metric_name_override = metric_prefix + entity_id` and
+  `extra_tags={"spec_name": name}`; `None` → `skipped += 1`; no points →
+  `warning, 0, skipped, "no matching numeric states"`; else write, touch,
+  `ok, written, skipped, ""`.
+- **HA state normalisation** (`_normalize_home_assistant_sensor_state`):
+  entity id, state via `parse_finite_float`, timestamp from `last_updated`
+  (`Z` → `+00:00`, `datetime.fromisoformat`, naive = UTC, failure = now),
+  `_resolve_subject_mapping` (rules with `fullmatch`, default mapping,
+  warn-once keys), source/collector fields with their defaults and fallbacks,
+  `_resolve_home_assistant_metric_mapping` (rules with `search`,
+  `value_multiplier` with bool rejection, `extra_tags`), non-finite product →
+  `None`, tags `entity_id` → extra tags → mapped tags → `unit` →
+  `device_class` (later keys win), host compatibility tag only when subject
+  type is `host` and the subject equals the normalised `host_id`.
+- **`http_json_metric`** (`_execute_http_json_metric_spec`): every config
+  field with its Python default chain (`subject_id` defaults to `service_id
+  or host_id or "external"`, `collector_service` to `service_id or
+  "graphyard-agent"`, …); required `url`, `metric_path`, `metric_name`; tags
+  `spec_name` + configured `tags` (`str()` of keys and values); optional
+  Bearer token; Basic auth only when both username and password are
+  non-empty; `_resolve_json_path` (`$`, `$.a.0.b`, list index by digits);
+  missing → `warning, 0, 1, "metric_path not found: <path>"`; non-finite →
+  `warning, 0, 1, "metric value is not a finite number"`; `host` tag only for
+  subject type `host`.
+- **`http_page_probe`** (`_execute_http_page_probe_spec`,
+  `_run_http_page_probe`): GET with manual redirects (status 301/302/303/
+  307/308 with `Location`, URL resolved against the request URL as httpx
+  does, at most 20 followed, the 21st raises `Exceeded maximum allowed
+  redirects.`), body read and counted on every hop (`body_bytes >
+  max_body_bytes` → `response body exceeded max_body_bytes=<n>`), TTFB to the
+  final response headers measured from the first request, total after the
+  final body. Success points (5, one `now`): `service.http_page_ttfb_seconds`,
+  `…_total_seconds`, `…_status_code`, `…_success` (1 for 200–399, so an
+  unfollowed 3xx is success), `…_redirect_count`; tags `spec_name`,
+  `http_method=get` + configured tags; `source_entity_id = url`. Non-success
+  status → `warning, written, 0, "unexpected status code: <code>"`. Warning
+  path (6.1 classification): 2 points (`status_code` 0, `success` 0),
+  `warning, written, 0, str(err)`. A write or registry failure inside that
+  warning path is raised out of the `except` block and becomes `collector
+  raised …` (P1 status, P2 text) — reproduced.
+- **`unifi_device_traffic`** (`_execute_unifi_device_traffic_spec`):
+  redirects followed automatically (max 20), no deadline wrapper. Login
+  attempts by `auth_mode` (`auto` = legacy `/api/login` then UniFi OS
+  `/api/auth/login`; JSON body `{"username", "password", "remember": true}`,
+  compact as httpx `json=`), success test `_unifi_login_response_ok`
+  (2xx and `meta.rc` `ok`, unparseable/non-dict bodies count as ok), CSRF
+  header `x-csrf-token`, cookies kept; failure message
+  `UniFi login failed; attempts: <mode> <endpoint> returned HTTP <code>[: <summary>]; …`
+  with `_unifi_response_summary` (redact values ≥ 4 chars, regex-redact
+  `"password": "…"`, whitespace collapse, 240 chars). Device list GET,
+  `_find_unifi_device` (name first, then MAC per item), interface selectors
+  `uplink`, `port_idx:<n>`, `port_name:<name>` with their `ValueError`
+  messages, Python truthiness for `port_idx or num_port` and Python `==` for
+  `port_idx` comparisons, `str()` of `speed`; two points (`rx_bytes-r`,
+  `tx_bytes-r`), each skipped when not finite; no points → `warning, 0,
+  skipped, "no numeric traffic values found"`.
+
+### 6.4 InfluxDB writes (`influx.py:write_points`, P1)
+
+Normalise each point (`normalize_metric_point`: metric required, subject type
+in `{host, network_device, environment_sensor, service}` with the message
+`Unknown subject_type '<t>'; expected one of ['environment_sensor', 'host',
+'network_device', 'service']`, `normalize_subject_id`,
+`_normalize_dimension_value` with fallbacks, `source_entity_id`/`service`
+empty → none, host compatibility rules, finite value). Invalid points are
+logged and skipped (not counted); all invalid → no request. Tags: the seven
+fixed dimensions, then `source_entity_id`, `host`, `service` when set, then
+custom tags except reserved keys (warning per reserved key). Line format as
+`influxdb_client.Point.to_line_protocol` 1.50.0:
+
+- tags sorted by key; a tag with empty key or empty escaped value is dropped;
+- measurement escapes `,`, space, `\n`, `\t`, `\r`; tag keys/values and field
+  keys escape `,`, `=`, space, `\n`, `\t`, `\r` (backslash is **not**
+  escaped); a tag value ending in `\` gets a trailing space;
+- field `value=<str(float)>` with a trailing `.0` removed (`21.0` → `21`,
+  `1e+16` kept);
+- timestamp in ns from the UTC datetime (µs × 1000);
+- lines joined with `\n`.
+
+Request: `POST <INFLUX_URL>/api/v2/write?org=<org>&bucket=<bucket>&precision=ns`,
+`Authorization: Token <token>`, `Content-Type: text/plain`, timeout
+`INFLUX_TIMEOUT_MS`, no retries (SYNCHRONOUS write). Non-2xx → error (P2
+text, Python's `ApiException` string). `ingested` = number of valid points.
+
+### 6.5 InfluxDB queries (`influx.py:query_range`, `query_condition_window`, P1)
+
+- Window: lookback = `max(window_minutes, breach_minutes +
+  ceil(stale_warning/60), ceil(stale_limit/60))` minutes before `now`; tag
+  filters = `tags_filter` (`str()` of values, JSON key order) + normalised
+  `subject_type_filter`/`subject_id_filter`; `host_filter` dropped with the
+  warning for non-host subject types.
+- v2 Flux text (byte-identical, `_query_range_v2_flux`): `_flux_escape`
+  (`\`, `"`, `${`), bracket access `r["key"]`, timestamps `isoformat` with
+  `Z` (no fraction when µs is 0), `sort(columns: ["_time"], desc: false)`.
+  Request `POST /api/v2/query?org=<org>` with the client's JSON body (query,
+  dialect `header: true, delimiter ",", commentPrefix "#", annotations
+  [datatype, group, default], dateTimeFormat RFC3339`, `extern` as the client
+  sends it; pinned from a request captured from the Python client in S4b),
+  `Authorization: Token`. Annotated CSV: typed values per `#datatype`, empty
+  cells take `#default`, `_value` must be a finite number
+  (`InfluxDB query sample must be a finite number`), `_time` parsed with
+  Python's `fromisoformat` semantics (fraction truncated to µs, confirmed by
+  fixture), tags = every column except the known ones.
+- v3 SQL (`_query_range_v3_sql`, `_read_v3_sql_rows`): SQL text identical,
+  `POST /api/v3/query_sql` JSON `{"db", "q"}`, Bearer token when set, timeout
+  `max(1, INFLUX_TIMEOUT_MS/1000)` s, 10 MiB decoded cap, 30 s total; the
+  error texts of `_read_v3_sql_rows` (404 hint, `HTTP <code>`, the httpx error
+  class name for transport errors, invalid JSON, size and deadline).
+- `auto`: v2 first; only a 404 falls back to v3; any other error propagates.
+
+---
+
+## 7. Condition evaluation (`services.py`, pure, P1)
+
+`evaluate_condition`: no samples → `warning`/"No samples available in
+condition window" (or `ok` with "…, not alerting (intermittent)" when
+`alert_when_stale` is false). Group by `_series_key` (metric + non-empty
+canonical dimensions + all custom tags, sorted), sort each series by time,
+label with `_series_labels`, evaluate each with `_evaluate_series`:
+staleness `int((now - latest.ts).total_seconds())` against
+`stale_limit_seconds()` (`stale_after_seconds` or the global), then critical
+before warning via `_is_breached_for_duration` (window start, anchor carry
+bounded by the global stale setting, a sample exactly at the window start
+supersedes the anchor, one-minute grace without anchor, all evaluated samples
+must breach). One series → its result. Several → worst status, ties by
+oldest latest sample then label; `ok` reports the newest series value with
+` (<n> series)`; otherwise ` [series: <label>] (<k> of <n> series not OK)`.
+Thresholds in messages use `py_float_repr`. Pinned by `conditions.json`
+(generated from `evaluate_condition` with the query stubbed and the clock
+injected), covering every test of `tests/test_condition_evaluation.py`.
+
+---
+
+## 8. Build, release, deployment
+
+### 8.1 Target: `x86_64-unknown-linux-gnu`, glibc floor 2.35
+
+Same decision as nyxmon: a glibc binary (only glibc/libgcc dynamic
+dependencies, rustls instead of OpenSSL) built on `ubuntu-22.04` (glibc 2.35
+≤ macmini 2.39). musl is excluded: its resolver ignores `nsswitch.conf`, so
+`macmini.local` (HA spec, mDNS) would not resolve. `release_checks.py
+glibc-floor` asserts no symbol newer than `GLIBC_2.35` and only
+glibc/libgcc `NEEDED` entries.
+
+### 8.2 Release pipeline (graphyard repo)
+
+`.github/workflows/agent-rs-release.yml`, adapted from nyxmon's: tag
+`agent-rs-v<semver>` (must equal `crates/graphyard-agent/Cargo.toml`), plus
+`workflow_dispatch` for a dry build without release; full Rust tests, the
+fixture drift test, `cargo build --release --locked --target
+x86_64-unknown-linux-gnu`, glibc floor check, `--version` smoke test against
+the workflow's commit, deterministic archive
+`graphyard-agent-<ver>-x86_64-unknown-linux-gnu.tar.gz` (binary + `LICENSE`)
+and `<archive>.sha256`, GitHub release (only that job has `contents:
+write`), pinned action SHAs, no cargo cache in the release job. CI
+(`.github/workflows/ci.yml`) gains a `rust` job (fmt, clippy `-D warnings`,
+`cargo test --locked`, release build size report, `cargo deny --locked
+check`) and a `parity` job (section 9.4). First release `agent-rs-v0.1.0`.
+
+### 8.3 Deploy mechanism today and the changes
+
+**Today.** `just deploy-one graphyard_core` in ops-control. Its
+`services-metadata.yml` entry has `engine: pyinfra` (since 2026-10-16) and a
+`source:` block (graphyard default branch, or `DEPLOY_REF`;
+`DEPLOY_SOURCE=local` syncs `$PROJECTS_ROOT/graphyard`), so `deploy.just`
+execs `just pyinfra-deploy-one graphyard_core macmini`. ops-control's
+`pyinfra_support/services.py` builds a `GraphyardConfig` from the inventory
+(`macmini_graphyard_*` host vars, SOPS secrets `secrets/prod/graphyard.yml`
+and the spec secrets) and runs ops-deploy (pinned in
+`requirements-ops-deploy.txt`, currently `f8f24ce`)
+`ops_deploy.services.graphyard.core.deploy_graphyard_core`: rsync of the tree,
+`uv sync`, migrate/collectstatic when needed, units rendered byte-identical to
+the Ansible role `graphyard_deploy` (ops-library), restart of web and agent
+when code/deps/env changed, `/v1/health` check, both units running, source
+commit recorded. The Ansible role remains live in two places: the engine
+fallback (delete the `engine` line) and `just deploy-one graphyard` (the whole
+stack via `playbooks/deploy-graphyard.yml`, engine Ansible, which also
+redeploys Vector and therefore must not be used while the Atlas step is
+open). The port deploys exactly through these paths; nothing new is invented.
+
+**ops-library `graphyard_deploy`** (S11a), mirroring `nyxmon_deploy`'s
+`agent_rust.yml`/`agent_verify.yml`:
+
+```yaml
+graphyard_agent_impl: python                 # python | rust
+graphyard_agent_rust_version: ""             # e.g. "0.1.0"; required for rust
+graphyard_agent_rust_sha256: ""              # sha256 of the release archive
+graphyard_agent_rust_release_url: >-
+  https://github.com/ephes/graphyard/releases/download/agent-rs-v{{ graphyard_agent_rust_version }}/graphyard-agent-{{ graphyard_agent_rust_version }}-x86_64-unknown-linux-gnu.tar.gz
+graphyard_agent_rust_local_archive: ""       # controller path (development)
+graphyard_agent_rust_install_root: /opt/graphyard-agent
+graphyard_agent_rust_keep_versions: 3
+```
+
+Steps after `django.yml` (migrations applied) and before `service.yml`:
+assert the settings; when a version is set (independent of the impl), stage
+the archive with `get_url` + `checksum: sha256:` into
+`<root>/<version>/` (root:root 0755; an installed version is never modified;
+a different archive for an installed version fails the run); validate by the
+versioned path as `graphyard` without any `environment:` (no secrets needed):
+`--version` must report the version and `--check-schema --db
+<django_path>/db.sqlite3` must pass; drop-in
+`/etc/systemd/system/graphyard-agent.service.d/agent-impl.conf` present iff
+`rust`:
+
+```ini
+[Service]
+ExecStart=
+ExecStart=/opt/graphyard-agent/<version>/graphyard-agent --db /opt/apps/graphyard/site/src/django/db.sqlite3
+```
+
+The drop-in change notifies `reload systemd` + `restart graphyard agent`;
+the base unit template is unchanged (Python `ExecStart`, `EnvironmentFile`,
+`WorkingDirectory`, `Requires=graphyard-runtime.service` apply to both). After
+handlers: verify the live process (30 s retry): `rust` →
+`readlink /proc/<pid>/exe` equals the versioned binary; `python` →
+`/proc/<pid>/cmdline` contains `manage.py` and `start_agent` and the exe is
+not under the install root. Then prune versions beyond `keep_versions`, never
+the active or the previous one. Also: add `agent-rs/target/` to
+`graphyard_rsync_excludes` (a local-checkout deploy must never ship a cargo
+target directory). README, CHANGELOG under "Unreleased", molecule/test
+coverage. Workers never bump `galaxy.yml`: the coordinator makes the
+collection release commit (`galaxy.yml` bump + CHANGELOG heading) on
+ops-library main right before the production deploy that needs it (S12, and
+again before S15b; section 14).
+
+**ops-deploy `services/graphyard`** (S11b): `GraphyardConfig` gains
+`agent_impl`, `agent_rust_version`, `agent_rust_sha256`,
+`agent_rust_release_url`, `agent_rust_local_archive`,
+`agent_rust_install_root`, `agent_rust_keep_versions` with the role's
+validation; a graphyard agent module with `install_agent`/`select_agent`/
+`check_agent`/`prune_agents` ported from `services/nyxmon/agent.py` and its
+`files/agent.sh` (install/validate/prune), wired into `core_steps` after
+migrations and around `service_rollout` of the agent unit; the drop-in
+template byte-identical to the role's (parity copy in
+`tests/parity/ansible/`); `agent-rs/target/` in `SOURCE_EXCLUDES`. Whether
+nyxmon's module is generalised into a shared helper is a coordinator decision
+(section 13.2); the default is a graphyard module that reuses ops-deploy's
+existing helpers and leaves nyxmon untouched.
+
+**ops-control** (S11c): `pyinfra_support/services.py` maps
+`graphyard_agent_impl/_rust_version/_rust_sha256` from macmini's host vars
+into `GraphyardConfig` and refuses the other `graphyard_agent_rust_*`
+variables when set (pattern `NYXMON_AGENT_VARS`/`NYXMON_AGENT_REFUSED`);
+`inventories/prod/host_vars/macmini.yml` gets `graphyard_agent_impl: python`
+plus the pinned version and sha256 (the only place to flip; the playbooks do
+not set them as role vars); `requirements-ops-deploy.txt` pins the ops-deploy
+commit with S11b; `docs/GRAPHYARD_RUST_AGENT.md` (install, shadow, cutover,
+verification, rollback), CHANGELOG; tests (`tests/test_pyinfra_graphyard.py`
+literals, refusal of unmapped vars; the real host-var value may be `python` or
+`rust`, the lesson of nyxmon S16). Trust (Q1): `graphyard-agent.service` in
+macmini's `restart_units` of `playbooks/ca-trust-consumers.yml` (health
+command `sleep 5 && systemctl is-active --quiet graphyard-agent.service`, as
+for `vector.service`), the macmini row of `docs/CA_TRUST_CONSUMERS.md` and
+`tests/test_ca_trust_consumers_playbook.py`. For the Ansible path,
+`playbooks/deploy-graphyard-core.yml` gets a pre-task asserting the
+ops-library version that knows `graphyard_agent_impl`; that version exists
+only after the coordinator's release commit, so the assert is added at the
+start of S12 (11.1), not in S11c.
+
+### 8.4 Production deploy rules (binding)
+
+- Every production deploy step (S12, S14, S15b) takes the shared lock on the
+  controller: `mkdir /tmp/ops-control-deploy.lock` and an owner file inside;
+  wait and retry when it exists; remove only a lock this step created. The
+  shadow setup/teardown on macmini (S13) takes it too.
+- Only `just deploy-one graphyard_core` (pyinfra), never the `graphyard`
+  stack target while the Atlas step is open; no change to `graphyard_vector`
+  or the ingest tokens.
+- Long runs in tmux. Check with the coordinator before each production step
+  (the eMudhra/certifi `graphyard_core` deploy, Traefik ACME on `production`
+  and fractal MinIO TLS may be scheduled; the page probes hit sites on
+  `production` and twenty specs read fractal endpoints).
+- A `graphyard_core` deploy ships the current graphyard main to macmini
+  (including, today, the not-yet-deployed certifi relock) and restarts web
+  and agent when code changed.
+- No production step of this stream runs alongside the
+  `echoport-command-guard` cutover, which is scheduled last in the campaign
+  and alone (section 14).
+
+### 8.5 Rollback
+
+- Normal: `graphyard_agent_impl: python` in macmini host vars, `just
+  deploy-one graphyard_core`: the drop-in is removed, systemd restarts the
+  unit on the venv Python. Nothing in the database or InfluxDB depends on
+  which agent wrote it.
+- Emergency on the host: `rm /etc/systemd/system/graphyard-agent.service.d/agent-impl.conf
+  && systemctl daemon-reload && systemctl restart graphyard-agent`, then flip
+  the host var before the next deploy.
+- Rust to Rust: pin the previous version and sha256; it is still installed
+  (pruning keeps it).
+
+### 8.6 Documentation
+
+graphyard: `agent-rs/README.md` (build, test, run), `docs/agent-rs.md`
+(architecture, schema contract rule, parity classes, divergences,
+operations), README "Agent Runtime" section, CHANGELOG per user-visible
+slice. ops-library, ops-deploy, ops-control as in 8.3.
+
+---
+
+## 9. Test strategy
+
+### 9.1 Rust tests
+
+- `graphyard-core`: fixture-driven tests per module (9.2) plus unit tests.
+- `graphyard-store`: every operation of section 5 against databases built
+  from `schema.sql`, asserting the fixture row images; 0-row updates;
+  heartbeat locked-retry with a second connection holding the write lock;
+  registry get-or-create race (`IntegrityError` path); the `ingest_token`
+  grep test.
+- `graphyard-influx`: fake InfluxDB (tokio server) for write requests (path,
+  query string, headers, body parsed with `influxdb-line-protocol`), Flux
+  responses (annotated CSV with several tables, defaults, NaN, empty cells),
+  v3 SQL (404, size cap, slow drip deadline, invalid JSON), auto fallback.
+- `graphyard-collect`: fake HTTP servers for every rule of section 6
+  (timeouts via stalled servers, dripping headers/body, body caps incl.
+  redirect bodies, gzip, redirects incl. relative `Location`, cookies across
+  redirects, 21 redirects, TLS with `rcgen` certs and `verify_tls: false`,
+  UniFi legacy and UniFi OS login, CSRF, redaction), abandoned-lookup cap
+  with a resolver stub that blocks.
+- `graphyard-agent`: scheduler with an injected clock; run aggregation and
+  heartbeat rules with fake executors; CLI validation; process e2e (9.3).
+
+### 9.2 Fixtures (Python is the oracle)
+
+`agent-rs/fixtures/generate.py` (`just rs-fixtures`, `uv run python …` with
+`DJANGO_SETTINGS_MODULE=config.settings.test`, `PYTHONHASHSEED=0`) imports the
+real modules and writes deterministic JSON (clocks and `datetime.now`
+injected by monkeypatching):
+
+| Fixture | Python source | Content |
+| --- | --- | --- |
+| `pycompat.json` | `repr(float)`, `format(x, "g")`, `float()`, `int()`, `str()`/`repr()` of JSON values, `str.strip/split`, `==` | value corpus |
+| `settings.json` | `config/settings/base.py` via django-environ | raw env → parsed value or startup error, `$` proxies |
+| `spec_config.json` | `spec_config.py` (all helpers, `validate_spec_config`) | config corpus → value or message |
+| `normalize.json` | `normalize_subject_id`, `_normalize_dimension_value`, `parse_finite_float`, `normalize_metric_point` | point corpus → normalised point or message |
+| `line_protocol.json` | `write_points` with a capturing client, `Point.to_line_protocol` | points → lines, logs, counts (escape and float corner cases) |
+| `json_path.json` | `_resolve_json_path` | payload × path |
+| `ha_mapping.json` | `_resolve_subject_mapping`, `_resolve_home_assistant_metric_mapping`, `_normalize_home_assistant_sensor_state` (incl. the production spec config of section 1) | state payloads → point or `None` + warnings |
+| `unifi.json` | `_find_unifi_device`, `_resolve_unifi_interface_stats`, `_unifi_response_summary`, `_unifi_login_response_ok` | device/response corpus |
+| `http_errors.json` | httpx `raise_for_status`, exception classes for the page probe | responses/URLs → message and class |
+| `flux.json` | `_query_range_v2_flux` (query text), `FluxCsvParser` on canned CSV, `query_condition_window` | condition × now → query text; CSV → samples |
+| `sql_v3.json` | `_query_range_v3_sql` (SQL text, row decoding) | |
+| `conditions.json` | `evaluate_condition` with stubbed samples | condition × samples × now → evaluation |
+| `store_ops.json` | spec/condition updates, `record_heartbeat`, `touch_registry_from_points` on a temp DB | rows before → rows after |
+| `schema/` | `manage.py migrate` | section 5.1 |
+
+Library-derived (P2) messages are stored as `{"class": …, "p2": true}` and
+the Rust tests check only the class. A drift test
+`tests/test_agent_rs_fixtures.py` regenerates every file in memory and fails
+on any difference, so a Python behaviour change cannot merge without
+regenerated fixtures. Rust loads fixtures with `include_str!`.
+
+### 9.3 Process e2e (Rust binary)
+
+Against a temp database from `schema.sql` and fake servers: `--run-once`
+writes the expected rows and lines; SIGINT prints the interrupted line and
+exits 0; SIGTERM during a slow spec exits 0 promptly without a partial row,
+also while a `getaddrinfo` lookup is blocked (4.1);
+old schema or missing database exits 1; `--check-schema` reports precisely;
+`--influx-write-file` produces zero requests to the fake InfluxDB write
+endpoint while queries still reach it; CLI validation messages and exit codes.
+
+### 9.4 Offline parity harness (Python vs Rust on identical inputs)
+
+`agent-rs/parity/run_parity.py` (`just rs-parity`, CI job `parity`): two
+copies of a database seeded with a corpus covering every spec type and every
+condition branch (incl. a config error, an unknown spec type, a disabled
+spec, a non-host `host_filter`); each implementation gets its own set of
+fakes (`parity/fakes.py`: HA, UniFi with both auth modes, JSON metrics, page
+probe with redirects, slow and oversized bodies, and a fake InfluxDB that
+records writes and answers Flux/SQL queries with samples placed relative to
+the `stop` of the requested range). Python runs as `manage.py start_agent
+--run-once` with a harness settings module (`parity/settings_parity.py`,
+outside `src/`) pointing `DATABASES` at its copy; Rust as `graphyard-agent
+--run-once --db <copy>`. Fakes script responses by request index per
+endpoint, so N rounds are deterministic. Compared per round: spec rows,
+condition rows, heartbeat rows, registry rows (timestamps masked to
+null/non-null), written lines (parsed; values of `now()`-based timing points
+and timestamps masked), Flux query and v3 SQL texts with the `range`/`time`
+bounds masked (both processes take `now` from their own wall clock, so the
+bounds differ between runs; the harness compares the window length
+`stop - start` exactly instead), stdout lines, request logs of the fakes
+(method, path, query, selected headers, body). The exact query text
+including bounds is pinned by the `flux.json`/`sql_v3.json` fixtures with an
+injected clock, not by the harness. Gate: zero unmasked differences.
+
+### 9.5 TESTMAP (Python test → Rust counterpart)
+
+S1 creates `agent-rs/TESTMAP.md` from this table; every slice updates its
+rows.
+
+| Python tests | Rust counterpart | Slice |
+| --- | --- | --- |
+| `test_agent_command.py` (both) | CLI/run-once tests in `graphyard-agent`, e2e | S8 |
+| `test_condition_evaluation.py`: all `evaluate_condition`/series/anchor/staleness/intermittent tests | `conditions.json` cases (`graphyard-core::conditions`) | S5 |
+| `test_condition_evaluation.py::test_evaluate_conditions_once_updates_condition_and_heartbeat` | run aggregation test + `store_ops.json` | S8, S3a |
+| `test_condition_evaluation.py::test_query_condition_window_*`, `test_metric_dimensions.py::test_query_condition_window_*` | `flux.json` | S4b |
+| `test_condition_evaluation.py::test_stale_allowance_must_be_positive`, `test_condition_clean_*`, `test_condition_admin_form_*` | n/a (model/admin validation, web only) | — |
+| `test_metric_collection_specs.py` HTTP JSON tests | `graphyard-collect` fake-server tests | S7a |
+| `test_metric_collection_specs.py` page probe tests | fake-server tests | S7b |
+| `test_metric_collection_specs.py` HA sensor/env scan tests | fake-server tests + `ha_mapping.json` | S7a |
+| `test_metric_collection_specs.py` UniFi tests (incl. redaction) | fake-server tests + `unifi.json` | S7b |
+| `test_metric_collection_specs.py::test_http_json_metric_spec_skips_non_finite_value` | `normalize.json` + fake-server test | S4a, S7a |
+| `test_metric_collection_spec_isolation.py::test_bad_spec_does_not_stop_later_specs`, `::test_unexpected_collector_exception_is_isolated` | run isolation tests | S8 |
+| `test_metric_collection_spec_isolation.py` cap/redirect/timeout tests | `spec_config.json` + fake-server tests | S2, S6 |
+| `test_metric_collection_spec_isolation.py::test_full_clean_*`, `::test_validate_spec_config_rejects_non_object`, `::test_model_validates_derived_wait_limit` | `spec_config.json` (`validate_spec_config` is web-side but shares helpers) | S2 |
+| `test_page_probe_deadline.py` (all, incl. `caps_abandoned_workers`) | deadline/abandoned-lookup tests | S6 |
+| `test_http_json_budget.py`, `test_home_assistant_budget.py` | budget/deadline tests | S6, S7a |
+| `test_influx_modes.py` normalisation/write tests | `normalize.json`, `line_protocol.json` | S4a |
+| `test_influx_modes.py` query mode tests | fake InfluxDB tests | S4b |
+| `test_influx_query_safety.py` (all) | v3 SQL fake tests, `flux.json` NaN case | S4b |
+| `test_metric_dimensions.py` mapping/emission tests | `ha_mapping.json`, fake-server tests | S7a, S7b |
+| `test_metric_dimensions.py::test_touch_registry_*` | `store_ops.json` | S3b |
+| `test_query_and_ingest_log_escaping.py::test_flux_interpolation_literal_in_query` | `flux.json` | S4b |
+| `test_query_and_ingest_log_escaping.py::test_metric_log_escapes_newline`, `::test_ingest_normalization_record_caps_error_details` | n/a (web ingest) | — |
+| `test_evaluate_conditions_command.py` | `evaluate-conditions` subcommand tests + e2e (11.4) | S15a |
+| web/ingest/inventory/token/admin/login tests | n/a (web only) | — |
+
+### 9.6 just recipes and CI
+
+`rs-test`, `rs-lint` (fmt check + clippy), `rs-fmt`, `rs-fixtures`,
+`rs-parity`, `rs-build`, `rs-build-linux` (Docker, pinned
+`rust:<ver>-bookworm`, glibc 2.36 ≤ 2.39, for `*_local_archive`
+development deploys), `rs-deny`; `test` runs `uv run pytest` then
+`rs-test`. Workers never build or test in `~/projects` (worktrees only).
+
+---
+
+## 10. Lean goals (measured like nyxmon PLAN 4.4)
+
+| Metric | Python today | Rust target |
+| --- | --- | --- |
+| cgroup `MemoryCurrent` steady | 80.4 MB | ≤ 16 MiB |
+| cgroup `MemoryPeak` | 83.8 MB | ≤ 40 MiB (an HA `/api/states` body may approach the 10 MiB cap and is parsed in memory) |
+| `RssAnon` | 76 MiB | ≤ 12 MiB |
+| `ps` RSS | 92 MiB | ≤ 25 MiB (includes the file-backed binary mapping, shared page cache) |
+| stripped binary | — | ≤ 15 MiB |
+| CPU | ≈ 4.7 min/day | ≤ 1.5 min/day |
+| startup to first run | seconds (Django import) | ≤ 1 s |
+
+Measured in the shadow run and after cutover from `systemctl show -p
+MemoryCurrent -p MemoryPeak`, `/proc/<pid>/status` (`RssAnon`, `RssFile`) and
+`ps`; recorded in the cutover report. If glibc malloc arenas exceed the
+budget, the drop-in sets `Environment=MALLOC_ARENA_MAX=2` before any other
+allocator is considered.
+
+---
+
+## 11. Rollout
+
+### 11.1 Install (S12)
+
+With S10b's release and S11a–c merged and the coordinator's ops-library
+collection release commit on ops-library main (section 14): add the
+`deploy-graphyard-core.yml` pre-task asserting that released version (8.3,
+reviewed ops-control commit), set the version and sha256 with
+`graphyard_agent_impl: python` in macmini host vars, take the deploy lock,
+`just deploy-one graphyard_core`. Verify: `/opt/graphyard-agent/0.1.0/` exists,
+`--check-schema` passed, no drop-in, `graphyard-agent` still runs Python
+(`/proc/<pid>/cmdline`), web healthy.
+
+### 11.2 Shadow run on macmini (S13, ≈ 24 h, no production writes)
+
+Prerequisites: S9b tooling, S12. Owner approval given 2026-10-21 (Q2): about
+24 h, the database copy in a 0700 directory deleted afterwards, nothing
+written to InfluxDB, doubled collector traffic accepted. Anything beyond
+these conditions needs a new owner decision.
+
+1. `parity/shadow_prepare.py` (stdlib only, run as `graphyard`, lock taken):
+   online copy of the live database through SQLite's backup API into
+   `/var/lib/graphyard-shadow/` (`graphyard`, 0700; the copy holds spec
+   secrets and is deleted at the end); record T0.
+2. Transient unit with the production environment:
+   `systemd-run --unit graphyard-agent-shadow -p User=graphyard -p Group=graphyard -p EnvironmentFile=/etc/graphyard/graphyard.env -p WorkingDirectory=/var/lib/graphyard-shadow /opt/graphyard-agent/<ver>/graphyard-agent --db /var/lib/graphyard-shadow/db.sqlite3 --influx-write-file /var/lib/graphyard-shadow/points.lp`.
+   The shadow reads production InfluxDB for conditions and writes nothing to
+   it. It doubles collector traffic (HA, UniFi login every minute, fractal
+   endpoints, six public pages every 5 minutes).
+3. `parity/shadow_record.py` samples both databases read-only every 60 s
+   (spec rows, condition rows, heartbeats, registry rows) and both units'
+   memory/CPU/restarts into a JSONL file in the shadow directory.
+4. `parity/shadow_compare.py` at the end: queries the production series
+   written by the Python agent over the window through
+   `docker exec graphyard-influxdb influx query` (the container's CLI
+   config, no token handling in the tooling) and compares with
+   `points.lp`: series keys per spec (exact), HA points by `(series, ts)`
+   (values exact), UniFi/JSON values aligned by minute (tolerance, P2), page
+   probe status/success sequences (exact) and timings (medians); spec
+   `last_status`/`last_error` sequences (P2 texts masked), condition rows,
+   heartbeat statuses and details, registry row sets.
+5. Acceptance: no series-key difference; every status/message difference
+   explained by an endpoint change between the two samples; condition and
+   heartbeat statuses identical; registry rows identical (timestamps masked);
+   no restart; lean goals met. Findings are fixed in a follow-up slice and
+   the shadow repeated (shorter, within the Q2 conditions) if code changed.
+   Teardown: stop the unit, delete the shadow directory.
+
+### 11.3 Cutover and rollback drill (S14)
+
+Owner decision Q3 (2026-10-21): one cutover window after the S13 shadow
+report, coordinated with the eMudhra stream. The cutover deploy ships the
+then-current graphyard main, so the coordinator agrees the window with that
+stream's certifi relock (`85cdb60`): either the eMudhra `graphyard_core`
+deploy has already shipped the relock, or the cutover deploy is that deploy,
+as agreed with the eMudhra stream. Either way the Python agent of the
+rollback drill runs with certifi 2026.10.19. Then coordinator check of the
+schedule, deploy lock, tmux.
+Set `graphyard_agent_impl: rust`, `just deploy-one graphyard_core`; record T1.
+Verification: unit active, exe under `/opt/graphyard-agent/<ver>/`,
+`NRestarts=0`; every enabled spec has `last_run_at > T1` within its interval
++ 60 s; `metric_collectors` and `condition_evaluator` heartbeats advance with
+`last_success`; `/v1/health` status equals the pre-cutover status; condition
+statuses unchanged; no new series in InfluxDB for `collector_service =
+graphyard-agent` (series cardinality before/after) and no gaps beyond the
+restart; nyxmon's graphyard checks stay green; memory within section 10
+after 1 h and 24 h. Rollback drill: flip to `python`, deploy, confirm the
+Python agent resumes (spec rows advance), flip back to `rust`, deploy,
+re-verify. Soak 7 days with a daily check of the same queries; roll back on
+a spec without a run for `2 × interval`, a heartbeat older than 15 minutes, a
+restart loop, a series-key change, or memory trending above budget.
+
+### 11.4 `evaluate-conditions` and Python retirement (S15a, S15b, S15c; Q4)
+
+Owner decision Q4 (2026-10-21): the Python agent is retired 30 days after
+T1, and `manage.py evaluate_conditions` is replaced by `graphyard-agent
+evaluate-conditions`, in separate slices.
+
+**S15a** (graphyard, after S10b, not tied to the 30 days, before S15b):
+`graphyard-agent evaluate-conditions [--condition-id N]` ports
+`evaluate_conditions.py` (`evaluate_conditions_once(condition_id=…)`):
+enabled conditions, optionally only the given id, `ORDER BY name`; the
+per-condition writes and the `condition_evaluator` heartbeat exactly as 3.5
+(Python records the heartbeat for a single-condition run too). stdout
+`Condition evaluation completed (<total>).`, or `Condition evaluation
+completed with failures (<failed>/<total>).` followed by stderr
+`CommandError: <failed> condition evaluation(s) failed.` and exit 1. A
+failure outside a condition exits 1 with one error line (Python: traceback,
+P2); no colour (D-7); `--condition-id` parsed like the argparse `type=int`
+flags of 3.1. Like the agent it reads only the process environment (D-9), so
+the documented operator call uses the unit's environment:
+`systemd-run --wait --pipe --quiet -p User=graphyard -p Group=graphyard -p EnvironmentFile=/etc/graphyard/graphyard.env -p WorkingDirectory=/opt/apps/graphyard/site/src/django /opt/graphyard-agent/<ver>/graphyard-agent evaluate-conditions --db /opt/apps/graphyard/site/src/django/db.sqlite3`.
+Tests: counterparts of `test_evaluate_conditions_command.py`, an e2e case
+and a parity-harness case running both commands on identical inputs; docs,
+CHANGELOG; the slice ends with the next `agent-rs-v*` release through the
+S10a workflow.
+
+**S15b** (ops-library, ops-deploy, ops-control; ≥ 30 days after T1;
+production): pin the release containing `evaluate-conditions` in macmini
+host vars; `graphyard_agent_impl` default and only value `rust`, Python
+option removed (the venv stays for the web); ops-control
+`docs/GRAPHYARD_NYXMON_CHECKS.md` and `docs/GRAPHYARD_RUST_AGENT.md` switch
+the manual evaluation call to `evaluate-conditions` as above; CHANGELOGs;
+the coordinator's ops-library collection release commit before the deploy;
+deploy with lock (8.4), verification as in 11.3.
+
+**S15c** (graphyard, after S15b is deployed): remove `start_agent`,
+`evaluate_conditions` and the Python collector/evaluation code that the web
+does not use; remove the parity harness and its CI job; freeze the fixtures
+(drift test removed, fixtures kept as Rust test data); README, docs,
+CHANGELOG. The order is deliberate: after S15b no deploy can select the
+Python agent and the documented manual call is the Rust one, so a later
+`graphyard_core` deploy shipping S15c removes nothing that still runs.
+
+---
+
+## 12. Implementation slices
+
+Rules: one branch per slice (`rust-agent/<id>-<name>`), each reviewed by
+`gpt-6.1-sol` at high reasoning through the codex review loop, then merged to
+the repo's default branch and pushed. A slice gets at most three review
+rounds, the third only over the repair delta of the second (owner rule of
+2026-10-21); if round 3 is not clean, the slice stops and is reported to the
+coordinator. Merging `agent-rs/` to graphyard main
+is safe at any time: nothing runs it until the drop-in exists, and the
+default pyinfra deploy syncs a fresh git tree without `target/` (S11a/b add
+the exclude for local-source deploys). Every slice keeps `just test`,
+`just lint`, `just typecheck` green, updates `TESTMAP.md`, lists the Python
+functions it ports in its review context, and stays ≤ 2.5k changed lines
+excluding generated fixtures.
+
+| Id | Slice | Scope | Depends on | Parallel | Prod | Est. h |
+| --- | --- | --- | --- | --- | --- | --- |
+| S1 | Scaffold | workspace, toolchain pin, deny.toml, CI `rust` job, just recipes, shared model types (`MetricPoint`, `MetricSample`, statuses, subject/spec types), fixture generator skeleton (Django test settings bootstrap) + drift test, TESTMAP.md, README | — | with S11a | no | 2.5 |
+| S2 | Python compat + settings | `pycompat` (4.4), env readers (3.3), `spec_config` helpers; fixtures `pycompat`, `settings`, `spec_config` | S1 | with S3a, S10a, S11a, S11b | no | 3.5 |
+| S3a | Store core | DB thread owning the rusqlite connection + pragmas, schema contract + Python contract test, `--check-schema` core, datetime codec, spec/condition reads and updates (0-row rule), heartbeat upsert + retry; `store_ops.json` (non-registry part); `ingest_token` grep test | S1 | with S2, S10a, S11a, S11b | no | 4 |
+| S4a | Normalisation + writes | `normalize_*`, `parse_finite_float`, line protocol formatter, write client (6.4), lazy config errors; `normalize.json`, `line_protocol.json` | S2 | with S4b, S5, S6, S3a | no | 3.5 |
+| S4b | Queries | window computation, Flux text + annotated CSV, v3 SQL with caps/deadline/errors, auto fallback; `flux.json`, `sql_v3.json`; fake InfluxDB | S2 | with S4a, S5, S6 | no | 4 |
+| S5 | Condition evaluation | section 7, pure, sample source trait; `conditions.json` | S2 | with S4a, S4b, S6 | no | 3 |
+| S6 | HTTP layer | client builder (6.1), deadline + abandoned lookups (6.2), body cap, JSON reader, `raise_for_status` text, page-probe redirect loop primitive, request log line; `http_errors.json` | S2 | with S4a, S4b, S5 | no | 4 |
+| S3b | Registry touch | section 5.5 + `store_ops.json` registry cases | S3a, S4a | with S7a, S7b | no | 2 |
+| S7a | HA + JSON executors | `home_assistant_sensor`, `home_assistant_env_scan`, HA normalisation and mappings, `http_json_metric`, JSON path; `ha_mapping.json`, `json_path.json` | S4a, S6 | with S3b, S7b | no | 4 |
+| S7b | Page probe + UniFi | `http_page_probe`, `unifi_device_traffic`; `unifi.json` | S4a, S6 | with S3b, S7a | no | 4 |
+| S8 | Agent runtime | CLI (3.1), scheduler (3.2), metrics and conditions runs (3.4, 3.5), executor isolation, heartbeats, stdout/stderr/logging (3.6), signals, `--run-once`, `--check-schema`, `--version`, `--influx-write-file` | S3a, S3b, S4b, S5, S7a, S7b | — | no | 4 |
+| S9a | Parity harness | `parity/run_parity.py`, `fakes.py`, `settings_parity.py`, CI `parity` job | S8 | with S9b | no | 4 |
+| S9b | e2e, shadow tooling, docs | process e2e (9.3), `shadow_prepare/record/compare.py`, `docs/agent-rs.md`, README, CHANGELOG | S8 | with S9a | no | 3.5 |
+| S10a | Release workflow | `agent-rs-release.yml`, `scripts/release_checks.py` + `tests/test_agent_rs_release_checks.py`, `build.rs` commit stamp, `workflow_dispatch` dry build | S1 | with S2–S9 | no | 2.5 |
+| S10b | First release | tag `agent-rs-v0.1.0`, verify archive + sha256 | S9a, S9b, S10a | — | no | 0.5 |
+| S11a | ops-library role | impl selector (8.3), drop-in template, verify, prune, rsync exclude, README, CHANGELOG "Unreleased", tests with a stub archive | — (contract in 8.3) | with S1–S10 | no | 3.5 |
+| S11b | ops-deploy port | `GraphyardConfig` fields, agent module, wiring in `core_steps`, parity template copy, `SOURCE_EXCLUDES`, tests | S11a | with S2–S10 | no | 3.5 |
+| S11c | ops-control wiring | pyinfra mapping + refusal, macmini host vars (impl python, version, sha256), ops-deploy pin, `ca-trust-consumers.yml` entry (Q1), `docs/GRAPHYARD_RUST_AGENT.md`, CHANGELOG, tests (playbook assert follows in S12) | S11b, S10b | — | no | 3 |
+| S12 | Install on macmini | 11.1 (playbook assert, impl python) | S11c, coordinator's ops-library collection release | — | **yes** | 1.5 |
+| S13 | Shadow run | 11.2 (approved, Q2), report | S9b, S12 | — | **yes** (host, no prod writes) | 3 + 24 h |
+| S14 | Cutover + drill | 11.3, final docs in all repos | S13 report, window agreed with the eMudhra stream (Q3) | — | **yes** | 3 + 7 d soak |
+| S15a | `evaluate-conditions` subcommand | 11.4: port of `manage.py evaluate_conditions`, tests, parity case, docs, next release | S8, S10b | with S11c–S14 (code only) | no | 2.5 |
+| S15b | Python retirement (ops repos) | 11.4: pin, impl `rust` only, docs, deploy | S14 + 30 d, S15a, coordinator's ops-library collection release | — | **yes** | 3 |
+| S15c | Python code removal (graphyard) | 11.4: `start_agent`, `evaluate_conditions`, harness, fixture freeze | S15b | — | no | 3 |
+
+Parallel waves (maximum five workers):
+
+- W0: S1, S11a
+- W1: S2, S3a, S10a, S11b
+- W2: S4a, S4b, S5, S6
+- W3: S3b, S7a, S7b
+- W4: S8
+- W5: S9a, S9b
+- W6 (serial, production): S10b → S11c → S12 → S13 → S14 → soak → (T1 + 30 d) S15b → S15c
+- S15a: any time after S10b, before S15b (code and a release only)
+
+Acceptance per slice (in addition to green checks and a clean review):
+
+- **S1**: CI `rust` job green; drift test fails on a hand-edited fixture.
+- **S2–S7b**: every fixture case of the slice matches; every rule of the
+  cited section has a test; no test reaches the network.
+- **S3a**: contract test fails on a simulated migration that drops an agent
+  column; `--check-schema` names a missing column and the migration.
+- **S8**: the counterparts of `test_agent_command.py` and the isolation tests
+  pass; `--run-once` against fakes writes the fixture rows.
+- **S9a**: `just rs-parity` green in CI with zero unmasked differences.
+- **S9b**: e2e green; shadow tools tested against two local databases.
+- **S10a/b**: dry build proves the glibc floor; release exists with the
+  sha256 used in S11c.
+- **S11a/b/c**: repo test suites green (ops-control's currently red
+  `test-software-inventory` job is unrelated and not fixed here); molecule or
+  pyinfra tests show drop-in present only for `rust`, versioned path, verify
+  by `/proc/<pid>/exe`.
+- **S12**: binary installed, unit still Python, no unintended restart.
+- **S13**: 11.2 acceptance with numbers.
+- **S14**: every 11.3 check recorded, drill done, soak started.
+- **S15a**: summary lines, exit codes, row and heartbeat effects equal the
+  Python command's on the same database (fixtures and parity case).
+- **S15b**: the Python option is refused by role, ops-deploy and
+  ops-control; the deployed agent is the pinned release; the documented
+  manual call works on macmini.
+- **S15c**: no Python agent code left; `just test` green with frozen
+  fixtures.
+
+---
+
+## 13. Risks and coordinator notes
+
+### 13.1 Risks
+
+- **R1 HTTP semantics** (per-read vs per-op timeouts, decoding, redirects,
+  cookie handling across manual redirects, `raise_for_status` text) — fake
+  server tests per rule, the parity harness, the shadow comparison.
+- **R2 Name resolution** — `macmini.local` resolves only through glibc +
+  nss-mdns; the glibc target and the `getaddrinfo` resolver are mandatory, a
+  hickory/musl resolver would break the HA spec.
+- **R3 Python quirks reproduced on purpose** — `str(None).lower() == "none"`
+  as a device class, `port_idx or num_port` truthiness, a registry failure
+  after a successful write turning the spec `critical` with points already in
+  InfluxDB, unfollowed 3xx counting as page-probe success, the warning path
+  re-raising write failures. Implementers must not "fix" them; changes need
+  an owner decision and a change on both sides.
+- **R4 Series identity drift** — a different escaping or float rendering
+  would create new series and split conditions/dashboards; pinned by
+  `line_protocol.json`, the harness and the shadow series-key comparison.
+- **R5 SQLite contention** with the web app (WAL, busy 30 s) — unchanged
+  exposure.
+- **R6 Shadow side effects** — doubled UniFi logins and HA/fractal/public
+  requests for 24 h; if the UniFi controller logs or limits logins, the
+  shadow copy's UniFi spec is disabled and compared through one `--run-once`
+  instead.
+- **R7 Concurrent ops work** — eMudhra/certifi deploy of `graphyard_core`,
+  the open Atlas step, Traefik ACME on `production`, fractal MinIO TLS; all
+  production slices check with the coordinator first.
+- **R8 Merge pressure in ops-deploy/ops-control** from other Runde-2 streams
+  touching the same files (agent modules, pins) — small slices, rebase before
+  merge.
+- **R9 Supply chain** — `Cargo.lock`, `--locked`, `cargo deny`, pinned action
+  SHAs, sha256-pinned release archives.
+- **R10 Pre-existing issues seen while gathering facts** (not caused by this
+  stream, reported to the coordinator): both conditions read "No samples
+  available in condition window"; `src/django/.env` on macmini is
+  world-readable and holds secrets (separate item
+  `graphyard-stale-env-macmini`, section 14 Q5); the venv still has certifi
+  2026.02.25 until the next `graphyard_core` deploy.
+
+### 13.2 Coordinator notes (no owner decision needed)
+
+- Shared Rust-agent deploy helper in ops-deploy (nyxmon, graphyard and other
+  Runde-2 agents): default here is a graphyard-specific module; extracting a
+  shared helper after the Runde-2 cutovers avoids touching nyxmon's live
+  deploy mid-campaign.
+- Production slices S12–S15b need a slot outside the eMudhra `graphyard_core`
+  deploy and must not overlap a `graphyard_vector` or token change while the
+  Atlas step is open.
+
+---
+
+## 14. Owner decisions (2026-10-21)
+
+The owner answered the questions of this plan on 2026-10-21 (given in chat
+to the campaign coordinator) and accepted every recommendation:
+
+- **Q1 TLS trust anchors**: the Rust agent verifies against the **system CA
+  store** (D-12), not an embedded Mozilla bundle; `graphyard-agent.service`
+  is added to `ca_trust_consumers` (macmini `restart_units`, S11c).
+- **Q2 Shadow run**: **approved**, about 24 h on macmini (S13): a second
+  agent process with doubled collector traffic, the database copy with spec
+  secrets in a 0700 directory and deleted afterwards, nothing written to
+  InfluxDB (11.2).
+- **Q3 Cutover window**: **one window after the S13 shadow report**,
+  coordinated with the eMudhra stream (certifi relock, 11.3); three agent
+  restarts (cutover and drill).
+- **Q4 Retirement**: the Python agent is retired **30 days after the
+  cutover**, and `manage.py evaluate_conditions` is replaced by
+  `graphyard-agent evaluate-conditions`, as **separate slices** (S15a port,
+  S15b ops retirement, S15c code removal; 11.4).
+- **Q5 Stale `src/django/.env` on macmini**: a **separate item
+  `graphyard-stale-env-macmini`**, not part of this plan; the Rust agent
+  ignores the file (D-9). That item has to account for the documented
+  manual `manage.py evaluate_conditions` call (ops-control
+  `docs/GRAPHYARD_NYXMON_CHECKS.md`), which runs without the unit's
+  EnvironmentFile and may take its settings from that file; after S15b the
+  documented call is the Rust one with the EnvironmentFile.
+
+Campaign-wide decisions of the same day that bind this stream:
+
+- **ops-library releases**: workers never bump `galaxy.yml`; the coordinator
+  makes the collection release commit (`galaxy.yml` bump + CHANGELOG
+  heading) on ops-library main right before the production deploys that
+  need it, here before S12 and before S15b (8.3, 11.1).
+- **ops-library GitHub Actions** (foundation slices of the metrics-httpd
+  stream) cover ops-library's `rust/` only. This stream releases from the
+  graphyard repository (8.2) and does not depend on them.
+- **echoport-command-guard** is ported last in the campaign and never
+  alongside other production or staging changes; no production step of this
+  stream overlaps it (8.4).
+- **Review rounds**: a slice, and this plan, may get a third review round
+  over the repair delta; if round 3 is not clean, work stops and is reported
+  (section 12).
