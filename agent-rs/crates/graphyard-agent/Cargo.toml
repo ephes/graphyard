@@ -1,0 +1,22 @@
+[package]
+name = "graphyard-agent"
+description = "The graphyard agent binary (drop-in for `manage.py start_agent`)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "graphyard-agent"
+path = "src/main.rs"
+
+[dependencies]
+graphyard-core.workspace = true
+graphyard-store.workspace = true
+graphyard-influx.workspace = true
+graphyard-collect.workspace = true
+
+[lints]
+workspace = true

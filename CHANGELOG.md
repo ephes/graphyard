@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Start the Rust port of the agent in `agent-rs/` (plan: `agent-rs/PLAN.md`):
+  a Cargo workspace with a pinned toolchain and `cargo deny` policy, the shared
+  model types, a fixture generator that derives the Rust test data from the
+  Python code (`just rs-fixtures`) with a drift test in the Python suite, the
+  `just rs-*` recipes and a `rust` CI job. `just test`, `just lint` and
+  `just typecheck` now also run the Rust checks. Nothing is deployed; the Python
+  agent is unchanged.
+
 - Fix slow metric ingest for bound ingest tokens. The registry update issued one
   `UPDATE service_registry` per point, each a separate SQLite commit, so a
   50-point batch took several seconds under load and Vector producers fell

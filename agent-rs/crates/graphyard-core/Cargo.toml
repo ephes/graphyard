@@ -1,0 +1,19 @@
+[package]
+name = "graphyard-core"
+description = "Pure logic of the graphyard agent: Python compatibility, settings, model types, normalisation, condition evaluation"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+chrono.workspace = true
+indexmap.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true
+
+[lints]
+workspace = true

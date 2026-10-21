@@ -1,0 +1,36 @@
+# cargo-deny policy for the Rust agent (PLAN.md R9; the same policy as the
+# nyxmon agent): run by the CI `rust` job and `just rs-deny`. Only the release
+# target is checked. A new license needs a deliberate addition here;
+# advisories (RustSec) and yanked crates fail the check; crates come from
+# crates.io only.
+[graph]
+targets = ["x86_64-unknown-linux-gnu"]
+all-features = false
+
+[advisories]
+version = 2
+yanked = "deny"
+ignore = []
+
+[licenses]
+version = 2
+allow = [
+    "Apache-2.0",
+    "BSD-3-Clause",
+    "CDLA-Permissive-2.0",
+    "ISC",
+    "MIT",
+    "Unicode-3.0",
+    "Zlib",
+]
+confidence-threshold = 0.93
+
+[bans]
+multiple-versions = "allow"
+wildcards = "deny"
+allow-wildcard-paths = true
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]

@@ -1,0 +1,15 @@
+[package]
+name = "graphyard-store"
+description = "SQLite store of the graphyard agent: schema contract, all SQL, registry touch"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+graphyard-core.workspace = true
+
+[lints]
+workspace = true

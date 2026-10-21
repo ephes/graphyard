@@ -1,0 +1,7 @@
+# Pinned toolchain for the Rust agent (PLAN.md 4.2), the same pin as the
+# nyxmon agent. The pinned version is also the MSRV (`rust-version` in
+# Cargo.toml). Update both together.
+[toolchain]
+channel = "1.99.0"
+components = ["rustfmt", "clippy"]
+profile = "minimal"

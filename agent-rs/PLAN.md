@@ -9,9 +9,10 @@ This document is the contract for porting the long-running graphyard agent
 `graphyard-agent.service` on macmini) to a Rust binary `graphyard-agent` in
 `agent-rs/`. It is written for the implementers of the slices in section 12
 and for the reviewers of each slice. Every behavioural statement cites the
-Python code that defines it (graphyard `85cdb60`). When this document and the
-Python code disagree, the Python code wins and this document must be
-corrected. The method follows the two Rust ports already in production
+Python code that defines it (graphyard `85cdb60`; section 5.5 re-checked
+against `4d5baf1`, which batched the registry writes, in slice S1). When this
+document and the Python code disagree, the Python code wins and this document
+must be corrected. The method follows the two Rust ports already in production
 (nyxmon `agent-rs/PLAN.md`, mailgun-relay `rust/PLAN.md`): Python is the
 oracle for the contract and for every decision, not for byte parity of
 internals; maintained crates instead of re-implemented libraries or protocols;
@@ -431,7 +432,7 @@ agent-rs/
     graphyard-influx/   # write and query clients (v2 Flux, v3 SQL, auto)
     graphyard-collect/  # HTTP layer (deadline, caps, redirects) and the five executors
     graphyard-agent/    # binary: CLI, scheduler, runs, logging, signals
-  fixtures/           # generate.py + gen_*.py, schema/, *.json (section 9.2)
+  fixtures/           # generate.py (driver) + gen_*.py builders, schema/, *.json (section 9.2)
   parity/             # offline harness, fakes, shadow tooling (sections 9.4, 10)
   scripts/release_checks.py
 ```
@@ -553,26 +554,59 @@ row images (timestamps injected).
 
 ### 5.5 Registry touch (`services.py:touch_registry_from_points`, P1)
 
-One `now` per call; for each point in order, `normalize_metric_point` (a
-`ValueError` propagates and turns the spec `critical`, after the points before
-it were touched and after `write_points` already wrote the valid ones —
-reproduced on purpose):
+Graphyard `4d5baf1` ("Batch registry writes per ingest request") replaced
+the per-point get-or-create loop with a batch over the distinct rows of one
+call; the agent path is `bound_subject_id=None`. An empty point list
+returns at once; otherwise, per call:
 
-1. `subject_registry` get-or-create by `(subject_type, subject_id)` with
-   defaults `display_name=subject_id`, `source_system`; then set
-   `last_seen_at=now` if NULL or `now > last_seen_at`, and `source_system` if
-   non-empty and different; save only changed fields.
-2. Subject type `host`: `host_registry` get-or-create by `host_id` with
-   `display_name`; bump `last_seen_at` the same way.
-3. Point with `service`: the service host is the host from step 2, else the
-   first `host_registry` row with `host_id = collector_host` (may be none);
-   `service_registry` get-or-create by `service_id` with `display_name` and
-   that host; then re-parent to it when it differs and is not none, bump
-   `last_seen_at`; save changed fields.
+1. **Collect** (`_collect_registry_batch`): `normalize_metric_point` on every
+   point in order. A `ValueError` propagates before any registry read or
+   write and turns the spec `critical`, after `write_points` already wrote
+   the valid points (reproduced on purpose; no row is touched). Collected in
+   first-seen order: the distinct subjects `(subject_type, subject_id)`, each
+   with the last non-empty `source_system` of the batch; the host ids (subject
+   type `host`) with the index of the first point naming them; per service
+   the list of `(candidate host, point index)` where the candidate is the
+   point's subject id for a host subject, else its `collector_host`.
+2. `now = timezone.now()` once.
+3. **Load** (`_load_registry_rows`, autocommit, no write lock): subjects by
+   type and id (pairs of the batch only), hosts whose `host_id` is a batch
+   host or a non-empty service candidate, services by `service_id`.
+4. **Plan** (`_plan_registry_updates`) over the loaded rows:
+   - subject: batch `source_system` non-empty and different →
+     `source_system` + `last_seen_at`; else stale → `last_seen_at`;
+   - host (batch hosts only): stale → `last_seen_at`;
+   - service: target host (below) not none and different from the current
+     host → re-parent (`host_id` + `last_seen_at`); else stale →
+     `last_seen_at`.
 
-Get-or-create follows Django: select; insert inside a savepoint; on
-`IntegrityError` select again. The bound-subject branch is not ported
-(non-goal).
+   Stale means `last_seen_at` NULL or `now - last_seen_at >= 60 s`
+   (`REGISTRY_LAST_SEEN_UPDATE_INTERVAL`); a recent row is not written. The
+   service target host (`_service_target_host`) is the host row of the last
+   candidate, in batch order, whose host row is known (loaded, or created in
+   step 6) and either existed before the batch or is registered by a host
+   point at the same or an earlier index (the per-point order of the old
+   loop); none when no candidate qualifies.
+5. No row missing and an empty plan → return without a transaction (steady
+   state writes nothing).
+6. Otherwise one `transaction.atomic()` (`BEGIN IMMEDIATE`, settings
+   `transaction_mode: IMMEDIATE`): reload the rows, create the missing ones
+   with Django `get_or_create` (select; insert inside a savepoint; on
+   `IntegrityError` select again) in the order subjects, hosts, services:
+   subject `display_name=subject_id`, `source_system=<batch value>`,
+   `last_seen_at=now`; host `display_name=host_id`, `last_seen_at=now`;
+   service `display_name=service_id`, `host=<target host>`,
+   `last_seen_at=now`. Then plan again over all rows and run the updates in
+   this order: one `UPDATE subject_registry SET last_seen_at WHERE id IN
+   (…)`, one `UPDATE … SET source_system, last_seen_at WHERE id = ?` per
+   changed subject, one `UPDATE host_registry SET last_seen_at WHERE id IN
+   (…)`, one `UPDATE service_registry SET last_seen_at WHERE id IN (…)`, one
+   `UPDATE … SET host_id, last_seen_at WHERE id = ?` per re-parented service.
+   Each is a queryset `update()`, so the row images are pinned by
+   `store_ops.json`, not by the statement text.
+
+The bound-subject filter on the service updates is not ported (non-goal,
+5.7).
 
 ### 5.6 Coexistence with Django
 
@@ -991,10 +1025,18 @@ slice. ops-library, ops-deploy, ops-control as in 8.3.
 `agent-rs/fixtures/generate.py` (`just rs-fixtures`, `uv run python …` with
 `DJANGO_SETTINGS_MODULE=config.settings.test`, `PYTHONHASHSEED=0`) imports the
 real modules and writes deterministic JSON (clocks and `datetime.now`
-injected by monkeypatching):
+injected by monkeypatching). The driver (S1) discovers the builder modules
+`fixtures/gen_*.py`, each exporting `GENERATORS` (file name → builder), so
+slices add fixtures without editing it; it removes `DJANGO_*`, `GRAPHYARD_*`
+and `INFLUX_*` variables from its environment and keeps django-environ from
+reading `src/django/.env` (builders set what they need). Files are rendered
+with `json.dumps(indent=1, ensure_ascii=True, allow_nan=False)` in the key
+order the builder wrote (key order is contract in configs and tags);
+non-finite floats are encoded explicitly by the builder.
 
 | Fixture | Python source | Content |
 | --- | --- | --- |
+| `model.json` (S1) | `models.py` choices, `_STATUS_SEVERITY`, `_SPEC_EXECUTORS`, `_operator_fn`, the `MetricPoint`/`MetricSample`/result dataclasses | value tables, comparisons, dataclass fields and defaults |
 | `pycompat.json` | `repr(float)`, `format(x, "g")`, `float()`, `int()`, `str()`/`repr()` of JSON values, `str.strip/split`, `==` | value corpus |
 | `settings.json` | `config/settings/base.py` via django-environ | raw env → parsed value or startup error, `$` proxies |
 | `spec_config.json` | `spec_config.py` (all helpers, `validate_spec_config`) | config corpus → value or message |
@@ -1012,9 +1054,12 @@ injected by monkeypatching):
 
 Library-derived (P2) messages are stored as `{"class": …, "p2": true}` and
 the Rust tests check only the class. A drift test
-`tests/test_agent_rs_fixtures.py` regenerates every file in memory and fails
-on any difference, so a Python behaviour change cannot merge without
-regenerated fixtures. Rust loads fixtures with `include_str!`.
+`tests/test_agent_rs_fixtures.py` runs `generate.py --check` as a subprocess
+(the same fixed hash seed and scrubbed environment as `just rs-fixtures`),
+which re-renders every file in memory and fails on any difference, on a
+missing file and on an orphaned top-level `*.json` that no builder generates,
+so a Python behaviour change cannot merge without regenerated fixtures. Rust
+loads fixtures with `include_str!`.
 
 ### 9.3 Process e2e (Rust binary)
 
@@ -1077,6 +1122,8 @@ rows.
 | `test_influx_query_safety.py` (all) | v3 SQL fake tests, `flux.json` NaN case | S4b |
 | `test_metric_dimensions.py` mapping/emission tests | `ha_mapping.json`, fake-server tests | S7a, S7b |
 | `test_metric_dimensions.py::test_touch_registry_*` | `store_ops.json` | S3b |
+| `test_registry_write_batching.py` registry semantics without a bound subject (statement counts, 60 s rule, last source system, re-parenting, collector host position) | `store_ops.json` registry cases + statement-count tests | S3b |
+| `test_registry_write_batching.py` bound-token parts | n/a (bound-subject branch, web ingest, 5.7) | — |
 | `test_query_and_ingest_log_escaping.py::test_flux_interpolation_literal_in_query` | `flux.json` | S4b |
 | `test_query_and_ingest_log_escaping.py::test_metric_log_escapes_newline`, `::test_ingest_normalization_record_caps_error_details` | n/a (web ingest) | — |
 | `test_evaluate_conditions_command.py` | `evaluate-conditions` subcommand tests + e2e (11.4) | S15a |
@@ -1085,10 +1132,11 @@ rows.
 ### 9.6 just recipes and CI
 
 `rs-test`, `rs-lint` (fmt check + clippy), `rs-fmt`, `rs-fixtures`,
-`rs-parity`, `rs-build`, `rs-build-linux` (Docker, pinned
+`rs-build`, `rs-build-linux` (Docker, pinned
 `rust:<ver>-bookworm`, glibc 2.36 ≤ 2.39, for `*_local_archive`
-development deploys), `rs-deny`; `test` runs `uv run pytest` then
-`rs-test`. Workers never build or test in `~/projects` (worktrees only).
+development deploys), `rs-deny` (S1); `rs-parity` (S9a, with the harness);
+`test` runs `uv run pytest` then `rs-test`, `lint` adds `rs-lint`,
+`typecheck` adds `cargo check`. Workers never build or test in `~/projects` (worktrees only).
 
 ---
 
@@ -1230,7 +1278,8 @@ Python agent and the documented manual call is the Rust one, so a later
 
 ## 12. Implementation slices
 
-Rules: one branch per slice (`rust-agent/<id>-<name>`), each reviewed by
+Rules: one branch per slice (`rust-graphyard-agent-<id>`, the campaign's
+branch naming), each reviewed by
 `gpt-6.1-sol` at high reasoning through the codex review loop, then merged to
 the repo's default branch and pushed. A slice gets at most three review
 rounds, the third only over the repair delta of the second (owner rule of

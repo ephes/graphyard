@@ -13,3 +13,4 @@ staticfiles/
 src/django/.env
 .dev/
 .DS_Store
+agent-rs/target/
