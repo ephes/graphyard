@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- Rust agent port (`agent-rs/`, slice S6): the HTTP layer of the collectors
+  (`graphyard-collect::http`), httpx 0.28.1 as `services.py` uses it, on
+  hyper's HTTP/1.1 connection API: httpx's URL model, request headers, auth,
+  cookies and decoders, connections with httpx's per-connect and per-read
+  timeouts and `getaddrinfo` name resolution, the `HTTP Request:` log line,
+  `raise_for_status` texts and exception classes, the total deadline with
+  the cap on lookups still running past it, the JSON reader and the
+  page-probe redirect loop. Pinned by a new fixture `http_errors.json`
+  generated from httpx and the graphyard helpers. Nothing runs the Rust
+  code yet; the Python agent is unchanged.
+
 - Rust agent port (`agent-rs/`, slice S4b): the condition queries of
   `influx.py` in `graphyard-influx`: the lookback window of a condition, the
   InfluxDB v2 Flux request and the decoding of its annotated CSV (as

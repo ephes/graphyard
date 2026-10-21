@@ -7,7 +7,7 @@ target. Nothing runs this code in production yet: the deployment selects it
 only through a systemd drop-in that later slices add (PLAN.md 8.3), and
 deploys ship `agent-rs/` only as a release archive.
 
-Status: slices S1 (scaffold), S2, S3a, S3b, S4a, S5 and S10a. S1: the workspace, the toolchain pin,
+Status: slices S1 (scaffold), S2, S3a, S3b, S4a, S5, S6 and S10a. S1: the workspace, the toolchain pin,
 the cargo-deny policy, the CI `rust` job, the `just rs-*` recipes, the shared
 model types (`graphyard_core::model`) and the fixture pipeline with its drift
 test. S2: the CPython compatibility helpers (`graphyard_core::pycompat`), the
@@ -41,6 +41,18 @@ Slice S10a adds the release pipeline (PLAN.md 8.2): the workflow
 `.github/workflows/agent-rs-release.yml`, the checks in
 `scripts/release_checks.py` and the commit stamp of `--version`
 (`crates/graphyard-agent/build.rs`); see [Releases](#releases).
+
+Slice S6 adds the collectors' HTTP layer in `graphyard-collect::http`
+(PLAN.md 6.1, 6.2): httpx 0.28.1 as `services.py` configures it, on hyper's
+HTTP/1.1 connection API. One `HttpClient` per spec execution with httpx's
+request headers, auth and a cookie jar; connections as httpcore opens them
+(`getaddrinfo` through libc on the blocking pool, every address in turn, the
+timeout per connect, TLS handshake and socket read/write); httpx's URL model
+(`HttpxUrl`: `urlparse`, the redirect join, request target and `Host`), its
+`raise_for_status` texts, decoders and exception classes; the total deadline
+with the abandoned-lookup cap (`run_with_deadline`), the JSON reader, the
+page-probe redirect loop and automatic redirects. Pinned by
+`http_errors.json` and fake-server tests; the executors follow in S7a/S7b.
 
 Slice S3a adds the store core in `graphyard-store` (PLAN.md 5): the DB thread
 owning the connection, Django's connection setup and the graphyard pragmas,
@@ -77,7 +89,8 @@ agent-rs/
                         (S3b)
     graphyard-influx/   InfluxDB write client and config check (S4a),
                         query clients (S4b)
-    graphyard-collect/  HTTP layer and the five executors (S6/S7a/S7b)
+    graphyard-collect/  HTTP layer (S6: `http`) and the five executors
+                        (S7a/S7b)
     graphyard-agent/    the binary: CLI, scheduler, runs, signals (S8)
   fixtures/
     generate.py         fixture driver (`just rs-fixtures`)
