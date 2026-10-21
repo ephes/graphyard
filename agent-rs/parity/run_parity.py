@@ -963,9 +963,14 @@ def normalise(value: Any, tokens: list[tuple[str, str]]) -> Any:
     return value
 
 
-def split_unescaped(text: str, separator: str) -> list[str]:
-    """Split line protocol on ``separator`` outside backslash escapes."""
-    parts, current, escaped = [], [], False
+def split_unescaped(
+    text: str, separator: str, *, quotes: bool = False, maxsplit: int = -1
+) -> list[str]:
+    """Split line protocol on ``separator`` outside backslash escapes and,
+    with ``quotes`` (the field set), outside double-quoted string values."""
+    parts: list[str] = []
+    current: list[str] = []
+    escaped = quoted = False
     for char in text:
         if escaped:
             current.append(char)
@@ -973,7 +978,10 @@ def split_unescaped(text: str, separator: str) -> list[str]:
         elif char == "\\":
             current.append(char)
             escaped = True
-        elif char == separator:
+        elif quotes and char == '"':
+            current.append(char)
+            quoted = not quoted
+        elif char == separator and not quoted and len(parts) != maxsplit:
             parts.append("".join(current))
             current = []
         else:
@@ -986,7 +994,14 @@ def line_view(
     line: str, tokens: list[tuple[str, str]], window: tuple[int, int]
 ) -> dict[str, Any]:
     """One written line: series key and field exact, ``now()`` parts masked."""
-    parts = split_unescaped(line, " ")
+    # The series key ends at the first unescaped space (quotes are literal
+    # there); field string values may hold quoted spaces and commas.
+    head = split_unescaped(line, " ", maxsplit=1)
+    parts = (
+        [head[0], *split_unescaped(head[1], " ", quotes=True)]
+        if len(head) == 2
+        else head
+    )
     if len(parts) != 3:
         return {"unparsed": line}
     series, fields, timestamp = parts
@@ -994,7 +1009,11 @@ def line_view(
         tag.split("=", 1) for tag in split_unescaped(series, ",")[1:] if "=" in tag
     )
     if tags.get("metric") in TIMING_METRICS:
-        fields = re.sub(r"^value=.*$", "value=<duration>", fields)
+        # Only the duration of the `value` field; any other field stays.
+        fields = ",".join(
+            "value=<duration>" if field.startswith("value=") else field
+            for field in split_unescaped(fields, ",", quotes=True)
+        )
     ts: int | str = int(timestamp) if timestamp.isdigit() else timestamp
     if isinstance(ts, int) and window[0] <= ts <= window[1]:
         ts = "<now>"

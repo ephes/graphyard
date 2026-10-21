@@ -162,6 +162,20 @@ def test_written_lines_mask_only_now_based_timestamps_and_timings():
     assert run_parity.line_view(line.replace("1500", "999"), [], window)["ts"] == 999
     timing = "m,metric=service.http_page_ttfb_seconds value=0.0123 1500"
     assert run_parity.line_view(timing, [], window)["fields"] == "value=<duration>"
+    extra = "m,metric=service.http_page_total_seconds value=0.1,unexpected=999 1500"
+    assert run_parity.line_view(extra, [], window)["fields"] == (
+        "value=<duration>,unexpected=999"
+    )
+    quoted = 'm,metric=service.http_page_ttfb_seconds value=0.1,s="x,value=9 9" 1500'
+    assert run_parity.line_view(quoted, [], window) == {
+        "series": "m,metric=service.http_page_ttfb_seconds",
+        "fields": 'value=<duration>,s="x,value=9 9"',
+        "ts": "<now>",
+    }
+    escaped = 'm,metric=service.http_page_ttfb_seconds value=0.1,s="a\\"b,value=1" 1500'
+    assert run_parity.line_view(escaped, [], window)["fields"] == (
+        'value=<duration>,s="a\\"b,value=1"'
+    )
     status = "m,metric=service.http_page_status_code value=200 1500"
     assert run_parity.line_view(status, [], window)["fields"] == "value=200"
     tokens = [("127.0.0.1:4711", "127.0.0.1:<http>")]
