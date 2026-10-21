@@ -7,6 +7,9 @@
 #[cfg(test)]
 mod fixture;
 pub mod model;
+pub mod pycompat;
+pub mod settings;
+pub mod spec_config;
 
 pub use model::{
     ComparisonOperator, ConditionEvaluation, ConditionEvaluationRun, MetricCollectionSpecRun,

@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Rust agent port (`agent-rs/`, slice S2): CPython compatibility helpers
+  (`repr(float)`, `format(x, "g")`, `int()`/`float()` of strings, `str()`/
+  `repr()` of JSON values, `==`), the agent's environment settings with
+  django-environ semantics (defaults, `$` proxies, the SQLite pragma
+  fallbacks) and the typed spec config checks of `spec_config.py`, each pinned
+  by fixtures generated from the Python code (`pycompat.json`,
+  `settings.json`, `spec_config.json`). Nothing runs the Rust code yet; the
+  Python agent is unchanged.
+
 - Add the release pipeline of the Rust agent: `.github/workflows/agent-rs-release.yml`
   builds `graphyard-agent` on ubuntu-22.04 for a tag `agent-rs-v<version>` (the
   tag must equal the crate version), runs the Rust tests and the fixture drift

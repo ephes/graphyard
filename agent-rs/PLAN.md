@@ -198,7 +198,10 @@ that differs is a bug.
     writable through Django, `json.dumps` raises the same limit; only raw SQL
     stores them): Python fails the whole run while iterating the queryset;
     Rust uses the CPython message `Exceeds the limit (4300 digits) for
-    integer string conversion` (fixtures at 4300/4301 digits);
+    integer string conversion: value has <n> digits; use
+    sys.set_int_max_str_digits() to increase the limit`
+    (`pycompat::int_digit_limit_error`; fixtures at 4300/4301 digits in
+    `pycompat.json`);
   - lone UTF-16 surrogate escapes in strings (`{"unused": "\ud800"}`) and
     nesting deeper than `serde_json`'s 128-level limit: Django can write both
     (`json.dumps`/`json.loads` round-trip them, `JSON_VALID` accepts them)
@@ -296,6 +299,14 @@ raw string (surrounding whitespace and `_` between digits accepted, sign
 allowed); a value starting with `$` is a django-environ proxy and resolves the
 named variable; an invalid integer exits 1 at startup (Python: traceback from
 the settings import). Strings are not stripped (only the SQLite modes are).
+Integer settings are exact Python integers of any size
+(`graphyard_core::settings::Settings`, `num-bigint`); the slices that use
+them convert where Python converts. A proxy chain longer than 1000 steps (a
+cycle) is the `RecursionError` of the import (Python's exact depth depends on
+its stack, P2). Environment entries that are not UTF-8 are read lossily
+(Python: `surrogateescape`, P2). `Settings::sqlite_pragmas` computes the
+three pragma values and the warnings below; the fixture records the
+statements `_configure_sqlite_connection` executes.
 The pragmas are applied on the one connection exactly as
 `apps.py:_configure_sqlite_connection` does on every Django connection
 (busy_timeout, journal_mode, synchronous, in that order; a failing pragma
@@ -454,6 +465,7 @@ keep every fixture-tested function in `graphyard-core`.
 | InfluxDB v3 SQL | plain HTTP `POST /api/v3/query_sql` + `serde_json` | mirrors `_read_v3_sql_rows` |
 | SQLite | `rusqlite` (`bundled`) | same as nyxmon; synchronous API keeps Django's statement boundaries reviewable |
 | JSON | `serde_json` (`preserve_order`, `arbitrary_precision`) | key order of configs and payloads (rule order, tag order), big integers survive like in Python |
+| Python integers | `num-bigint` (+ `num-traits`) | exact `int` of any size where Python keeps one: `py_int` and the integer settings (3.3), `int == float` in `py_eq`; same crate as nyxmon's `pyjson` |
 | regex | `fancy-regex` | user regexes from spec configs need lookaround/backreference support like Python `re` (D-5) |
 | time | `chrono` | Django datetime text, ISO parsing of HA `last_updated`, RFC 3339 of Flux |
 | CLI | `clap` (derive) | |
@@ -475,6 +487,18 @@ ASCII input incl. `_`, whitespace, `inf`/`nan` spellings), `py_int(&str)`,
 across bool/int/float). The nyxmon `pyjson` module implements several of
 these; S2 copies the relevant functions with their fixture cases rather than
 depending on another repository.
+
+As implemented in S2: a JSON number is read only through `py_number`, which
+decodes the `arbitrary_precision` token like `json.loads` (an `int` exactly
+when the token has no fraction and no exponent, exact at any size; float
+tokens as `float(token)`, `inf` on overflow); `py_float_of(&Value)` is
+`float()` of a decoded value (`OverflowError` for huge integers, `TypeError`
+for `None`/containers); `py_type_name` is `type(x).__name__`; `py_int`
+returns an exact integer (`num-bigint`); `int_digit_limit_error(text)` gives
+the full CPython `ValueError` text of `json.loads` for the first integer token
+beyond 4300 digits (D-11), for the slices that load stored JSON. `py_repr`
+renders such integers with all digits (they never pass the loader) and
+`py_describe` reproduces `_describe`'s `<int>` fallback for them.
 
 ---
 
@@ -678,7 +702,9 @@ JSON object (non-object → `critical`, `config must be an object`). Typed
 knobs go through `spec_config.py` (`request_timeout_seconds` default 10,
 `total_timeout_seconds`, `max_body_bytes` default 10 MiB, `verify_tls`
 default true, `follow_redirects` default true; their `SpecConfigError`
-messages are P1 including `_describe`). Required-field messages (P1) appear
+messages are P1 including `_describe`; `graphyard_core::spec_config`, S2).
+`max_body_bytes` beyond `u64` saturates to `u64::MAX`, which no body
+reaches (Python keeps the exact `int`; same outcome). Required-field messages (P1) appear
 in the order the Python code checks them.
 
 - **`home_assistant_sensor`** (`_execute_home_assistant_sensor_spec`): GET
@@ -1038,8 +1064,8 @@ non-finite floats are encoded explicitly by the builder.
 | Fixture | Python source | Content |
 | --- | --- | --- |
 | `model.json` (S1) | `models.py` choices, `_STATUS_SEVERITY`, `_SPEC_EXECUTORS`, `_operator_fn`, the `MetricPoint`/`MetricSample`/result dataclasses | value tables, comparisons, dataclass fields and defaults |
-| `pycompat.json` | `repr(float)`, `format(x, "g")`, `float()`, `int()`, `str()`/`repr()` of JSON values, `str.strip/split`, `==` | value corpus |
-| `settings.json` | `config/settings/base.py` via django-environ | raw env → parsed value or startup error, `$` proxies |
+| `pycompat.json` | `repr(float)`, `format(x, "g")`, `float()`, `int()`, `str()`/`repr()`/`float()` of JSON values, `_describe`, `str.strip/split`, `==`, the `json.loads` integer digit limit | value corpus |
+| `settings.json` | `config/settings/base.py` via django-environ (the module executed per case), `apps.py:_configure_sqlite_connection` | raw env → parsed value or startup error, `$` proxies, pragma statements and warnings |
 | `spec_config.json` | `spec_config.py` (all helpers, `validate_spec_config`) | config corpus → value or message |
 | `normalize.json` | `normalize_subject_id`, `_normalize_dimension_value`, `parse_finite_float`, `normalize_metric_point` | point corpus → normalised point or message |
 | `line_protocol.json` | `write_points` with a capturing client, `Point.to_line_protocol` | points → lines, logs, counts (escape and float corner cases) |
