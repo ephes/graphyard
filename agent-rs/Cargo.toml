@@ -24,6 +24,7 @@ graphyard-store = { path = "crates/graphyard-store" }
 graphyard-influx = { path = "crates/graphyard-influx" }
 graphyard-collect = { path = "crates/graphyard-collect" }
 chrono = { version = "0.4", default-features = false, features = ["std"] }
+csv = "1"
 indexmap = "2"
 log = "0.4"
 num-bigint = "0.4"
@@ -32,8 +33,9 @@ percent-encoding = "2"
 regex = { version = "1", default-features = false, features = ["std", "perf", "unicode"] }
 rusqlite = { version = "0.40", features = ["bundled"] }
 # HTTP client (PLAN.md 4.3): rustls with ring and the system trust store
-# (rustls-platform-verifier, D-12), no OpenSSL, no aws-lc.
-reqwest = { version = "0.13", default-features = false, features = ["rustls-no-provider"] }
+# (rustls-platform-verifier, D-12), no OpenSSL, no aws-lc; HTTP/1.1 only;
+# gzip/deflate response decoding for the queries.
+reqwest = { version = "0.13", default-features = false, features = ["rustls-no-provider", "gzip", "deflate"] }
 rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12", "logging"] }
 serde = "1"
 serde_json = { version = "1", features = ["preserve_order", "arbitrary_precision", "raw_value"] }
@@ -42,11 +44,13 @@ tokio = "1"
 # Test-only: fake servers and line protocol parsing.
 bytes = "1"
 http-body-util = "0.1"
-hyper = { version = "1", features = ["server", "http1"] }
+hyper = { version = "1", default-features = false }
 hyper-util = { version = "0.1", features = ["tokio"] }
 influxdb-line-protocol = "2"
 rcgen = "0.14"
 tokio-rustls = { version = "0.26", default-features = false, features = ["ring", "tls12", "logging"] }
+url = "2"
+flate2 = "1"
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

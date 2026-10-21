@@ -29,6 +29,7 @@
 //! (nyxmon `agent-rs/crates/nyxmon-core/src/pyjson`) with their fixture
 //! cases, as the plan asks, instead of depending on that repository.
 
+mod bytes;
 mod datetime;
 mod json;
 mod num;
@@ -37,14 +38,15 @@ mod value;
 
 use std::fmt;
 
+pub use bytes::{py_b64decode, py_bytes_repr};
 pub use datetime::{
-    PY_DATETIME_MAX_MICROS, PY_DATETIME_MIN_MICROS, py_datetime_add, py_timedelta_minutes,
-    py_total_seconds,
+    PY_DATETIME_MAX_MICROS, PY_DATETIME_MIN_MICROS, PyDateTime, date_out_of_range, py_datetime_add,
+    py_fromisoformat, py_isoformat_utc, py_timedelta_minutes, py_timedelta_repr, py_total_seconds,
 };
 pub use json::json_loads;
 pub use num::{
     PyNumber, bigint_to_i64_saturating, py_float, py_float_of, py_float_repr, py_format_g, py_int,
-    py_number,
+    py_int_true_divide, py_number,
 };
 pub use text::{py_isspace, py_split_whitespace, py_str_repr, py_strip};
 pub use value::{
@@ -60,6 +62,8 @@ pub enum PyErrorKind {
     OverflowError,
     RecursionError,
     KeyError,
+    /// `binascii.Error` (its `__name__` is `Error`).
+    BinasciiError,
 }
 
 impl PyErrorKind {
@@ -71,6 +75,7 @@ impl PyErrorKind {
             Self::OverflowError => "OverflowError",
             Self::RecursionError => "RecursionError",
             Self::KeyError => "KeyError",
+            Self::BinasciiError => "Error",
         }
     }
 }

@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Rust agent port (`agent-rs/`, slice S4b): the condition queries of
+  `influx.py` in `graphyard-influx`: the lookback window of a condition, the
+  InfluxDB v2 Flux request and the decoding of its annotated CSV (as
+  `influxdb_client` does it), the v3 SQL request with its 10 MiB cap, 30 s
+  deadline and error texts, and the `auto` fallback on a v2 404. Pinned by
+  fixtures generated from the Python code against a loopback fake InfluxDB
+  (`flux.json`, `sql_v3.json`, `isoformat.json`). Nothing runs the Rust code
+  yet; the Python agent is unchanged.
+
 - Rust agent port (`agent-rs/`, slice S3b): the registry touch
   (`graphyard_store::Store::touch_registry`), a port of the batched
   `touch_registry_from_points` without a bound subject: one read per registry

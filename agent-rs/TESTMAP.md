@@ -46,6 +46,21 @@ fixture no longer matches the Python code.
 | `influx.py:write_points`: point building (fixed dimensions, optional tags, reserved-key warnings), validation log lines (D-10 escaping), `metrics_write_rejected` timing, `_build_client` configuration errors per mode, request URL/query encoding/headers/body of the client against a recording server, status handling (2xx success, 3xx/4xx/5xx `ApiException`), response bodies (read in full: truncated, stalled, slowly dripping, not UTF-8), timeout rules (`0`, negative, overflowing, per-read inactivity), transport failures by class, TLS failure as `ApiException(status=0)` | `line_protocol/tests.rs::prepare_write_matches_write_points`; `graphyard-influx/tests/write_points.rs::write_points_replays_the_python_client` (every `writes` case against a fake InfluxDB, byte-level scripts for the body cases), `::transport_errors_use_the_urllib3_forms`, `::tls_failures_are_the_client_api_exception`, `::tls_handshake_eof_is_the_client_api_exception`, `tests/fresh_process.rs` (no preinstalled crypto provider); `graphyard-influx` `config`/`write` unit tests | done |
 | `test_influx_modes.py::test_write_points_skips_invalid_points_in_batch`, `::test_write_points_does_not_count_non_finite_points` | `line_protocol.json` write cases; `line_protocol/tests.rs::every_python_test_of_the_slice_is_in_the_corpus` | done |
 
+## S4b — queries
+
+| Python behaviour / test | Rust counterpart | Status |
+| --- | --- | --- |
+| `influx.query_condition_window`: lookback `max(window, breach + ceil(stale/60), ceil(stale_limit/60))` with Python's float division and `timedelta`/datetime overflow errors, `stale_limit_seconds()`, `tags_filter` values as `str()` (and `AttributeError` for a non-object), subject filters (`normalize_subject_id`), the host-filter drop and its warning (D-10 escaping); `test_condition_evaluation.py::test_query_condition_window_looks_back_far_enough_for_the_anchor`, `test_metric_dimensions.py::test_query_condition_window_applies_subject_filters_and_host_compat`, `::test_query_condition_window_keeps_host_filter_for_host_subject` | `graphyard-influx/tests/window.rs::condition_window_matches_python` against `fixtures/flux.json` `window` (`gen_query.py`) | done |
+| `_query_range_v2_flux` Flux text (escaping, bracket access, timestamps); `test_influx_modes.py::test_query_range_v2_flux_uses_safe_bracket_access_for_tag_keys`, `test_query_and_ingest_log_escaping.py::test_flux_interpolation_literal_in_query` | `window.rs::flux_text_matches_python` (`flux.json` `flux_text`) | done |
+| `QueryApi.query` request (path, `org` quoting, headers, JSON body with `extern` and dialect), urllib3 timeouts, `ApiException` and transport errors, configuration errors of `_build_client` | `graphyard-influx/tests/flux.rs::v2_request_matches_python`, `::v2_errors_match_python` against a fake InfluxDB replaying `flux.json` `requests`/`errors` | done |
+| `FluxCsvParser` (annotations, several tables, defaults, typed values, error tables, short rows, duplicated columns, quoting, invalid UTF-8) and the sample loop (`KeyError`, skips, `AttributeError`, non-finite values, tags as `str()`); `test_influx_query_safety.py::test_nonfinite_query_evidence_is_an_evaluation_error` (v2), `::test_finite_query_keeps_multiple_series` (v2) | `flux.rs::annotated_csv_matches_python` (`flux.json` `csv`), `::query_error_table_reprs_both_arguments` | done |
+| `base64.b64decode` (non-strict) and `repr(bytes)` for `base64Binary` cells | `graphyard-core/src/pycompat/bytes.rs` tests against `flux.json` `b64decode` | done |
+| `datetime.fromisoformat` (CPython 3.12 C parser), `str(datetime)`, `_ensure_utc` | `graphyard-core/src/pycompat/datetime.rs` tests against `fixtures/isoformat.json` | done |
+| Python `int / int` (correctly rounded, `OverflowError`) | `graphyard-core/src/pycompat/tests.rs::int_true_divide_rounds_like_python` | done |
+| `_query_range_v3_sql` SQL text, identifiers, payload and headers | `graphyard-influx/tests/sql_v3.rs::sql_text_matches_python` (`fixtures/sql_v3.json` `sql_text`) | done |
+| `_read_v3_sql_rows` and the row loop: 404 hint, `HTTP <code>`, httpx transport classes, invalid JSON (D-4 for `NaN`), BOM, non-list, size cap counting decoded bytes, total deadline (headers, drip, blocked read, decode), per-operation timeout floor, URL and token errors, the httpx log line, row skipping, `str()` of values and tags; `test_influx_query_safety.py` (all SQL tests), `test_influx_modes.py::test_query_range_v3_sql_selects_and_returns_dimension_columns`, `test_influx_query_safety.py::test_nonfinite_query_evidence_is_an_evaluation_error` (v3) | `sql_v3.rs::v3_rows_match_python`, `::v3_errors_match_python` (`sql_v3.json` `rows`/`errors`), `::sql_cap_stops_reading_early` | done |
+| `query_range` mode `auto` (fallback only on a v2 404); `test_influx_modes.py::test_query_range_auto_falls_back_to_v3_on_v2_404`, `::test_query_range_auto_does_not_hide_non_404_errors`; `test_nonfinite_query_evidence_is_an_evaluation_error` (auto: a decoding error does not fall back) | `sql_v3.rs::auto_mode_matches_python` (`sql_v3.json` `auto`) | done |
+
 ## S10a — release workflow
 
 Not Python agent behaviour: the release pipeline of PLAN.md 8.2 has no Python
@@ -87,7 +102,7 @@ counterpart. Its tests:
 | `test_agent_command.py` (both) | CLI/run-once tests in `graphyard-agent`, e2e | S8 | pending |
 | `test_condition_evaluation.py`: all `evaluate_condition`/series/anchor/staleness/intermittent tests | `conditions.json` cases (`graphyard-core::conditions`) | S5 | done |
 | `test_condition_evaluation.py::test_evaluate_conditions_once_updates_condition_and_heartbeat` | run aggregation test (S8) + `store_ops.json` (S3a, done) | S8, S3a | pending (S8) |
-| `test_condition_evaluation.py::test_query_condition_window_*`, `test_metric_dimensions.py::test_query_condition_window_*` | `flux.json` | S4b | pending |
+| `test_condition_evaluation.py::test_query_condition_window_*`, `test_metric_dimensions.py::test_query_condition_window_*` | `flux.json` | S4b | done |
 | `test_condition_evaluation.py::test_stale_allowance_must_be_positive`, `test_condition_clean_*`, `test_condition_admin_form_*` | — (model/admin validation, web only) | — | n/a |
 | `test_metric_collection_specs.py` HTTP JSON tests | `graphyard-collect` fake-server tests | S7a | pending |
 | `test_metric_collection_specs.py` page probe tests | fake-server tests | S7b | pending |
@@ -100,13 +115,13 @@ counterpart. Its tests:
 | `test_page_probe_deadline.py` (all, incl. `caps_abandoned_workers`) | deadline/abandoned-lookup tests | S6 | pending |
 | `test_http_json_budget.py`, `test_home_assistant_budget.py` | budget/deadline tests | S6, S7a | pending |
 | `test_influx_modes.py` normalisation/write tests | `normalize.json`, `line_protocol.json` | S4a | done |
-| `test_influx_modes.py` query mode tests | fake InfluxDB tests | S4b | pending |
-| `test_influx_query_safety.py` (all) | v3 SQL fake tests, `flux.json` NaN case | S4b | pending |
+| `test_influx_modes.py` query mode tests | fake InfluxDB tests | S4b | done |
+| `test_influx_query_safety.py` (all) | v3 SQL fake tests, `flux.json` NaN case | S4b | done |
 | `test_metric_dimensions.py` mapping/emission tests | `ha_mapping.json`, fake-server tests | S7a, S7b | pending |
 | `test_metric_dimensions.py::test_touch_registry_*` | `store_ops.json` `registry_cases` | S3b | done |
 | `test_registry_write_batching.py` registry semantics without a bound subject (`binding=None` of `::test_fifty_point_batch_writes_each_registry_row_once`, `::test_stale_last_seen_refresh_is_one_update_per_table`; the 60 s rule of `::test_recent_last_seen_is_not_rewritten`; `::test_batch_keeps_last_source_system_and_reparents_to_last_host`, `::test_collector_host_resolves_at_its_position_in_the_batch`, `::test_new_service_from_unknown_collector_host_has_no_host`) | `store_ops.json` registry cases + statement-count tests | S3b | done |
 | `test_registry_write_batching.py` bound-token parts (`binding="edge"`, the view's ownership read, `::test_bound_stale_refresh_skips_service_taken_after_validation`) | — (bound-subject branch, web ingest only, PLAN.md 5.7) | — | n/a |
-| `test_query_and_ingest_log_escaping.py::test_flux_interpolation_literal_in_query` | `flux.json` | S4b | pending |
+| `test_query_and_ingest_log_escaping.py::test_flux_interpolation_literal_in_query` | `flux.json` | S4b | done |
 | `test_query_and_ingest_log_escaping.py::test_metric_log_escapes_newline`, `::test_ingest_normalization_record_caps_error_details` | — (web ingest) | — | n/a |
 | `test_evaluate_conditions_command.py` | `evaluate-conditions` subcommand tests + e2e (PLAN.md 11.4) | S15a | pending |
 | web/ingest/inventory/token/admin/login tests | — (web only) | — | n/a |

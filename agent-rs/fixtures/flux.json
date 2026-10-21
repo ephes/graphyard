@@ -1,0 +1,4812 @@
+{
+ "b64decode": [
+  {
+   "input": "",
+   "str": "b''"
+  },
+  {
+   "input": "aGk=",
+   "str": "b'hi'"
+  },
+  {
+   "input": "aGk",
+   "error": {
+    "class": "Error",
+    "message": "Incorrect padding"
+   }
+  },
+  {
+   "input": "aGk==",
+   "str": "b'hi'"
+  },
+  {
+   "input": "aGk=ignored",
+   "str": "b'hi'"
+  },
+  {
+   "input": "aG=k=",
+   "str": "b'hi'"
+  },
+  {
+   "input": "a!G k\n=",
+   "str": "b'hi'"
+  },
+  {
+   "input": "abcde",
+   "error": {
+    "class": "Error",
+    "message": "Invalid base64-encoded string: number of data characters (5) cannot be 1 more than a multiple of 4"
+   }
+  },
+  {
+   "input": "a",
+   "error": {
+    "class": "Error",
+    "message": "Invalid base64-encoded string: number of data characters (1) cannot be 1 more than a multiple of 4"
+   }
+  },
+  {
+   "input": "ab",
+   "error": {
+    "class": "Error",
+    "message": "Incorrect padding"
+   }
+  },
+  {
+   "input": "abc",
+   "error": {
+    "class": "Error",
+    "message": "Incorrect padding"
+   }
+  },
+  {
+   "input": "ab==cd",
+   "str": "b'i'"
+  },
+  {
+   "input": "AAEC/w==",
+   "str": "b'\\x00\\x01\\x02\\xff'"
+  },
+  {
+   "input": "-_8=",
+   "error": {
+    "class": "Error",
+    "message": "Invalid base64-encoded string: number of data characters (1) cannot be 1 more than a multiple of 4"
+   }
+  },
+  {
+   "input": "+/8=",
+   "str": "b'\\xfb\\xff'"
+  },
+  {
+   "input": "====",
+   "str": "b''"
+  },
+  {
+   "input": "a===",
+   "error": {
+    "class": "Error",
+    "message": "Invalid base64-encoded string: number of data characters (1) cannot be 1 more than a multiple of 4"
+   }
+  },
+  {
+   "input": "YWJj\u00e4",
+   "error": {
+    "class": "ValueError",
+    "message": "string argument should contain only ASCII characters"
+   }
+  },
+  {
+   "input": "'\"\\\t\r\u007f",
+   "str": "b''"
+  },
+  {
+   "input": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8gISIjJCUmJygpKissLS4vMDEyMzQ1Njc4OTo7PD0+P0BBQkNERUZHSElKS0xNTk9QUVJTVFVWV1hZWltcXV5fYGFiY2RlZmdoaWprbG1ub3BxcnN0dXZ3eHl6e3x9fn+AgYKD",
+   "str": "b'\\x00\\x01\\x02\\x03\\x04\\x05\\x06\\x07\\x08\\t\\n\\x0b\\x0c\\r\\x0e\\x0f\\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17\\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f !\"#$%&\\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\\\]^_`abcdefghijklmnopqrstuvwxyz{|}~\\x7f\\x80\\x81\\x82\\x83'"
+  }
+ ],
+ "window": [
+  {
+   "name": "defaults",
+   "condition": {
+    "id": 7,
+    "name": "disk",
+    "metric_name": "host.filesystem_used_ratio",
+    "host_filter": "",
+    "service_filter": "",
+    "subject_type_filter": "",
+    "subject_id_filter": "",
+    "tags_filter": {},
+    "window_minutes": 30,
+    "breach_minutes": 5,
+    "stale_after_seconds": null
+   },
+   "stale_warning": "600",
+   "now": "2026-10-21T12:00:00.123456+00:00",
+   "logs": [],
+   "range": {
+    "metric": "host.filesystem_used_ratio",
+    "start": "2026-10-21T11:30:00.123456+00:00",
+    "stop": "2026-10-21T12:00:00.123456+00:00",
+    "host": null,
+    "service": null,
+    "tags": {}
+   },
+   "flux": "from(bucket: \"graphyard\")\n  |> range(start: 2026-10-21T11:30:00.123456Z, stop: 2026-10-21T12:00:00.123456Z)\n  |> filter(fn: (r) => r._measurement == \"graphyard_metrics\" and r._field == \"value\" and r[\"metric\"] == \"host.filesystem_used_ratio\")\n  |> sort(columns: [\"_time\"], desc: false)"
+  },
+  {
+   "name": "whole_second_now",
+   "condition": {
+    "id": 7,
+    "name": "disk",
+    "metric_name": "host.filesystem_used_ratio",
+    "host_filter": "",
+    "service_filter": "",
+    "subject_type_filter": "",
+    "subject_id_filter": "",
+    "tags_filter": {},
+    "window_minutes": 30,
+    "breach_minutes": 5,
+    "stale_after_seconds": null
+   },
+   "stale_warning": "600",
+   "now": "2026-10-21T12:00:00+00:00",
+   "logs": [],
+   "range": {
+    "metric": "host.filesystem_used_ratio",
+    "start": "2026-10-21T11:30:00+00:00",
+    "stop": "2026-10-21T12:00:00+00:00",
+    "host": null,
+    "service": null,
+    "tags": {}
+   },
+   "flux": "from(bucket: \"graphyard\")\n  |> range(start: 2026-10-21T11:30:00Z, stop: 2026-10-21T12:00:00Z)\n  |> filter(fn: (r) => r._measurement == \"graphyard_metrics\" and r._field == \"value\" and r[\"metric\"] == \"host.filesystem_used_ratio\")\n  |> sort(columns: [\"_time\"], desc: false)"
+  },
+  {
+   "name": "anchor_longer_than_window",
+   "condition": {
+    "id": 7,
+    "name": "disk",
+    "metric_name": "host.filesystem_used_ratio",
+    "host_filter": "",
+    "service_filter": "",
+    "subject_type_filter": "",
+    "subject_id_filter": "",
+    "tags_filter": {},
+    "window_minutes": 10,
+    "breach_minutes": 10,
+    "stale_after_seconds": null
+   },
+   "stale_warning": "600",
+   "now": "2026-10-21T12:00:00.123456+00:00",
+   "logs": [],
+   "range": {
+    "metric": "host.filesystem_used_ratio",
+    "start": "2026-10-21T11:40:00.123456+00:00",
+    "stop": "2026-10-21T12:00:00.123456+00:00",
+    "host": null,
+    "service": null,
+    "tags": {}
+   },
+   "flux": "from(bucket: \"graphyard\")\n  |> range(start: 2026-10-21T11:40:00.123456Z, stop: 2026-10-21T12:00:00.123456Z)\n  |> filter(fn: (r) => r._measurement == \"graphyard_metrics\" and r._field == \"value\" and r[\"metric\"] == \"host.filesystem_used_ratio\")\n  |> sort(columns: [\"_time\"], desc: false)"
+  },
+  {
+   "name": "window_longer_than_anchor",
+   "condition": {
+    "id": 7,
+    "name": "disk",
+    "metric_name": "host.filesystem_used_ratio",
+    "host_filter": "",
+    "service_filter": "",
+    "subject_type_filter": "",
+    "subject_id_filter": "",
+    "tags_filter": {},
+    "window_minutes": 30,
+    "breach_minutes": 10,
+    "stale_after_seconds": null
+   },
+   "stale_warning": "600",
+   "now": "2026-10-21T12:00:00.123456+00:00",
+   "logs": [],
+   "range": {
+    "metric": "host.filesystem_used_ratio",
+    "start": "2026-10-21T11:30:00.123456+00:00",
+    "stop": "2026-10-21T12:00:00.123456+00:00",
+    "host": null,
+    "service": null,
+    "tags": {}
+   },
+   "flux": "from(bucket: \"graphyard\")\n  |> range(start: 2026-10-21T11:30:00.123456Z, stop: 2026-10-21T12:00:00.123456Z)\n  |> filter(fn: (r) => r._measurement == \"graphyard_metrics\" and r._field == \"value\" and r[\"metric\"] == \"host.filesystem_used_ratio\")\n  |> sort(columns: [\"_time\"], desc: false)"
+  },
+  {
+   "name": "stale_allowance_longer",
+   "condition": {
+    "id": 7,
+    "name": "disk",
+    "metric_name": "host.filesystem_used_ratio",
+    "host_filter": "",
+    "service_filter": "",
+    "subject_type_filter": "",
+    "subject_id_filter": "",
+    "tags_filter": {},
+    "window_minutes": 30,
+    "breach_minutes": 5,
+    "stale_after_seconds": 7200
+   },
+   "stale_warning": "600",
+   "now": "2026-10-21T12:00:00.123456+00:00",
+   "logs": [],
+   "range": {
+    "metric": "host.filesystem_used_ratio",
+    "start": "2026-10-21T10:00:00.123456+00:00",
+    "stop": "2026-10-21T12:00:00.123456+00:00",
+    "host": null,
+    "service": null,
+    "tags": {}
+   },
+   "flux": "from(bucket: \"graphyard\")\n  |> range(start: 2026-10-21T10:00:00.123456Z, stop: 2026-10-21T12:00:00.123456Z)\n  |> filter(fn: (r) => r._measurement == \"graphyard_metrics\" and r._field == \"value\" and r[\"metric\"] == \"host.filesystem_used_ratio\")\n  |> sort(columns: [\"_time\"], desc: false)"
+  },
+  {
+   "name": "stale_allowance_rounds_up",
+   "condition": {
+    "id": 7,
+    "name": "disk",
+    "metric_name": "host.filesystem_used_ratio",
+    "host_filter": "",
+    "service_filter": "",
+    "subject_type_filter": "",
+    "subject_id_filter": "",
+    "tags_filter": {},
+    "window_minutes": 30,
+    "breach_minutes": 5,
+    "stale_after_seconds": 3601
+   },
+   "stale_warning": "600",
+   "now": "2026-10-21T12:00:00.123456+00:00",
+   "logs": [],
+   "range": {
+    "metric": "host.filesystem_used_ratio",
+    "start": "2026-10-21T10:59:00.123456+00:00",
+    "stop": "2026-10-21T12:00:00.123456+00:00",
+    "host": null,
+    "service": null,
+    "tags": {}
+   },
+   "flux": "from(bucket: \"graphyard\")\n  |> range(start: 2026-10-21T10:59:00.123456Z, stop: 2026-10-21T12:00:00.123456Z)\n  |> filter(fn: (r) => r._measurement == \"graphyard_metrics\" and r._field == \"value\" and r[\"metric\"] == \"host.filesystem_used_ratio\")\n  |> sort(columns: [\"_time\"], desc: false)"
+  },
+  {
+   "name": "stale_allowance_zero_uses_global",
+   "condition": {
+    "id": 7,
+    "name": "disk",
+    "metric_name": "host.filesystem_used_ratio",
+    "host_filter": "",
+    "service_filter": "",
+    "subject_type_filter": "",
+    "subject_id_filter": "",
+    "tags_filter": {},
+    "window_minutes": 30,
+    "breach_minutes": 5,
+    "stale_after_seconds": 0
+   },
+   "stale_warning": "600",
+   "now": "2026-10-21T12:00:00.123456+00:00",
+   "logs": [],
+   "range": {
+    "metric": "host.filesystem_used_ratio",
+    "start": "2026-10-21T11:30:00.123456+00:00",
+    "stop": "2026-10-21T12:00:00.123456+00:00",
+    "host": null,
+    "service": null,
+    "tags": {}
+   },
+   "flux": "from(bucket: \"graphyard\")\n  |> range(start: 2026-10-21T11:30:00.123456Z, stop: 2026-10-21T12:00:00.123456Z)\n  |> filter(fn: (r) => r._measurement == \"graphyard_metrics\" and r._field == \"value\" and r[\"metric\"] == \"host.filesystem_used_ratio\")\n  |> sort(columns: [\"_time\"], desc: false)"
+  },
+  {
+   "name": "stale_global_rounds_up",
+   "condition": {
+    "id": 7,
+    "name": "disk",
+    "metric_name": "host.filesystem_used_ratio",
+    "host_filter": "",
+    "service_filter": "",
+    "subject_type_filter": "",
+    "subject_id_filter": "",
+    "tags_filter": {},
+    "window_minutes": 30,
+    "breach_minutes": 5,
+    "stale_after_seconds": null
+   },
+   "stale_warning": "601",
+   "now": "2026-10-21T12:00:00.123456+00:00",
+   "logs": [],
+   "range": {
+    "metric": "host.filesystem_used_ratio",
+    "start": "2026-10-21T11:30:00.123456+00:00",
+    "stop": "2026-10-21T12:00:00.123456+00:00",
+    "host": null,
+    "service": null,
+    "tags": {}
+   },
+   "flux": "from(bucket: \"graphyard\")\n  |> range(start: 2026-10-21T11:30:00.123456Z, stop: 2026-10-21T12:00:00.123456Z)\n  |> filter(fn: (r) => r._measurement == \"graphyard_metrics\" and r._field == \"value\" and r[\"metric\"] == \"host.filesystem_used_ratio\")\n  |> sort(columns: [\"_time\"], desc: false)"
+  },
+  {
+   "name": "stale_global_zero",
+   "condition": {
+    "id": 7,
+    "name": "disk",
+    "metric_name": "host.filesystem_used_ratio",
+    "host_filter": "",
+    "service_filter": "",
+    "subject_type_filter": "",
+    "subject_id_filter": "",
+    "tags_filter": {},
+    "window_minutes": 0,
+    "breach_minutes": 0,
+    "stale_after_seconds": null
+   },
+   "stale_warning": "0",
+   "now": "2026-10-21T12:00:00.123456+00:00",
+   "logs": [],
+   "range": {
+    "metric": "host.filesystem_used_ratio",
+    "start": "2026-10-21T12:00:00.123456+00:00",
+    "stop": "2026-10-21T12:00:00.123456+00:00",
+    "host": null,
+    "service": null,
+    "tags": {}
+   },
+   "flux": "from(bucket: \"graphyard\")\n  |> range(start: 2026-10-21T12:00:00.123456Z, stop: 2026-10-21T12:00:00.123456Z)\n  |> filter(fn: (r) => r._measurement == \"graphyard_metrics\" and r._field == \"value\" and r[\"metric\"] == \"host.filesystem_used_ratio\")\n  |> sort(columns: [\"_time\"], desc: false)"
+  },
+  {
+   "name": "stale_global_negative",
+   "condition": {
+    "id": 7,
+    "name": "disk",
+    "metric_name": "host.filesystem_used_ratio",
+    "host_filter": "",
+    "service_filter": "",
+    "subject_type_filter": "",
+    "subject_id_filter": "",
+    "tags_filter": {},
+    "window_minutes": 0,
+    "breach_minutes": 0,
+    "stale_after_seconds": null
+   },
+   "stale_warning": "-150",
+   "now": "2026-10-21T12:00:00.123456+00:00",
+   "logs": [],
+   "range": {
+    "metric": "host.filesystem_used_ratio",
+    "start": "2026-10-21T12:00:00.123456+00:00",
+    "stop": "2026-10-21T12:00:00.123456+00:00",
+    "host": null,
+    "service": null,
+    "tags": {}
+   },
+   "flux": "from(bucket: \"graphyard\")\n  |> range(start: 2026-10-21T12:00:00.123456Z, stop: 2026-10-21T12:00:00.123456Z)\n  |> filter(fn: (r) => r._measurement == \"graphyard_metrics\" and r._field == \"value\" and r[\"metric\"] == \"host.filesystem_used_ratio\")\n  |> sort(columns: [\"_time\"], desc: false)"
+  },
+  {
+   "name": "negative_columns",
+   "condition": {
+    "id": 7,
+    "name": "disk",
+    "metric_name": "host.filesystem_used_ratio",
+    "host_filter": "",
+    "service_filter": "",
+    "subject_type_filter": "",
+    "subject_id_filter": "",
+    "tags_filter": {},
+    "window_minutes": -10,
+    "breach_minutes": -20,
+    "stale_after_seconds": -600
+   },
+   "stale_warning": "-6000",
+   "now": "2026-10-21T12:00:00.123456+00:00",
+   "logs": [],
+   "range": {
+    "metric": "host.filesystem_used_ratio",
+    "start": "2026-10-21T12:10:00.123456+00:00",
+    "stop": "2026-10-21T12:00:00.123456+00:00",
+    "host": null,
+    "service": null,
+    "tags": {}
+   },
+   "flux": "from(bucket: \"graphyard\")\n  |> range(start: 2026-10-21T12:10:00.123456Z, stop: 2026-10-21T12:00:00.123456Z)\n  |> filter(fn: (r) => r._measurement == \"graphyard_metrics\" and r._field == \"value\" and r[\"metric\"] == \"host.filesystem_used_ratio\")\n  |> sort(columns: [\"_time\"], desc: false)"
+  },
+  {
+   "name": "large_lookback_in_range",
+   "condition": {
+    "id": 7,
+    "name": "disk",
+    "metric_name": "host.filesystem_used_ratio",
+    "host_filter": "",
+    "service_filter": "",
+    "subject_type_filter": "",
+    "subject_id_filter": "",
+    "tags_filter": {},
+    "window_minutes": 1000000000,
+    "breach_minutes": 5,
+    "stale_after_seconds": null
+   },
+   "stale_warning": "600",
+   "now": "2026-10-21T12:00:00.123456+00:00",
+   "logs": [],
+   "range": {
+    "metric": "host.filesystem_used_ratio",
+    "start": "0125-06-25T01:20:00.123456+00:00",
+    "stop": "2026-10-21T12:00:00.123456+00:00",
+    "host": null,
+    "service": null,
+    "tags": {}
+   },
+   "flux": "from(bucket: \"graphyard\")\n  |> range(start: 0125-06-25T01:20:00.123456Z, stop: 2026-10-21T12:00:00.123456Z)\n  |> filter(fn: (r) => r._measurement == \"graphyard_metrics\" and r._field == \"value\" and r[\"metric\"] == \"host.filesystem_used_ratio\")\n  |> sort(columns: [\"_time\"], desc: false)"
+  },
+  {
+   "name": "lookback_before_year_1",
+   "condition": {
+    "id": 7,
+    "name": "disk",
+    "metric_name": "host.filesystem_used_ratio",
+    "host_filter": "",
+    "service_filter": "",
+    "subject_type_filter": "",
+    "subject_id_filter": "",
+    "tags_filter": {},
+    "window_minutes": 1500000000,
+    "breach_minutes": 5,
+    "stale_after_seconds": null
+   },
+   "stale_warning": "600",
+   "now": "2026-10-21T12:00:00.123456+00:00",
+   "error": {
+    "class": "OverflowError",
+    "message": "date value out of range"
+   },
+   "logs": []
+  },
+  {
+   "name": "lookback_after_year_9999",
+   "condition": {
+    "id": 7,
+    "name": "disk",
+    "metric_name": "host.filesystem_used_ratio",
+    "host_filter": "",
+    "service_filter": "",
+    "subject_type_filter": "",
+    "subject_id_filter": "",
+    "tags_filter": {},
+    "window_minutes": -5000000000,
+    "breach_minutes": 5,
+    "stale_after_seconds": null
+   },
+   "stale_warning": "600",
+   "now": "2026-10-21T12:00:00.123456+00:00",
+   "logs": [],
+   "range": {
+    "metric": "host.filesystem_used_ratio",
+    "start": "2026-10-21T11:45:00.123456+00:00",
+    "stop": "2026-10-21T12:00:00.123456+00:00",
+    "host": null,
+    "service": null,
+    "tags": {}
+   },
+   "flux": "from(bucket: \"graphyard\")\n  |> range(start: 2026-10-21T11:45:00.123456Z, stop: 2026-10-21T12:00:00.123456Z)\n  |> filter(fn: (r) => r._measurement == \"graphyard_metrics\" and r._field == \"value\" and r[\"metric\"] == \"host.filesystem_used_ratio\")\n  |> sort(columns: [\"_time\"], desc: false)"
+  },
+  {
+   "name": "lookback_beyond_timedelta",
+   "condition": {
+    "id": 7,
+    "name": "disk",
+    "metric_name": "host.filesystem_used_ratio",
+    "host_filter": "",
+    "service_filter": "",
+    "subject_type_filter": "",
+    "subject_id_filter": "",
+    "tags_filter": {},
+    "window_minutes": 30,
+    "breach_minutes": 5,
+    "stale_after_seconds": null
+   },
+   "stale_warning": "100000000000000",
+   "now": "2026-10-21T12:00:00.123456+00:00",
+   "error": {
+    "class": "OverflowError",
+    "message": "days=1157407407; must have magnitude <= 999999999"
+   },
+   "logs": []
+  },
+  {
+   "name": "lookback_beyond_c_int_days",
+   "condition": {
+    "id": 7,
+    "name": "disk",
+    "metric_name": "host.filesystem_used_ratio",
+    "host_filter": "",
+    "service_filter": "",
+    "subject_type_filter": "",
+    "subject_id_filter": "",
+    "tags_filter": {},
+    "window_minutes": 30,
+    "breach_minutes": 5,
+    "stale_after_seconds": null
+   },
+   "stale_warning": "100000000000000000000",
+   "now": "2026-10-21T12:00:00.123456+00:00",
+   "error": {
+    "class": "OverflowError",
+    "message": "Python int too large to convert to C int"
+   },
+   "logs": []
+  },
+  {
+   "name": "lookback_float_rounding",
+   "condition": {
+    "id": 7,
+    "name": "disk",
+    "metric_name": "host.filesystem_used_ratio",
+    "host_filter": "",
+    "service_filter": "",
+    "subject_type_filter": "",
+    "subject_id_filter": "",
+    "tags_filter": {},
+    "window_minutes": 30,
+    "breach_minutes": 5,
+    "stale_after_seconds": null
+   },
+   "stale_warning": "1000000000000000000000000000007",
+   "now": "2026-10-21T12:00:00.123456+00:00",
+   "error": {
+    "class": "OverflowError",
+    "message": "Python int too large to convert to C int"
+   },
+   "logs": []
+  },
+  {
+   "name": "lookback_division_overflow",
+   "condition": {
+    "id": 7,
+    "name": "disk",
+    "metric_name": "host.filesystem_used_ratio",
+    "host_filter": "",
+    "service_filter": "",
+    "subject_type_filter": "",
+    "subject_id_filter": "",
+    "tags_filter": {},
+    "window_minutes": 30,
+    "breach_minutes": 5,
+    "stale_after_seconds": null
+   },
+   "stale_warning": "10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+   "now": "2026-10-21T12:00:00.123456+00:00",
+   "error": {
+    "class": "OverflowError",
+    "message": "integer division result too large for a float"
+   },
+   "logs": []
+  },
+  {
+   "name": "huge_negative_global_ignored",
+   "condition": {
+    "id": 7,
+    "name": "disk",
+    "metric_name": "host.filesystem_used_ratio",
+    "host_filter": "",
+    "service_filter": "",
+    "subject_type_filter": "",
+    "subject_id_filter": "",
+    "tags_filter": {},
+    "window_minutes": 30,
+    "breach_minutes": 5,
+    "stale_after_seconds": 60
+   },
+   "stale_warning": "-1000000000000000000000000000000",
+   "now": "2026-10-21T12:00:00.123456+00:00",
+   "logs": [],
+   "range": {
+    "metric": "host.filesystem_used_ratio",
+    "start": "2026-10-21T11:30:00.123456+00:00",
+    "stop": "2026-10-21T12:00:00.123456+00:00",
+    "host": null,
+    "service": null,
+    "tags": {}
+   },
+   "flux": "from(bucket: \"graphyard\")\n  |> range(start: 2026-10-21T11:30:00.123456Z, stop: 2026-10-21T12:00:00.123456Z)\n  |> filter(fn: (r) => r._measurement == \"graphyard_metrics\" and r._field == \"value\" and r[\"metric\"] == \"host.filesystem_used_ratio\")\n  |> sort(columns: [\"_time\"], desc: false)"
+  },
+  {
+   "name": "subject_filters_drop_host_filter",
+   "condition": {
+    "id": 7,
+    "name": "network sensor",
+    "metric_name": "ha.sensor.fritz_box_7590_ax_cpu_temperature",
+    "host_filter": "macmini",
+    "service_filter": "homeassistant",
+    "subject_type_filter": "network_device",
+    "subject_id_filter": "Fritz Box 7590 AX",
+    "tags_filter": {
+     "device_class": "temperature"
+    },
+    "window_minutes": 30,
+    "breach_minutes": 5,
+    "stale_after_seconds": null
+   },
+   "stale_warning": "600",
+   "now": "2026-10-21T12:00:00.123456+00:00",
+   "logs": [
+    [
+     "WARNING",
+     "Ignoring host_filter for non-host condition id=7 name=network sensor"
+    ]
+   ],
+   "range": {
+    "metric": "ha.sensor.fritz_box_7590_ax_cpu_temperature",
+    "start": "2026-10-21T11:30:00.123456+00:00",
+    "stop": "2026-10-21T12:00:00.123456+00:00",
+    "host": null,
+    "service": "homeassistant",
+    "tags": {
+     "device_class": "temperature",
+     "subject_type": "network_device",
+     "subject_id": "fritz_box_7590_ax"
+    }
+   },
+   "flux": "from(bucket: \"graphyard\")\n  |> range(start: 2026-10-21T11:30:00.123456Z, stop: 2026-10-21T12:00:00.123456Z)\n  |> filter(fn: (r) => r._measurement == \"graphyard_metrics\" and r._field == \"value\" and r[\"metric\"] == \"ha.sensor.fritz_box_7590_ax_cpu_temperature\" and r[\"service\"] == \"homeassistant\" and r[\"device_class\"] == \"temperature\" and r[\"subject_type\"] == \"network_device\" and r[\"subject_id\"] == \"fritz_box_7590_ax\")\n  |> sort(columns: [\"_time\"], desc: false)"
+  },
+  {
+   "name": "host_subject_keeps_host_filter",
+   "condition": {
+    "id": 7,
+    "name": "host disk",
+    "metric_name": "host.filesystem_used_ratio",
+    "host_filter": "macmini",
+    "service_filter": "",
+    "subject_type_filter": "host",
+    "subject_id_filter": "",
+    "tags_filter": {},
+    "window_minutes": 30,
+    "breach_minutes": 5,
+    "stale_after_seconds": null
+   },
+   "stale_warning": "600",
+   "now": "2026-10-21T12:00:00.123456+00:00",
+   "logs": [],
+   "range": {
+    "metric": "host.filesystem_used_ratio",
+    "start": "2026-10-21T11:30:00.123456+00:00",
+    "stop": "2026-10-21T12:00:00.123456+00:00",
+    "host": "macmini",
+    "service": null,
+    "tags": {
+     "subject_type": "host"
+    }
+   },
+   "flux": "from(bucket: \"graphyard\")\n  |> range(start: 2026-10-21T11:30:00.123456Z, stop: 2026-10-21T12:00:00.123456Z)\n  |> filter(fn: (r) => r._measurement == \"graphyard_metrics\" and r._field == \"value\" and r[\"metric\"] == \"host.filesystem_used_ratio\" and r[\"host\"] == \"macmini\" and r[\"subject_type\"] == \"host\")\n  |> sort(columns: [\"_time\"], desc: false)"
+  },
+  {
+   "name": "host_filter_without_subject_type",
+   "condition": {
+    "id": 7,
+    "name": "disk",
+    "metric_name": "host.filesystem_used_ratio",
+    "host_filter": "macmini",
+    "service_filter": "",
+    "subject_type_filter": "",
+    "subject_id_filter": "",
+    "tags_filter": {
+     "mountpoint": "/"
+    },
+    "window_minutes": 30,
+    "breach_minutes": 5,
+    "stale_after_seconds": null
+   },
+   "stale_warning": "600",
+   "now": "2026-10-21T12:00:00.123456+00:00",
+   "logs": [],
+   "range": {
+    "metric": "host.filesystem_used_ratio",
+    "start": "2026-10-21T11:30:00.123456+00:00",
+    "stop": "2026-10-21T12:00:00.123456+00:00",
+    "host": "macmini",
+    "service": null,
+    "tags": {
+     "mountpoint": "/"
+    }
+   },
+   "flux": "from(bucket: \"graphyard\")\n  |> range(start: 2026-10-21T11:30:00.123456Z, stop: 2026-10-21T12:00:00.123456Z)\n  |> filter(fn: (r) => r._measurement == \"graphyard_metrics\" and r._field == \"value\" and r[\"metric\"] == \"host.filesystem_used_ratio\" and r[\"host\"] == \"macmini\" and r[\"mountpoint\"] == \"/\")\n  |> sort(columns: [\"_time\"], desc: false)"
+  },
+  {
+   "name": "subject_type_normalised",
+   "condition": {
+    "id": 7,
+    "name": "disk",
+    "metric_name": "host.filesystem_used_ratio",
+    "host_filter": "macmini",
+    "service_filter": "",
+    "subject_type_filter": "  HOST \t",
+    "subject_id_filter": "",
+    "tags_filter": {},
+    "window_minutes": 30,
+    "breach_minutes": 5,
+    "stale_after_seconds": null
+   },
+   "stale_warning": "600",
+   "now": "2026-10-21T12:00:00.123456+00:00",
+   "logs": [],
+   "range": {
+    "metric": "host.filesystem_used_ratio",
+    "start": "2026-10-21T11:30:00.123456+00:00",
+    "stop": "2026-10-21T12:00:00.123456+00:00",
+    "host": "macmini",
+    "service": null,
+    "tags": {
+     "subject_type": "host"
+    }
+   },
+   "flux": "from(bucket: \"graphyard\")\n  |> range(start: 2026-10-21T11:30:00.123456Z, stop: 2026-10-21T12:00:00.123456Z)\n  |> filter(fn: (r) => r._measurement == \"graphyard_metrics\" and r._field == \"value\" and r[\"metric\"] == \"host.filesystem_used_ratio\" and r[\"host\"] == \"macmini\" and r[\"subject_type\"] == \"host\")\n  |> sort(columns: [\"_time\"], desc: false)"
+  },
+  {
+   "name": "host_filter_warning_escapes_name",
+   "condition": {
+    "id": 7,
+    "name": "multi\nline\rname",
+    "metric_name": "host.filesystem_used_ratio",
+    "host_filter": "macmini",
+    "service_filter": "",
+    "subject_type_filter": "Service",
+    "subject_id_filter": "",
+    "tags_filter": {},
+    "window_minutes": 30,
+    "breach_minutes": 5,
+    "stale_after_seconds": null
+   },
+   "stale_warning": "600",
+   "now": "2026-10-21T12:00:00.123456+00:00",
+   "logs": [
+    [
+     "WARNING",
+     "Ignoring host_filter for non-host condition id=7 name=multi\nline\rname"
+    ]
+   ],
+   "range": {
+    "metric": "host.filesystem_used_ratio",
+    "start": "2026-10-21T11:30:00.123456+00:00",
+    "stop": "2026-10-21T12:00:00.123456+00:00",
+    "host": null,
+    "service": null,
+    "tags": {
+     "subject_type": "service"
+    }
+   },
+   "flux": "from(bucket: \"graphyard\")\n  |> range(start: 2026-10-21T11:30:00.123456Z, stop: 2026-10-21T12:00:00.123456Z)\n  |> filter(fn: (r) => r._measurement == \"graphyard_metrics\" and r._field == \"value\" and r[\"metric\"] == \"host.filesystem_used_ratio\" and r[\"subject_type\"] == \"service\")\n  |> sort(columns: [\"_time\"], desc: false)"
+  },
+  {
+   "name": "tags_filter_values_are_str",
+   "condition": {
+    "id": 7,
+    "name": "disk",
+    "metric_name": "host.filesystem_used_ratio",
+    "host_filter": "",
+    "service_filter": "",
+    "subject_type_filter": "",
+    "subject_id_filter": "",
+    "tags_filter": {
+     "s": "x",
+     "i": 5,
+     "f": 1.5,
+     "f0": 2.0,
+     "big": 1000000000000000000000000000000,
+     "b": true,
+     "n": null,
+     "l": [
+      1,
+      "a"
+     ],
+     "d": {
+      "k": false
+     }
+    },
+    "window_minutes": 30,
+    "breach_minutes": 5,
+    "stale_after_seconds": null
+   },
+   "stale_warning": "600",
+   "now": "2026-10-21T12:00:00.123456+00:00",
+   "logs": [],
+   "range": {
+    "metric": "host.filesystem_used_ratio",
+    "start": "2026-10-21T11:30:00.123456+00:00",
+    "stop": "2026-10-21T12:00:00.123456+00:00",
+    "host": null,
+    "service": null,
+    "tags": {
+     "s": "x",
+     "i": "5",
+     "f": "1.5",
+     "f0": "2.0",
+     "big": "1000000000000000000000000000000",
+     "b": "True",
+     "n": "None",
+     "l": "[1, 'a']",
+     "d": "{'k': False}"
+    }
+   },
+   "flux": "from(bucket: \"graphyard\")\n  |> range(start: 2026-10-21T11:30:00.123456Z, stop: 2026-10-21T12:00:00.123456Z)\n  |> filter(fn: (r) => r._measurement == \"graphyard_metrics\" and r._field == \"value\" and r[\"metric\"] == \"host.filesystem_used_ratio\" and r[\"s\"] == \"x\" and r[\"i\"] == \"5\" and r[\"f\"] == \"1.5\" and r[\"f0\"] == \"2.0\" and r[\"big\"] == \"1000000000000000000000000000000\" and r[\"b\"] == \"True\" and r[\"n\"] == \"None\" and r[\"l\"] == \"[1, 'a']\" and r[\"d\"] == \"{'k': False}\")\n  |> sort(columns: [\"_time\"], desc: false)"
+  },
+  {
+   "name": "tags_filter_subject_keys_overridden_in_place",
+   "condition": {
+    "id": 7,
+    "name": "disk",
+    "metric_name": "host.filesystem_used_ratio",
+    "host_filter": "",
+    "service_filter": "",
+    "subject_type_filter": "Host",
+    "subject_id_filter": "Mac Mini",
+    "tags_filter": {
+     "subject_id": "raw",
+     "a": "1",
+     "subject_type": "raw"
+    },
+    "window_minutes": 30,
+    "breach_minutes": 5,
+    "stale_after_seconds": null
+   },
+   "stale_warning": "600",
+   "now": "2026-10-21T12:00:00.123456+00:00",
+   "logs": [],
+   "range": {
+    "metric": "host.filesystem_used_ratio",
+    "start": "2026-10-21T11:30:00.123456+00:00",
+    "stop": "2026-10-21T12:00:00.123456+00:00",
+    "host": null,
+    "service": null,
+    "tags": {
+     "subject_id": "mac_mini",
+     "a": "1",
+     "subject_type": "host"
+    }
+   },
+   "flux": "from(bucket: \"graphyard\")\n  |> range(start: 2026-10-21T11:30:00.123456Z, stop: 2026-10-21T12:00:00.123456Z)\n  |> filter(fn: (r) => r._measurement == \"graphyard_metrics\" and r._field == \"value\" and r[\"metric\"] == \"host.filesystem_used_ratio\" and r[\"subject_id\"] == \"mac_mini\" and r[\"a\"] == \"1\" and r[\"subject_type\"] == \"host\")\n  |> sort(columns: [\"_time\"], desc: false)"
+  },
+  {
+   "name": "tags_filter_list",
+   "condition": {
+    "id": 7,
+    "name": "disk",
+    "metric_name": "host.filesystem_used_ratio",
+    "host_filter": "",
+    "service_filter": "",
+    "subject_type_filter": "",
+    "subject_id_filter": "",
+    "tags_filter": [
+     "a"
+    ],
+    "window_minutes": 30,
+    "breach_minutes": 5,
+    "stale_after_seconds": null
+   },
+   "stale_warning": "600",
+   "now": "2026-10-21T12:00:00.123456+00:00",
+   "error": {
+    "class": "AttributeError",
+    "message": "'list' object has no attribute 'items'"
+   },
+   "logs": []
+  },
+  {
+   "name": "tags_filter_null",
+   "condition": {
+    "id": 7,
+    "name": "disk",
+    "metric_name": "host.filesystem_used_ratio",
+    "host_filter": "",
+    "service_filter": "",
+    "subject_type_filter": "",
+    "subject_id_filter": "",
+    "tags_filter": null,
+    "window_minutes": 30,
+    "breach_minutes": 5,
+    "stale_after_seconds": null
+   },
+   "stale_warning": "600",
+   "now": "2026-10-21T12:00:00.123456+00:00",
+   "error": {
+    "class": "AttributeError",
+    "message": "'NoneType' object has no attribute 'items'"
+   },
+   "logs": []
+  },
+  {
+   "name": "tags_filter_string",
+   "condition": {
+    "id": 7,
+    "name": "disk",
+    "metric_name": "host.filesystem_used_ratio",
+    "host_filter": "",
+    "service_filter": "",
+    "subject_type_filter": "",
+    "subject_id_filter": "",
+    "tags_filter": "a",
+    "window_minutes": 30,
+    "breach_minutes": 5,
+    "stale_after_seconds": null
+   },
+   "stale_warning": "600",
+   "now": "2026-10-21T12:00:00.123456+00:00",
+   "error": {
+    "class": "AttributeError",
+    "message": "'str' object has no attribute 'items'"
+   },
+   "logs": []
+  },
+  {
+   "name": "tags_filter_number",
+   "condition": {
+    "id": 7,
+    "name": "disk",
+    "metric_name": "host.filesystem_used_ratio",
+    "host_filter": "",
+    "service_filter": "",
+    "subject_type_filter": "",
+    "subject_id_filter": "",
+    "tags_filter": 3,
+    "window_minutes": 30,
+    "breach_minutes": 5,
+    "stale_after_seconds": null
+   },
+   "stale_warning": "600",
+   "now": "2026-10-21T12:00:00.123456+00:00",
+   "error": {
+    "class": "AttributeError",
+    "message": "'int' object has no attribute 'items'"
+   },
+   "logs": []
+  },
+  {
+   "name": "invalid_subject_id_filter",
+   "condition": {
+    "id": 7,
+    "name": "disk",
+    "metric_name": "host.filesystem_used_ratio",
+    "host_filter": "",
+    "service_filter": "",
+    "subject_type_filter": "",
+    "subject_id_filter": "__!!__",
+    "tags_filter": {},
+    "window_minutes": 30,
+    "breach_minutes": 5,
+    "stale_after_seconds": null
+   },
+   "stale_warning": "600",
+   "now": "2026-10-21T12:00:00.123456+00:00",
+   "error": {
+    "class": "ValueError",
+    "message": "Invalid subject_id '__!!__': expected lowercase snake_case identifier"
+   },
+   "logs": []
+  },
+  {
+   "name": "subject_id_filter_unicode",
+   "condition": {
+    "id": 7,
+    "name": "disk",
+    "metric_name": "host.filesystem_used_ratio",
+    "host_filter": "",
+    "service_filter": "",
+    "subject_type_filter": "",
+    "subject_id_filter": "Wohnzimmer \u00c4u\u00dfen \u212a",
+    "tags_filter": {},
+    "window_minutes": 30,
+    "breach_minutes": 5,
+    "stale_after_seconds": null
+   },
+   "stale_warning": "600",
+   "now": "2026-10-21T12:00:00.123456+00:00",
+   "logs": [],
+   "range": {
+    "metric": "host.filesystem_used_ratio",
+    "start": "2026-10-21T11:30:00.123456+00:00",
+    "stop": "2026-10-21T12:00:00.123456+00:00",
+    "host": null,
+    "service": null,
+    "tags": {
+     "subject_id": "wohnzimmer_u_en_k"
+    }
+   },
+   "flux": "from(bucket: \"graphyard\")\n  |> range(start: 2026-10-21T11:30:00.123456Z, stop: 2026-10-21T12:00:00.123456Z)\n  |> filter(fn: (r) => r._measurement == \"graphyard_metrics\" and r._field == \"value\" and r[\"metric\"] == \"host.filesystem_used_ratio\" and r[\"subject_id\"] == \"wohnzimmer_u_en_k\")\n  |> sort(columns: [\"_time\"], desc: false)"
+  },
+  {
+   "name": "service_filter_kept",
+   "condition": {
+    "id": 7,
+    "name": "disk",
+    "metric_name": "host.filesystem_used_ratio",
+    "host_filter": "",
+    "service_filter": "unifi",
+    "subject_type_filter": "",
+    "subject_id_filter": "",
+    "tags_filter": {},
+    "window_minutes": 30,
+    "breach_minutes": 5,
+    "stale_after_seconds": null
+   },
+   "stale_warning": "600",
+   "now": "2026-10-21T12:00:00.123456+00:00",
+   "logs": [],
+   "range": {
+    "metric": "host.filesystem_used_ratio",
+    "start": "2026-10-21T11:30:00.123456+00:00",
+    "stop": "2026-10-21T12:00:00.123456+00:00",
+    "host": null,
+    "service": "unifi",
+    "tags": {}
+   },
+   "flux": "from(bucket: \"graphyard\")\n  |> range(start: 2026-10-21T11:30:00.123456Z, stop: 2026-10-21T12:00:00.123456Z)\n  |> filter(fn: (r) => r._measurement == \"graphyard_metrics\" and r._field == \"value\" and r[\"metric\"] == \"host.filesystem_used_ratio\" and r[\"service\"] == \"unifi\")\n  |> sort(columns: [\"_time\"], desc: false)"
+  },
+  {
+   "name": "error_order_overflow_before_tags",
+   "condition": {
+    "id": 7,
+    "name": "disk",
+    "metric_name": "host.filesystem_used_ratio",
+    "host_filter": "",
+    "service_filter": "",
+    "subject_type_filter": "",
+    "subject_id_filter": "",
+    "tags_filter": [
+     "a"
+    ],
+    "window_minutes": 30,
+    "breach_minutes": 5,
+    "stale_after_seconds": null
+   },
+   "stale_warning": "10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+   "now": "2026-10-21T12:00:00.123456+00:00",
+   "error": {
+    "class": "OverflowError",
+    "message": "integer division result too large for a float"
+   },
+   "logs": []
+  }
+ ],
+ "flux_text": [
+  {
+   "name": "metric_only",
+   "metric": "host.disk_usage",
+   "start": "2026-10-21T11:00:00+00:00",
+   "stop": "2026-10-21T12:00:00.500000+00:00",
+   "bucket": "graphyard",
+   "measurement": "graphyard_metrics",
+   "flux": "from(bucket: \"graphyard\")\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\n  |> filter(fn: (r) => r._measurement == \"graphyard_metrics\" and r._field == \"value\" and r[\"metric\"] == \"host.disk_usage\")\n  |> sort(columns: [\"_time\"], desc: false)"
+  },
+  {
+   "name": "all_filters",
+   "metric": "m",
+   "host": "macmini",
+   "service": "unifi",
+   "subject_type": "host",
+   "subject_id": "macmini",
+   "tags": {
+    "mountpoint": "/",
+    "device": "sda"
+   },
+   "start": "2026-10-21T11:00:00+00:00",
+   "stop": "2026-10-21T12:00:00.500000+00:00",
+   "bucket": "graphyard",
+   "measurement": "graphyard_metrics",
+   "flux": "from(bucket: \"graphyard\")\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\n  |> filter(fn: (r) => r._measurement == \"graphyard_metrics\" and r._field == \"value\" and r[\"metric\"] == \"m\" and r[\"host\"] == \"macmini\" and r[\"service\"] == \"unifi\" and r[\"subject_type\"] == \"host\" and r[\"subject_id\"] == \"macmini\" and r[\"mountpoint\"] == \"/\" and r[\"device\"] == \"sda\")\n  |> sort(columns: [\"_time\"], desc: false)"
+  },
+  {
+   "name": "empty_filters_dropped",
+   "metric": "m",
+   "host": "",
+   "service": "",
+   "subject_type": "",
+   "subject_id": "",
+   "tags": {},
+   "start": "2026-10-21T11:00:00+00:00",
+   "stop": "2026-10-21T12:00:00.500000+00:00",
+   "bucket": "graphyard",
+   "measurement": "graphyard_metrics",
+   "flux": "from(bucket: \"graphyard\")\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\n  |> filter(fn: (r) => r._measurement == \"graphyard_metrics\" and r._field == \"value\" and r[\"metric\"] == \"m\")\n  |> sort(columns: [\"_time\"], desc: false)"
+  },
+  {
+   "name": "bracket_access_escapes_keys",
+   "metric": "m1",
+   "tags": {
+    "bad\"tag": "v\"1"
+   },
+   "start": "2026-10-21T11:00:00+00:00",
+   "stop": "2026-10-21T12:00:00.500000+00:00",
+   "bucket": "graphyard",
+   "measurement": "graphyard_metrics",
+   "flux": "from(bucket: \"graphyard\")\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\n  |> filter(fn: (r) => r._measurement == \"graphyard_metrics\" and r._field == \"value\" and r[\"metric\"] == \"m1\" and r[\"bad\\\"tag\"] == \"v\\\"1\")\n  |> sort(columns: [\"_time\"], desc: false)"
+  },
+  {
+   "name": "interpolation_literal",
+   "metric": "a\"b\\c${d}$e{f\n\tg\u00e4\ud83d\ude00",
+   "host": "a\"b\\c${d}$e{f\n\tg\u00e4\ud83d\ude00",
+   "service": "a\"b\\c${d}$e{f\n\tg\u00e4\ud83d\ude00",
+   "tags": {
+    "a\"b\\c${d}$e{f\n\tg\u00e4\ud83d\ude00": "a\"b\\c${d}$e{f\n\tg\u00e4\ud83d\ude00"
+   },
+   "bucket": "a\"b\\c${d}$e{f\n\tg\u00e4\ud83d\ude00",
+   "measurement": "a\"b\\c${d}$e{f\n\tg\u00e4\ud83d\ude00",
+   "start": "2026-10-21T11:00:00+00:00",
+   "stop": "2026-10-21T12:00:00.500000+00:00",
+   "flux": "from(bucket: \"a\\\"b\\\\c\\${d}$e{f\n\tg\u00e4\ud83d\ude00\")\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\n  |> filter(fn: (r) => r._measurement == \"a\\\"b\\\\c\\${d}$e{f\n\tg\u00e4\ud83d\ude00\" and r._field == \"value\" and r[\"metric\"] == \"a\\\"b\\\\c\\${d}$e{f\n\tg\u00e4\ud83d\ude00\" and r[\"host\"] == \"a\\\"b\\\\c\\${d}$e{f\n\tg\u00e4\ud83d\ude00\" and r[\"service\"] == \"a\\\"b\\\\c\\${d}$e{f\n\tg\u00e4\ud83d\ude00\" and r[\"a\\\"b\\\\c\\${d}$e{f\n\tg\u00e4\ud83d\ude00\"] == \"a\\\"b\\\\c\\${d}$e{f\n\tg\u00e4\ud83d\ude00\")\n  |> sort(columns: [\"_time\"], desc: false)"
+  },
+  {
+   "name": "dollar_brace_only",
+   "metric": "${x}",
+   "bucket": "$${",
+   "measurement": "\\${",
+   "start": "2026-10-21T11:00:00+00:00",
+   "stop": "2026-10-21T12:00:00.500000+00:00",
+   "flux": "from(bucket: \"$\\${\")\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\n  |> filter(fn: (r) => r._measurement == \"\\\\\\${\" and r._field == \"value\" and r[\"metric\"] == \"\\${x}\")\n  |> sort(columns: [\"_time\"], desc: false)"
+  },
+  {
+   "name": "microsecond_bounds",
+   "metric": "m",
+   "start": "2026-10-21T11:00:00.000001+00:00",
+   "stop": "2026-10-21T12:00:00.999999+00:00",
+   "bucket": "graphyard",
+   "measurement": "graphyard_metrics",
+   "flux": "from(bucket: \"graphyard\")\n  |> range(start: 2026-10-21T11:00:00.000001Z, stop: 2026-10-21T12:00:00.999999Z)\n  |> filter(fn: (r) => r._measurement == \"graphyard_metrics\" and r._field == \"value\" and r[\"metric\"] == \"m\")\n  |> sort(columns: [\"_time\"], desc: false)"
+  },
+  {
+   "name": "early_years",
+   "metric": "m",
+   "start": "0001-01-01T00:00:00+00:00",
+   "stop": "0999-12-31T23:59:59+00:00",
+   "bucket": "graphyard",
+   "measurement": "graphyard_metrics",
+   "flux": "from(bucket: \"graphyard\")\n  |> range(start: 0001-01-01T00:00:00Z, stop: 0999-12-31T23:59:59Z)\n  |> filter(fn: (r) => r._measurement == \"graphyard_metrics\" and r._field == \"value\" and r[\"metric\"] == \"m\")\n  |> sort(columns: [\"_time\"], desc: false)"
+  },
+  {
+   "name": "start_after_stop",
+   "metric": "m",
+   "start": "2026-10-21T13:00:00+00:00",
+   "stop": "2026-10-21T12:00:00+00:00",
+   "bucket": "graphyard",
+   "measurement": "graphyard_metrics",
+   "flux": "from(bucket: \"graphyard\")\n  |> range(start: 2026-10-21T13:00:00Z, stop: 2026-10-21T12:00:00Z)\n  |> filter(fn: (r) => r._measurement == \"graphyard_metrics\" and r._field == \"value\" and r[\"metric\"] == \"m\")\n  |> sort(columns: [\"_time\"], desc: false)"
+  }
+ ],
+ "csv": [
+  {
+   "name": "empty_response",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "text/csv; charset=utf-8"
+      ]
+     ],
+     "body": "\r\n"
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v2"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v2/query?org=graphyard",
+     "headers": [
+      [
+       "accept-encoding",
+       "identity"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Token test-token"
+      ],
+      [
+       "user-agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
+    }
+   ],
+   "logs": [],
+   "samples": []
+  },
+  {
+   "name": "no_body",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "text/csv; charset=utf-8"
+      ]
+     ],
+     "body": ""
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v2"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v2/query?org=graphyard",
+     "headers": [
+      [
+       "accept-encoding",
+       "identity"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Token test-token"
+      ],
+      [
+       "user-agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
+    }
+   ],
+   "logs": [],
+   "samples": []
+  },
+  {
+   "name": "one_table",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "text/csv; charset=utf-8"
+      ]
+     ],
+     "body": "#datatype,string,long,dateTime:RFC3339,dateTime:RFC3339,dateTime:RFC3339,double,string,string,string,string,string,string\r\n#group,false,false,true,true,false,false,true,true,true,true,true,true\r\n#default,_result,,,,,,,,,,,\r\n,result,table,_start,_stop,_time,_value,_field,_measurement,host,metric,mountpoint,subject_type\r\n,,0,2026-10-21T11:00:00Z,2026-10-21T12:00:00.5Z,2026-10-21T11:30:00Z,0.5,value,graphyard_metrics,macmini,host.disk_usage,/,host\r\n,,0,2026-10-21T11:00:00Z,2026-10-21T12:00:00.5Z,2026-10-21T11:31:00.123456789Z,0.75,value,graphyard_metrics,macmini,host.disk_usage,/,host\r\n\r\n"
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v2"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v2/query?org=graphyard",
+     "headers": [
+      [
+       "accept-encoding",
+       "identity"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Token test-token"
+      ],
+      [
+       "user-agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
+    }
+   ],
+   "logs": [],
+   "samples": [
+    {
+     "ts": "2026-10-21T11:30:00+00:00",
+     "value": 0.5,
+     "host": "macmini",
+     "metric": "host.disk_usage",
+     "service": null,
+     "subject_type": "host",
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "mountpoint": "/"
+     }
+    },
+    {
+     "ts": "2026-10-21T11:31:00.123456+00:00",
+     "value": 0.75,
+     "host": "macmini",
+     "metric": "host.disk_usage",
+     "service": null,
+     "subject_type": "host",
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "mountpoint": "/"
+     }
+    }
+   ]
+  },
+  {
+   "name": "several_tables_and_series",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "text/csv; charset=utf-8"
+      ]
+     ],
+     "body": "#datatype,string,long,dateTime:RFC3339,dateTime:RFC3339,dateTime:RFC3339,double,string,string,string,string,string,string\r\n#group,false,false,true,true,false,false,true,true,true,true,true,true\r\n#default,_result,,,,,,,,,,,\r\n,result,table,_start,_stop,_time,_value,_field,_measurement,host,metric,mountpoint,subject_type\r\n,,0,2026-10-21T11:00:00Z,2026-10-21T12:00:00.5Z,2026-10-21T11:30:00Z,0.5,value,graphyard_metrics,macmini,host.disk_usage,/,host\r\n,,1,2026-10-21T11:00:00Z,2026-10-21T12:00:00.5Z,2026-10-21T11:30:00Z,0.25,value,graphyard_metrics,macmini,host.disk_usage,/data,host\r\n,,1,2026-10-21T11:00:00Z,2026-10-21T12:00:00.5Z,2026-10-21T11:31:00Z,1e-3,value,graphyard_metrics,macmini,host.disk_usage,/data,host\r\n\r\n"
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v2"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v2/query?org=graphyard",
+     "headers": [
+      [
+       "accept-encoding",
+       "identity"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Token test-token"
+      ],
+      [
+       "user-agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
+    }
+   ],
+   "logs": [],
+   "samples": [
+    {
+     "ts": "2026-10-21T11:30:00+00:00",
+     "value": 0.5,
+     "host": "macmini",
+     "metric": "host.disk_usage",
+     "service": null,
+     "subject_type": "host",
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "mountpoint": "/"
+     }
+    },
+    {
+     "ts": "2026-10-21T11:30:00+00:00",
+     "value": 0.25,
+     "host": "macmini",
+     "metric": "host.disk_usage",
+     "service": null,
+     "subject_type": "host",
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "mountpoint": "/data"
+     }
+    },
+    {
+     "ts": "2026-10-21T11:31:00+00:00",
+     "value": 0.001,
+     "host": "macmini",
+     "metric": "host.disk_usage",
+     "service": null,
+     "subject_type": "host",
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "mountpoint": "/data"
+     }
+    }
+   ]
+  },
+  {
+   "name": "second_annotation_block",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "text/csv; charset=utf-8"
+      ]
+     ],
+     "body": "#datatype,string,long,dateTime:RFC3339,dateTime:RFC3339,dateTime:RFC3339,double,string,string,string,string,string,string\r\n#group,false,false,true,true,false,false,true,true,true,true,true,true\r\n#default,_result,,,,,,,,,,,\r\n,result,table,_start,_stop,_time,_value,_field,_measurement,host,metric,mountpoint,subject_type\r\n,,0,2026-10-21T11:00:00Z,2026-10-21T12:00:00.5Z,2026-10-21T11:30:00Z,1,value,graphyard_metrics,macmini,host.disk_usage,/,host\r\n\r\n#datatype,string,long,dateTime:RFC3339,long,string,boolean,duration\r\n#group,false,false,false,false,true,false,false\r\n#default,_result,,,,,,\r\n,result,table,_time,_value,mountpoint,flag,age\r\n,,2,2026-10-21T11:40:00+02:00,42,/boot,true,15\r\n,,2,2026-10-21T11:41:00,7,/boot,false,-3\r\n\r\n"
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v2"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v2/query?org=graphyard",
+     "headers": [
+      [
+       "accept-encoding",
+       "identity"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Token test-token"
+      ],
+      [
+       "user-agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
+    }
+   ],
+   "logs": [],
+   "samples": [
+    {
+     "ts": "2026-10-21T11:30:00+00:00",
+     "value": 1.0,
+     "host": "macmini",
+     "metric": "host.disk_usage",
+     "service": null,
+     "subject_type": "host",
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "mountpoint": "/"
+     }
+    },
+    {
+     "ts": "2026-10-21T09:40:00+00:00",
+     "value": 42.0,
+     "host": "",
+     "metric": "host.disk_usage",
+     "service": null,
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "mountpoint": "/boot",
+      "flag": "True",
+      "age": "15"
+     }
+    },
+    {
+     "ts": "2026-10-21T11:41:00+00:00",
+     "value": 7.0,
+     "host": "",
+     "metric": "host.disk_usage",
+     "service": null,
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "mountpoint": "/boot",
+      "flag": "False",
+      "age": "-3"
+     }
+    }
+   ]
+  },
+  {
+   "name": "defaults_fill_empty_cells",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "text/csv; charset=utf-8"
+      ]
+     ],
+     "body": "#datatype,string,long,dateTime:RFC3339,double,string,string,string\r\n#group,false,false,false,false,true,true,true\r\n#default,_result,3,,2.5,dflt,,\r\n,result,table,_time,_value,host,service,device\r\n,,0,2026-10-21T11:30:00Z,,,,\r\n,,0,2026-10-21T11:31:00Z,4,h,s,d\r\n"
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v2"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v2/query?org=graphyard",
+     "headers": [
+      [
+       "accept-encoding",
+       "identity"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Token test-token"
+      ],
+      [
+       "user-agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
+    }
+   ],
+   "logs": [],
+   "samples": [
+    {
+     "ts": "2026-10-21T11:30:00+00:00",
+     "value": 2.5,
+     "host": "dflt",
+     "metric": "host.disk_usage",
+     "service": null,
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "device": "None"
+     }
+    },
+    {
+     "ts": "2026-10-21T11:31:00+00:00",
+     "value": 4.0,
+     "host": "h",
+     "metric": "host.disk_usage",
+     "service": "s",
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "device": "d"
+     }
+    }
+   ]
+  },
+  {
+   "name": "empty_table_id_ignores_default",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "text/csv; charset=utf-8"
+      ]
+     ],
+     "body": "#datatype,string,long,dateTime:RFC3339,double\r\n#group,false,false,false,false\r\n#default,_result,3,,\r\n,result,table,_time,_value\r\n,,,2026-10-21T11:30:00Z,1\r\n"
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v2"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v2/query?org=graphyard",
+     "headers": [
+      [
+       "accept-encoding",
+       "identity"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Token test-token"
+      ],
+      [
+       "user-agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
+    }
+   ],
+   "logs": [],
+   "error": {
+    "class": "ValueError",
+    "message": "invalid literal for int() with base 10: ''"
+   }
+  },
+  {
+   "name": "empty_value_and_time_skipped",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "text/csv; charset=utf-8"
+      ]
+     ],
+     "body": "#datatype,string,long,dateTime:RFC3339,double\r\n#group,false,false,false,false\r\n#default,_result,,,\r\n,result,table,_time,_value\r\n,,0,2026-10-21T11:30:00Z,\r\n,,0,,1.5\r\n,,0,2026-10-21T11:32:00Z,2\r\n"
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v2"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v2/query?org=graphyard",
+     "headers": [
+      [
+       "accept-encoding",
+       "identity"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Token test-token"
+      ],
+      [
+       "user-agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
+    }
+   ],
+   "logs": [],
+   "samples": [
+    {
+     "ts": "2026-10-21T11:32:00+00:00",
+     "value": 2.0,
+     "host": "",
+     "metric": "host.disk_usage",
+     "service": null,
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {}
+    }
+   ]
+  },
+  {
+   "name": "typed_tag_values",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "text/csv; charset=utf-8"
+      ]
+     ],
+     "body": "#datatype,string,long,dateTime:RFC3339,double,long,unsignedLong,double,boolean,dateTime:RFC3339Nano,duration,base64Binary,unknownType,string\r\n#group,false,false,false,false,false,false,false,false,false,false,false,false,false\r\n#default,_result,,,,,,,,,,,,\r\n,result,table,_time,_value,l,u,d,b,t,du,bin,x,empty\r\n,,0,2026-10-21T11:30:00Z,1,-5,18446744073709551615,1e16,true,2026-10-21T11:30:00.5-01:30,1000,aGk=,whatever,\r\n,,0,2026-10-21T11:31:00Z,1,1_000, 7 ,+Inf,TRUE,0001-01-01T00:00:00Z,0,AAEC/w==,,x\r\n"
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v2"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v2/query?org=graphyard",
+     "headers": [
+      [
+       "accept-encoding",
+       "identity"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Token test-token"
+      ],
+      [
+       "user-agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
+    }
+   ],
+   "logs": [],
+   "samples": [
+    {
+     "ts": "2026-10-21T11:30:00+00:00",
+     "value": 1.0,
+     "host": "",
+     "metric": "host.disk_usage",
+     "service": null,
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "l": "-5",
+      "u": "18446744073709551615",
+      "d": "1e+16",
+      "b": "True",
+      "t": "2026-10-21 11:30:00.500000-01:30",
+      "du": "1000",
+      "bin": "b'hi'",
+      "x": "None",
+      "empty": "None"
+     }
+    },
+    {
+     "ts": "2026-10-21T11:31:00+00:00",
+     "value": 1.0,
+     "host": "",
+     "metric": "host.disk_usage",
+     "service": null,
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "l": "1000",
+      "u": "7",
+      "d": "inf",
+      "b": "False",
+      "t": "0001-01-01 00:00:00+00:00",
+      "du": "0",
+      "bin": "b'\\x00\\x01\\x02\\xff'",
+      "x": "None",
+      "empty": "x"
+     }
+    }
+   ]
+  },
+  {
+   "name": "value_types",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "text/csv; charset=utf-8"
+      ]
+     ],
+     "body": "#datatype,string,long,dateTime:RFC3339,long\r\n#group,false,false,false,false\r\n#default,_result,,,\r\n,result,table,_time,_value\r\n,,0,2026-10-21T11:30:00Z,12345678901234567890\r\n"
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v2"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v2/query?org=graphyard",
+     "headers": [
+      [
+       "accept-encoding",
+       "identity"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Token test-token"
+      ],
+      [
+       "user-agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
+    }
+   ],
+   "logs": [],
+   "samples": [
+    {
+     "ts": "2026-10-21T11:30:00+00:00",
+     "value": 1.2345678901234567e+19,
+     "host": "",
+     "metric": "host.disk_usage",
+     "service": null,
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {}
+    }
+   ]
+  },
+  {
+   "name": "string_value_parsed_as_float",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "text/csv; charset=utf-8"
+      ]
+     ],
+     "body": "#datatype,string,long,dateTime:RFC3339,string\r\n#group,false,false,false,false\r\n#default,_result,,,\r\n,result,table,_time,_value\r\n,,0,2026-10-21T11:30:00Z, 1_5.5 \r\n"
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v2"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v2/query?org=graphyard",
+     "headers": [
+      [
+       "accept-encoding",
+       "identity"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Token test-token"
+      ],
+      [
+       "user-agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
+    }
+   ],
+   "logs": [],
+   "samples": [
+    {
+     "ts": "2026-10-21T11:30:00+00:00",
+     "value": 15.5,
+     "host": "",
+     "metric": "host.disk_usage",
+     "service": null,
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {}
+    }
+   ]
+  },
+  {
+   "name": "non_finite_nan",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "text/csv; charset=utf-8"
+      ]
+     ],
+     "body": "#datatype,string,long,dateTime:RFC3339,dateTime:RFC3339,dateTime:RFC3339,double,string,string,string,string,string,string\r\n#group,false,false,true,true,false,false,true,true,true,true,true,true\r\n#default,_result,,,,,,,,,,,\r\n,result,table,_start,_stop,_time,_value,_field,_measurement,host,metric,mountpoint,subject_type\r\n,,0,2026-10-21T11:00:00Z,2026-10-21T12:00:00.5Z,2026-10-21T11:30:00Z,20,value,graphyard_metrics,macmini,host.disk_usage,/,host\r\n,,0,2026-10-21T11:00:00Z,2026-10-21T12:00:00.5Z,2026-10-21T11:31:00Z,NaN,value,graphyard_metrics,macmini,host.disk_usage,/,host\r\n\r\n"
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v2"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v2/query?org=graphyard",
+     "headers": [
+      [
+       "accept-encoding",
+       "identity"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Token test-token"
+      ],
+      [
+       "user-agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
+    }
+   ],
+   "logs": [],
+   "error": {
+    "class": "InfluxConfigurationError",
+    "message": "InfluxDB query sample must be a finite number"
+   }
+  },
+  {
+   "name": "non_finite_inf",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "text/csv; charset=utf-8"
+      ]
+     ],
+     "body": "#datatype,string,long,dateTime:RFC3339,dateTime:RFC3339,dateTime:RFC3339,double,string,string,string,string,string,string\r\n#group,false,false,true,true,false,false,true,true,true,true,true,true\r\n#default,_result,,,,,,,,,,,\r\n,result,table,_start,_stop,_time,_value,_field,_measurement,host,metric,mountpoint,subject_type\r\n,,0,2026-10-21T11:00:00Z,2026-10-21T12:00:00.5Z,2026-10-21T11:30:00Z,20,value,graphyard_metrics,macmini,host.disk_usage,/,host\r\n,,0,2026-10-21T11:00:00Z,2026-10-21T12:00:00.5Z,2026-10-21T11:31:00Z,+Inf,value,graphyard_metrics,macmini,host.disk_usage,/,host\r\n\r\n"
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v2"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v2/query?org=graphyard",
+     "headers": [
+      [
+       "accept-encoding",
+       "identity"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Token test-token"
+      ],
+      [
+       "user-agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
+    }
+   ],
+   "logs": [],
+   "error": {
+    "class": "InfluxConfigurationError",
+    "message": "InfluxDB query sample must be a finite number"
+   }
+  },
+  {
+   "name": "non_finite_neg_inf",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "text/csv; charset=utf-8"
+      ]
+     ],
+     "body": "#datatype,string,long,dateTime:RFC3339,dateTime:RFC3339,dateTime:RFC3339,double,string,string,string,string,string,string\r\n#group,false,false,true,true,false,false,true,true,true,true,true,true\r\n#default,_result,,,,,,,,,,,\r\n,result,table,_start,_stop,_time,_value,_field,_measurement,host,metric,mountpoint,subject_type\r\n,,0,2026-10-21T11:00:00Z,2026-10-21T12:00:00.5Z,2026-10-21T11:30:00Z,20,value,graphyard_metrics,macmini,host.disk_usage,/,host\r\n,,0,2026-10-21T11:00:00Z,2026-10-21T12:00:00.5Z,2026-10-21T11:31:00Z,-Inf,value,graphyard_metrics,macmini,host.disk_usage,/,host\r\n\r\n"
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v2"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v2/query?org=graphyard",
+     "headers": [
+      [
+       "accept-encoding",
+       "identity"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Token test-token"
+      ],
+      [
+       "user-agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
+    }
+   ],
+   "logs": [],
+   "error": {
+    "class": "InfluxConfigurationError",
+    "message": "InfluxDB query sample must be a finite number"
+   }
+  },
+  {
+   "name": "non_finite_overflow",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "text/csv; charset=utf-8"
+      ]
+     ],
+     "body": "#datatype,string,long,dateTime:RFC3339,dateTime:RFC3339,dateTime:RFC3339,double,string,string,string,string,string,string\r\n#group,false,false,true,true,false,false,true,true,true,true,true,true\r\n#default,_result,,,,,,,,,,,\r\n,result,table,_start,_stop,_time,_value,_field,_measurement,host,metric,mountpoint,subject_type\r\n,,0,2026-10-21T11:00:00Z,2026-10-21T12:00:00.5Z,2026-10-21T11:30:00Z,20,value,graphyard_metrics,macmini,host.disk_usage,/,host\r\n,,0,2026-10-21T11:00:00Z,2026-10-21T12:00:00.5Z,2026-10-21T11:31:00Z,1e999,value,graphyard_metrics,macmini,host.disk_usage,/,host\r\n\r\n"
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v2"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v2/query?org=graphyard",
+     "headers": [
+      [
+       "accept-encoding",
+       "identity"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Token test-token"
+      ],
+      [
+       "user-agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
+    }
+   ],
+   "logs": [],
+   "error": {
+    "class": "InfluxConfigurationError",
+    "message": "InfluxDB query sample must be a finite number"
+   }
+  },
+  {
+   "name": "string_value_not_a_number",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "text/csv; charset=utf-8"
+      ]
+     ],
+     "body": "#datatype,string,long,dateTime:RFC3339,string\r\n#group,false,false,false,false\r\n#default,_result,,,\r\n,result,table,_time,_value\r\n,,0,2026-10-21T11:30:00Z,abc\r\n"
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v2"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v2/query?org=graphyard",
+     "headers": [
+      [
+       "accept-encoding",
+       "identity"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Token test-token"
+      ],
+      [
+       "user-agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
+    }
+   ],
+   "logs": [],
+   "error": {
+    "class": "InfluxConfigurationError",
+    "message": "InfluxDB query sample must be a finite number"
+   }
+  },
+  {
+   "name": "bool_value",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "text/csv; charset=utf-8"
+      ]
+     ],
+     "body": "#datatype,string,long,dateTime:RFC3339,boolean\r\n#group,false,false,false,false\r\n#default,_result,,,\r\n,result,table,_time,_value\r\n,,0,2026-10-21T11:30:00Z,true\r\n"
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v2"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v2/query?org=graphyard",
+     "headers": [
+      [
+       "accept-encoding",
+       "identity"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Token test-token"
+      ],
+      [
+       "user-agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
+    }
+   ],
+   "logs": [],
+   "error": {
+    "class": "InfluxConfigurationError",
+    "message": "InfluxDB query sample must be a finite number"
+   }
+  },
+  {
+   "name": "time_not_a_datetime",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "text/csv; charset=utf-8"
+      ]
+     ],
+     "body": "#datatype,string,long,string,double\r\n#group,false,false,false,false\r\n#default,_result,,,\r\n,result,table,_time,_value\r\n,,0,2026-10-21T11:30:00Z,1\r\n"
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v2"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v2/query?org=graphyard",
+     "headers": [
+      [
+       "accept-encoding",
+       "identity"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Token test-token"
+      ],
+      [
+       "user-agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
+    }
+   ],
+   "logs": [],
+   "error": {
+    "class": "AttributeError",
+    "message": "'str' object has no attribute 'tzinfo'"
+   }
+  },
+  {
+   "name": "time_out_of_range_after_utc",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "text/csv; charset=utf-8"
+      ]
+     ],
+     "body": "#datatype,string,long,dateTime:RFC3339,double\r\n#group,false,false,false,false\r\n#default,_result,,,\r\n,result,table,_time,_value\r\n,,0,0001-01-01T00:00:00+01:00,1\r\n"
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v2"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v2/query?org=graphyard",
+     "headers": [
+      [
+       "accept-encoding",
+       "identity"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Token test-token"
+      ],
+      [
+       "user-agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
+    }
+   ],
+   "logs": [],
+   "error": {
+    "class": "OverflowError",
+    "message": "date value out of range"
+   }
+  },
+  {
+   "name": "missing_value_column",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "text/csv; charset=utf-8"
+      ]
+     ],
+     "body": "#datatype,string,long,dateTime:RFC3339\r\n#group,false,false,false\r\n#default,_result,,\r\n,result,table,_time\r\n,,0,2026-10-21T11:30:00Z\r\n"
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v2"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v2/query?org=graphyard",
+     "headers": [
+      [
+       "accept-encoding",
+       "identity"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Token test-token"
+      ],
+      [
+       "user-agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
+    }
+   ],
+   "logs": [],
+   "error": {
+    "class": "KeyError",
+    "message": "'_value'"
+   }
+  },
+  {
+   "name": "missing_time_column",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "text/csv; charset=utf-8"
+      ]
+     ],
+     "body": "#datatype,string,long,double\r\n#group,false,false,false\r\n#default,_result,,\r\n,result,table,_value\r\n,,0,1\r\n"
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v2"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v2/query?org=graphyard",
+     "headers": [
+      [
+       "accept-encoding",
+       "identity"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Token test-token"
+      ],
+      [
+       "user-agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
+    }
+   ],
+   "logs": [],
+   "error": {
+    "class": "KeyError",
+    "message": "'_time'"
+   }
+  },
+  {
+   "name": "invalid_double",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "text/csv; charset=utf-8"
+      ]
+     ],
+     "body": "#datatype,string,long,dateTime:RFC3339,dateTime:RFC3339,dateTime:RFC3339,double,string,string,string,string,string,string\r\n#group,false,false,true,true,false,false,true,true,true,true,true,true\r\n#default,_result,,,,,,,,,,,\r\n,result,table,_start,_stop,_time,_value,_field,_measurement,host,metric,mountpoint,subject_type\r\n,,0,2026-10-21T11:00:00Z,2026-10-21T12:00:00.5Z,2026-10-21T11:30:00Z,\"1,5\",value,graphyard_metrics,macmini,host.disk_usage,/,host\r\n\r\n"
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v2"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v2/query?org=graphyard",
+     "headers": [
+      [
+       "accept-encoding",
+       "identity"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Token test-token"
+      ],
+      [
+       "user-agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
+    }
+   ],
+   "logs": [],
+   "error": {
+    "class": "ValueError",
+    "message": "could not convert string to float: '1,5'"
+   }
+  },
+  {
+   "name": "invalid_long",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "text/csv; charset=utf-8"
+      ]
+     ],
+     "body": "#datatype,string,long,dateTime:RFC3339,long\r\n#group,false,false,false,false\r\n#default,_result,,,\r\n,result,table,_time,_value\r\n,,0,2026-10-21T11:30:00Z,1.5\r\n"
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v2"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v2/query?org=graphyard",
+     "headers": [
+      [
+       "accept-encoding",
+       "identity"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Token test-token"
+      ],
+      [
+       "user-agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
+    }
+   ],
+   "logs": [],
+   "error": {
+    "class": "ValueError",
+    "message": "invalid literal for int() with base 10: '1.5'"
+   }
+  },
+  {
+   "name": "invalid_datetime",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "text/csv; charset=utf-8"
+      ]
+     ],
+     "body": "#datatype,string,long,dateTime:RFC3339,dateTime:RFC3339,dateTime:RFC3339,double,string,string,string,string,string,string\r\n#group,false,false,true,true,false,false,true,true,true,true,true,true\r\n#default,_result,,,,,,,,,,,\r\n,result,table,_start,_stop,_time,_value,_field,_measurement,host,metric,mountpoint,subject_type\r\n,,0,2026-10-21T11:00:00Z,2026-10-21T12:00:00.5Z,yesterday,1,value,graphyard_metrics,macmini,host.disk_usage,/,host\r\n\r\n"
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v2"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v2/query?org=graphyard",
+     "headers": [
+      [
+       "accept-encoding",
+       "identity"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Token test-token"
+      ],
+      [
+       "user-agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
+    }
+   ],
+   "logs": [],
+   "error": {
+    "class": "ValueError",
+    "message": "Invalid isoformat string: 'yesterday'"
+   }
+  },
+  {
+   "name": "invalid_table_id",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "text/csv; charset=utf-8"
+      ]
+     ],
+     "body": "#datatype,string,long,dateTime:RFC3339,dateTime:RFC3339,dateTime:RFC3339,double,string,string,string,string,string,string\r\n#group,false,false,true,true,false,false,true,true,true,true,true,true\r\n#default,_result,,,,,,,,,,,\r\n,result,table,_start,_stop,_time,_value,_field,_measurement,host,metric,mountpoint,subject_type\r\n,,x,2026-10-21T11:00:00Z,2026-10-21T12:00:00.5Z,2026-10-21T11:30:00Z,1,value,graphyard_metrics,macmini,host.disk_usage,/,host\r\n\r\n"
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v2"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v2/query?org=graphyard",
+     "headers": [
+      [
+       "accept-encoding",
+       "identity"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Token test-token"
+      ],
+      [
+       "user-agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
+    }
+   ],
+   "logs": [],
+   "error": {
+    "class": "ValueError",
+    "message": "invalid literal for int() with base 10: 'x'"
+   }
+  },
+  {
+   "name": "invalid_base64",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "text/csv; charset=utf-8"
+      ]
+     ],
+     "body": "#datatype,string,long,dateTime:RFC3339,double,base64Binary\r\n#group,false,false,false,false,false\r\n#default,_result,,,,\r\n,result,table,_time,_value,bin\r\n,,0,2026-10-21T11:30:00Z,1,abcde\r\n"
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v2"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v2/query?org=graphyard",
+     "headers": [
+      [
+       "accept-encoding",
+       "identity"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Token test-token"
+      ],
+      [
+       "user-agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
+    }
+   ],
+   "logs": [],
+   "error": {
+    "class": "Error",
+    "message": "Invalid base64-encoded string: number of data characters (5) cannot be 1 more than a multiple of 4"
+   }
+  },
+  {
+   "name": "query_error_table",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "text/csv; charset=utf-8"
+      ]
+     ],
+     "body": "#datatype,string,string\r\n#group,true,true\r\n#default,,\r\n,error,reference\r\n,\"failed to initialize execute state: type error 3:1-3:30: \"\"x\"\" not found\",897\r\n"
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v2"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v2/query?org=graphyard",
+     "headers": [
+      [
+       "accept-encoding",
+       "identity"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Token test-token"
+      ],
+      [
+       "user-agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
+    }
+   ],
+   "logs": [],
+   "error": {
+    "class": "FluxQueryException",
+    "message": "('failed to initialize execute state: type error 3:1-3:30: \"x\" not found', '897')"
+   }
+  },
+  {
+   "name": "query_error_after_records",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "text/csv; charset=utf-8"
+      ]
+     ],
+     "body": "#datatype,string,long,dateTime:RFC3339,dateTime:RFC3339,dateTime:RFC3339,double,string,string,string,string,string,string\r\n#group,false,false,true,true,false,false,true,true,true,true,true,true\r\n#default,_result,,,,,,,,,,,\r\n,result,table,_start,_stop,_time,_value,_field,_measurement,host,metric,mountpoint,subject_type\r\n,,0,2026-10-21T11:00:00Z,2026-10-21T12:00:00.5Z,2026-10-21T11:30:00Z,1,value,graphyard_metrics,macmini,host.disk_usage,/,host\r\n\r\n#datatype,string,string\r\n#group,true,true\r\n#default,,\r\n,error,reference\r\n,'quoted' message,\r\n"
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v2"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v2/query?org=graphyard",
+     "headers": [
+      [
+       "accept-encoding",
+       "identity"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Token test-token"
+      ],
+      [
+       "user-agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
+    }
+   ],
+   "logs": [],
+   "error": {
+    "class": "FluxQueryException",
+    "message": "(\"'quoted' message\", '')"
+   }
+  },
+  {
+   "name": "no_annotations",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "text/csv; charset=utf-8"
+      ]
+     ],
+     "body": ",result,table,_time,_value\r\n,,0,2026-10-21T11:30:00Z,1\r\n"
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v2"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v2/query?org=graphyard",
+     "headers": [
+      [
+       "accept-encoding",
+       "identity"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Token test-token"
+      ],
+      [
+       "user-agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
+    }
+   ],
+   "logs": [],
+   "error": {
+    "class": "FluxCsvParserException",
+    "message": "Unable to parse CSV response. FluxTable definition was not found."
+   }
+  },
+  {
+   "name": "no_group_annotation",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "text/csv; charset=utf-8"
+      ]
+     ],
+     "body": "#datatype,string,long,dateTime:RFC3339,double\r\n#default,_result,,,\r\n,result,table,_time,_value\r\n,,0,2026-10-21T11:30:00Z,1\r\n"
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v2"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v2/query?org=graphyard",
+     "headers": [
+      [
+       "accept-encoding",
+       "identity"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Token test-token"
+      ],
+      [
+       "user-agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
+    }
+   ],
+   "logs": [],
+   "error": {
+    "class": "IndexError",
+    "message": "list index out of range"
+   }
+  },
+  {
+   "name": "default_before_datatype",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "text/csv; charset=utf-8"
+      ]
+     ],
+     "body": "#default,_result,,,\r\n#datatype,string,long,dateTime:RFC3339,double\r\n#group,false,false,false,false\r\n,result,table,_time,_value\r\n,,0,2026-10-21T11:30:00Z,\r\n,,0,2026-10-21T11:31:00Z,3\r\n"
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v2"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v2/query?org=graphyard",
+     "headers": [
+      [
+       "accept-encoding",
+       "identity"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Token test-token"
+      ],
+      [
+       "user-agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
+    }
+   ],
+   "logs": [],
+   "samples": [
+    {
+     "ts": "2026-10-21T11:31:00+00:00",
+     "value": 3.0,
+     "host": "",
+     "metric": "host.disk_usage",
+     "service": null,
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {}
+    }
+   ]
+  },
+  {
+   "name": "short_data_row",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "text/csv; charset=utf-8"
+      ]
+     ],
+     "body": "#datatype,string,long,dateTime:RFC3339,double\r\n#group,false,false,false,false\r\n#default,_result,,,\r\n,result,table,_time,_value\r\n,,0,2026-10-21T11:30:00Z\r\n"
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v2"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v2/query?org=graphyard",
+     "headers": [
+      [
+       "accept-encoding",
+       "identity"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Token test-token"
+      ],
+      [
+       "user-agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
+    }
+   ],
+   "logs": [],
+   "error": {
+    "class": "IndexError",
+    "message": "list index out of range"
+   }
+  },
+  {
+   "name": "single_cell_row",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "text/csv; charset=utf-8"
+      ]
+     ],
+     "body": "#datatype,string,long,dateTime:RFC3339,dateTime:RFC3339,dateTime:RFC3339,double,string,string,string,string,string,string\r\n#group,false,false,true,true,false,false,true,true,true,true,true,true\r\n#default,_result,,,,,,,,,,,\r\n,result,table,_start,_stop,_time,_value,_field,_measurement,host,metric,mountpoint,subject_type\r\n,,0,2026-10-21T11:00:00Z,2026-10-21T12:00:00.5Z,2026-10-21T11:30:00Z,1,value,graphyard_metrics,macmini,host.disk_usage,/,host\r\n\r\nx\r\n"
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v2"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v2/query?org=graphyard",
+     "headers": [
+      [
+       "accept-encoding",
+       "identity"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Token test-token"
+      ],
+      [
+       "user-agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
+    }
+   ],
+   "logs": [],
+   "error": {
+    "class": "IndexError",
+    "message": "list index out of range"
+   }
+  },
+  {
+   "name": "two_cell_row",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "text/csv; charset=utf-8"
+      ]
+     ],
+     "body": "#datatype,string,long,dateTime:RFC3339,dateTime:RFC3339,dateTime:RFC3339,double,string,string,string,string,string,string\r\n#group,false,false,true,true,false,false,true,true,true,true,true,true\r\n#default,_result,,,,,,,,,,,\r\n,result,table,_start,_stop,_time,_value,_field,_measurement,host,metric,mountpoint,subject_type\r\n,,0,2026-10-21T11:00:00Z,2026-10-21T12:00:00.5Z,2026-10-21T11:30:00Z,1,value,graphyard_metrics,macmini,host.disk_usage,/,host\r\n\r\n,y\r\n"
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v2"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v2/query?org=graphyard",
+     "headers": [
+      [
+       "accept-encoding",
+       "identity"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Token test-token"
+      ],
+      [
+       "user-agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
+    }
+   ],
+   "logs": [],
+   "error": {
+    "class": "IndexError",
+    "message": "list index out of range"
+   }
+  },
+  {
+   "name": "short_group_row",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "text/csv; charset=utf-8"
+      ]
+     ],
+     "body": "#datatype,string,long,dateTime:RFC3339,double\r\n#group,false\r\n#default,_result,,,\r\n,result,table,_time,_value\r\n"
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v2"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v2/query?org=graphyard",
+     "headers": [
+      [
+       "accept-encoding",
+       "identity"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Token test-token"
+      ],
+      [
+       "user-agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
+    }
+   ],
+   "logs": [],
+   "error": {
+    "class": "IndexError",
+    "message": "list index out of range"
+   }
+  },
+  {
+   "name": "duplicate_column_names",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "text/csv; charset=utf-8"
+      ]
+     ],
+     "body": "#datatype,string,long,dateTime:RFC3339,double,string,string\r\n#group,false,false,false,false,true,true\r\n#default,_result,,,,,\r\n,result,table,_time,_value,tag,tag\r\n,,0,2026-10-21T11:30:00Z,1,first,second\r\n"
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v2"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v2/query?org=graphyard",
+     "headers": [
+      [
+       "accept-encoding",
+       "identity"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Token test-token"
+      ],
+      [
+       "user-agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
+    }
+   ],
+   "logs": [],
+   "samples": [
+    {
+     "ts": "2026-10-21T11:30:00+00:00",
+     "value": 1.0,
+     "host": "",
+     "metric": "host.disk_usage",
+     "service": null,
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "tag": "second"
+     }
+    }
+   ]
+  },
+  {
+   "name": "quoted_cells",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "text/csv; charset=utf-8"
+      ]
+     ],
+     "body": "#datatype,string,long,dateTime:RFC3339,double,string,string,string\r\n#group,false,false,false,false,true,true,true\r\n#default,_result,,,,,,\r\n,result,table,_time,_value,a,b,c\r\n,,0,2026-10-21T11:30:00Z,1,\"x,y\",\"say \"\"hi\"\"\",\"multi\nline\"\r\n,,0,2026-10-21T11:31:00Z,2,plain\"quote,\"\",unicode \u00e4\u20ac\r\n"
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v2"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v2/query?org=graphyard",
+     "headers": [
+      [
+       "accept-encoding",
+       "identity"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Token test-token"
+      ],
+      [
+       "user-agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
+    }
+   ],
+   "logs": [],
+   "samples": [
+    {
+     "ts": "2026-10-21T11:30:00+00:00",
+     "value": 1.0,
+     "host": "",
+     "metric": "host.disk_usage",
+     "service": null,
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "a": "x,y",
+      "b": "say \"hi\"",
+      "c": "multi\nline"
+     }
+    },
+    {
+     "ts": "2026-10-21T11:31:00+00:00",
+     "value": 2.0,
+     "host": "",
+     "metric": "host.disk_usage",
+     "service": null,
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "a": "plain\"quote",
+      "b": "None",
+      "c": "unicode \u00e4\u20ac"
+     }
+    }
+   ]
+  },
+  {
+   "name": "lf_line_endings",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "text/csv; charset=utf-8"
+      ]
+     ],
+     "body": "#datatype,string,long,dateTime:RFC3339,double,string\n#group,false,false,false,false,true\n#default,_result,,,,\n,result,table,_time,_value,host\n,,0,2026-10-21T11:30:00Z,1,h1\n\n"
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v2"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v2/query?org=graphyard",
+     "headers": [
+      [
+       "accept-encoding",
+       "identity"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Token test-token"
+      ],
+      [
+       "user-agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
+    }
+   ],
+   "logs": [],
+   "samples": [
+    {
+     "ts": "2026-10-21T11:30:00+00:00",
+     "value": 1.0,
+     "host": "h1",
+     "metric": "host.disk_usage",
+     "service": null,
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {}
+    }
+   ]
+  },
+  {
+   "name": "extra_cells_ignored",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "text/csv; charset=utf-8"
+      ]
+     ],
+     "body": "#datatype,string,long,dateTime:RFC3339,double\r\n#group,false,false,false,false\r\n#default,_result,,,\r\n,result,table,_time,_value\r\n,,0,2026-10-21T11:30:00Z,1,extra,cells\r\n"
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v2"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v2/query?org=graphyard",
+     "headers": [
+      [
+       "accept-encoding",
+       "identity"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Token test-token"
+      ],
+      [
+       "user-agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
+    }
+   ],
+   "logs": [],
+   "samples": [
+    {
+     "ts": "2026-10-21T11:30:00+00:00",
+     "value": 1.0,
+     "host": "",
+     "metric": "host.disk_usage",
+     "service": null,
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {}
+    }
+   ]
+  },
+  {
+   "name": "invalid_utf8",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "text/csv"
+      ]
+     ],
+     "body_b64": "I2RhdGF0eXBlLHN0cmluZw0KLP8NCg=="
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v2"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v2/query?org=graphyard",
+     "headers": [
+      [
+       "accept-encoding",
+       "identity"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Token test-token"
+      ],
+      [
+       "user-agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
+    }
+   ],
+   "logs": [],
+   "error": {
+    "class": "UnicodeDecodeError",
+    "p2": true
+   }
+  }
+ ],
+ "requests": [
+  {
+   "name": "request_shape",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "text/csv; charset=utf-8"
+      ]
+     ],
+     "body": ""
+    }
+   ],
+   "call": {
+    "metric": "m",
+    "host": "h",
+    "tags": {
+     "k": "v"
+    }
+   },
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v2"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v2/query?org=graphyard",
+     "headers": [
+      [
+       "accept-encoding",
+       "identity"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Token test-token"
+      ],
+      [
+       "user-agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"m\\\" and r[\\\"host\\\"] == \\\"h\\\" and r[\\\"k\\\"] == \\\"v\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
+    }
+   ],
+   "logs": [],
+   "samples": []
+  },
+  {
+   "name": "request_non_ascii_query_and_org",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "text/csv; charset=utf-8"
+      ]
+     ],
+     "body": ""
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "tok en",
+    "INFLUX_ORG": "my org/\u00e4&=+~*",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v2"
+   },
+   "call": {
+    "metric": "temp\u00e4\ud83d\ude00\u2028\u007f\u0001"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v2/query?org=my+org%2F%C3%A4%26%3D%2B~%2A",
+     "headers": [
+      [
+       "accept-encoding",
+       "identity"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Token tok en"
+      ],
+      [
+       "user-agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"temp\\u00e4\\ud83d\\ude00\\u2028\\u007f\\u0001\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
+    }
+   ],
+   "logs": [],
+   "samples": []
+  },
+  {
+   "name": "request_url_trailing_slash",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "text/csv; charset=utf-8"
+      ]
+     ],
+     "body": ""
+    }
+   ],
+   "url": "http://{server}/",
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v2"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v2/query?org=graphyard",
+     "headers": [
+      [
+       "accept-encoding",
+       "identity"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Token test-token"
+      ],
+      [
+       "user-agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
+    }
+   ],
+   "logs": [],
+   "samples": []
+  },
+  {
+   "name": "request_url_double_trailing_slash",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "text/csv; charset=utf-8"
+      ]
+     ],
+     "body": ""
+    }
+   ],
+   "url": "http://{server}//",
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v2"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "//api/v2/query?org=graphyard",
+     "headers": [
+      [
+       "accept-encoding",
+       "identity"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Token test-token"
+      ],
+      [
+       "user-agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
+    }
+   ],
+   "logs": [],
+   "samples": []
+  },
+  {
+   "name": "request_url_path_prefix",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "text/csv; charset=utf-8"
+      ]
+     ],
+     "body": ""
+    }
+   ],
+   "url": "http://{server}/influx",
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v2"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/influx/api/v2/query?org=graphyard",
+     "headers": [
+      [
+       "accept-encoding",
+       "identity"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Token test-token"
+      ],
+      [
+       "user-agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
+    }
+   ],
+   "logs": [],
+   "samples": []
+  },
+  {
+   "name": "mode_other_is_v2",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "text/csv; charset=utf-8"
+      ]
+     ],
+     "body": ""
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "whatever"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v2/query?org=graphyard",
+     "headers": [
+      [
+       "accept-encoding",
+       "identity"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Token test-token"
+      ],
+      [
+       "user-agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
+    }
+   ],
+   "logs": [],
+   "samples": []
+  }
+ ],
+ "errors": [
+  {
+   "name": "missing_url",
+   "responses": [],
+   "url": "",
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v2"
+   },
+   "requests": [],
+   "logs": [],
+   "error": {
+    "class": "InfluxConfigurationError",
+    "message": "Influx setting missing: INFLUX_URL is required"
+   }
+  },
+  {
+   "name": "missing_token",
+   "responses": [],
+   "settings": {
+    "INFLUX_TOKEN": "",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v2"
+   },
+   "requests": [],
+   "logs": [],
+   "error": {
+    "class": "InfluxConfigurationError",
+    "message": "Influx settings missing: INFLUX_URL, INFLUX_TOKEN, INFLUX_ORG are required"
+   }
+  },
+  {
+   "name": "missing_org",
+   "responses": [],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v2"
+   },
+   "requests": [],
+   "logs": [],
+   "error": {
+    "class": "InfluxConfigurationError",
+    "message": "Influx settings missing: INFLUX_URL, INFLUX_TOKEN, INFLUX_ORG are required"
+   }
+  },
+  {
+   "name": "http_404",
+   "responses": [
+    {
+     "status": 404,
+     "reason": "Not Found",
+     "headers": [
+      [
+       "Content-Type",
+       "application/json"
+      ]
+     ],
+     "body": "{\"code\":\"not found\",\"message\":\"path not found\"}"
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v2"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v2/query?org=graphyard",
+     "headers": [
+      [
+       "accept-encoding",
+       "identity"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Token test-token"
+      ],
+      [
+       "user-agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
+    }
+   ],
+   "logs": [],
+   "error": {
+    "class": "ApiException",
+    "p2": true
+   }
+  },
+  {
+   "name": "http_500",
+   "responses": [
+    {
+     "status": 500,
+     "reason": "Internal Server Error",
+     "headers": [],
+     "body": "boom"
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v2"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v2/query?org=graphyard",
+     "headers": [
+      [
+       "accept-encoding",
+       "identity"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Token test-token"
+      ],
+      [
+       "user-agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
+    }
+   ],
+   "logs": [],
+   "error": {
+    "class": "ApiException",
+    "p2": true
+   }
+  },
+  {
+   "name": "http_302_not_followed",
+   "responses": [
+    {
+     "status": 302,
+     "reason": "Found",
+     "headers": [
+      [
+       "Location",
+       "/elsewhere"
+      ]
+     ],
+     "body": ""
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v2"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v2/query?org=graphyard",
+     "headers": [
+      [
+       "accept-encoding",
+       "identity"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Token test-token"
+      ],
+      [
+       "user-agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
+    }
+   ],
+   "logs": [],
+   "error": {
+    "class": "ApiException",
+    "p2": true
+   }
+  },
+  {
+   "name": "connection_refused",
+   "responses": [],
+   "refused": true,
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v2"
+   },
+   "requests": [],
+   "logs": [],
+   "error": {
+    "class": "NewConnectionError",
+    "p2": true
+   }
+  },
+  {
+   "name": "closed_without_response",
+   "responses": [
+    {
+     "action": "close"
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v2"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v2/query?org=graphyard",
+     "headers": [
+      [
+       "accept-encoding",
+       "identity"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Token test-token"
+      ],
+      [
+       "user-agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
+    }
+   ],
+   "logs": [],
+   "error": {
+    "class": "ProtocolError",
+    "p2": true
+   }
+  },
+  {
+   "name": "read_timeout",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "text/csv; charset=utf-8"
+      ]
+     ],
+     "body": "",
+     "header_delay": 1.5
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 200,
+    "INFLUX_API_MODE": "v2"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v2/query?org=graphyard",
+     "headers": [
+      [
+       "accept-encoding",
+       "identity"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Token test-token"
+      ],
+      [
+       "user-agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
+    }
+   ],
+   "logs": [],
+   "error": {
+    "class": "ReadTimeoutError",
+    "p2": true
+   }
+  },
+  {
+   "name": "truncated_body",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "text/csv; charset=utf-8"
+      ]
+     ],
+     "body": "#datatype,string,long,dateTime:RFC3339,dateTime:RFC3339,dateTime:RFC3339,double,string,string,string,string,string,string\r\n#group,false,false,true,true,false,false,true,true,true,true,true,true\r\n#default,_result,,,,,,,,,,,\r\n,result,table,_start,_stop,_time,_value,_field,_measurement,host,metric,mountpoint,subject_type\r\n,,0,2026-10-21T11:00:00Z,2026-10-21T12:00:00.5Z,2026-10-21T11:30:00Z,1,value,graphyard_metrics,macmini,host.disk_usage,/,host\r\n\r\n",
+     "content_length": 1000
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v2"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v2/query?org=graphyard",
+     "headers": [
+      [
+       "accept-encoding",
+       "identity"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Token test-token"
+      ],
+      [
+       "user-agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
+    }
+   ],
+   "logs": [],
+   "error": {
+    "class": "ProtocolError",
+    "p2": true
+   }
+  },
+  {
+   "name": "http_404_truncated_body",
+   "responses": [
+    {
+     "status": 404,
+     "reason": "Not Found",
+     "headers": [],
+     "body": "x",
+     "content_length": 100
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v2"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v2/query?org=graphyard",
+     "headers": [
+      [
+       "accept-encoding",
+       "identity"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Token test-token"
+      ],
+      [
+       "user-agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
+    }
+   ],
+   "logs": [],
+   "error": {
+    "class": "ProtocolError",
+    "p2": true
+   }
+  },
+  {
+   "name": "gzip_body_decoded",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "text/csv; charset=utf-8"
+      ]
+     ],
+     "body": "#datatype,string,long,dateTime:RFC3339,dateTime:RFC3339,dateTime:RFC3339,double,string,string,string,string,string,string\r\n#group,false,false,true,true,false,false,true,true,true,true,true,true\r\n#default,_result,,,,,,,,,,,\r\n,result,table,_start,_stop,_time,_value,_field,_measurement,host,metric,mountpoint,subject_type\r\n,,0,2026-10-21T11:00:00Z,2026-10-21T12:00:00.5Z,2026-10-21T11:30:00Z,1,value,graphyard_metrics,macmini,host.disk_usage,/,host\r\n\r\n",
+     "gzip": true
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v2"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v2/query?org=graphyard",
+     "headers": [
+      [
+       "accept-encoding",
+       "identity"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Token test-token"
+      ],
+      [
+       "user-agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
+    }
+   ],
+   "logs": [],
+   "samples": [
+    {
+     "ts": "2026-10-21T11:30:00+00:00",
+     "value": 1.0,
+     "host": "macmini",
+     "metric": "host.disk_usage",
+     "service": null,
+     "subject_type": "host",
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "mountpoint": "/"
+     }
+    }
+   ]
+  },
+  {
+   "name": "timeout_zero_means_none",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "text/csv; charset=utf-8"
+      ]
+     ],
+     "body": ""
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 0,
+    "INFLUX_API_MODE": "v2"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v2/query?org=graphyard",
+     "headers": [
+      [
+       "accept-encoding",
+       "identity"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Token test-token"
+      ],
+      [
+       "user-agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
+    }
+   ],
+   "logs": [],
+   "samples": []
+  },
+  {
+   "name": "timeout_negative",
+   "responses": [],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": -5,
+    "INFLUX_API_MODE": "v2"
+   },
+   "requests": [],
+   "logs": [],
+   "error": {
+    "class": "ValueError",
+    "message": "Attempted to set total timeout to -0.005, but the timeout cannot be set to a value less than or equal to 0."
+   }
+  },
+  {
+   "name": "timeout_overflow",
+   "responses": [],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,
+    "INFLUX_API_MODE": "v2"
+   },
+   "requests": [],
+   "logs": [],
+   "error": {
+    "class": "OverflowError",
+    "message": "integer division result too large for a float"
+   }
+  }
+ ]
+}

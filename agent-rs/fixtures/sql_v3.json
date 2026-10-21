@@ -1,0 +1,3897 @@
+{
+ "sql_text": [
+  {
+   "name": "metric_only",
+   "metric": "host.disk_usage",
+   "start": "2026-10-21T11:00:00+00:00",
+   "stop": "2026-10-21T12:00:00.500000+00:00",
+   "measurement": "graphyard_metrics",
+   "bucket": "graphyard",
+   "token": "test-token",
+   "payload": {
+    "db": "graphyard",
+    "q": "select * from \"graphyard_metrics\" where time >= '2026-10-21T11:00:00Z' and time < '2026-10-21T12:00:00.500000Z' and metric = 'host.disk_usage' order by time asc"
+   },
+   "headers": {
+    "Accept": "application/json",
+    "Authorization": "Bearer test-token"
+   }
+  },
+  {
+   "name": "all_filters",
+   "metric": "m",
+   "host": "macmini",
+   "service": "unifi",
+   "subject_type": "host",
+   "subject_id": "macmini",
+   "tags": {
+    "mountpoint": "/",
+    "device": "sda"
+   },
+   "start": "2026-10-21T11:00:00+00:00",
+   "stop": "2026-10-21T12:00:00.500000+00:00",
+   "measurement": "graphyard_metrics",
+   "bucket": "graphyard",
+   "token": "test-token",
+   "payload": {
+    "db": "graphyard",
+    "q": "select * from \"graphyard_metrics\" where time >= '2026-10-21T11:00:00Z' and time < '2026-10-21T12:00:00.500000Z' and metric = 'm' and host = 'macmini' and service = 'unifi' and subject_type = 'host' and subject_id = 'macmini' and \"mountpoint\" = '/' and \"device\" = 'sda' order by time asc"
+   },
+   "headers": {
+    "Accept": "application/json",
+    "Authorization": "Bearer test-token"
+   }
+  },
+  {
+   "name": "empty_filters_dropped",
+   "metric": "m",
+   "host": "",
+   "service": "",
+   "tags": {},
+   "start": "2026-10-21T11:00:00+00:00",
+   "stop": "2026-10-21T12:00:00.500000+00:00",
+   "measurement": "graphyard_metrics",
+   "bucket": "graphyard",
+   "token": "test-token",
+   "payload": {
+    "db": "graphyard",
+    "q": "select * from \"graphyard_metrics\" where time >= '2026-10-21T11:00:00Z' and time < '2026-10-21T12:00:00.500000Z' and metric = 'm' order by time asc"
+   },
+   "headers": {
+    "Accept": "application/json",
+    "Authorization": "Bearer test-token"
+   }
+  },
+  {
+   "name": "quotes_doubled",
+   "metric": "it's",
+   "host": "o'h",
+   "tags": {
+    "k": "a''b"
+   },
+   "measurement": "m_1",
+   "start": "2026-10-21T11:00:00+00:00",
+   "stop": "2026-10-21T12:00:00.500000+00:00",
+   "bucket": "graphyard",
+   "token": "test-token",
+   "payload": {
+    "db": "graphyard",
+    "q": "select * from \"m_1\" where time >= '2026-10-21T11:00:00Z' and time < '2026-10-21T12:00:00.500000Z' and metric = 'it''s' and host = 'o''h' and \"k\" = 'a''''b' order by time asc"
+   },
+   "headers": {
+    "Accept": "application/json",
+    "Authorization": "Bearer test-token"
+   }
+  },
+  {
+   "name": "unicode_literals",
+   "metric": "\u00e4\ud83d\ude00\n",
+   "tags": {
+    "_x9": "\\"
+   },
+   "start": "2026-10-21T11:00:00+00:00",
+   "stop": "2026-10-21T12:00:00.500000+00:00",
+   "measurement": "graphyard_metrics",
+   "bucket": "graphyard",
+   "token": "test-token",
+   "payload": {
+    "db": "graphyard",
+    "q": "select * from \"graphyard_metrics\" where time >= '2026-10-21T11:00:00Z' and time < '2026-10-21T12:00:00.500000Z' and metric = '\u00e4\ud83d\ude00\n' and \"_x9\" = '\\' order by time asc"
+   },
+   "headers": {
+    "Accept": "application/json",
+    "Authorization": "Bearer test-token"
+   }
+  },
+  {
+   "name": "invalid_tag_key",
+   "metric": "m",
+   "tags": {
+    "ok": "1",
+    "bad-key": "2"
+   },
+   "start": "2026-10-21T11:00:00+00:00",
+   "stop": "2026-10-21T12:00:00.500000+00:00",
+   "measurement": "graphyard_metrics",
+   "bucket": "graphyard",
+   "token": "test-token",
+   "error": {
+    "class": "InfluxConfigurationError",
+    "message": "Unsupported SQL identifier: bad-key"
+   }
+  },
+  {
+   "name": "invalid_tag_key_unicode",
+   "metric": "m",
+   "tags": {
+    "\u00e4": "1"
+   },
+   "start": "2026-10-21T11:00:00+00:00",
+   "stop": "2026-10-21T12:00:00.500000+00:00",
+   "measurement": "graphyard_metrics",
+   "bucket": "graphyard",
+   "token": "test-token",
+   "error": {
+    "class": "InfluxConfigurationError",
+    "message": "Unsupported SQL identifier: \u00e4"
+   }
+  },
+  {
+   "name": "invalid_tag_key_newline",
+   "metric": "m",
+   "tags": {
+    "a\n": "1"
+   },
+   "start": "2026-10-21T11:00:00+00:00",
+   "stop": "2026-10-21T12:00:00.500000+00:00",
+   "measurement": "graphyard_metrics",
+   "bucket": "graphyard",
+   "token": "test-token",
+   "error": {
+    "class": "InfluxConfigurationError",
+    "message": "Unsupported SQL identifier: a\n"
+   }
+  },
+  {
+   "name": "invalid_measurement",
+   "metric": "m",
+   "measurement": "graphyard.metrics",
+   "start": "2026-10-21T11:00:00+00:00",
+   "stop": "2026-10-21T12:00:00.500000+00:00",
+   "bucket": "graphyard",
+   "token": "test-token",
+   "error": {
+    "class": "InfluxConfigurationError",
+    "message": "Unsupported SQL identifier: graphyard.metrics"
+   }
+  },
+  {
+   "name": "invalid_key_before_measurement",
+   "metric": "m",
+   "tags": {
+    "1x": "1"
+   },
+   "measurement": "bad name",
+   "start": "2026-10-21T11:00:00+00:00",
+   "stop": "2026-10-21T12:00:00.500000+00:00",
+   "bucket": "graphyard",
+   "token": "test-token",
+   "error": {
+    "class": "InfluxConfigurationError",
+    "message": "Unsupported SQL identifier: 1x"
+   }
+  },
+  {
+   "name": "token_absent",
+   "metric": "m",
+   "token": "",
+   "start": "2026-10-21T11:00:00+00:00",
+   "stop": "2026-10-21T12:00:00.500000+00:00",
+   "measurement": "graphyard_metrics",
+   "bucket": "graphyard",
+   "payload": {
+    "db": "graphyard",
+    "q": "select * from \"graphyard_metrics\" where time >= '2026-10-21T11:00:00Z' and time < '2026-10-21T12:00:00.500000Z' and metric = 'm' order by time asc"
+   },
+   "headers": {
+    "Accept": "application/json"
+   }
+  },
+  {
+   "name": "bucket_unicode",
+   "metric": "m",
+   "bucket": "b\u00e4",
+   "start": "2026-10-21T11:00:00+00:00",
+   "stop": "2026-10-21T12:00:00.500000+00:00",
+   "measurement": "graphyard_metrics",
+   "token": "test-token",
+   "payload": {
+    "db": "b\u00e4",
+    "q": "select * from \"graphyard_metrics\" where time >= '2026-10-21T11:00:00Z' and time < '2026-10-21T12:00:00.500000Z' and metric = 'm' order by time asc"
+   },
+   "headers": {
+    "Accept": "application/json",
+    "Authorization": "Bearer test-token"
+   }
+  },
+  {
+   "name": "microsecond_bounds",
+   "metric": "m",
+   "start": "2026-10-21T11:00:00.000001+00:00",
+   "stop": "2026-10-21T12:00:00.999999+00:00",
+   "measurement": "graphyard_metrics",
+   "bucket": "graphyard",
+   "token": "test-token",
+   "payload": {
+    "db": "graphyard",
+    "q": "select * from \"graphyard_metrics\" where time >= '2026-10-21T11:00:00.000001Z' and time < '2026-10-21T12:00:00.999999Z' and metric = 'm' order by time asc"
+   },
+   "headers": {
+    "Accept": "application/json",
+    "Authorization": "Bearer test-token"
+   }
+  }
+ ],
+ "rows": [
+  {
+   "name": "finite_rows_keep_series",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "application/json"
+      ]
+     ],
+     "body": "[{\"time\": \"2026-10-21T11:59:00+00:00\", \"value\": 20.0, \"metric\": \"host.disk_usage\", \"host\": \"h1\", \"mountpoint\": \"/data\"}, {\"time\": \"2026-10-21T12:00:00+00:00\", \"value\": 25.0, \"metric\": \"host.disk_usage\", \"host\": \"h1\", \"mountpoint\": \"/\"}]"
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v3"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v3/query_sql",
+     "headers": [
+      [
+       "accept-encoding",
+       "gzip, deflate"
+      ],
+      [
+       "user-agent",
+       "python-httpx/0.28.1"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Bearer test-token"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ]
+     ],
+     "body": "{\"db\":\"graphyard\",\"q\":\"select * from \\\"graphyard_metrics\\\" where time >= '2026-10-21T11:00:00Z' and time < '2026-10-21T12:00:00.500000Z' and metric = 'host.disk_usage' order by time asc\"}"
+    }
+   ],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v3/query_sql \"HTTP/1.1 200 OK\""
+    ]
+   ],
+   "samples": [
+    {
+     "ts": "2026-10-21T11:59:00+00:00",
+     "value": 20.0,
+     "host": "h1",
+     "metric": "host.disk_usage",
+     "service": null,
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "mountpoint": "/data"
+     }
+    },
+    {
+     "ts": "2026-10-21T12:00:00+00:00",
+     "value": 25.0,
+     "host": "h1",
+     "metric": "host.disk_usage",
+     "service": null,
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "mountpoint": "/"
+     }
+    }
+   ]
+  },
+  {
+   "name": "dimension_columns",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "application/json"
+      ]
+     ],
+     "body": "[{\"time\": \"2026-03-04T12:00:00Z\", \"value\": 22.4, \"host\": \"macmini\", \"metric\": \"ha.sensor.office_temperature\", \"service\": \"homeassistant\", \"subject_type\": \"environment_sensor\", \"subject_id\": \"office_temperature\", \"source_system\": \"homeassistant\", \"source_instance\": \"ha-main\", \"source_entity_id\": \"sensor.office_temperature\", \"collector_service\": \"graphyard-agent\", \"collector_host\": \"macmini\", \"mountpoint\": \"/\", \"device\": null}]"
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v3"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v3/query_sql",
+     "headers": [
+      [
+       "accept-encoding",
+       "gzip, deflate"
+      ],
+      [
+       "user-agent",
+       "python-httpx/0.28.1"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Bearer test-token"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ]
+     ],
+     "body": "{\"db\":\"graphyard\",\"q\":\"select * from \\\"graphyard_metrics\\\" where time >= '2026-10-21T11:00:00Z' and time < '2026-10-21T12:00:00.500000Z' and metric = 'host.disk_usage' order by time asc\"}"
+    }
+   ],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v3/query_sql \"HTTP/1.1 200 OK\""
+    ]
+   ],
+   "samples": [
+    {
+     "ts": "2026-03-04T12:00:00+00:00",
+     "value": 22.4,
+     "host": "macmini",
+     "metric": "ha.sensor.office_temperature",
+     "service": "homeassistant",
+     "subject_type": "environment_sensor",
+     "subject_id": "office_temperature",
+     "source_system": "homeassistant",
+     "source_instance": "ha-main",
+     "source_entity_id": "sensor.office_temperature",
+     "collector_service": "graphyard-agent",
+     "collector_host": "macmini",
+     "tags": {
+      "mountpoint": "/"
+     }
+    }
+   ]
+  },
+  {
+   "name": "non_finite_nan",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "application/json"
+      ]
+     ],
+     "body": "[{\"time\": \"2026-10-21T11:58:00+00:00\", \"value\": 20.0, \"metric\": \"host.disk_usage\", \"host\": \"h1\", \"mountpoint\": \"/data\"}, {\"time\": \"2026-10-21T11:59:00+00:00\", \"value\": 25.0, \"metric\": \"host.disk_usage\", \"host\": \"h1\", \"mountpoint\": \"/\"}, {\"time\": \"2026-10-21T12:00:00+00:00\", \"value\": \"NaN\", \"metric\": \"host.disk_usage\", \"host\": \"h1\", \"mountpoint\": \"/\"}]"
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v3"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v3/query_sql",
+     "headers": [
+      [
+       "accept-encoding",
+       "gzip, deflate"
+      ],
+      [
+       "user-agent",
+       "python-httpx/0.28.1"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Bearer test-token"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ]
+     ],
+     "body": "{\"db\":\"graphyard\",\"q\":\"select * from \\\"graphyard_metrics\\\" where time >= '2026-10-21T11:00:00Z' and time < '2026-10-21T12:00:00.500000Z' and metric = 'host.disk_usage' order by time asc\"}"
+    }
+   ],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v3/query_sql \"HTTP/1.1 200 OK\""
+    ]
+   ],
+   "error": {
+    "class": "InfluxConfigurationError",
+    "message": "InfluxDB query sample must be a finite number"
+   }
+  },
+  {
+   "name": "non_finite_inf",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "application/json"
+      ]
+     ],
+     "body": "[{\"time\": \"2026-10-21T11:58:00+00:00\", \"value\": 20.0, \"metric\": \"host.disk_usage\", \"host\": \"h1\", \"mountpoint\": \"/data\"}, {\"time\": \"2026-10-21T11:59:00+00:00\", \"value\": 25.0, \"metric\": \"host.disk_usage\", \"host\": \"h1\", \"mountpoint\": \"/\"}, {\"time\": \"2026-10-21T12:00:00+00:00\", \"value\": \"Infinity\", \"metric\": \"host.disk_usage\", \"host\": \"h1\", \"mountpoint\": \"/\"}]"
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v3"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v3/query_sql",
+     "headers": [
+      [
+       "accept-encoding",
+       "gzip, deflate"
+      ],
+      [
+       "user-agent",
+       "python-httpx/0.28.1"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Bearer test-token"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ]
+     ],
+     "body": "{\"db\":\"graphyard\",\"q\":\"select * from \\\"graphyard_metrics\\\" where time >= '2026-10-21T11:00:00Z' and time < '2026-10-21T12:00:00.500000Z' and metric = 'host.disk_usage' order by time asc\"}"
+    }
+   ],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v3/query_sql \"HTTP/1.1 200 OK\""
+    ]
+   ],
+   "error": {
+    "class": "InfluxConfigurationError",
+    "message": "InfluxDB query sample must be a finite number"
+   }
+  },
+  {
+   "name": "non_finite_neg_inf",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "application/json"
+      ]
+     ],
+     "body": "[{\"time\": \"2026-10-21T11:58:00+00:00\", \"value\": 20.0, \"metric\": \"host.disk_usage\", \"host\": \"h1\", \"mountpoint\": \"/data\"}, {\"time\": \"2026-10-21T11:59:00+00:00\", \"value\": 25.0, \"metric\": \"host.disk_usage\", \"host\": \"h1\", \"mountpoint\": \"/\"}, {\"time\": \"2026-10-21T12:00:00+00:00\", \"value\": \"-Infinity\", \"metric\": \"host.disk_usage\", \"host\": \"h1\", \"mountpoint\": \"/\"}]"
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v3"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v3/query_sql",
+     "headers": [
+      [
+       "accept-encoding",
+       "gzip, deflate"
+      ],
+      [
+       "user-agent",
+       "python-httpx/0.28.1"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Bearer test-token"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ]
+     ],
+     "body": "{\"db\":\"graphyard\",\"q\":\"select * from \\\"graphyard_metrics\\\" where time >= '2026-10-21T11:00:00Z' and time < '2026-10-21T12:00:00.500000Z' and metric = 'host.disk_usage' order by time asc\"}"
+    }
+   ],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v3/query_sql \"HTTP/1.1 200 OK\""
+    ]
+   ],
+   "error": {
+    "class": "InfluxConfigurationError",
+    "message": "InfluxDB query sample must be a finite number"
+   }
+  },
+  {
+   "name": "non_finite_overflow",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "application/json"
+      ]
+     ],
+     "body": "[{\"time\": \"2026-10-21T11:58:00+00:00\", \"value\": 20.0, \"metric\": \"host.disk_usage\", \"host\": \"h1\", \"mountpoint\": \"/data\"}, {\"time\": \"2026-10-21T11:59:00+00:00\", \"value\": 25.0, \"metric\": \"host.disk_usage\", \"host\": \"h1\", \"mountpoint\": \"/\"}, {\"time\": \"2026-10-21T12:00:00+00:00\", \"value\": \"1e999\", \"metric\": \"host.disk_usage\", \"host\": \"h1\", \"mountpoint\": \"/\"}]"
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v3"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v3/query_sql",
+     "headers": [
+      [
+       "accept-encoding",
+       "gzip, deflate"
+      ],
+      [
+       "user-agent",
+       "python-httpx/0.28.1"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Bearer test-token"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ]
+     ],
+     "body": "{\"db\":\"graphyard\",\"q\":\"select * from \\\"graphyard_metrics\\\" where time >= '2026-10-21T11:00:00Z' and time < '2026-10-21T12:00:00.500000Z' and metric = 'host.disk_usage' order by time asc\"}"
+    }
+   ],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v3/query_sql \"HTTP/1.1 200 OK\""
+    ]
+   ],
+   "error": {
+    "class": "InfluxConfigurationError",
+    "message": "InfluxDB query sample must be a finite number"
+   }
+  },
+  {
+   "name": "overflow_number_token",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "application/json"
+      ]
+     ],
+     "body": "[{\"time\": \"2026-10-21T11:00:00Z\", \"value\": 1e999}]"
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v3"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v3/query_sql",
+     "headers": [
+      [
+       "accept-encoding",
+       "gzip, deflate"
+      ],
+      [
+       "user-agent",
+       "python-httpx/0.28.1"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Bearer test-token"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ]
+     ],
+     "body": "{\"db\":\"graphyard\",\"q\":\"select * from \\\"graphyard_metrics\\\" where time >= '2026-10-21T11:00:00Z' and time < '2026-10-21T12:00:00.500000Z' and metric = 'host.disk_usage' order by time asc\"}"
+    }
+   ],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v3/query_sql \"HTTP/1.1 200 OK\""
+    ]
+   ],
+   "error": {
+    "class": "InfluxConfigurationError",
+    "message": "InfluxDB query sample must be a finite number"
+   }
+  },
+  {
+   "name": "value_types",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "application/json"
+      ]
+     ],
+     "body": "[{\"time\": \"2026-10-21T11:00:00Z\", \"value\": 3}, {\"time\": \"2026-10-21T11:01:00Z\", \"value\": \"4.5\"}, {\"time\": \"2026-10-21T11:02:00Z\", \"value\": \" 1_0 \"}, {\"time\": \"2026-10-21T11:03:00Z\", \"value\": 123456789012345678901234567890}, {\"time\": \"2026-10-21T11:04:00Z\", \"value\": -0.0}]"
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v3"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v3/query_sql",
+     "headers": [
+      [
+       "accept-encoding",
+       "gzip, deflate"
+      ],
+      [
+       "user-agent",
+       "python-httpx/0.28.1"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Bearer test-token"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ]
+     ],
+     "body": "{\"db\":\"graphyard\",\"q\":\"select * from \\\"graphyard_metrics\\\" where time >= '2026-10-21T11:00:00Z' and time < '2026-10-21T12:00:00.500000Z' and metric = 'host.disk_usage' order by time asc\"}"
+    }
+   ],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v3/query_sql \"HTTP/1.1 200 OK\""
+    ]
+   ],
+   "samples": [
+    {
+     "ts": "2026-10-21T11:00:00+00:00",
+     "value": 3.0,
+     "host": "",
+     "metric": "host.disk_usage",
+     "service": null,
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {}
+    },
+    {
+     "ts": "2026-10-21T11:01:00+00:00",
+     "value": 4.5,
+     "host": "",
+     "metric": "host.disk_usage",
+     "service": null,
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {}
+    },
+    {
+     "ts": "2026-10-21T11:02:00+00:00",
+     "value": 10.0,
+     "host": "",
+     "metric": "host.disk_usage",
+     "service": null,
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {}
+    },
+    {
+     "ts": "2026-10-21T11:03:00+00:00",
+     "value": 1.2345678901234568e+29,
+     "host": "",
+     "metric": "host.disk_usage",
+     "service": null,
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {}
+    },
+    {
+     "ts": "2026-10-21T11:04:00+00:00",
+     "value": -0.0,
+     "host": "",
+     "metric": "host.disk_usage",
+     "service": null,
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {}
+    }
+   ]
+  },
+  {
+   "name": "bool_value",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "application/json"
+      ]
+     ],
+     "body": "[{\"time\": \"2026-10-21T11:00:00Z\", \"value\": true}]"
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v3"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v3/query_sql",
+     "headers": [
+      [
+       "accept-encoding",
+       "gzip, deflate"
+      ],
+      [
+       "user-agent",
+       "python-httpx/0.28.1"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Bearer test-token"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ]
+     ],
+     "body": "{\"db\":\"graphyard\",\"q\":\"select * from \\\"graphyard_metrics\\\" where time >= '2026-10-21T11:00:00Z' and time < '2026-10-21T12:00:00.500000Z' and metric = 'host.disk_usage' order by time asc\"}"
+    }
+   ],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v3/query_sql \"HTTP/1.1 200 OK\""
+    ]
+   ],
+   "error": {
+    "class": "InfluxConfigurationError",
+    "message": "InfluxDB query sample must be a finite number"
+   }
+  },
+  {
+   "name": "list_value",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "application/json"
+      ]
+     ],
+     "body": "[{\"time\": \"2026-10-21T11:00:00Z\", \"value\": [1]}]"
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v3"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v3/query_sql",
+     "headers": [
+      [
+       "accept-encoding",
+       "gzip, deflate"
+      ],
+      [
+       "user-agent",
+       "python-httpx/0.28.1"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Bearer test-token"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ]
+     ],
+     "body": "{\"db\":\"graphyard\",\"q\":\"select * from \\\"graphyard_metrics\\\" where time >= '2026-10-21T11:00:00Z' and time < '2026-10-21T12:00:00.500000Z' and metric = 'host.disk_usage' order by time asc\"}"
+    }
+   ],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v3/query_sql \"HTTP/1.1 200 OK\""
+    ]
+   ],
+   "error": {
+    "class": "InfluxConfigurationError",
+    "message": "InfluxDB query sample must be a finite number"
+   }
+  },
+  {
+   "name": "rows_skipped",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "application/json"
+      ]
+     ],
+     "body": "[1, \"x\", null, [], {\"value\": 1}, {\"time\": \"2026-10-21T11:00:00Z\"}, {\"time\": null, \"value\": 1}, {\"time\": \"2026-10-21T11:00:00Z\", \"value\": null}, {\"time\": \"not a time\", \"value\": 1}, {\"time\": 1700000000, \"value\": 1}, {\"time\": true, \"value\": 1}, {\"time\": {\"a\": 1}, \"value\": 1}, {\"time\": \"2026-10-21T11:05:00\", \"value\": 5}]"
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v3"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v3/query_sql",
+     "headers": [
+      [
+       "accept-encoding",
+       "gzip, deflate"
+      ],
+      [
+       "user-agent",
+       "python-httpx/0.28.1"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Bearer test-token"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ]
+     ],
+     "body": "{\"db\":\"graphyard\",\"q\":\"select * from \\\"graphyard_metrics\\\" where time >= '2026-10-21T11:00:00Z' and time < '2026-10-21T12:00:00.500000Z' and metric = 'host.disk_usage' order by time asc\"}"
+    }
+   ],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v3/query_sql \"HTTP/1.1 200 OK\""
+    ]
+   ],
+   "samples": [
+    {
+     "ts": "2026-10-21T11:05:00+00:00",
+     "value": 5.0,
+     "host": "",
+     "metric": "host.disk_usage",
+     "service": null,
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {}
+    }
+   ]
+  },
+  {
+   "name": "time_forms",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "application/json"
+      ]
+     ],
+     "body": "[{\"time\": \"2026-10-21T11:00:00.123456789Z\", \"value\": 1}, {\"time\": \"2026-10-21T13:00:00+02:00\", \"value\": 2}, {\"time\": \"2026-10-21\", \"value\": 3}, {\"time\": \"2026-10-21T11:00:00ZZ\", \"value\": 4}, {\"time\": \"2026-10-21 11:00:00.5\", \"value\": 5}]"
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v3"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v3/query_sql",
+     "headers": [
+      [
+       "accept-encoding",
+       "gzip, deflate"
+      ],
+      [
+       "user-agent",
+       "python-httpx/0.28.1"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Bearer test-token"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ]
+     ],
+     "body": "{\"db\":\"graphyard\",\"q\":\"select * from \\\"graphyard_metrics\\\" where time >= '2026-10-21T11:00:00Z' and time < '2026-10-21T12:00:00.500000Z' and metric = 'host.disk_usage' order by time asc\"}"
+    }
+   ],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v3/query_sql \"HTTP/1.1 200 OK\""
+    ]
+   ],
+   "samples": [
+    {
+     "ts": "2026-10-21T11:00:00.123456+00:00",
+     "value": 1.0,
+     "host": "",
+     "metric": "host.disk_usage",
+     "service": null,
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {}
+    },
+    {
+     "ts": "2026-10-21T11:00:00+00:00",
+     "value": 2.0,
+     "host": "",
+     "metric": "host.disk_usage",
+     "service": null,
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {}
+    },
+    {
+     "ts": "2026-10-21T00:00:00+00:00",
+     "value": 3.0,
+     "host": "",
+     "metric": "host.disk_usage",
+     "service": null,
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {}
+    },
+    {
+     "ts": "2026-10-21T11:00:00.500000+00:00",
+     "value": 5.0,
+     "host": "",
+     "metric": "host.disk_usage",
+     "service": null,
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {}
+    }
+   ]
+  },
+  {
+   "name": "time_out_of_range_after_utc",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "application/json"
+      ]
+     ],
+     "body": "[{\"time\": \"0001-01-01T00:00:00+01:00\", \"value\": 1}]"
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v3"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v3/query_sql",
+     "headers": [
+      [
+       "accept-encoding",
+       "gzip, deflate"
+      ],
+      [
+       "user-agent",
+       "python-httpx/0.28.1"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Bearer test-token"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ]
+     ],
+     "body": "{\"db\":\"graphyard\",\"q\":\"select * from \\\"graphyard_metrics\\\" where time >= '2026-10-21T11:00:00Z' and time < '2026-10-21T12:00:00.500000Z' and metric = 'host.disk_usage' order by time asc\"}"
+    }
+   ],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v3/query_sql \"HTTP/1.1 200 OK\""
+    ]
+   ],
+   "error": {
+    "class": "OverflowError",
+    "message": "date value out of range"
+   }
+  },
+  {
+   "name": "tag_values_are_str",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "application/json"
+      ]
+     ],
+     "body": "[{\"time\": \"2026-10-21T11:00:00Z\", \"value\": 1, \"host\": null, \"service\": 5, \"metric\": null, \"a\": 1.0, \"b\": true, \"c\": [1, {\"x\": null}], \"d\": {\"k\": \"v\"}, \"e\": null, \"f\": 1e400, \"g\": 10, \"subject_id\": false}]"
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v3"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v3/query_sql",
+     "headers": [
+      [
+       "accept-encoding",
+       "gzip, deflate"
+      ],
+      [
+       "user-agent",
+       "python-httpx/0.28.1"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Bearer test-token"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ]
+     ],
+     "body": "{\"db\":\"graphyard\",\"q\":\"select * from \\\"graphyard_metrics\\\" where time >= '2026-10-21T11:00:00Z' and time < '2026-10-21T12:00:00.500000Z' and metric = 'host.disk_usage' order by time asc\"}"
+    }
+   ],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v3/query_sql \"HTTP/1.1 200 OK\""
+    ]
+   ],
+   "samples": [
+    {
+     "ts": "2026-10-21T11:00:00+00:00",
+     "value": 1.0,
+     "host": "None",
+     "metric": "None",
+     "service": "5",
+     "subject_type": null,
+     "subject_id": "False",
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "a": "1.0",
+      "b": "True",
+      "c": "[1, {'x': None}]",
+      "d": "{'k': 'v'}",
+      "f": "inf",
+      "g": "10"
+     }
+    }
+   ]
+  },
+  {
+   "name": "repeated_keys",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "application/json"
+      ]
+     ],
+     "body": "[{\"time\": \"2026-10-21T11:00:00Z\", \"a\": \"1\", \"value\": 1, \"b\": \"x\", \"a\": \"2\", \"value\": 2}]"
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v3"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v3/query_sql",
+     "headers": [
+      [
+       "accept-encoding",
+       "gzip, deflate"
+      ],
+      [
+       "user-agent",
+       "python-httpx/0.28.1"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Bearer test-token"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ]
+     ],
+     "body": "{\"db\":\"graphyard\",\"q\":\"select * from \\\"graphyard_metrics\\\" where time >= '2026-10-21T11:00:00Z' and time < '2026-10-21T12:00:00.500000Z' and metric = 'host.disk_usage' order by time asc\"}"
+    }
+   ],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v3/query_sql \"HTTP/1.1 200 OK\""
+    ]
+   ],
+   "samples": [
+    {
+     "ts": "2026-10-21T11:00:00+00:00",
+     "value": 2.0,
+     "host": "",
+     "metric": "host.disk_usage",
+     "service": null,
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "a": "2",
+      "b": "x"
+     }
+    }
+   ]
+  },
+  {
+   "name": "missing_columns_defaults",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "application/json"
+      ]
+     ],
+     "body": "[{\"time\": \"2026-10-21T11:00:00Z\", \"value\": 1}]"
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v3"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v3/query_sql",
+     "headers": [
+      [
+       "accept-encoding",
+       "gzip, deflate"
+      ],
+      [
+       "user-agent",
+       "python-httpx/0.28.1"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Bearer test-token"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ]
+     ],
+     "body": "{\"db\":\"graphyard\",\"q\":\"select * from \\\"graphyard_metrics\\\" where time >= '2026-10-21T11:00:00Z' and time < '2026-10-21T12:00:00.500000Z' and metric = 'host.disk_usage' order by time asc\"}"
+    }
+   ],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v3/query_sql \"HTTP/1.1 200 OK\""
+    ]
+   ],
+   "samples": [
+    {
+     "ts": "2026-10-21T11:00:00+00:00",
+     "value": 1.0,
+     "host": "",
+     "metric": "host.disk_usage",
+     "service": null,
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {}
+    }
+   ]
+  },
+  {
+   "name": "empty_list",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "application/json"
+      ]
+     ],
+     "body": "[]"
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v3"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v3/query_sql",
+     "headers": [
+      [
+       "accept-encoding",
+       "gzip, deflate"
+      ],
+      [
+       "user-agent",
+       "python-httpx/0.28.1"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Bearer test-token"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ]
+     ],
+     "body": "{\"db\":\"graphyard\",\"q\":\"select * from \\\"graphyard_metrics\\\" where time >= '2026-10-21T11:00:00Z' and time < '2026-10-21T12:00:00.500000Z' and metric = 'host.disk_usage' order by time asc\"}"
+    }
+   ],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v3/query_sql \"HTTP/1.1 200 OK\""
+    ]
+   ],
+   "samples": []
+  }
+ ],
+ "errors": [
+  {
+   "name": "http_404",
+   "responses": [
+    {
+     "status": 404,
+     "reason": "Not Found",
+     "headers": [],
+     "body": ""
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v3"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v3/query_sql",
+     "headers": [
+      [
+       "accept-encoding",
+       "gzip, deflate"
+      ],
+      [
+       "user-agent",
+       "python-httpx/0.28.1"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Bearer test-token"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ]
+     ],
+     "body": "{\"db\":\"graphyard\",\"q\":\"select * from \\\"graphyard_metrics\\\" where time >= '2026-10-21T11:00:00Z' and time < '2026-10-21T12:00:00.500000Z' and metric = 'host.disk_usage' order by time asc\"}"
+    }
+   ],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v3/query_sql \"HTTP/1.1 404 Not Found\""
+    ]
+   ],
+   "error": {
+    "class": "InfluxConfigurationError",
+    "message": "InfluxDB v3 SQL endpoint not found. Set INFLUX_API_MODE=v2 for InfluxDB 2."
+   }
+  },
+  {
+   "name": "http_500",
+   "responses": [
+    {
+     "status": 500,
+     "reason": "Internal Server Error",
+     "headers": [],
+     "body": ""
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v3"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v3/query_sql",
+     "headers": [
+      [
+       "accept-encoding",
+       "gzip, deflate"
+      ],
+      [
+       "user-agent",
+       "python-httpx/0.28.1"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Bearer test-token"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ]
+     ],
+     "body": "{\"db\":\"graphyard\",\"q\":\"select * from \\\"graphyard_metrics\\\" where time >= '2026-10-21T11:00:00Z' and time < '2026-10-21T12:00:00.500000Z' and metric = 'host.disk_usage' order by time asc\"}"
+    }
+   ],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v3/query_sql \"HTTP/1.1 500 Internal Server Error\""
+    ]
+   ],
+   "error": {
+    "class": "InfluxConfigurationError",
+    "message": "InfluxDB SQL query failed: HTTP 500"
+   }
+  },
+  {
+   "name": "http_302",
+   "responses": [
+    {
+     "status": 302,
+     "reason": "Found",
+     "headers": [
+      [
+       "Location",
+       "/x"
+      ]
+     ],
+     "body": ""
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v3"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v3/query_sql",
+     "headers": [
+      [
+       "accept-encoding",
+       "gzip, deflate"
+      ],
+      [
+       "user-agent",
+       "python-httpx/0.28.1"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Bearer test-token"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ]
+     ],
+     "body": "{\"db\":\"graphyard\",\"q\":\"select * from \\\"graphyard_metrics\\\" where time >= '2026-10-21T11:00:00Z' and time < '2026-10-21T12:00:00.500000Z' and metric = 'host.disk_usage' order by time asc\"}"
+    }
+   ],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v3/query_sql \"HTTP/1.1 302 Found\""
+    ]
+   ],
+   "error": {
+    "class": "InfluxConfigurationError",
+    "message": "InfluxDB SQL query failed: HTTP 302"
+   }
+  },
+  {
+   "name": "http_101_like_199",
+   "responses": [
+    {
+     "status": 299,
+     "reason": "Odd Success",
+     "headers": [],
+     "body": "[]"
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v3"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v3/query_sql",
+     "headers": [
+      [
+       "accept-encoding",
+       "gzip, deflate"
+      ],
+      [
+       "user-agent",
+       "python-httpx/0.28.1"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Bearer test-token"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ]
+     ],
+     "body": "{\"db\":\"graphyard\",\"q\":\"select * from \\\"graphyard_metrics\\\" where time >= '2026-10-21T11:00:00Z' and time < '2026-10-21T12:00:00.500000Z' and metric = 'host.disk_usage' order by time asc\"}"
+    }
+   ],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v3/query_sql \"HTTP/1.1 299 Odd Success\""
+    ]
+   ],
+   "samples": []
+  },
+  {
+   "name": "invalid_json",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "application/json"
+      ]
+     ],
+     "body": "invalid"
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v3"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v3/query_sql",
+     "headers": [
+      [
+       "accept-encoding",
+       "gzip, deflate"
+      ],
+      [
+       "user-agent",
+       "python-httpx/0.28.1"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Bearer test-token"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ]
+     ],
+     "body": "{\"db\":\"graphyard\",\"q\":\"select * from \\\"graphyard_metrics\\\" where time >= '2026-10-21T11:00:00Z' and time < '2026-10-21T12:00:00.500000Z' and metric = 'host.disk_usage' order by time asc\"}"
+    }
+   ],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v3/query_sql \"HTTP/1.1 200 OK\""
+    ]
+   ],
+   "error": {
+    "class": "InfluxConfigurationError",
+    "message": "InfluxDB SQL query failed: invalid JSON"
+   }
+  },
+  {
+   "name": "not_a_list",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "application/json"
+      ]
+     ],
+     "body": "{}"
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v3"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v3/query_sql",
+     "headers": [
+      [
+       "accept-encoding",
+       "gzip, deflate"
+      ],
+      [
+       "user-agent",
+       "python-httpx/0.28.1"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Bearer test-token"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ]
+     ],
+     "body": "{\"db\":\"graphyard\",\"q\":\"select * from \\\"graphyard_metrics\\\" where time >= '2026-10-21T11:00:00Z' and time < '2026-10-21T12:00:00.500000Z' and metric = 'host.disk_usage' order by time asc\"}"
+    }
+   ],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v3/query_sql \"HTTP/1.1 200 OK\""
+    ]
+   ],
+   "error": {
+    "class": "InfluxConfigurationError",
+    "message": "Invalid response from InfluxDB v3 query API"
+   }
+  },
+  {
+   "name": "nan_token",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "application/json"
+      ]
+     ],
+     "body": "[{\"time\": \"2026-10-21T11:00:00Z\", \"value\": NaN}]"
+    }
+   ],
+   "divergence": "D-4",
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v3"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v3/query_sql",
+     "headers": [
+      [
+       "accept-encoding",
+       "gzip, deflate"
+      ],
+      [
+       "user-agent",
+       "python-httpx/0.28.1"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Bearer test-token"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ]
+     ],
+     "body": "{\"db\":\"graphyard\",\"q\":\"select * from \\\"graphyard_metrics\\\" where time >= '2026-10-21T11:00:00Z' and time < '2026-10-21T12:00:00.500000Z' and metric = 'host.disk_usage' order by time asc\"}"
+    }
+   ],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v3/query_sql \"HTTP/1.1 200 OK\""
+    ]
+   ],
+   "error": {
+    "class": "InfluxConfigurationError",
+    "message": "InfluxDB query sample must be a finite number"
+   }
+  },
+  {
+   "name": "bom",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "application/json"
+      ]
+     ],
+     "body": "\ufeff[]"
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v3"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v3/query_sql",
+     "headers": [
+      [
+       "accept-encoding",
+       "gzip, deflate"
+      ],
+      [
+       "user-agent",
+       "python-httpx/0.28.1"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Bearer test-token"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ]
+     ],
+     "body": "{\"db\":\"graphyard\",\"q\":\"select * from \\\"graphyard_metrics\\\" where time >= '2026-10-21T11:00:00Z' and time < '2026-10-21T12:00:00.500000Z' and metric = 'host.disk_usage' order by time asc\"}"
+    }
+   ],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v3/query_sql \"HTTP/1.1 200 OK\""
+    ]
+   ],
+   "samples": []
+  },
+  {
+   "name": "trailing_garbage",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "application/json"
+      ]
+     ],
+     "body": "[] x"
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v3"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v3/query_sql",
+     "headers": [
+      [
+       "accept-encoding",
+       "gzip, deflate"
+      ],
+      [
+       "user-agent",
+       "python-httpx/0.28.1"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Bearer test-token"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ]
+     ],
+     "body": "{\"db\":\"graphyard\",\"q\":\"select * from \\\"graphyard_metrics\\\" where time >= '2026-10-21T11:00:00Z' and time < '2026-10-21T12:00:00.500000Z' and metric = 'host.disk_usage' order by time asc\"}"
+    }
+   ],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v3/query_sql \"HTTP/1.1 200 OK\""
+    ]
+   ],
+   "error": {
+    "class": "InfluxConfigurationError",
+    "message": "InfluxDB SQL query failed: invalid JSON"
+   }
+  },
+  {
+   "name": "int_digit_limit",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "application/json"
+      ]
+     ],
+     "body": "[11111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111]"
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v3"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v3/query_sql",
+     "headers": [
+      [
+       "accept-encoding",
+       "gzip, deflate"
+      ],
+      [
+       "user-agent",
+       "python-httpx/0.28.1"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Bearer test-token"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ]
+     ],
+     "body": "{\"db\":\"graphyard\",\"q\":\"select * from \\\"graphyard_metrics\\\" where time >= '2026-10-21T11:00:00Z' and time < '2026-10-21T12:00:00.500000Z' and metric = 'host.disk_usage' order by time asc\"}"
+    }
+   ],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v3/query_sql \"HTTP/1.1 200 OK\""
+    ]
+   ],
+   "error": {
+    "class": "InfluxConfigurationError",
+    "message": "InfluxDB SQL query failed: invalid JSON"
+   }
+  },
+  {
+   "name": "invalid_utf8",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [],
+     "body_b64": "WyL/Il0="
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v3"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v3/query_sql",
+     "headers": [
+      [
+       "accept-encoding",
+       "gzip, deflate"
+      ],
+      [
+       "user-agent",
+       "python-httpx/0.28.1"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Bearer test-token"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ]
+     ],
+     "body": "{\"db\":\"graphyard\",\"q\":\"select * from \\\"graphyard_metrics\\\" where time >= '2026-10-21T11:00:00Z' and time < '2026-10-21T12:00:00.500000Z' and metric = 'host.disk_usage' order by time asc\"}"
+    }
+   ],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v3/query_sql \"HTTP/1.1 200 OK\""
+    ]
+   ],
+   "error": {
+    "class": "InfluxConfigurationError",
+    "message": "InfluxDB SQL query failed: invalid JSON"
+   }
+  },
+  {
+   "name": "oversize",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "application/json"
+      ]
+     ],
+     "body": "[12345]",
+     "split": 1
+    }
+   ],
+   "patch": {
+    "SQL_QUERY_MAX_BODY_BYTES": 5
+   },
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v3"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v3/query_sql",
+     "headers": [
+      [
+       "accept-encoding",
+       "gzip, deflate"
+      ],
+      [
+       "user-agent",
+       "python-httpx/0.28.1"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Bearer test-token"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ]
+     ],
+     "body": "{\"db\":\"graphyard\",\"q\":\"select * from \\\"graphyard_metrics\\\" where time >= '2026-10-21T11:00:00Z' and time < '2026-10-21T12:00:00.500000Z' and metric = 'host.disk_usage' order by time asc\"}"
+    }
+   ],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v3/query_sql \"HTTP/1.1 200 OK\""
+    ]
+   ],
+   "error": {
+    "class": "InfluxConfigurationError",
+    "message": "InfluxDB SQL response exceeds the 10 MiB decoded byte limit"
+   }
+  },
+  {
+   "name": "oversize_decoded",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "application/json"
+      ]
+     ],
+     "body": "[                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        ]",
+     "gzip": true
+    }
+   ],
+   "patch": {
+    "SQL_QUERY_MAX_BODY_BYTES": 100
+   },
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v3"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v3/query_sql",
+     "headers": [
+      [
+       "accept-encoding",
+       "gzip, deflate"
+      ],
+      [
+       "user-agent",
+       "python-httpx/0.28.1"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Bearer test-token"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ]
+     ],
+     "body": "{\"db\":\"graphyard\",\"q\":\"select * from \\\"graphyard_metrics\\\" where time >= '2026-10-21T11:00:00Z' and time < '2026-10-21T12:00:00.500000Z' and metric = 'host.disk_usage' order by time asc\"}"
+    }
+   ],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v3/query_sql \"HTTP/1.1 200 OK\""
+    ]
+   ],
+   "error": {
+    "class": "InfluxConfigurationError",
+    "message": "InfluxDB SQL response exceeds the 10 MiB decoded byte limit"
+   }
+  },
+  {
+   "name": "exact_byte_limit_split",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "application/json"
+      ]
+     ],
+     "body": "[{\"time\": \"2026-10-21T12:00:00+00:00\", \"value\": 20, \"mountpoint\": \"/\"}, {\"time\": \"2026-10-21T12:00:00+00:00\", \"value\": 30, \"mountpoint\": \"/data\"}]",
+     "split": 10
+    }
+   ],
+   "patch": {
+    "SQL_QUERY_MAX_BODY_BYTES": 146
+   },
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v3"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v3/query_sql",
+     "headers": [
+      [
+       "accept-encoding",
+       "gzip, deflate"
+      ],
+      [
+       "user-agent",
+       "python-httpx/0.28.1"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Bearer test-token"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ]
+     ],
+     "body": "{\"db\":\"graphyard\",\"q\":\"select * from \\\"graphyard_metrics\\\" where time >= '2026-10-21T11:00:00Z' and time < '2026-10-21T12:00:00.500000Z' and metric = 'host.disk_usage' order by time asc\"}"
+    }
+   ],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v3/query_sql \"HTTP/1.1 200 OK\""
+    ]
+   ],
+   "samples": [
+    {
+     "ts": "2026-10-21T12:00:00+00:00",
+     "value": 20.0,
+     "host": "",
+     "metric": "host.disk_usage",
+     "service": null,
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "mountpoint": "/"
+     }
+    },
+    {
+     "ts": "2026-10-21T12:00:00+00:00",
+     "value": 30.0,
+     "host": "",
+     "metric": "host.disk_usage",
+     "service": null,
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "mountpoint": "/data"
+     }
+    }
+   ]
+  },
+  {
+   "name": "gzip_body",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "application/json"
+      ]
+     ],
+     "body": "[{\"time\": \"2026-10-21T12:00:00+00:00\", \"value\": 1.0, \"metric\": \"host.disk_usage\", \"host\": \"h1\", \"mountpoint\": \"/data\"}]",
+     "gzip": true
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v3"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v3/query_sql",
+     "headers": [
+      [
+       "accept-encoding",
+       "gzip, deflate"
+      ],
+      [
+       "user-agent",
+       "python-httpx/0.28.1"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Bearer test-token"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ]
+     ],
+     "body": "{\"db\":\"graphyard\",\"q\":\"select * from \\\"graphyard_metrics\\\" where time >= '2026-10-21T11:00:00Z' and time < '2026-10-21T12:00:00.500000Z' and metric = 'host.disk_usage' order by time asc\"}"
+    }
+   ],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v3/query_sql \"HTTP/1.1 200 OK\""
+    ]
+   ],
+   "samples": [
+    {
+     "ts": "2026-10-21T12:00:00+00:00",
+     "value": 1.0,
+     "host": "h1",
+     "metric": "host.disk_usage",
+     "service": null,
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "mountpoint": "/data"
+     }
+    }
+   ]
+  },
+  {
+   "name": "deadline_headers",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "application/json"
+      ]
+     ],
+     "body": "[]",
+     "header_delay": 1.5
+    }
+   ],
+   "patch": {
+    "SQL_QUERY_TOTAL_TIMEOUT_SECONDS": 0.3
+   },
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v3"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v3/query_sql",
+     "headers": [
+      [
+       "accept-encoding",
+       "gzip, deflate"
+      ],
+      [
+       "user-agent",
+       "python-httpx/0.28.1"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Bearer test-token"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ]
+     ],
+     "body": "{\"db\":\"graphyard\",\"q\":\"select * from \\\"graphyard_metrics\\\" where time >= '2026-10-21T11:00:00Z' and time < '2026-10-21T12:00:00.500000Z' and metric = 'host.disk_usage' order by time asc\"}"
+    }
+   ],
+   "logs": [],
+   "error": {
+    "class": "InfluxConfigurationError",
+    "message": "InfluxDB SQL response exceeded the 30-second total deadline"
+   }
+  },
+  {
+   "name": "deadline_drip",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "application/json"
+      ]
+     ],
+     "body": "[                                        ]",
+     "drip": true,
+     "chunk_delay": 0.05
+    }
+   ],
+   "patch": {
+    "SQL_QUERY_TOTAL_TIMEOUT_SECONDS": 0.3
+   },
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v3"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v3/query_sql",
+     "headers": [
+      [
+       "accept-encoding",
+       "gzip, deflate"
+      ],
+      [
+       "user-agent",
+       "python-httpx/0.28.1"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Bearer test-token"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ]
+     ],
+     "body": "{\"db\":\"graphyard\",\"q\":\"select * from \\\"graphyard_metrics\\\" where time >= '2026-10-21T11:00:00Z' and time < '2026-10-21T12:00:00.500000Z' and metric = 'host.disk_usage' order by time asc\"}"
+    }
+   ],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v3/query_sql \"HTTP/1.1 200 OK\""
+    ]
+   ],
+   "error": {
+    "class": "InfluxConfigurationError",
+    "message": "InfluxDB SQL response exceeded the 30-second total deadline"
+   }
+  },
+  {
+   "name": "deadline_blocked_read",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "application/json"
+      ]
+     ],
+     "body": "[          ]",
+     "split": 1,
+     "chunk_delay": 1.5
+    }
+   ],
+   "patch": {
+    "SQL_QUERY_TOTAL_TIMEOUT_SECONDS": 0.3
+   },
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v3"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v3/query_sql",
+     "headers": [
+      [
+       "accept-encoding",
+       "gzip, deflate"
+      ],
+      [
+       "user-agent",
+       "python-httpx/0.28.1"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Bearer test-token"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ]
+     ],
+     "body": "{\"db\":\"graphyard\",\"q\":\"select * from \\\"graphyard_metrics\\\" where time >= '2026-10-21T11:00:00Z' and time < '2026-10-21T12:00:00.500000Z' and metric = 'host.disk_usage' order by time asc\"}"
+    }
+   ],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v3/query_sql \"HTTP/1.1 200 OK\""
+    ]
+   ],
+   "error": {
+    "class": "InfluxConfigurationError",
+    "message": "InfluxDB SQL response exceeded the 30-second total deadline"
+   }
+  },
+  {
+   "name": "connection_refused",
+   "responses": [],
+   "refused": true,
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v3"
+   },
+   "requests": [],
+   "logs": [],
+   "error": {
+    "class": "InfluxConfigurationError",
+    "message": "InfluxDB SQL query failed: ConnectError"
+   }
+  },
+  {
+   "name": "closed_without_response",
+   "responses": [
+    {
+     "action": "close"
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v3"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v3/query_sql",
+     "headers": [
+      [
+       "accept-encoding",
+       "gzip, deflate"
+      ],
+      [
+       "user-agent",
+       "python-httpx/0.28.1"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Bearer test-token"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ]
+     ],
+     "body": "{\"db\":\"graphyard\",\"q\":\"select * from \\\"graphyard_metrics\\\" where time >= '2026-10-21T11:00:00Z' and time < '2026-10-21T12:00:00.500000Z' and metric = 'host.disk_usage' order by time asc\"}"
+    }
+   ],
+   "logs": [],
+   "error": {
+    "class": "InfluxConfigurationError",
+    "message": "InfluxDB SQL query failed: RemoteProtocolError"
+   }
+  },
+  {
+   "name": "truncated_body",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "application/json"
+      ]
+     ],
+     "body": "[]",
+     "content_length": 10
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v3"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v3/query_sql",
+     "headers": [
+      [
+       "accept-encoding",
+       "gzip, deflate"
+      ],
+      [
+       "user-agent",
+       "python-httpx/0.28.1"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Bearer test-token"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ]
+     ],
+     "body": "{\"db\":\"graphyard\",\"q\":\"select * from \\\"graphyard_metrics\\\" where time >= '2026-10-21T11:00:00Z' and time < '2026-10-21T12:00:00.500000Z' and metric = 'host.disk_usage' order by time asc\"}"
+    }
+   ],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v3/query_sql \"HTTP/1.1 200 OK\""
+    ]
+   ],
+   "error": {
+    "class": "InfluxConfigurationError",
+    "message": "InfluxDB SQL query failed: RemoteProtocolError"
+   }
+  },
+  {
+   "name": "invalid_gzip",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Encoding",
+       "gzip"
+      ]
+     ],
+     "body": "not gzip"
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v3"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v3/query_sql",
+     "headers": [
+      [
+       "accept-encoding",
+       "gzip, deflate"
+      ],
+      [
+       "user-agent",
+       "python-httpx/0.28.1"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Bearer test-token"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ]
+     ],
+     "body": "{\"db\":\"graphyard\",\"q\":\"select * from \\\"graphyard_metrics\\\" where time >= '2026-10-21T11:00:00Z' and time < '2026-10-21T12:00:00.500000Z' and metric = 'host.disk_usage' order by time asc\"}"
+    }
+   ],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v3/query_sql \"HTTP/1.1 200 OK\""
+    ]
+   ],
+   "error": {
+    "class": "InfluxConfigurationError",
+    "message": "InfluxDB SQL query failed: DecodingError"
+   }
+  },
+  {
+   "name": "read_timeout",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "application/json"
+      ]
+     ],
+     "body": "[]",
+     "header_delay": 1.6
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 100,
+    "INFLUX_API_MODE": "v3"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v3/query_sql",
+     "headers": [
+      [
+       "accept-encoding",
+       "gzip, deflate"
+      ],
+      [
+       "user-agent",
+       "python-httpx/0.28.1"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Bearer test-token"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ]
+     ],
+     "body": "{\"db\":\"graphyard\",\"q\":\"select * from \\\"graphyard_metrics\\\" where time >= '2026-10-21T11:00:00Z' and time < '2026-10-21T12:00:00.500000Z' and metric = 'host.disk_usage' order by time asc\"}"
+    }
+   ],
+   "logs": [],
+   "error": {
+    "class": "InfluxConfigurationError",
+    "message": "InfluxDB SQL query failed: ReadTimeout"
+   }
+  },
+  {
+   "name": "token_not_ascii",
+   "responses": [],
+   "settings": {
+    "INFLUX_TOKEN": "pasted-smart-quote-\u2019",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v3"
+   },
+   "requests": [],
+   "logs": [],
+   "error": {
+    "class": "InfluxConfigurationError",
+    "message": "InfluxDB SQL query failed: UnicodeEncodeError"
+   }
+  },
+  {
+   "name": "token_not_latin1_free",
+   "responses": [],
+   "settings": {
+    "INFLUX_TOKEN": "caf\u00e9",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v3"
+   },
+   "requests": [],
+   "logs": [],
+   "error": {
+    "class": "InfluxConfigurationError",
+    "message": "InfluxDB SQL query failed: UnicodeEncodeError"
+   }
+  },
+  {
+   "name": "token_control_character",
+   "responses": [],
+   "settings": {
+    "INFLUX_TOKEN": "a\nb",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v3"
+   },
+   "requests": [],
+   "logs": [],
+   "error": {
+    "class": "InfluxConfigurationError",
+    "message": "InfluxDB SQL query failed: LocalProtocolError"
+   }
+  },
+  {
+   "name": "token_absent_no_header",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "application/json"
+      ]
+     ],
+     "body": "[]"
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v3"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v3/query_sql",
+     "headers": [
+      [
+       "accept-encoding",
+       "gzip, deflate"
+      ],
+      [
+       "user-agent",
+       "python-httpx/0.28.1"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ]
+     ],
+     "body": "{\"db\":\"graphyard\",\"q\":\"select * from \\\"graphyard_metrics\\\" where time >= '2026-10-21T11:00:00Z' and time < '2026-10-21T12:00:00.500000Z' and metric = 'host.disk_usage' order by time asc\"}"
+    }
+   ],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v3/query_sql \"HTTP/1.1 200 OK\""
+    ]
+   ],
+   "samples": []
+  },
+  {
+   "name": "url_empty",
+   "responses": [],
+   "url": "",
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v3"
+   },
+   "requests": [],
+   "logs": [],
+   "error": {
+    "class": "InfluxConfigurationError",
+    "message": "InfluxDB SQL query failed: UnsupportedProtocol"
+   }
+  },
+  {
+   "name": "url_unsupported_scheme",
+   "responses": [],
+   "url": "ftp://{server}",
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v3"
+   },
+   "requests": [],
+   "logs": [],
+   "error": {
+    "class": "InfluxConfigurationError",
+    "message": "InfluxDB SQL query failed: UnsupportedProtocol"
+   }
+  },
+  {
+   "name": "url_no_scheme",
+   "responses": [],
+   "url": "{server}",
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v3"
+   },
+   "requests": [],
+   "logs": [],
+   "error": {
+    "class": "InfluxConfigurationError",
+    "message": "InfluxDB SQL query failed: UnsupportedProtocol"
+   }
+  },
+  {
+   "name": "url_trailing_slashes",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "application/json"
+      ]
+     ],
+     "body": "[]"
+    }
+   ],
+   "url": "http://{server}///",
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v3"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v3/query_sql",
+     "headers": [
+      [
+       "accept-encoding",
+       "gzip, deflate"
+      ],
+      [
+       "user-agent",
+       "python-httpx/0.28.1"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Bearer test-token"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ]
+     ],
+     "body": "{\"db\":\"graphyard\",\"q\":\"select * from \\\"graphyard_metrics\\\" where time >= '2026-10-21T11:00:00Z' and time < '2026-10-21T12:00:00.500000Z' and metric = 'host.disk_usage' order by time asc\"}"
+    }
+   ],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v3/query_sql \"HTTP/1.1 200 OK\""
+    ]
+   ],
+   "samples": []
+  },
+  {
+   "name": "url_path_prefix",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "application/json"
+      ]
+     ],
+     "body": "[]"
+    }
+   ],
+   "url": "http://{server}/v3/",
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v3"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/v3/api/v3/query_sql",
+     "headers": [
+      [
+       "accept-encoding",
+       "gzip, deflate"
+      ],
+      [
+       "user-agent",
+       "python-httpx/0.28.1"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Bearer test-token"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ]
+     ],
+     "body": "{\"db\":\"graphyard\",\"q\":\"select * from \\\"graphyard_metrics\\\" where time >= '2026-10-21T11:00:00Z' and time < '2026-10-21T12:00:00.500000Z' and metric = 'host.disk_usage' order by time asc\"}"
+    }
+   ],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/v3/api/v3/query_sql \"HTTP/1.1 200 OK\""
+    ]
+   ],
+   "samples": []
+  },
+  {
+   "name": "timeout_overflow",
+   "responses": [],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,
+    "INFLUX_API_MODE": "v3"
+   },
+   "requests": [],
+   "logs": [],
+   "error": {
+    "class": "OverflowError",
+    "message": "integer division result too large for a float"
+   }
+  },
+  {
+   "name": "timeout_floor_is_one_second",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "application/json"
+      ]
+     ],
+     "body": "[]",
+     "header_delay": 0.5
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 100,
+    "INFLUX_API_MODE": "v3"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v3/query_sql",
+     "headers": [
+      [
+       "accept-encoding",
+       "gzip, deflate"
+      ],
+      [
+       "user-agent",
+       "python-httpx/0.28.1"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Bearer test-token"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ]
+     ],
+     "body": "{\"db\":\"graphyard\",\"q\":\"select * from \\\"graphyard_metrics\\\" where time >= '2026-10-21T11:00:00Z' and time < '2026-10-21T12:00:00.500000Z' and metric = 'host.disk_usage' order by time asc\"}"
+    }
+   ],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v3/query_sql \"HTTP/1.1 200 OK\""
+    ]
+   ],
+   "samples": []
+  },
+  {
+   "name": "timeout_negative_uses_floor",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "application/json"
+      ]
+     ],
+     "body": "[]"
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": -5,
+    "INFLUX_API_MODE": "v3"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v3/query_sql",
+     "headers": [
+      [
+       "accept-encoding",
+       "gzip, deflate"
+      ],
+      [
+       "user-agent",
+       "python-httpx/0.28.1"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Bearer test-token"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ]
+     ],
+     "body": "{\"db\":\"graphyard\",\"q\":\"select * from \\\"graphyard_metrics\\\" where time >= '2026-10-21T11:00:00Z' and time < '2026-10-21T12:00:00.500000Z' and metric = 'host.disk_usage' order by time asc\"}"
+    }
+   ],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v3/query_sql \"HTTP/1.1 200 OK\""
+    ]
+   ],
+   "samples": []
+  }
+ ],
+ "auto": [
+  {
+   "name": "v2_404_falls_back_to_v3",
+   "responses": [
+    {
+     "status": 404,
+     "reason": "Not Found",
+     "headers": [
+      [
+       "Content-Type",
+       "application/json"
+      ]
+     ],
+     "body": "{\"code\":\"not found\",\"message\":\"path not found\"}"
+    },
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "application/json"
+      ]
+     ],
+     "body": "[{\"time\": \"2026-10-21T12:00:00+00:00\", \"value\": 42.0, \"metric\": \"host.disk_usage\", \"host\": \"h1\", \"mountpoint\": \"/data\"}]"
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "auto"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v2/query?org=graphyard",
+     "headers": [
+      [
+       "accept-encoding",
+       "identity"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Token test-token"
+      ],
+      [
+       "user-agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
+    },
+    {
+     "method": "POST",
+     "target": "/api/v3/query_sql",
+     "headers": [
+      [
+       "accept-encoding",
+       "gzip, deflate"
+      ],
+      [
+       "user-agent",
+       "python-httpx/0.28.1"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Bearer test-token"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ]
+     ],
+     "body": "{\"db\":\"graphyard\",\"q\":\"select * from \\\"graphyard_metrics\\\" where time >= '2026-10-21T11:00:00Z' and time < '2026-10-21T12:00:00.500000Z' and metric = 'host.disk_usage' order by time asc\"}"
+    }
+   ],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v3/query_sql \"HTTP/1.1 200 OK\""
+    ]
+   ],
+   "samples": [
+    {
+     "ts": "2026-10-21T12:00:00+00:00",
+     "value": 42.0,
+     "host": "h1",
+     "metric": "host.disk_usage",
+     "service": null,
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "mountpoint": "/data"
+     }
+    }
+   ]
+  },
+  {
+   "name": "v2_and_v3_404",
+   "responses": [
+    {
+     "status": 404,
+     "reason": "Not Found",
+     "headers": [
+      [
+       "Content-Type",
+       "application/json"
+      ]
+     ],
+     "body": "{\"code\":\"not found\",\"message\":\"path not found\"}"
+    },
+    {
+     "status": 404,
+     "reason": "Not Found",
+     "headers": [],
+     "body": ""
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "auto"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v2/query?org=graphyard",
+     "headers": [
+      [
+       "accept-encoding",
+       "identity"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Token test-token"
+      ],
+      [
+       "user-agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
+    },
+    {
+     "method": "POST",
+     "target": "/api/v3/query_sql",
+     "headers": [
+      [
+       "accept-encoding",
+       "gzip, deflate"
+      ],
+      [
+       "user-agent",
+       "python-httpx/0.28.1"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Bearer test-token"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ]
+     ],
+     "body": "{\"db\":\"graphyard\",\"q\":\"select * from \\\"graphyard_metrics\\\" where time >= '2026-10-21T11:00:00Z' and time < '2026-10-21T12:00:00.500000Z' and metric = 'host.disk_usage' order by time asc\"}"
+    }
+   ],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v3/query_sql \"HTTP/1.1 404 Not Found\""
+    ]
+   ],
+   "error": {
+    "class": "InfluxConfigurationError",
+    "message": "InfluxDB v3 SQL endpoint not found. Set INFLUX_API_MODE=v2 for InfluxDB 2."
+   }
+  },
+  {
+   "name": "v2_500_propagates",
+   "responses": [
+    {
+     "status": 500,
+     "reason": "Internal Server Error",
+     "headers": [],
+     "body": "server error"
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "auto"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v2/query?org=graphyard",
+     "headers": [
+      [
+       "accept-encoding",
+       "identity"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Token test-token"
+      ],
+      [
+       "user-agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
+    }
+   ],
+   "logs": [],
+   "error": {
+    "class": "ApiException",
+    "p2": true
+   }
+  },
+  {
+   "name": "v2_ok_no_fallback",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "text/csv; charset=utf-8"
+      ]
+     ],
+     "body": "#datatype,string,long,dateTime:RFC3339,dateTime:RFC3339,dateTime:RFC3339,double,string,string,string,string,string,string\r\n#group,false,false,true,true,false,false,true,true,true,true,true,true\r\n#default,_result,,,,,,,,,,,\r\n,result,table,_start,_stop,_time,_value,_field,_measurement,host,metric,mountpoint,subject_type\r\n,,0,2026-10-21T11:00:00Z,2026-10-21T12:00:00.5Z,2026-10-21T11:30:00Z,1,value,graphyard_metrics,macmini,host.disk_usage,/,host\r\n\r\n"
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "auto"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v2/query?org=graphyard",
+     "headers": [
+      [
+       "accept-encoding",
+       "identity"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Token test-token"
+      ],
+      [
+       "user-agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
+    }
+   ],
+   "logs": [],
+   "samples": [
+    {
+     "ts": "2026-10-21T11:30:00+00:00",
+     "value": 1.0,
+     "host": "macmini",
+     "metric": "host.disk_usage",
+     "service": null,
+     "subject_type": "host",
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "mountpoint": "/"
+     }
+    }
+   ]
+  },
+  {
+   "name": "v2_config_error_no_fallback",
+   "responses": [],
+   "settings": {
+    "INFLUX_TOKEN": "",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "auto"
+   },
+   "requests": [],
+   "logs": [],
+   "error": {
+    "class": "InfluxConfigurationError",
+    "message": "Influx settings missing: INFLUX_URL, INFLUX_TOKEN, INFLUX_ORG are required"
+   }
+  },
+  {
+   "name": "v2_parse_error_no_fallback",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "text/csv; charset=utf-8"
+      ]
+     ],
+     "body": "#datatype,string,long,dateTime:RFC3339,dateTime:RFC3339,dateTime:RFC3339,double,string,string,string,string,string,string\r\n#group,false,false,true,true,false,false,true,true,true,true,true,true\r\n#default,_result,,,,,,,,,,,\r\n,result,table,_start,_stop,_time,_value,_field,_measurement,host,metric,mountpoint,subject_type\r\n,,0,2026-10-21T11:00:00Z,2026-10-21T12:00:00.5Z,2026-10-21T11:30:00Z,NaN,value,graphyard_metrics,macmini,host.disk_usage,/,host\r\n\r\n"
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "auto"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v2/query?org=graphyard",
+     "headers": [
+      [
+       "accept-encoding",
+       "identity"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Token test-token"
+      ],
+      [
+       "user-agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
+    }
+   ],
+   "logs": [],
+   "error": {
+    "class": "InfluxConfigurationError",
+    "message": "InfluxDB query sample must be a finite number"
+   }
+  },
+  {
+   "name": "v2_refused_no_fallback",
+   "responses": [],
+   "refused": true,
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "auto"
+   },
+   "requests": [],
+   "logs": [],
+   "error": {
+    "class": "NewConnectionError",
+    "p2": true
+   }
+  },
+  {
+   "name": "v2_truncated_404_no_fallback",
+   "responses": [
+    {
+     "status": 404,
+     "reason": "Not Found",
+     "headers": [],
+     "body": "x",
+     "content_length": 100
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "auto"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v2/query?org=graphyard",
+     "headers": [
+      [
+       "accept-encoding",
+       "identity"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Token test-token"
+      ],
+      [
+       "user-agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
+    }
+   ],
+   "logs": [],
+   "error": {
+    "class": "ProtocolError",
+    "p2": true
+   }
+  }
+ ]
+}

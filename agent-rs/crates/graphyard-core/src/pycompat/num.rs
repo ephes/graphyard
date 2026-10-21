@@ -319,3 +319,61 @@ pub fn bigint_to_i64_saturating(value: &BigInt) -> i64 {
         i64::MAX
     })
 }
+
+/// `numerator / denominator` for Python `int`s (`long_true_divide`): the
+/// exact quotient correctly rounded to a float (round half to even).
+///
+/// # Errors
+/// `OverflowError: integer division result too large for a float` when the
+/// quotient exceeds the double range.
+///
+/// # Panics
+/// When `denominator` is zero (no caller divides by zero).
+pub fn py_int_true_divide(numerator: &BigInt, denominator: u32) -> Result<f64, PyError> {
+    assert!(denominator != 0, "division by zero");
+    let negative = numerator.sign() == Sign::Minus;
+    let n = numerator.magnitude();
+    let d = num_bigint::BigUint::from(denominator);
+    if n.bits() <= 53 {
+        // Both operands are exact doubles; IEEE division rounds correctly.
+        let quotient = n.to_f64().unwrap_or(0.0) / f64::from(denominator);
+        return Ok(if negative { -quotient } else { quotient });
+    }
+    // Scale so the integer quotient has 55 or 56 significant bits, keep a
+    // sticky bit for everything below, then round to 53 bits.
+    let shift =
+        i64::try_from(n.bits()).unwrap_or(i64::MAX) - i64::try_from(d.bits()).unwrap_or(0) - 55;
+    let (scaled, mut sticky) = if shift >= 0 {
+        let shift_u = u64::try_from(shift).unwrap_or(0);
+        let scaled = n >> shift_u;
+        let dropped = n - (&scaled << shift_u);
+        (scaled, dropped.bits() != 0)
+    } else {
+        (n << u64::try_from(-shift).unwrap_or(0), false)
+    };
+    let quotient = &scaled / &d;
+    sticky |= (&scaled - &quotient * &d).bits() != 0;
+    let extra = quotient.bits() - 53;
+    let mut mantissa = (&quotient >> extra).to_u64().unwrap_or(0);
+    let rest = (&quotient - (num_bigint::BigUint::from(mantissa) << extra))
+        .to_u64()
+        .unwrap_or(0);
+    let half = 1u64 << (extra - 1);
+    if rest > half || (rest == half && (sticky || mantissa & 1 == 1)) {
+        mantissa += 1;
+    }
+    let mut exponent = shift + i64::try_from(extra).unwrap_or(0);
+    if mantissa == 1 << 53 {
+        mantissa >>= 1;
+        exponent += 1;
+    }
+    // mantissa has 53 bits: value = mantissa * 2^exponent < 2^(53 + exponent).
+    if exponent + 53 > 1024 {
+        return Err(PyError::overflow_error(
+            "integer division result too large for a float",
+        ));
+    }
+    let exponent = i32::try_from(exponent).expect("exponent within the double range");
+    let value = mantissa as f64 * 2f64.powi(exponent);
+    Ok(if negative { -value } else { value })
+}
