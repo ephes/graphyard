@@ -80,6 +80,7 @@ graphyard-agent --db /opt/apps/graphyard/site/src/django/db.sqlite3   # the loop
 graphyard-agent --run-once --db db.sqlite3                            # both runs once
 graphyard-agent --check-schema --db db.sqlite3                        # read-only, exit 0/1
 graphyard-agent --version                                             # version and commit
+graphyard-agent evaluate-conditions --db db.sqlite3                   # manage.py evaluate_conditions
 ```
 
 The flags of `manage.py start_agent` are unchanged (`--metrics-interval`,
@@ -90,6 +91,29 @@ The flags of `manage.py start_agent` are unchanged (`--metrics-interval`,
 error. `--influx-write-file PATH` is the shadow mode: every batch the agent
 would write to InfluxDB is appended to `PATH` as line protocol after a
 `# write <utc> points=<n>` comment line; queries still go to InfluxDB.
+
+### Evaluating conditions by hand
+
+`graphyard-agent evaluate-conditions [--condition-id N]` (from release
+0.2.0) replaces `manage.py evaluate_conditions` (PLAN.md 11.4): it evaluates
+the enabled conditions (or the one with the given id) once, writes their
+rows and the `condition_evaluator` heartbeat, prints `Condition evaluation
+completed (<total>).` and exits 0, or prints the failures and
+`CommandError: <n> condition evaluation(s) failed.` and exits 1. It reads
+only the process environment, so on macmini it runs with the unit's
+environment:
+
+```bash
+systemd-run --wait --pipe --quiet -p User=graphyard -p Group=graphyard \
+    -p EnvironmentFile=/etc/graphyard/graphyard.env \
+    -p WorkingDirectory=/opt/apps/graphyard/site/src/django \
+    /opt/graphyard-agent/<version>/graphyard-agent evaluate-conditions \
+    --db /opt/apps/graphyard/site/src/django/db.sqlite3
+```
+
+The documented manual call (ops-control `docs/GRAPHYARD_NYXMON_CHECKS.md`)
+switches to this command with the Python retirement (slice S15b); until then
+`manage.py evaluate_conditions` stays the documented one.
 
 ### Deployment, cutover and rollback
 
@@ -192,9 +216,11 @@ agreed with the coordinator first (PLAN.md 8.4).
   collector family against fake servers with the rows, heartbeats, registry
   and written lines checked, the loop's due selection, SIGINT/SIGTERM during
   a stalled request, a blocked name lookup and a locked database, the shadow
-  write file);
+  write file, `evaluate-conditions` with its summary lines, exit codes and
+  `--condition-id`);
 - Parity: `just rs-parity` (CI job `parity`, PLAN.md 9.4) runs
-  `manage.py start_agent --run-once` and `graphyard-agent --run-once` on two
+  `manage.py start_agent --run-once` and `graphyard-agent --run-once`, then
+  `manage.py evaluate_conditions` and `graphyard-agent evaluate-conditions`, on two
   copies of one seeded database against identical scripted fakes and fails on
   any unmasked difference (`agent-rs/parity/run_parity.py`, see
   `agent-rs/README.md`);

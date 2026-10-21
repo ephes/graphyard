@@ -696,7 +696,10 @@ A Rust port of the agent, `graphyard-agent`, lives in `agent-rs/` (contract:
 divergences and operations including the shadow run:
 [`docs/agent-rs.md`](docs/agent-rs.md)). It is a drop-in for `start_agent`
 with the same flags plus `--db`, `--check-schema`, `--version` and the shadow
-mode `--influx-write-file`. It is not deployed yet; the Python command above
+mode `--influx-write-file`; its subcommand `graphyard-agent
+evaluate-conditions [--condition-id N]` is the port of `evaluate_conditions`
+above (same summary lines and exit codes, settings from the process
+environment only). It is not deployed yet; the Python command above
 remains the agent until the cutover. Release archives of the Rust binary are
 built by `.github/workflows/agent-rs-release.yml` from `agent-rs-v<version>`
 tags; the first is

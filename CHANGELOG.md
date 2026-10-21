@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- Rust agent port (`agent-rs/`, slice S15a): new subcommand
+  `graphyard-agent evaluate-conditions [--condition-id N] [--db PATH]`, the
+  port of `manage.py evaluate_conditions` (agent-rs/PLAN.md 11.4): the same
+  condition selection, row and `condition_evaluator` heartbeat writes, summary
+  lines and exit codes (`CommandError: <n> condition evaluation(s) failed.`,
+  exit 1). Pinned by new `runs.json` scenarios (`condition_id`), subcommand
+  and e2e tests, and three new parity-harness rounds that run both commands
+  on the same databases. The Rust agent version is now 0.2.0 (release
+  `agent-rs-v0.2.0`). The Python command stays until the Python agent is
+  retired (slices S15b, S15c); nothing deploys the Rust agent yet.
+
 - Rust agent port (`agent-rs/`, slice S10b): first release of the Rust
   agent, `agent-rs-v0.1.0`
   (<https://github.com/ephes/graphyard/releases/tag/agent-rs-v0.1.0>), built

@@ -8,10 +8,15 @@
 //! validation, not the parser, rejects it. Bad flag syntax is clap's usage
 //! error with exit 2 (D-7). The Rust-only flags are `--db`,
 //! `--check-schema`, `--version` and `--influx-write-file`.
+//!
+//! The subcommand `evaluate-conditions` (PLAN.md 11.4, S15a) ports
+//! `manage.py evaluate_conditions` (`evaluate_conditions.py:add_arguments`):
+//! `--condition-id` is `type=int` like the intervals, plus the Rust-only
+//! `--db`. The agent's flags and the subcommand exclude each other.
 
 use std::path::PathBuf;
 
-use clap::Parser;
+use clap::{Args, Parser, Subcommand};
 use graphyard_core::pycompat::py_int;
 use graphyard_core::settings::Settings;
 use num_bigint::BigInt;
@@ -27,9 +32,14 @@ fn parse_int(text: &str) -> Result<BigInt, String> {
     about = "Run the long-lived graphyard agent loop (metric collection specs + condition evaluation)",
     disable_version_flag = true,
     args_override_self = true,
-    infer_long_args = true
+    infer_long_args = true,
+    args_conflicts_with_subcommands = true,
+    disable_help_subcommand = true
 )]
 pub struct Cli {
+    /// A one-shot command instead of the agent loop.
+    #[command(subcommand)]
+    pub command: Option<Command>,
     /// Seconds between metric collection scheduler ticks (default:
     /// GRAPHYARD_METRIC_COLLECTION_INTERVAL_SECONDS)
     #[arg(long, value_parser = parse_int, allow_negative_numbers = true)]
@@ -63,6 +73,25 @@ pub struct Cli {
     /// protocol instead of sending it (queries still go to InfluxDB)
     #[arg(long, value_name = "PATH")]
     pub influx_write_file: Option<PathBuf>,
+}
+
+/// The subcommands.
+#[derive(Clone, Debug, Subcommand)]
+pub enum Command {
+    /// Evaluate enabled conditions and persist their status
+    #[command(args_override_self = true, infer_long_args = true)]
+    EvaluateConditions(EvaluateConditionsArgs),
+}
+
+/// `evaluate_conditions.py:Command.add_arguments` plus `--db`.
+#[derive(Clone, Debug, Args)]
+pub struct EvaluateConditionsArgs {
+    /// Evaluate only one condition
+    #[arg(long, value_parser = parse_int, allow_negative_numbers = true)]
+    pub condition_id: Option<BigInt>,
+    /// The SQLite database of the Django app
+    #[arg(long, value_name = "PATH", default_value = "db.sqlite3")]
+    pub db: PathBuf,
 }
 
 /// The validated loop settings of `handle`.
@@ -278,5 +307,55 @@ mod tests {
         assert_eq!(cli.db, PathBuf::from("/var/db.sqlite3"));
         assert!(cli.check_schema && cli.version);
         assert_eq!(cli.influx_write_file, Some(PathBuf::from("/tmp/writes.lp")));
+        assert!(cli.command.is_none());
+    }
+
+    fn evaluate(args: &[&str]) -> Result<EvaluateConditionsArgs, clap::Error> {
+        let cli = parse(&[&["evaluate-conditions"][..], args].concat())?;
+        let Some(Command::EvaluateConditions(args)) = cli.command else {
+            panic!("no subcommand parsed");
+        };
+        Ok(args)
+    }
+
+    #[test]
+    fn evaluate_conditions_takes_an_optional_python_int_id_and_the_db() {
+        let args = evaluate(&[]).unwrap();
+        assert_eq!(args.condition_id, None);
+        assert_eq!(args.db, PathBuf::from("db.sqlite3"));
+        let args = evaluate(&["--condition-id", " 7 ", "--db", "/var/db.sqlite3"]).unwrap();
+        assert_eq!(args.condition_id, Some(BigInt::from(7)));
+        assert_eq!(args.db, PathBuf::from("/var/db.sqlite3"));
+        // argparse: a negative number is a value, prefixes are accepted and
+        // the last of repeated flags wins; the id may exceed 64 bits.
+        let args = evaluate(&["--condition", "-3"]).unwrap();
+        assert_eq!(args.condition_id, Some(BigInt::from(-3)));
+        let huge = "9".repeat(30);
+        let args = evaluate(&["--condition-id=1", "--condition-id", &huge]).unwrap();
+        assert_eq!(args.condition_id.unwrap().to_string(), huge);
+        for bad in [
+            &["--condition-id", "x"][..],
+            &["--condition-id", "1.0"],
+            &["--condition-id"],
+            &["--run-once"],
+            &["--no-color"],
+            &["7"],
+        ] {
+            assert_eq!(evaluate(bad).unwrap_err().exit_code(), 2, "{bad:?}");
+        }
+    }
+
+    #[test]
+    fn the_agent_flags_and_the_subcommand_exclude_each_other() {
+        for args in [
+            &["--run-once", "evaluate-conditions"][..],
+            &["--db", "x", "evaluate-conditions"],
+            &["--version", "evaluate-conditions"],
+            &["evaluate_conditions"],
+            &["evaluate"],
+            &["help"],
+        ] {
+            assert_eq!(parse(args).unwrap_err().exit_code(), 2, "{args:?}");
+        }
     }
 }

@@ -1,7 +1,8 @@
 # Rust port of the graphyard agent — implementation plan
 
 Status: slices S1 to S10b implemented (first release `agent-rs-v0.1.0`,
-section 8.2); nothing deployed yet. Stream `rust-graphyard-agent` of the
+section 8.2) and S15a (`evaluate-conditions`, version 0.2.0, section 11.4);
+nothing deployed yet. Stream `rust-graphyard-agent` of the
 campaign "Rust-Ports Runde 2" (umbrella item `rust-ports-campaign`). The
 owner decided the open questions on 2026-10-21 (section 14).
 
@@ -1530,6 +1531,10 @@ timestamps such as Home Assistant's `last_updated` are compared exactly);
 `now`-based values). Each round also checks that the Python agent reached
 the status the corpus expects for every spec and condition, so the
 comparison cannot pass on a corpus that no longer exercises its branches.
+S15a adds three rounds after the five agent rounds that run `manage.py
+evaluate_conditions` and `graphyard-agent evaluate-conditions --db` (11.4);
+their exit codes are compared too, and the `CommandError` line joins the
+compared stderr lines.
 
 ### 9.5 TESTMAP (Python test → Rust counterpart)
 
@@ -1562,7 +1567,7 @@ rows.
 | `test_registry_write_batching.py` bound-token parts | n/a (bound-subject branch, web ingest, 5.7) | — |
 | `test_query_and_ingest_log_escaping.py::test_flux_interpolation_literal_in_query` | `flux.json` | S4b |
 | `test_query_and_ingest_log_escaping.py::test_metric_log_escapes_newline`, `::test_ingest_normalization_record_caps_error_details` | n/a (web ingest) | — |
-| `test_evaluate_conditions_command.py` | `evaluate-conditions` subcommand tests + e2e (11.4) | S15a |
+| `test_evaluate_conditions_command.py` | `evaluate-conditions` subcommand tests + e2e (11.4): `graphyard-agent/tests/evaluate_conditions.rs`, `e2e.rs`, `runs.json`, parity rounds 6 to 8 | S15a |
 | web/ingest/inventory/token/admin/login tests | n/a (web only) | — |
 
 ### 9.6 just recipes and CI
@@ -1708,6 +1713,28 @@ Tests: counterparts of `test_evaluate_conditions_command.py`, an e2e case
 and a parity-harness case running both commands on identical inputs; docs,
 CHANGELOG; the slice ends with the next `agent-rs-v*` release through the
 S10a workflow.
+
+As implemented in S15a (`graphyard-agent::evaluate`, version 0.2.0, release
+`agent-rs-v0.2.0`): the subcommand reuses the agent's conditions run
+(`runs::run_conditions` with the id), so its writes are the ones `runs.json`
+pins, including new `condition_id` scenarios; an id outside the 64-bit range
+of the `BigAutoField` selects nothing without a query (Django's empty
+result), and the heartbeat records the empty run (`evaluated 0`). The
+database is opened and its schema verified as at the agent's startup (D-2;
+a missing database exits 1 and is never created); the agent's three INFO
+lines are not printed. The failure line outside a condition is stderr
+`Condition evaluation failed: <class>: <err>`. The settings are read before
+the flags as in 3.1; `--condition-id` takes unique prefixes, the last value
+wins and a negative value is an id. The subcommand excludes the agent's
+flags (`graphyard-agent --run-once evaluate-conditions` is a usage error,
+exit 2), has no `help` subcommand and installs no signal handlers: SIGINT
+and SIGTERM end it by their default action, where Python ends by SIGTERM's
+default action or the uncaught `KeyboardInterrupt` (both cut the run short;
+SQLite transactions keep the rows consistent). The parity harness runs both
+commands in three extra rounds after the five agent rounds (all enabled
+conditions with two failures, one condition by id in `v3` mode, the
+disabled condition's id) and compares exit codes, stdout, the
+`CommandError` and operator lines, rows and requests.
 
 **S15b** (ops-library, ops-deploy, ops-control; ≥ 30 days after T1;
 production): pin the release containing `evaluate-conditions` in macmini

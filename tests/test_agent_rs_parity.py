@@ -195,6 +195,8 @@ def test_operator_lines_keep_the_documented_lines_only():
             "Metric collection spec 'p' (http_page_probe) raised: E: boom",
             "Ignoring host_filter for non-host condition id=7 name=n",
             "Spec s missing config.subject_mapping; using default entity_name_slug mapping",
+            "Condition evaluation failed: NotUpdated: x",
+            "CommandError: 2 condition evaluation(s) failed.",
         ]
     )
     assert run_parity.operator_lines(stderr, [("127.0.0.1:4711", "<http>")]) == [
@@ -203,6 +205,7 @@ def test_operator_lines_keep_the_documented_lines_only():
         "Metric collection spec 'p' (http_page_probe) raised",
         "Ignoring host_filter for non-host condition id=7 name=n",
         "Spec s missing config.subject_mapping; using default entity_name_slug mapping",
+        "CommandError: 2 condition evaluation(s) failed.",
     ]
 
 
@@ -261,6 +264,7 @@ def test_every_spec_type_and_corpus_case_is_covered():
         for server in (http, https, fake):
             server.close()
     rounds = len(run_parity.ROUNDS)
+    agent_rounds = run_parity.AGENT_ROUNDS
     types = {spec.spec_type for spec in corpus.specs if spec.enabled}
     assert {
         "home_assistant_sensor",
@@ -271,10 +275,86 @@ def test_every_spec_type_and_corpus_case_is_covered():
     } < types
     assert any(not spec.enabled for spec in corpus.specs)
     assert any(not condition.enabled for condition in corpus.conditions)
-    for item in [*corpus.specs, *corpus.conditions]:
-        assert item.expect is None or len(item.expect) == rounds, item.name
+    # Specs run only in the agent rounds; conditions in every round.
+    for spec in corpus.specs:
+        assert spec.expect is None or len(spec.expect) == agent_rounds, spec.name
+    for condition in corpus.conditions:
+        assert condition.expect is None or len(condition.expect) == rounds, (
+            condition.name
+        )
     statuses = {s for spec in corpus.specs for s in spec.expect or []}
     statuses |= {s for c in corpus.conditions for s in c.expect or []}
     assert statuses == {"ok", "warning", "critical"}
     modes = {round_.env.get("INFLUX_API_MODE") for round_ in run_parity.ROUNDS}
     assert modes == {"v2", "v3", "auto"}
+    # evaluate_conditions (S15a): after the agent rounds, all conditions with
+    # failures (exit 1), one enabled and one disabled condition by id.
+    evaluate = [round_ for round_ in run_parity.ROUNDS if round_.evaluate]
+    assert run_parity.ROUNDS[agent_rounds:] == tuple(evaluate)
+    assert [round_.expect_code for round_ in evaluate] == [1, 0, 0]
+    assert all(round_.expect_stdout for round_ in evaluate)
+    enabled = {c.name: c.enabled for c in corpus.conditions}
+    assert [enabled.get(round_.condition) for round_ in evaluate] == [
+        None,
+        True,
+        False,
+    ]
+
+
+def test_evaluate_rounds_run_both_commands_on_their_database(tmp_path):
+    agents = [
+        run_parity.PythonAgent("python", tmp_path, None),  # type: ignore[arg-type]
+        run_parity.RustAgent("rust", tmp_path, None),  # type: ignore[arg-type]
+    ]
+    try:
+        python, rust = agents
+        binary = Path("/bin/graphyard-agent")
+        agent_round, all_round, one_round = (
+            run_parity.ROUNDS[0],
+            *run_parity.ROUNDS[run_parity.AGENT_ROUNDS :][:2],
+        )
+        assert python.command(binary, agent_round)[0][1:] == [
+            "manage.py",
+            "start_agent",
+            "--run-once",
+        ]
+        assert python.command(binary, all_round)[0][1:] == [
+            "manage.py",
+            "evaluate_conditions",
+        ]
+        names = [condition.name for condition in python.corpus.conditions]
+        condition_id = str(names.index(one_round.condition) + 1)
+        assert python.command(binary, one_round)[0][1:] == [
+            "manage.py",
+            "evaluate_conditions",
+            "--condition-id",
+            condition_id,
+        ]
+        db = str(rust.db)
+        assert rust.command(binary, agent_round)[0] == [
+            str(binary),
+            "--run-once",
+            "--db",
+            db,
+        ]
+        assert rust.command(binary, one_round)[0] == [
+            str(binary),
+            "evaluate-conditions",
+            "--db",
+            db,
+            "--condition-id",
+            condition_id,
+        ]
+        # The seeded ids follow the corpus order.
+        connection = sqlite3.connect(rust.db)
+        try:
+            row = connection.execute(
+                "SELECT name FROM condition_definition WHERE id = ?",
+                (int(condition_id),),
+            ).fetchone()
+        finally:
+            connection.close()
+        assert row == (one_round.condition,)
+    finally:
+        for agent in agents:
+            agent.close()

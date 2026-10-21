@@ -5,7 +5,8 @@
 //! run over every collector family with all rows and lines checked, the
 //! loop's due selection, signals while a spec waits on a stalled server,
 //! the write file that cannot be opened and the schema check's naming of
-//! missing tables. The blocked `getaddrinfo` case needs a resolver stub and
+//! missing tables, and `evaluate-conditions` (S15a) with real samples. The
+//! blocked `getaddrinfo` case needs a resolver stub and
 //! runs one level below the binary (`shutdown.rs`), on the same `run_agent`
 //! as `main`.
 
@@ -533,6 +534,98 @@ fn run_once_writes_the_rows_and_lines_of_every_collector_family() {
          source_entity_id=sensor.living_room_temp,source_instance=default,\
          source_system=homeassistant,spec_name=c\\ ha,subject_id=living_room_temp,\
          subject_type=environment_sensor,unit=C value=21.5 1792576800250000000"
+    );
+}
+
+/// `evaluate-conditions` (PLAN.md 11.4) end to end: the conditions read
+/// samples from the fake InfluxDB and get their rows, the heartbeat
+/// follows, no spec runs and nothing is written to InfluxDB; then
+/// `--condition-id` re-evaluates one condition only.
+#[test]
+fn evaluate_conditions_writes_the_condition_rows_and_the_heartbeat() {
+    let fake = collectors_fake();
+    let db = TestDb::new();
+    spec(
+        &db,
+        "a json",
+        "http_json_metric",
+        true,
+        0,
+        &json!({"url": fake.url("/value"), "metric_path": "$.data.temp",
+                "metric_name": "host.temp"}),
+    );
+    condition(&db, "disk", "host.disk_ratio", "macmini", "");
+    condition(&db, "svc", "host.disk_ratio", "macmini", "service");
+    let before = Utc::now();
+    let db_arg = db.path().to_str().unwrap();
+
+    let output = run(&["evaluate-conditions", "--db", db_arg], &influx_env(&fake));
+    assert_eq!(output.status.code(), Some(0), "{output:?}");
+    assert_eq!(
+        text(&output.stdout),
+        "Condition evaluation completed (2).\n"
+    );
+    assert_eq!(
+        text(&output.stderr),
+        "Ignoring host_filter for non-host condition id=2 name=svc\n"
+    );
+    let targets: Vec<String> = fake.requests().into_iter().map(|r| r.target).collect();
+    assert_eq!(targets, ["/api/v2/query?org=graphyard"; 2]);
+    for name in ["disk", "svc"] {
+        assert_eq!(db.text("condition_definition", name, "status"), "warning");
+        assert_eq!(
+            db.value("condition_definition", name, "last_value"),
+            SqlValue::Real(0.85)
+        );
+        let evaluated = db.text("condition_definition", name, "last_evaluated");
+        assert!(
+            evaluated.as_str() >= before.format("%Y-%m-%d %H:%M:%S").to_string().as_str(),
+            "{evaluated}"
+        );
+        assert_eq!(
+            db.text("condition_definition", name, "updated_at"),
+            "2026-01-01 00:00:00"
+        );
+    }
+    assert_eq!(
+        db.text("condition_definition", "disk", "message"),
+        "host.disk_ratio gte 0.8 for 5m"
+    );
+    assert_eq!(
+        db.text("pipeline_heartbeat", "condition_evaluator", "details"),
+        r#"{"evaluated": 2, "failed": 0}"#
+    );
+    assert_eq!(
+        db.text("pipeline_heartbeat", "condition_evaluator", "status"),
+        "ok"
+    );
+    assert_ne!(
+        db.value("pipeline_heartbeat", "condition_evaluator", "last_success"),
+        SqlValue::Null
+    );
+    // No spec ran, no metrics heartbeat.
+    assert_eq!(
+        db.value("metric_collection_spec", "a json", "last_run_at"),
+        SqlValue::Null
+    );
+    assert_eq!(db.count("pipeline_heartbeat"), 1);
+
+    // One condition by id: only its query, only its row changes.
+    db.execute("UPDATE condition_definition SET message = 'old' WHERE name = 'disk'");
+    let output = run(
+        &["evaluate-conditions", "--db", db_arg, "--condition-id", "2"],
+        &influx_env(&fake),
+    );
+    assert_eq!(output.status.code(), Some(0), "{output:?}");
+    assert_eq!(
+        text(&output.stdout),
+        "Condition evaluation completed (1).\n"
+    );
+    assert_eq!(fake.requests().len(), 3);
+    assert_eq!(db.text("condition_definition", "disk", "message"), "old");
+    assert_eq!(
+        db.text("pipeline_heartbeat", "condition_evaluator", "details"),
+        r#"{"evaluated": 1, "failed": 0}"#
     );
 }
 

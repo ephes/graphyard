@@ -7,8 +7,9 @@ target. Nothing runs this code in production yet: the deployment selects it
 only through a systemd drop-in that later slices add (PLAN.md 8.3), and
 deploys ship `agent-rs/` only as a release archive.
 
-Status: slices S1 (scaffold), S2, S3a, S3b, S4a, S5, S6, S7a, S7b, S8, S9a, S9b, S10a and S10b (first release `agent-rs-v0.1.0`, see
-[Published releases](#published-releases)). S1: the workspace, the toolchain pin,
+Status: slices S1 (scaffold), S2, S3a, S3b, S4a, S5, S6, S7a, S7b, S8, S9a, S9b, S10a, S10b (first release `agent-rs-v0.1.0`, see
+[Published releases](#published-releases)) and S15a (the `evaluate-conditions`
+subcommand, version 0.2.0). S1: the workspace, the toolchain pin,
 the cargo-deny policy, the CI `rust` job, the `just rs-*` recipes, the shared
 model types (`graphyard_core::model`) and the fixture pipeline with its drift
 test. S2: the CPython compatibility helpers (`graphyard_core::pycompat`), the
@@ -34,6 +35,14 @@ stdout/stderr report lines, signals and `--run-once`, `--check-schema`,
 `--version` and the shadow mode `--influx-write-file`; see
 [Running the agent](#running-the-agent). The runs are pinned by `runs.json`
 (the Python runs with stubbed executors and condition samples).
+
+Slice S15a adds the subcommand `graphyard-agent evaluate-conditions
+[--condition-id N]` (PLAN.md 11.4), the port of `manage.py
+evaluate_conditions` that replaces it when the Python agent is retired; see
+[Evaluating conditions once](#evaluating-conditions-once). Pinned by the
+`condition_id` scenarios of `runs.json`, the subcommand tests
+(`crates/graphyard-agent/tests/evaluate_conditions.rs`), an e2e case and
+three parity-harness rounds.
 
 Slice S9a adds the offline parity harness (PLAN.md 9.4, `just rs-parity`,
 CI job `parity`): the Python agent (`manage.py start_agent --run-once`) and
@@ -141,7 +150,8 @@ agent-rs/
                         JSON metric in S7a)
     graphyard-agent/    the binary (S8): cli, scheduler, runs, collectors
                         (real executors, sink, samples), app (startup,
-                        signals, shutdown), logging
+                        signals, shutdown), logging; evaluate (the
+                        `evaluate-conditions` subcommand, S15a)
   fixtures/
     generate.py         fixture driver (`just rs-fixtures`)
     gen_*.py            builder modules, one or more per slice
@@ -221,6 +231,40 @@ schema check; 2 for a usage error. `--influx-write-file PATH` appends every
 batch the agent would write as `# write <utc> points=<n>` followed by its
 line protocol and counts it as written; queries still go to InfluxDB.
 
+### Evaluating conditions once
+
+```bash
+graphyard-agent evaluate-conditions --db db.sqlite3                    # every enabled condition
+graphyard-agent evaluate-conditions --condition-id 7 --db db.sqlite3   # only condition 7
+```
+
+The port of `manage.py evaluate_conditions` (PLAN.md 11.4): one conditions
+run exactly as the agent's (the enabled conditions ordered by name, or only
+the enabled condition with the given id; the per-condition writes and the
+`condition_evaluator` heartbeat, also for a single condition or when the id
+selects nothing). stdout `Condition evaluation completed (<total>).` and
+exit 0, or `Condition evaluation completed with failures
+(<failed>/<total>).`, stderr `CommandError: <failed> condition evaluation(s)
+failed.` and exit 1. A failure outside a condition (loading the conditions,
+a failure update, the heartbeat) exits 1 with one stderr line `Condition
+evaluation failed: <class>: <error>` where Python prints a traceback; a
+missing database or a failed schema check exits 1 as at the agent's startup
+(D-2); a usage error exits 2. `--condition-id` is Python's `int()` like the
+intervals (an id beyond the 64-bit key range selects nothing, as in
+Django). The settings come from the process environment only (D-9), so the
+operator call on macmini passes the unit's environment:
+
+```bash
+systemd-run --wait --pipe --quiet -p User=graphyard -p Group=graphyard \
+    -p EnvironmentFile=/etc/graphyard/graphyard.env \
+    -p WorkingDirectory=/opt/apps/graphyard/site/src/django \
+    /opt/graphyard-agent/<version>/graphyard-agent evaluate-conditions \
+    --db /opt/apps/graphyard/site/src/django/db.sqlite3
+```
+
+The subcommand installs no signal handlers (SIGINT and SIGTERM end it like
+the Python command) and does not take the agent's flags.
+
 ## Parity harness
 
 `agent-rs/parity/run_parity.py` (PLAN.md 9.4) runs both implementations on
@@ -242,18 +286,24 @@ branch of the evaluation (thresholds, several series, staleness, the anchor
 carry, a sample at the window start, a non-host `host_filter`, an unknown
 operator, a `tags_filter` that is no object, a v3 query error). Each agent
 gets its own fakes (`fakes.py`), which answer by request index; the fake
-InfluxDB places its samples relative to the `stop` of each query. The five
-rounds run `manage.py start_agent --run-once` (settings
+InfluxDB places its samples relative to the `stop` of each query. The first
+five rounds run `manage.py start_agent --run-once` (settings
 `parity/settings_parity.py`) and `graphyard-agent --run-once --db` at the
 same time with `INFLUX_API_MODE` `v2`, `v2`, `v3`, `auto` (the Flux endpoint
-answers 404) and finally without `INFLUX_TOKEN`.
+answers 404) and finally without `INFLUX_TOKEN`. Three more rounds run
+`manage.py evaluate_conditions` and `graphyard-agent evaluate-conditions
+--db` on the same databases (S15a): every enabled condition (two fail, so
+both exit 1 with the `CommandError` line), one condition by
+`--condition-id` in `v3` mode, and the id of the disabled condition.
 
-After each round the harness compares the rows of the six agent tables, the
-stdout lines, the operator log lines on stderr, and every request the fakes
+After each round the harness compares the exit codes, the rows of the six
+agent tables, the stdout lines, the operator log lines on stderr (with the
+`CommandError` line), and every request the fakes
 received (target, headers, body; written lines parsed). Only the
 documented masks apply: `now`-based timestamps, page-probe durations, the
 query bounds (the window length is compared) and the fakes' port numbers.
-The Python results must also match the statuses the corpus was written for,
+The Python results must also match the statuses the corpus was written for
+(and, in the `evaluate_conditions` rounds, the exit code and summary line),
 so a corpus that stops exercising its branches fails too. A failing run
 prints every difference per round and exits 1. The helpers are tested in
 `tests/test_agent_rs_parity.py`.
