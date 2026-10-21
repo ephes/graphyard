@@ -7,7 +7,7 @@ target. Nothing runs this code in production yet: the deployment selects it
 only through a systemd drop-in that later slices add (PLAN.md 8.3), and
 deploys ship `agent-rs/` only as a release archive.
 
-Status: slices S1 (scaffold), S2, S3a, S4a, S5 and S10a. S1: the workspace, the toolchain pin,
+Status: slices S1 (scaffold), S2, S3a, S3b, S4a, S5 and S10a. S1: the workspace, the toolchain pin,
 the cargo-deny policy, the CI `rust` job, the `just rs-*` recipes, the shared
 model types (`graphyard_core::model`) and the fixture pipeline with its drift
 test. S2: the CPython compatibility helpers (`graphyard_core::pycompat`), the
@@ -38,6 +38,12 @@ owning the connection, Django's connection setup and the graphyard pragmas,
 the schema contract and `check_schema`, Django's datetime column conversion,
 spec and condition loads and updates, and the heartbeat upsert with its lock
 retry.
+
+Slice S3b adds the registry touch (`Store::touch_registry`, PLAN.md 5.5): the
+batched `touch_registry_from_points` of graphyard `4d5baf1` without a bound
+subject, which reads the registry rows once per call and writes only missing,
+changed or stale (60 s) rows in one transaction, pinned by the
+`registry_cases` of `store_ops.json` including Django's statement sequence.
 
 The slice table is PLAN.md section 12; the test coverage per slice is
 [`TESTMAP.md`](TESTMAP.md).

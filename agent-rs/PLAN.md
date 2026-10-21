@@ -664,9 +664,17 @@ returns at once; otherwise, per call:
    the list of `(candidate host, point index)` where the candidate is the
    point's subject id for a host subject, else its `collector_host`.
 2. `now = timezone.now()` once.
-3. **Load** (`_load_registry_rows`, autocommit, no write lock): subjects by
-   type and id (pairs of the batch only), hosts whose `host_id` is a batch
-   host or a non-empty service candidate, services by `service_id`.
+3. **Load** (`_load_registry_rows`, autocommit, no write lock), one query
+   per table in this order: hosts whose `host_id` is a batch host or a
+   non-empty service candidate; subjects by `subject_type IN (…) AND
+   subject_id IN (…)` (the cross product of the batch's types and ids: every
+   row it returns is converted, then the rows are narrowed to the batch's
+   pairs); services by `service_id`. An empty `__in` list runs no query
+   (Django's `EmptyResultSet`), so a batch without hosts and services reads
+   only subjects. Django loads whole rows: `last_seen_at` goes through the
+   datetime conversion of 5.3 (unparseable text loads as NULL, so the row is
+   stale; an out-of-range value raises `ValueError` and fails the call, the
+   spec turns `critical`), text columns must decode as UTF-8.
 4. **Plan** (`_plan_registry_updates`) over the loaded rows:
    - subject: batch `source_system` non-empty and different →
      `source_system` + `last_seen_at`; else stale → `last_seen_at`;
@@ -679,9 +687,12 @@ returns at once; otherwise, per call:
    (`REGISTRY_LAST_SEEN_UPDATE_INTERVAL`); a recent row is not written. The
    service target host (`_service_target_host`) is the host row of the last
    candidate, in batch order, whose host row is known (loaded, or created in
-   step 6) and either existed before the batch or is registered by a host
-   point at the same or an earlier index (the per-point order of the old
-   loop); none when no candidate qualifies.
+   step 6) and either existed before the batch (was in the load; a host the
+   batch creates, or finds in `get_or_create`'s select, does not count) or
+   is registered by a host point at the same or an earlier index (the
+   per-point order of the old loop); none when no candidate qualifies. The
+   source system comparison is Python's `!=`: only a stored TEXT equal to
+   the batch value is unchanged (NULL is replaced).
 5. No row missing and an empty plan → return without a transaction (steady
    state writes nothing).
 6. Otherwise one `transaction.atomic()` (`BEGIN IMMEDIATE`, settings
@@ -698,7 +709,15 @@ returns at once; otherwise, per call:
    (…)`, one `UPDATE service_registry SET last_seen_at WHERE id IN (…)`, one
    `UPDATE … SET host_id, last_seen_at WHERE id = ?` per re-parented service.
    Each is a queryset `update()`, so the row images are pinned by
-   `store_ops.json`, not by the statement text.
+   `store_ops.json`, not by the statement text; the statement sequence
+   (verb, table, inside the transaction or not) is pinned by the
+   `statements` of the fixture's `registry_cases` (S3b). Under `BEGIN
+   IMMEDIATE` after the reload no other connection can insert a row, so the
+   realistic race is a row the web app creates between the autocommit load
+   and the transaction: the reload finds it and the plan refreshes it like
+   any existing row. The `IntegrityError` branch of `get_or_create` stays
+   (select again, re-raise when still missing); an error anywhere rolls the
+   whole transaction back.
 
 The bound-subject filter on the service updates is not ported (non-goal,
 5.7).
@@ -1157,8 +1176,10 @@ slice. ops-library, ops-deploy, ops-control as in 8.3.
 - `graphyard-store`: every operation of section 5 against databases built
   from `schema.sql`, asserting the fixture row images; 0-row updates;
   heartbeat locked-retry with a second connection holding the write lock;
-  registry get-or-create race (`IntegrityError` path); the `ingest_token`
-  grep test.
+  registry statement sequences, a row inserted between the registry check
+  and its transaction, `get_or_create`'s `IntegrityError` path (a trigger
+  rejecting the insert) and a row that appears inside the transaction; the
+  `ingest_token` grep test.
 - `graphyard-influx`: fake InfluxDB (tokio server) for write requests (path,
   query string, headers, body parsed with `influxdb-line-protocol`), Flux
   responses (annotated CSV with several tables, defaults, NaN, empty cells),

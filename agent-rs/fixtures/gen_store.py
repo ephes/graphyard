@@ -1,7 +1,7 @@
-"""Fixtures ``store_ops.json`` and ``datetime_codec.json`` (slice S3a).
+"""Fixtures ``store_ops.json`` and ``datetime_codec.json`` (slices S3a, S3b).
 
-``store_ops.json`` pins the SQL effects of the agent's non-registry store
-operations (PLAN.md 5.3, 5.4): every case starts from the given rows, runs the
+``store_ops.json`` pins the SQL effects of the agent's store operations
+(PLAN.md 5.3, 5.4, 5.5): every case starts from the given rows, runs the
 Python operation on a temporary database migrated with the test settings
 (``timezone.now`` injected) and records every row of the touched table
 afterwards (all columns, raw SQLite values) or the exception. The operations:
@@ -14,7 +14,11 @@ afterwards (all columns, raw SQLite values) or the exception. The operations:
   filtered by ``condition_id``) with the loaded values;
 * ``update_condition_success`` / ``update_condition_failure``: the two
   ``condition.save(update_fields=...)`` calls of ``evaluate_conditions_once``;
-* ``record_heartbeat``: ``services.record_heartbeat``.
+* ``record_heartbeat``: ``services.record_heartbeat``;
+* ``touch_registry`` (``registry_cases``, S3b):
+  ``services.touch_registry_from_points(points)`` without a bound subject,
+  seeding and recording all three registry tables plus the registry
+  statements Django sends (verb, table, inside the registry transaction).
 
 ``datetime_codec.json`` pins Django's datetime column conversion: stored text
 through the ``sqlite3`` converter (``parse_datetime``) and
@@ -32,7 +36,7 @@ import contextlib
 import random
 import sqlite3
 import tempfile
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -119,11 +123,9 @@ def _rows(raw: sqlite3.Connection, table: str) -> list[dict[str, Any]]:
     ]
 
 
-def _seed(raw: sqlite3.Connection, table: str, rows: list[dict[str, Any]]) -> None:
-    raw.execute(f'DELETE FROM "{table}"')
-    # Every case starts like a fresh database: AUTOINCREMENT continues
-    # after the highest seeded id.
-    raw.execute("DELETE FROM sqlite_sequence WHERE name = ?", [table])
+def _insert_rows(
+    raw: sqlite3.Connection, table: str, rows: list[dict[str, Any]]
+) -> None:
     for row in rows:
         columns = ", ".join(f'"{column}"' for column in row)
         marks = ", ".join("?" for _ in row)
@@ -131,6 +133,14 @@ def _seed(raw: sqlite3.Connection, table: str, rows: list[dict[str, Any]]) -> No
             f'INSERT INTO "{table}" ({columns}) VALUES ({marks})',
             [_sql(value) for value in row.values()],
         )
+
+
+def _seed(raw: sqlite3.Connection, table: str, rows: list[dict[str, Any]]) -> None:
+    raw.execute(f'DELETE FROM "{table}"')
+    # Every case starts like a fresh database: AUTOINCREMENT continues
+    # after the highest seeded id.
+    raw.execute("DELETE FROM sqlite_sequence WHERE name = ?", [table])
+    _insert_rows(raw, table, rows)
 
 
 # ---------------------------------------------------------------------------
@@ -742,13 +752,542 @@ def _heartbeat_cases() -> list[dict[str, Any]]:
     ]
 
 
+# ---------------------------------------------------------------------------
+# Registry touch (slice S3b, PLAN.md 5.5).
+
+SUBJECT_TABLE = "subject_registry"
+HOST_TABLE = "host_registry"
+SERVICE_TABLE = "service_registry"
+REGISTRY_TABLES = (SUBJECT_TABLE, HOST_TABLE, SERVICE_TABLE)
+
+POINT_TS = "2026-10-21T08:15:00+00:00"
+# Relative to NOW_TEXT (2026-10-21 08:15:30.123456): REGISTRY_LAST_SEEN_UPDATE_INTERVAL
+# is 60 s, and a row is stale at exactly 60 s.
+SEEN_RECENT = "2026-10-21 08:15:00.123457"
+SEEN_JUST_FRESH = "2026-10-21 08:14:30.123457"
+SEEN_EXACTLY_STALE = "2026-10-21 08:14:30.123456"
+SEEN_OLD = "2026-10-21 08:10:30"
+SEEN_FUTURE = "2026-10-21 09:00:00"
+
+
+def subject_row(
+    row_id: int, subject_type: str, subject_id: str, **overrides: Any
+) -> dict[str, Any]:
+    row = {
+        "id": row_id,
+        "subject_type": subject_type,
+        "subject_id": subject_id,
+        "display_name": subject_id,
+        "source_system": "vector",
+        "last_seen_at": SEEN_RECENT,
+    }
+    row.update(overrides)
+    return row
+
+
+def host_reg_row(row_id: int, host_id: str, **overrides: Any) -> dict[str, Any]:
+    row = {
+        "id": row_id,
+        "host_id": host_id,
+        "display_name": host_id,
+        "grafana_url": "",
+        "enabled": 1,
+        "last_seen_at": SEEN_RECENT,
+    }
+    row.update(overrides)
+    return row
+
+
+def service_reg_row(
+    row_id: int, service_id: str, host_pk: int | None, **overrides: Any
+) -> dict[str, Any]:
+    row = {
+        "id": row_id,
+        "service_id": service_id,
+        "display_name": service_id,
+        "grafana_url": "",
+        "enabled": 1,
+        "last_seen_at": SEEN_RECENT,
+        "host_id": host_pk,
+    }
+    row.update(overrides)
+    return row
+
+
+def metric_point(
+    subject_type: str,
+    subject_id: str,
+    *,
+    source_system: str,
+    collector_host: str,
+    collector_service: str = "graphyard-agent",
+    service: str | None = None,
+    host: str | None = None,
+    metric: str = "m",
+    value: float = 1.0,
+) -> dict[str, Any]:
+    """A ``MetricPoint`` as JSON (every dataclass field, in field order)."""
+    return {
+        "ts": POINT_TS,
+        "metric": metric,
+        "value": value,
+        "subject_type": subject_type,
+        "subject_id": subject_id,
+        "source_system": source_system,
+        "collector_service": collector_service,
+        "collector_host": collector_host,
+        "source_instance": "default",
+        "source_entity_id": None,
+        "host": host,
+        "service": service,
+        "tags": None,
+    }
+
+
+def host_point(
+    host: str, service: str | None = None, *, source_system: str = "vector"
+) -> dict[str, Any]:
+    return metric_point(
+        "host",
+        host,
+        source_system=source_system,
+        collector_host=host,
+        collector_service="vector",
+        host=host,
+        service=service,
+    )
+
+
+def sensor_point(
+    subject_id: str,
+    service: str | None,
+    collector_host: str,
+    *,
+    subject_type: str = "environment_sensor",
+    source_system: str = "homeassistant",
+) -> dict[str, Any]:
+    return metric_point(
+        subject_type,
+        subject_id,
+        source_system=source_system,
+        collector_host=collector_host,
+        service=service,
+    )
+
+
+def _python_point(point: dict[str, Any]) -> services.influx.MetricPoint:
+    fields = dict(point)
+    fields["ts"] = datetime.fromisoformat(fields["ts"])
+    return services.influx.MetricPoint(**fields)
+
+
+def _registry_statement(sql: str, in_atomic_block: bool) -> dict[str, Any] | None:
+    """A registry statement as the Rust tests compare it: verb, table, txn."""
+    found = [
+        (sql.find(f'"{table}"'), table)
+        for table in REGISTRY_TABLES
+        if f'"{table}"' in sql
+    ]
+    if not found:
+        return None
+    return {
+        "verb": sql.lstrip().split(" ", 1)[0].upper(),
+        "table": min(found)[1],
+        "in_transaction": in_atomic_block,
+    }
+
+
+def _drop_triggers(raw: sqlite3.Connection) -> None:
+    names = [
+        name
+        for (name,) in raw.execute(
+            "SELECT name FROM sqlite_master WHERE type = 'trigger'"
+        ).fetchall()
+    ]
+    for name in names:
+        raw.execute(f'DROP TRIGGER "{name}"')
+
+
+def _run_registry_case(raw: sqlite3.Connection, case: dict[str, Any]) -> dict[str, Any]:
+    """Run ``touch_registry_from_points`` (no bound subject) on seeded rows.
+
+    Records the registry statements Django sends (verb, first registry table
+    named, inside the registry transaction or not), the three tables
+    afterwards and the exception, if any.
+    """
+    for table in reversed(REGISTRY_TABLES):
+        raw.execute(f'DELETE FROM "{table}"')
+    for table in REGISTRY_TABLES:
+        _seed(raw, table, case["before"].get(table, []))
+    for statement in case.get("setup_sql", []):
+        raw.execute(statement)
+    op = case["op"]
+    statements: list[dict[str, Any]] = []
+
+    def wrapper(
+        execute: Callable[..., Any],
+        sql: str,
+        params: Any,
+        many: bool,
+        context: dict[str, Any],
+    ) -> Any:
+        recorded = _registry_statement(sql, context["connection"].in_atomic_block)
+        if recorded is not None:
+            statements.append(recorded)
+        return execute(sql, params, many, context)
+
+    real_needs_write = services._registry_needs_write
+
+    def needs_write(*args: Any, **kwargs: Any) -> bool:
+        # A concurrent writer (the web app) between the autocommit check and
+        # the registry transaction.
+        result = real_needs_write(*args, **kwargs)
+        for table, rows in case.get("insert_after_check", {}).items():
+            _insert_rows(raw, table, rows)
+        return result
+
+    result: dict[str, Any] = {}
+    points = [_python_point(point) for point in op["points"]]
+    try:
+        with (
+            mock.patch("django.utils.timezone.now", return_value=_now(op)),
+            mock.patch.object(services, "_registry_needs_write", needs_write),
+            connection.execute_wrapper(wrapper),
+        ):
+            services.touch_registry_from_points(points)
+    except Exception as err:  # noqa: BLE001
+        # Normalisation messages become spec messages (P1); SQLite and
+        # datetime texts are library texts (P2).
+        result["error"] = _error(err, p2=not case.get("error_p1", False))
+    finally:
+        _drop_triggers(raw)
+    return {
+        **case,
+        **result,
+        "statements": statements,
+        "after": {table: _rows(raw, table) for table in REGISTRY_TABLES},
+    }
+
+
+def _fifty_point_batch() -> list[dict[str, Any]]:
+    """``test_registry_write_batching.py:batch()``: host ``edge``, five services."""
+    return [
+        {
+            **host_point("edge", f"svc{index % 5}"),
+            "metric": f"m{index}",
+            "value": float(index),
+        }
+        for index in range(50)
+    ]
+
+
+def _registry_cases() -> list[dict[str, Any]]:
+    def case(
+        title: str,
+        points: list[dict[str, Any]],
+        *,
+        subjects: list[dict[str, Any]] | None = None,
+        hosts: list[dict[str, Any]] | None = None,
+        service_rows: list[dict[str, Any]] | None = None,
+        now: str = NOW_TEXT,
+        **extra: Any,
+    ) -> dict[str, Any]:
+        return {
+            "name": title,
+            "before": {
+                SUBJECT_TABLE: subjects or [],
+                HOST_TABLE: hosts or [],
+                SERVICE_TABLE: service_rows or [],
+            },
+            "op": {"kind": "touch_registry", "now": now, "points": points},
+            **extra,
+        }
+
+    fifty = _fifty_point_batch()
+    edge_rows: dict[str, Any] = {
+        "subjects": [subject_row(1, "host", "edge")],
+        "hosts": [host_reg_row(1, "edge")],
+        "service_rows": [service_reg_row(i + 1, f"svc{i}", 1) for i in range(5)],
+    }
+
+    def aged(rows: dict[str, Any], seen: str | None) -> dict[str, Any]:
+        return {
+            key: [{**row, "last_seen_at": seen} for row in value]
+            for key, value in rows.items()
+        }
+
+    ha_point = {
+        **sensor_point("office_temperature", "homeassistant", "macmini"),
+        "metric": "ha.sensor.office_temperature",
+        "value": 22.0,
+        "source_instance": "ha-main",
+        "source_entity_id": "sensor.office_temperature",
+        "tags": {"device_class": "temperature"},
+    }
+    vector_point = {
+        **host_point("macmini", "vector"),
+        "metric": "host.filesystem_used_ratio",
+        "value": 0.52,
+        "source_instance": "vector-macmini",
+        "tags": {"mountpoint": "/"},
+    }
+    other_and_mail = {
+        "hosts": [host_reg_row(1, "other")],
+        "service_rows": [service_reg_row(1, "mail", 1)],
+    }
+    return [
+        case("an empty point list touches nothing", [], **edge_rows),
+        # test_metric_dimensions.py::test_touch_registry_tracks_subjects_and_keeps_host_registry_host_only
+        case(
+            "subjects, the host only for host subjects, and services are created",
+            [ha_point, vector_point],
+        ),
+        # test_metric_dimensions.py::test_touch_registry_links_service_to_collector_host_for_non_host_subject
+        case(
+            "a service of a non-host subject belongs to the existing collector host",
+            [ha_point],
+            hosts=[host_reg_row(1, "macmini", last_seen_at=None)],
+        ),
+        # test_registry_write_batching.py::test_fifty_point_batch_writes_each_registry_row_once
+        case("a fifty-point batch inserts each registry row once", fifty),
+        case("steady state reads three tables and writes nothing", fifty, **edge_rows),
+        # ::test_stale_last_seen_refresh_is_one_update_per_table
+        case(
+            "stale rows are refreshed with one update per table",
+            fifty,
+            **aged(edge_rows, SEEN_OLD),
+        ),
+        # ::test_recent_last_seen_is_not_rewritten
+        case(
+            "a row just under 60 s old is not rewritten",
+            fifty,
+            **aged(edge_rows, SEEN_JUST_FRESH),
+        ),
+        case(
+            "a row exactly 60 s old is stale",
+            fifty,
+            **aged(edge_rows, SEEN_EXACTLY_STALE),
+        ),
+        case(
+            "a NULL last_seen_at is stale",
+            [host_point("edge", "svc0")],
+            subjects=[subject_row(1, "host", "edge", last_seen_at=None)],
+            hosts=[host_reg_row(1, "edge")],
+            service_rows=[service_reg_row(1, "svc0", 1, last_seen_at=None)],
+        ),
+        case(
+            "a future last_seen_at is not stale",
+            [host_point("edge", "svc0")],
+            **aged(
+                {
+                    "subjects": [subject_row(1, "host", "edge")],
+                    "hosts": [host_reg_row(1, "edge")],
+                    "service_rows": [service_reg_row(1, "svc0", 1)],
+                },
+                SEEN_FUTURE,
+            ),
+        ),
+        case(
+            "an unparseable last_seen_at loads as NULL and is refreshed",
+            [host_point("edge")],
+            subjects=[subject_row(1, "host", "edge", last_seen_at="yesterday")],
+            hosts=[host_reg_row(1, "edge", last_seen_at=20261021)],
+        ),
+        case(
+            "an offset last_seen_at is compared as its UTC instant",
+            [host_point("edge")],
+            subjects=[
+                subject_row(1, "host", "edge", last_seen_at="2026-10-21T10:15:00+02:00")
+            ],
+            hosts=[host_reg_row(1, "edge", last_seen_at="2026-10-21T10:14:00.5+02:00")],
+        ),
+        case(
+            "an out-of-range stored last_seen_at fails the touch",
+            [host_point("edge", "svc0")],
+            subjects=[subject_row(1, "host", "edge", last_seen_at=SEEN_OLD)],
+            hosts=[host_reg_row(1, "edge", last_seen_at="2026-13-01 00:00:00")],
+        ),
+        case(
+            "every row of the subject cross product is converted",
+            [host_point("alpha"), sensor_point("beta", None, "alpha")],
+            subjects=[
+                subject_row(1, "host", "alpha", last_seen_at=SEEN_OLD),
+                subject_row(2, "host", "beta", last_seen_at="2026-02-30 00:00:00"),
+            ],
+            hosts=[host_reg_row(1, "alpha")],
+        ),
+        case(
+            "a subject of another type with the same id is a separate row",
+            [host_point("macmini"), sensor_point("macmini", None, "macmini")],
+            subjects=[
+                subject_row(1, "environment_sensor", "macmini", last_seen_at=None)
+            ],
+        ),
+        # ::test_batch_keeps_last_source_system_and_reparents_to_last_host
+        case(
+            "the batch keeps the last source system and re-parents to the last host",
+            [
+                host_point("other", "mail", source_system="a"),
+                host_point("edge", "mail", source_system="b"),
+                host_point("edge", "mail", source_system="c"),
+            ],
+            **other_and_mail,
+        ),
+        case(
+            "a changed source system is written even when the row is recent",
+            [host_point("edge", source_system="Vector-Next")],
+            subjects=[subject_row(1, "host", "edge", source_system="vector")],
+            hosts=[host_reg_row(1, "edge")],
+        ),
+        case(
+            "a NULL stored source system is replaced",
+            [sensor_point("office", None, "macmini")],
+            subjects=[
+                subject_row(1, "environment_sensor", "office", source_system=None)
+            ],
+        ),
+        # ::test_collector_host_resolves_at_its_position_in_the_batch[collector_first]
+        case(
+            "a collector host registered by a later point does not re-parent",
+            [sensor_point("office", "mail", "edge"), host_point("edge")],
+            **other_and_mail,
+        ),
+        # ::test_collector_host_resolves_at_its_position_in_the_batch[host_first]
+        case(
+            "a collector host registered by an earlier point re-parents",
+            [host_point("edge"), sensor_point("office", "mail", "edge")],
+            **other_and_mail,
+        ),
+        case(
+            "a collector host that exists before the batch re-parents",
+            [sensor_point("office", "mail", "edge")],
+            hosts=[host_reg_row(1, "other"), host_reg_row(2, "edge")],
+            service_rows=[service_reg_row(1, "mail", 1)],
+        ),
+        case(
+            "the last qualifying candidate wins over a later unknown collector host",
+            [
+                host_point("edge", "mail"),
+                sensor_point("office", "mail", "nowhere"),
+            ],
+            **other_and_mail,
+        ),
+        case(
+            "an unknown collector host keeps the service host and refreshes it when stale",
+            [sensor_point("office", "mail", "nowhere")],
+            hosts=[host_reg_row(1, "other")],
+            service_rows=[service_reg_row(1, "mail", 1, last_seen_at=SEEN_OLD)],
+        ),
+        case(
+            "a re-parent is written even when the service is recent",
+            [host_point("edge", "mail")],
+            hosts=[host_reg_row(1, "other"), host_reg_row(2, "edge")],
+            subjects=[subject_row(1, "host", "edge")],
+            service_rows=[service_reg_row(1, "mail", 1)],
+        ),
+        case(
+            "an orphaned service is re-parented to its host",
+            [host_point("edge", "mail")],
+            hosts=[host_reg_row(1, "edge")],
+            subjects=[subject_row(1, "host", "edge")],
+            service_rows=[service_reg_row(1, "mail", None)],
+        ),
+        # ::test_new_service_from_unknown_collector_host_has_no_host
+        case(
+            "a new service from an unknown collector host has no host",
+            [sensor_point("office", "mail", "edge"), host_point("edge")],
+        ),
+        case(
+            "identifiers are normalised before the lookup",
+            [
+                {
+                    **host_point("edge", " mail "),
+                    "subject_id": " Edge ",
+                    "host": "EDGE",
+                    "collector_host": " Edge",
+                    "source_system": " Vector ",
+                }
+            ],
+            subjects=[subject_row(1, "host", "edge", last_seen_at=SEEN_OLD)],
+            hosts=[host_reg_row(1, "edge", last_seen_at=SEEN_OLD)],
+            service_rows=[service_reg_row(1, "mail", 1, last_seen_at=SEEN_OLD)],
+        ),
+        case(
+            "a normalisation error touches nothing",
+            [
+                host_point("edge", "svc0"),
+                {**host_point("edge"), "subject_type": "planet"},
+            ],
+            error_p1=True,
+        ),
+        case(
+            "a host tag that differs from the subject fails before any registry read",
+            [{**host_point("edge"), "host": "other"}],
+            hosts=[host_reg_row(1, "edge", last_seen_at=SEEN_OLD)],
+            error_p1=True,
+        ),
+        case(
+            "an integrity error rolls back the whole registry transaction",
+            [host_point("rejected", "svc0")],
+            hosts=[host_reg_row(1, "edge", last_seen_at=SEEN_OLD)],
+            setup_sql=[
+                'CREATE TRIGGER "reject_host" BEFORE INSERT ON "host_registry" '
+                "WHEN NEW.host_id = 'rejected' BEGIN "
+                "SELECT RAISE(ABORT, 'UNIQUE constraint failed: host_registry.host_id'); "
+                "END"
+            ],
+        ),
+        case(
+            "a row that appears inside the transaction is reused and refreshed",
+            [host_point("edge", "svc0")],
+            setup_sql=[
+                'CREATE TRIGGER "add_host" AFTER INSERT ON "subject_registry" '
+                "WHEN NEW.subject_id = 'edge' BEGIN "
+                'INSERT INTO "host_registry" '
+                '("host_id", "display_name", "grafana_url", "enabled", "last_seen_at") '
+                "VALUES ('edge', 'from trigger', '', 1, NULL); "
+                "END"
+            ],
+        ),
+        case(
+            "a row inserted after the check is reloaded in the transaction",
+            [host_point("edge", "svc0")],
+            insert_after_check={
+                SUBJECT_TABLE: [
+                    subject_row(
+                        7, "host", "edge", source_system="web", last_seen_at=None
+                    )
+                ],
+                HOST_TABLE: [host_reg_row(9, "edge", display_name="Edge (web)")],
+            },
+        ),
+        case(
+            "duplicate points of one row write it once",
+            [host_point("edge", "svc0")] * 3,
+            subjects=[subject_row(1, "host", "edge", last_seen_at=SEEN_OLD)],
+            hosts=[host_reg_row(1, "edge", last_seen_at=SEEN_OLD)],
+            service_rows=[service_reg_row(1, "svc0", 1, last_seen_at=SEEN_OLD)],
+        ),
+        case(
+            "a whole-second now is written without microseconds",
+            [host_point("edge", "svc0")],
+            now=NOW_WHOLE_TEXT,
+        ),
+    ]
+
+
 def build_store_ops() -> dict[str, Any]:
     with temp_database() as raw:
         cases = [
             _run_case(raw, case)
             for case in [*_spec_cases(), *_condition_cases(), *_heartbeat_cases()]
         ]
-    return {"now_default": NOW_TEXT, "cases": cases}
+        registry_cases = [_run_registry_case(raw, case) for case in _registry_cases()]
+    return {
+        "now_default": NOW_TEXT,
+        "cases": cases,
+        "registry_cases": registry_cases,
+    }
 
 
 # ---------------------------------------------------------------------------

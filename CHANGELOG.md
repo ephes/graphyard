@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- Rust agent port (`agent-rs/`, slice S3b): the registry touch
+  (`graphyard_store::Store::touch_registry`), a port of the batched
+  `touch_registry_from_points` without a bound subject: one read per registry
+  table, no write in the steady state, creates and refreshes of rows older than
+  60 seconds in one `BEGIN IMMEDIATE` transaction, re-parenting by batch
+  position. Pinned by the new `registry_cases` of `store_ops.json`, which
+  record the row images and the statement sequence Django sends. The plan's
+  section 5.5 now states the query order, the datetime conversion of loaded
+  rows and the race that remains after the batching. Nothing runs the Rust
+  code yet; the Python agent is unchanged.
+
 - Rust agent port (`agent-rs/`, slice S5): condition evaluation
   (`graphyard_core::conditions`, a port of `services.py:evaluate_condition`
   and its series, anchor and staleness helpers) behind a sample source trait,

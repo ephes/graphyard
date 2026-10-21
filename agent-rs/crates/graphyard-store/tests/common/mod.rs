@@ -7,7 +7,8 @@ use std::path::{Path, PathBuf};
 
 use chrono::{DateTime, NaiveDateTime, Utc};
 use graphyard_core::settings::Settings;
-use graphyard_store::Store;
+use graphyard_core::{MetricPoint, Tags};
+use graphyard_store::{Store, StoreError};
 use rusqlite::Connection;
 use rusqlite::types::Value as SqlValue;
 use serde_json::Value;
@@ -16,6 +17,9 @@ pub const SCHEMA_SQL: &str = include_str!("../../../../fixtures/schema/schema.sq
 pub const AGENT_TABLES_JSON: &str = include_str!("../../../../fixtures/schema/agent_tables.json");
 pub const STORE_OPS_JSON: &str = include_str!("../../../../fixtures/store_ops.json");
 pub const DATETIME_CODEC_JSON: &str = include_str!("../../../../fixtures/datetime_codec.json");
+
+/// The registry tables in seeding order (PLAN.md 5.5).
+pub const REGISTRY_TABLES: [&str; 3] = ["subject_registry", "host_registry", "service_registry"];
 
 /// The settings of an empty environment (the defaults of `base.py`).
 pub fn default_settings() -> Settings {
@@ -81,20 +85,40 @@ impl TestDb {
             .execute(&format!("DELETE FROM \"{table}\""), [])
             .unwrap();
         for row in rows {
-            let row = row.as_object().expect("fixture row is an object");
-            let columns: Vec<String> = row.keys().map(|key| format!("\"{key}\"")).collect();
-            let marks: Vec<&str> = row.keys().map(|_| "?").collect();
-            let values: Vec<SqlValue> = row.values().map(sql_value).collect();
+            insert_row(&connection, table, row);
+        }
+    }
+
+    /// Seed the three registry tables of a `registry_cases` entry and run
+    /// its `setup_sql` (triggers).
+    pub fn seed_registry(&self, case: &Value) {
+        for table in REGISTRY_TABLES {
+            self.seed(table, case["before"][table].as_array().unwrap());
+        }
+        let connection = self.raw();
+        for statement in case
+            .get("setup_sql")
+            .and_then(Value::as_array)
+            .into_iter()
+            .flatten()
+        {
             connection
-                .execute(
-                    &format!(
-                        "INSERT INTO \"{table}\" ({}) VALUES ({})",
-                        columns.join(", "),
-                        marks.join(", ")
-                    ),
-                    rusqlite::params_from_iter(values),
-                )
+                .execute_batch(statement.as_str().unwrap())
                 .unwrap();
+        }
+    }
+
+    /// Insert the `insert_after_check` rows of a registry case (a concurrent
+    /// writer between the autocommit check and the transaction).
+    pub fn insert_after_check(&self, case: &Value) {
+        let Some(tables) = case.get("insert_after_check").and_then(Value::as_object) else {
+            return;
+        };
+        let connection = self.raw();
+        for (table, rows) in tables {
+            for row in rows.as_array().unwrap() {
+                insert_row(&connection, table, row);
+            }
         }
     }
 
@@ -120,6 +144,67 @@ impl TestDb {
             .unwrap()
             .collect::<rusqlite::Result<_>>()
             .unwrap()
+    }
+}
+
+/// Insert one fixture row into `table`.
+pub fn insert_row(connection: &Connection, table: &str, row: &Value) {
+    let row = row.as_object().expect("fixture row is an object");
+    let columns: Vec<String> = row.keys().map(|key| format!("\"{key}\"")).collect();
+    let marks: Vec<&str> = row.keys().map(|_| "?").collect();
+    let values: Vec<SqlValue> = row.values().map(sql_value).collect();
+    connection
+        .execute(
+            &format!(
+                "INSERT INTO \"{table}\" ({}) VALUES ({})",
+                columns.join(", "),
+                marks.join(", ")
+            ),
+            rusqlite::params_from_iter(values),
+        )
+        .unwrap();
+}
+
+/// A fixture `MetricPoint` (every dataclass field, `ts` in ISO form).
+pub fn metric_point(value: &Value) -> MetricPoint {
+    let text = |key: &str| value[key].as_str().unwrap().to_owned();
+    let optional = |key: &str| value[key].as_str().map(str::to_owned);
+    MetricPoint {
+        ts: DateTime::parse_from_rfc3339(value["ts"].as_str().unwrap())
+            .unwrap()
+            .with_timezone(&Utc),
+        metric: text("metric"),
+        value: value["value"].as_f64().unwrap(),
+        subject_type: text("subject_type"),
+        subject_id: text("subject_id"),
+        source_system: text("source_system"),
+        collector_service: text("collector_service"),
+        collector_host: text("collector_host"),
+        source_instance: text("source_instance"),
+        source_entity_id: optional("source_entity_id"),
+        host: optional("host"),
+        service: optional("service"),
+        tags: value["tags"].as_object().map(|tags| {
+            tags.iter()
+                .map(|(key, value)| (key.clone(), value.as_str().unwrap().to_owned()))
+                .collect::<Tags>()
+        }),
+    }
+}
+
+/// The Python exception class of a store error, where the store reproduces
+/// one.
+pub fn python_class(err: &StoreError) -> &'static str {
+    match err {
+        StoreError::DateTime(err) => err.class,
+        StoreError::NotUpdated => "NotUpdated",
+        StoreError::Point(err) => err.python_class(),
+        StoreError::Sqlite(rusqlite::Error::SqliteFailure(failure, _))
+            if failure.code == rusqlite::ErrorCode::ConstraintViolation =>
+        {
+            "IntegrityError"
+        }
+        other => panic!("unexpected store error {other:?}"),
     }
 }
 

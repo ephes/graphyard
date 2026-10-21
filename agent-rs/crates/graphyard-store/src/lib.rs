@@ -14,14 +14,20 @@
 //! Where Python reads the clock inside an operation, the Rust operation
 //! takes `now` as a parameter.
 //!
-//! Slice S3a: spec and condition loads and updates, heartbeats. The
-//! registry touch (PLAN.md 5.5) follows in S3b.
+//! Slice S3a: spec and condition loads and updates, heartbeats. Slice S3b:
+//! the registry touch (PLAN.md 5.5, [`Store::touch_registry`]).
+
+// The unit tests share the integration tests' helpers (`tests/common`),
+// which name this crate.
+#[cfg(test)]
+extern crate self as graphyard_store;
 
 mod actor;
 mod conditions;
 pub mod datetime;
 mod error;
 mod heartbeat;
+mod registry;
 mod rows;
 pub mod schema;
 mod specs;
@@ -31,5 +37,6 @@ pub use conditions::ConditionRow;
 pub use datetime::{DateTimeError, DbDateTime};
 pub use error::{NOT_UPDATED_MESSAGE, StoreError};
 pub use heartbeat::{HeartbeatRecord, details_json};
+pub use registry::REGISTRY_LAST_SEEN_UPDATE_INTERVAL;
 pub use schema::{MIN_GRAPHYARD_MIGRATION, REQUIRED_COLUMNS, SchemaReport, check_schema};
 pub use specs::{SpecRow, SpecRunUpdate};
