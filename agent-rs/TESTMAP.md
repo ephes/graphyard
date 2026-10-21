@@ -95,6 +95,25 @@ counterpart. Its tests:
 | `test_registry_write_batching.py` (`binding=None`): `::test_fifty_point_batch_writes_each_registry_row_once` (7 INSERTs in one transaction, then 3 reads and no write), `::test_stale_last_seen_refresh_is_one_update_per_table`, `::test_recent_last_seen_is_not_rewritten`, `::test_batch_keeps_last_source_system_and_reparents_to_last_host`, `::test_collector_host_resolves_at_its_position_in_the_batch` (both orders), `::test_new_service_from_unknown_collector_host_has_no_host` | `registry_cases` of the same names; statement counts through the fixture's `statements`; `registry/tests.rs::steady_state_takes_no_write_lock` | done |
 | A row the web app inserts between the check and the registry transaction (reloaded, refreshed, not inserted twice) | `registry_cases` "a row inserted after the check is reloaded in the transaction" (`registry/tests.rs` runs the two phases) | done |
 
+## S6 — HTTP layer
+
+| Python behaviour / test | Rust counterpart | Status |
+| --- | --- | --- |
+| httpx `URL()` (`_urlparse.urlparse`: validation, `InvalidURL` texts, normalisation, `str()`), `MAX_URL_LENGTH`; httpcore's scheme checks (`UnsupportedProtocol`), the host, port, request target and `Host` it connects with, URL credentials as basic auth (`_build_request_auth`) | `graphyard-collect/src/http/tests/urls.rs` against `fixtures/http_errors.json` (`gen_http_errors.py`: `urls`, `long_urls`); `::every_httpx_request_target_goes_on_the_wire` | done |
+| `urllib.parse.urljoin` (via `httpx.URL.join`), `Client._build_redirect_request` (method change, `Authorization` and body handling, fragment carry, host-less `Location`, invalid `Location` → `RemoteProtocolError`/`InvalidURL`) | `urls.rs::urljoin_matches_cpython`, `::redirect_requests_match_httpx` (`urljoin`, `redirects`) | done |
+| `Response.raise_for_status()` texts, `reason_phrase` (server text, empty stays empty), `httpx.codes` phrases | `tests/texts.rs` (`raise_for_status`, `reason_phrases`) | done |
+| Exception classes: `httpx.HTTPError` subclasses vs `InvalidURL`/`JSONDecodeError`/…, the page probe's `except (httpx.HTTPError, _PageProbeLimitExceeded, _PageProbeDeadlineExceeded)` | `texts.rs::exception_classes_match_python` (`exception_classes`) | done |
+| `_PageProbeCancellation.check` / `_run_http_with_deadline` messages, `_PAGE_PROBE_MAX_ABANDONED_WORKERS`, `_PAGE_PROBE_CLOSE_JOIN_SECONDS`, `max_redirects` | `texts.rs::graphyard_messages_and_limits_match_python` (`messages`) | done |
+| `_run_http_page_probe` on `MockTransport` (redirects followed by hand, 20/21 redirects, empty `Location`, 304/301 without `Location`, body cap per hop and across hops, decoded gzip bytes, invalid `Location` with and without following) and the `HTTP Request:` log lines | `tests/scenarios.rs::page_probe_scenarios_match_python` (`page_probe`, replayed on a fake server) | done |
+| `_read_http_json` on `MockTransport` (cap at/over, gzip, `raise_for_status` incl. unfollowed redirect and invalid `Location`, invalid/empty JSON, UTF-8 BOM, big integers) | `scenarios.rs::read_json_scenarios_match_python` (`read_json`) | done |
+| `test_page_probe_deadline.py::test_page_probe_deadline_bounds_dripping_headers`, `::…_dripping_body`, `::test_page_probe_default_deadline_is_three_request_timeouts`, `::test_page_probe_fast_page_is_unchanged` | `tests/deadline.rs` (same servers and timings, HTTP layer level; the spec rows and points follow in S7b) | done |
+| `test_page_probe_deadline.py::test_page_probe_cancels_connection_that_completes_after_deadline`, `::test_page_probe_caps_abandoned_workers` (D-3: abandoned lookups) | `deadline.rs::lookup_finishing_after_the_deadline_never_reaches_the_server`, `::abandoned_lookups_cap_new_operations`, `::lookup_finishing_within_the_close_wait_is_not_abandoned` | done |
+| `test_page_probe_deadline.py::test_total_timeout_seconds_*` | `spec_config.json` (S2) | done |
+| `test_http_json_budget.py::test_streaming_json_byte_budget`, `::test_dripping_json_total_deadline`, `::test_json_stream_preserves_authentication_and_tls` (HTTP part) | `transport.rs::gzip_bodies_are_decoded_and_counted_decoded`, `scenarios.rs` (`body over cap`), `deadline.rs::dripping_json_hits_the_total_deadline`, `transport.rs::client_headers_and_authentication_are_sent`, `::tls_verification_follows_verify_tls` | done (executor level: S7a) |
+| `test_home_assistant_budget.py::test_ha_budgets_and_next_spec` modes `exact`, `bytes`, `gzip`, `headers`, `drip`, `parse` (HTTP part) | `scenarios.rs` (`body at cap`, `body over cap`, `decoded bytes count`), `deadline.rs::json_deadline_while_waiting_for_headers`, `::dripping_json_hits_the_total_deadline`, `::deadline_passing_during_the_json_parse_fails_the_read` | done (executor level: S7a) |
+| `test_metric_collection_spec_isolation.py::test_page_probe_body_cap_records_failure`, `::test_page_probe_redirect_body_counts_toward_cap`, `::test_page_probe_follows_redirects_with_real_client` (HTTP part) | `scenarios.rs` (`body over cap`, `redirect body counts toward cap`, `redirect followed`) | done (executor level: S7b) |
+| Client rules of PLAN.md 6.1 without a Python test: httpx's default headers, per-read timeouts (`ReadTimeout`), connection refused/closed/truncated classes, cookies across redirects, automatic redirects (`follow_redirects=True`: 302/301/307 methods, cross-origin `Authorization`, 21 redirects), client `auth=` once per `send()` (automatic redirect vs page-probe hop), the 100 KiB response head limit and the 24,576 header lines, `ws://` as HTTP, unsupported redirect scheme, `getaddrinfo` failures, custom/empty reason phrases, HTTP/1.0 | `tests/transport.rs` | done |
+
 ## Planned counterparts (PLAN.md 9.5)
 
 | Python tests | Rust counterpart | Slice | Status |
@@ -110,10 +129,10 @@ counterpart. Its tests:
 | `test_metric_collection_specs.py` UniFi tests (incl. redaction) | fake-server tests + `unifi.json` | S7b | pending |
 | `test_metric_collection_specs.py::test_http_json_metric_spec_skips_non_finite_value` | `normalize.json` (`parse_finite_float` of `"NaN"`: done in S4a) + fake-server test (S7a) | S4a, S7a | pending (S7a) |
 | `test_metric_collection_spec_isolation.py::test_bad_spec_does_not_stop_later_specs`, `::test_unexpected_collector_exception_is_isolated` | run isolation tests | S8 | pending |
-| `test_metric_collection_spec_isolation.py` cap/redirect/timeout tests | `spec_config.json` (config validation: done in S2) + fake-server tests (transport: S6) | S2, S6 | pending (S6) |
+| `test_metric_collection_spec_isolation.py` cap/redirect/timeout tests | `spec_config.json` (config validation: done in S2) + fake-server tests (HTTP layer: done in S6; spec rows: S7b) | S2, S6, S7b | pending (S7b) |
 | `test_metric_collection_spec_isolation.py::test_full_clean_*`, `::test_validate_spec_config_rejects_non_object`, `::test_model_validates_derived_wait_limit` | `spec_config.json` (`validate_spec_config` is web-side but shares helpers) | S2 | done |
-| `test_page_probe_deadline.py` (all, incl. `caps_abandoned_workers`) | deadline/abandoned-lookup tests | S6 | pending |
-| `test_http_json_budget.py`, `test_home_assistant_budget.py` | budget/deadline tests | S6, S7a | pending |
+| `test_page_probe_deadline.py` (all, incl. `caps_abandoned_workers`) | deadline/abandoned-lookup tests (HTTP layer: done in S6, see above; spec rows and points: S7b) | S6, S7b | pending (S7b) |
+| `test_http_json_budget.py`, `test_home_assistant_budget.py` | budget/deadline tests (HTTP layer: done in S6; executors and the next-spec isolation: S7a) | S6, S7a | pending (S7a) |
 | `test_influx_modes.py` normalisation/write tests | `normalize.json`, `line_protocol.json` | S4a | done |
 | `test_influx_modes.py` query mode tests | fake InfluxDB tests | S4b | done |
 | `test_influx_query_safety.py` (all) | v3 SQL fake tests, `flux.json` NaN case | S4b | done |

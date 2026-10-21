@@ -243,6 +243,25 @@ that differs is a bug.
   failed: …` / `Condition eval failed: …`), where Python hands the value on
   and may coerce it or fail later. The `bool` and `datetime` columns follow
   Python's converters exactly, whatever the storage class (5.3).
+- **D-14 HTTP client corner cases** (S6). The collectors' HTTP layer follows
+  httpx 0.28.1 byte for byte where the fixtures pin it (section 6.1); it
+  differs where reproducing httpx would mean re-implementing a library:
+  internationalised host names are encoded with UTS 46 (`idna` crate), not
+  IDNA 2008 (Python `idna`), so names valid in one and not the other are
+  `InvalidURL` in one implementation only; the gzip trailer (CRC32, length)
+  is not checked (zlib rejects a corrupt one as `DecodingError`); cookies
+  are matched by `cookie_store`, not `http.cookiejar` (same `Cookie` order,
+  domain and path corner cases may differ); httpx's `trust_env` proxy
+  variables (`HTTP(S)_PROXY`, `ALL_PROXY`, `NO_PROXY`) are not read
+  (`SSL_CERT_FILE`/`SSL_CERT_DIR` are, by `rustls-native-certs`); a
+  response head over 100 KiB always fails, where h11 checks the limit only
+  while the head is incomplete, so httpx accepts a head of up to 128 KiB
+  that arrives in two 64 KiB reads; a head of more than 24,576 header
+  lines (possible within 100 KiB only with lines of about 4 bytes on
+  average, such as `a:` and a bare LF) fails with the same error, where
+  h11 accepts it. The production unit sets none of these variables, and
+  the 32 production endpoints use ASCII host names, gzip from regular
+  servers and (UniFi) plain session cookies.
 
 ---
 
@@ -481,9 +500,12 @@ keep every fixture-tested function in `graphyard-core`.
 | Need | Crate | Justification |
 | --- | --- | --- |
 | async runtime | `tokio` (rt, time, signal, macros) | |
-| HTTP (collectors, Influx) | `reqwest` 0.13 (no default features; `rustls-no-provider` with `rustls` + `ring` installed as the process provider, as in nyxmon; `gzip`, `deflate` for the query responses (S4b), `cookies`, `stream` where the collectors need them; the status-line reason phrase of the httpx log line comes from `hyper::ext::ReasonPhrase`) | maintained client covering everything httpx does for us: per-connect and per-read timeouts, streaming bodies for byte caps, cookie jar (UniFi session), `danger_accept_invalid_certs` for `verify_tls: false`, redirect policy `none` for the hand-driven page-probe redirects; the rules of section 6.1 are applied on top, not a new HTTP implementation |
-| name resolution | reqwest custom `Resolve` running libc `getaddrinfo` on the blocking pool | `macmini.local` needs nss-mdns, so glibc resolution is mandatory (section 13.1 R2); the wrapper counts abandoned lookups (D-3) |
-| TLS roots | system store via reqwest's platform verifier (`rustls-platform-verifier`, which reads the system store on Linux; S4a) | Q1, D-12 |
+| HTTP (InfluxDB) | `reqwest` 0.13 (no default features; `rustls-no-provider` with `rustls` + `ring` installed as the process provider, as in nyxmon; `gzip`, `deflate` for the query responses (S4b)) | the InfluxDB clients need plain requests with one timeout (S4a, S4b) |
+| HTTP (collectors, S6) | `hyper` 1 HTTP/1.1 client connection API (`hyper::client::conn::http1`) over tokio sockets wrapped with a per-operation timeout, `tokio-rustls`, `http-body-util`; as in the nyxmon port | reqwest was the first choice but its `read_timeout` bounds the whole wait for the response head with one timer (`Pending::poll`), where httpx bounds each socket read: a server dripping its headers must run into the total deadline, not a read timeout (`test_page_probe_deadline.py`). On hyper's connection API the connector is ours: httpcore's `create_connection` (lookup unbounded, every address with its own connect timeout), the TLS handshake under the timeout, every read and write under the timeout, httpx's exact request target and `Host`. One connection per request (httpx reuses keep-alive connections within a client; P2, timings only) |
+| response decoding | `flate2` (streaming `GzDecoder`/`ZlibDecoder`/`DeflateDecoder`) | httpx's `GZipDecoder`/`DeflateDecoder` (zlib, raw deflate when the first chunk is not zlib), decoded bytes count towards `max_body_bytes`; D-14 |
+| cookies | `cookie_store` | the client's jar (UniFi session, cookies across manual redirects); D-14 |
+| name resolution | `dns-lookup` (libc `getaddrinfo`) on tokio's blocking pool inside the collectors' connector | `macmini.local` needs nss-mdns, so glibc resolution is mandatory (section 13.1 R2); each lookup is tracked so the deadline can count abandoned ones (D-3) |
+| TLS roots | collectors: the system store through `rustls-native-certs`, loaded once per process into the `HttpContext`; InfluxDB: reqwest's platform verifier (`rustls-platform-verifier`, which reads the same store on Linux; S4a) | Q1, D-12 (a CA update needs the restart the trust rollout does) |
 | InfluxDB v2 write | plain HTTP `POST /api/v2/write` with our line formatter (section 6.4) | the Python client is itself a thin wrapper over this documented API (`SYNCHRONOUS` write, no batching, no retries); the Rust InfluxDB crates are either unmaintained (`influxdb2`, last release 2024-07) or InfluxQL/v1-oriented (`influxdb`); series identity needs `influxdb_client`'s exact escaping and float rendering, which no crate promises |
 | line protocol parsing (tests only) | `influxdb-line-protocol` (InfluxData) as dev-dependency | semantic comparison of written lines in fixtures, harness and shadow tooling |
 | fake servers (tests only) | `hyper` 1 (`server`, `http1`) + `hyper-util`, `http-body-util` as dev-dependencies | fake InfluxDB and collector endpoints without a hand-written HTTP parser |
@@ -497,7 +519,7 @@ keep every fixture-tested function in `graphyard-core`.
 | time | `chrono` | Django datetime text, ISO parsing of HA `last_updated`, RFC 3339 of Flux |
 | CLI | `clap` (derive) | |
 | logging | `log` + a 20-line stderr logger printing the bare message | matches the production format; no `tracing` stack needed |
-| tests | `tempfile`, `tokio-test`, `rcgen` (TLS fake servers) | |
+| tests | `tempfile`, `tokio-test`, `rcgen` + `time` (TLS fake servers with a CA and a short-lived server certificate); the collectors' fake servers write raw HTTP/1.1 over tokio sockets to drip headers and bodies byte by byte | |
 
 No OpenSSL, no `hickory-resolver`, no musl.
 
@@ -752,23 +774,57 @@ holds all of the agent's SQL, for `ingest_token` and fails if found.
 
 - One client per spec execution (`httpx.Client(...)`), closed after it; its
   cookie jar lives for that execution (redirect chains, UniFi login session).
-- Timeout `request_timeout_seconds` for connect and for each read (httpx
-  applies it per operation, not to the whole request); reqwest:
-  `connect_timeout` + `read_timeout`. httpx's write and pool timeouts have no
-  reqwest counterpart (P2).
-- `verify_tls: false` disables certificate and hostname verification.
+  Each request opens its own connection (no keep-alive reuse, P2).
+- Timeout `request_timeout_seconds` per operation as httpcore applies it
+  (S6, `graphyard-collect::http::connect`): `getaddrinfo` is not bounded
+  (only the total deadline bounds it), each resolved address gets its own
+  connect timeout (`socket.create_connection`; the last error wins:
+  `ConnectTimeout` `timed out` or `ConnectError` `[Errno N] …`), the TLS
+  handshake has the timeout, and every later socket read and write has it
+  separately (`ReadTimeout` `timed out`), so a response dripping one byte
+  per read never trips it. Pool timeouts do not exist.
+- URLs are httpx's (`HttpxUrl`, a port of `_urlparse.urlparse` pinned by
+  the `urls` fixture cases): `InvalidURL` texts, `str()` (log line,
+  `raise_for_status`), `UnsupportedProtocol` for a URL without scheme or host
+  (`_merge_url`) or a scheme other than http/https/ws/wss (ws/wss are plain
+  HTTP/TLS requests as in httpcore), the host text `getaddrinfo` gets, the
+  request target (`raw_path`) and `Host` (netloc). Credentials in the URL
+  are sent as basic auth when the client has no `auth=`
+  (`_build_request_auth`). The auth flow runs once per `send()`: on every
+  manual page-probe hop (each is its own `client.send`), but only on the
+  first request of an automatic redirect chain, whose hops keep or drop
+  `Authorization` as `_build_redirect_request` decides.
+- `verify_tls: false` disables certificate and hostname verification (the
+  handshake signature is still checked, as with `CERT_NONE`).
 - Request headers sent by Python and kept (P1): `Accept` as set by the
   executor (default `*/*`), `Accept-Encoding: gzip, deflate`,
   `User-Agent: python-httpx/0.28.1` (kept for zero-change cutover like the
   nyxmon port; a `graphyard-agent/<ver>` UA is a later, separate change),
   `Authorization` as set by the executor. Decoded bytes count towards
   `max_body_bytes`, as `iter_bytes()` yields decoded content.
-- HTTP/1.1 only.
+- HTTP/1.1 only. The response head is limited by size: 100 KiB
+  (httpcore's `MAX_INCOMPLETE_EVENT_SIZE`), over it `RemoteProtocolError`
+  `Receive buffer too long`. h11 has no limit on the number of header
+  lines; hyper's default of 100 is lifted to 24,576, the most an
+  `http::HeaderMap` holds (D-14).
 - `raise_for_status()` text (P1, template from httpx):
   `Client error '404 Not Found' for url '<url>'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404`
   (and the `Redirect response` / `Server error` / `Informational response`
   variants with `Redirect location: '<loc>'` for 3xx); pinned by a fixture
-  built from `httpx.Response(...).raise_for_status()`.
+  built from `httpx.Response(...).raise_for_status()`. The reason phrase is
+  the server's (non-ASCII bytes dropped; an empty one stays empty, as
+  httpcore passes the status line's reason through).
+- Redirects: `Client.send(follow_redirects=False)` still builds
+  `next_request` for 301/302/303/307/308 with `Location`, so an invalid
+  `Location` fails the request (`RemoteProtocolError` `Invalid URL in
+  location header: …`, or `InvalidURL` for a host-less absolute one) even
+  where nothing follows it (HA, JSON metric). The join is
+  `urllib.parse.urljoin` (CPython 3.12), method, `Authorization` and body
+  handling as `_build_redirect_request`; pinned by the `redirects`,
+  `urljoin` and `page_probe` fixture cases. Automatic following (UniFi) reads
+  every redirect body, at most 20 redirects (`send_following_redirects`).
+- `HTTP Request: <METHOD> <url> "<version> <code> <reason>"` (INFO) after
+  each response head, for every hop, as `Client._send_single_request`.
 - Exception classification for the page probe (`except (httpx.HTTPError,
   _PageProbeLimitExceeded, _PageProbeDeadlineExceeded)`): transport errors,
   timeouts, `TooManyRedirects`, `UnsupportedProtocol` are `HTTPError`
@@ -790,6 +846,11 @@ A deadline that passes while the JSON body is being parsed still fails the
 probe (Python checks after `json.loads`). Abandoned workers in Rust (D-3):
 resolver lookups whose request was cancelled and that are still running 1 s
 after the cancellation; each one logs the "still running" warning once.
+Like Python's `worker.join(timeout=1.0)`, the caller waits up to that second
+for a running lookup before it reports the deadline, so the error returns
+within the deadline plus at most one second. A cancelled request never
+connects afterwards: its future is gone when the lookup returns
+(`run_with_deadline`, `graphyard-collect::http::deadline`).
 
 ### 6.3 Executors
 
