@@ -380,8 +380,23 @@ async fn response_heads_are_limited_by_size_not_header_count() {
     let mut huge = b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\nX-Big: ".to_vec();
     huge.extend(std::iter::repeat_n(b'x', 200 * 1024));
     huge.extend_from_slice(b"\r\n\r\n{}");
+    // The shortest lines h11 accepts, `a:` with a bare LF: a head of 24576
+    // lines (Content-Length and 24575 of them) is accepted, one more line is
+    // over what `http::HeaderMap` holds and fails although it stays under
+    // 100 KiB, where h11 accepts it (D-14).
+    let shortest = |lines: usize| {
+        let mut head = b"HTTP/1.1 200 OK\nContent-Length: 2\n".to_vec();
+        for _ in 1..lines {
+            head.extend_from_slice(b"a:\n");
+        }
+        head.extend_from_slice(b"\n{}");
+        head
+    };
+    let (most, one_more) = (shortest(24_576), shortest(24_577));
     let server = Server::start(move |request| match request.target.as_str() {
         "/many" => Reply::Raw(many.clone()),
+        "/most" => Reply::Raw(most.clone()),
+        "/one-more" => Reply::Raw(one_more.clone()),
         _ => Reply::Raw(huge.clone()),
     })
     .await;
@@ -390,6 +405,19 @@ async fn response_heads_are_limited_by_size_not_header_count() {
     read_http_json(&client, &format!("{origin}/many"), 100, &Deadline::none())
         .await
         .expect("1002 header lines are accepted");
+    read_http_json(&client, &format!("{origin}/most"), 100, &Deadline::none())
+        .await
+        .expect("24576 header lines are accepted");
+    let err = read_http_json(
+        &client,
+        &format!("{origin}/one-more"),
+        100,
+        &Deadline::none(),
+    )
+    .await
+    .expect_err("24577 header lines");
+    assert_eq!(err.kind, ErrorKind::RemoteProtocolError, "{err:?}");
+    assert_eq!(err.message, "Receive buffer too long");
     let err = read_http_json(&client, &format!("{origin}/huge"), 100, &Deadline::none())
         .await
         .expect_err("head over 100 KiB");

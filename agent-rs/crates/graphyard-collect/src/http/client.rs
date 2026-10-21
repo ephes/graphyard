@@ -403,8 +403,13 @@ fn header_text(headers: &HeaderMap, name: &str) -> Option<String> {
 /// the limit fails (D-14).
 const MAX_RESPONSE_HEAD_BYTES: usize = 100 * 1024;
 
-/// The shortest header line h11 accepts (`a:` and CRLF).
-const MIN_HEADER_LINE_BYTES: usize = 4;
+/// The most header lines one response head may have: as many as an
+/// `http::HeaderMap` holds (32768 slots at a load factor of 3/4; hyper
+/// reserves one entry per line and a larger reservation panics). h11 has
+/// no count limit; only a head of lines of about 4 bytes on average (`a:`
+/// and a bare LF is the shortest) can have more within 100 KiB, and fails
+/// here with `Receive buffer too long` (D-14).
+const MAX_RESPONSE_HEADER_LINES: usize = 24_576;
 
 /// `httpx.Client` for one spec execution.
 pub struct HttpClient {
@@ -498,11 +503,11 @@ impl HttpClient {
         let stream = self.connect(url, tls).await?;
         let io = TokioIo::new(TimeoutIo::new(stream, self.timeout));
         // h11 (httpcore) limits the response head by size only, not by the
-        // number of header lines; hyper's default of 100 lines is lifted so
-        // the size limit is the one that applies.
+        // number of header lines; hyper's default of 100 lines is lifted as
+        // far as `HeaderMap` allows.
         let (mut sender, connection) = hyper::client::conn::http1::Builder::new()
             .max_header_size(MAX_RESPONSE_HEAD_BYTES)
-            .max_headers(MAX_RESPONSE_HEAD_BYTES / MIN_HEADER_LINE_BYTES)
+            .max_headers(MAX_RESPONSE_HEADER_LINES)
             .handshake(io)
             .await
             .map_err(|err| HttpError::transport(&err, false))?;

@@ -256,10 +256,12 @@ that differs is a bug.
   (`SSL_CERT_FILE`/`SSL_CERT_DIR` are, by `rustls-native-certs`); a
   response head over 100 KiB always fails, where h11 checks the limit only
   while the head is incomplete, so httpx accepts a head of up to 128 KiB
-  that arrives in two 64 KiB reads. The
-  production unit sets none of these variables, and the 32 production
-  endpoints use ASCII host names, gzip from regular servers and (UniFi)
-  plain session cookies.
+  that arrives in two 64 KiB reads; a head of more than 24,576 header
+  lines (possible within 100 KiB only with lines of about 4 bytes on
+  average, such as `a:` and a bare LF) fails with the same error, where
+  h11 accepts it. The production unit sets none of these variables, and
+  the 32 production endpoints use ASCII host names, gzip from regular
+  servers and (UniFi) plain session cookies.
 
 ---
 
@@ -800,9 +802,11 @@ holds all of the agent's SQL, for `ingest_token` and fails if found.
   nyxmon port; a `graphyard-agent/<ver>` UA is a later, separate change),
   `Authorization` as set by the executor. Decoded bytes count towards
   `max_body_bytes`, as `iter_bytes()` yields decoded content.
-- HTTP/1.1 only. The response head is limited by size, not by its number
-  of header lines: 100 KiB (httpcore's `MAX_INCOMPLETE_EVENT_SIZE`), over
-  it `RemoteProtocolError` `Receive buffer too long` (D-14).
+- HTTP/1.1 only. The response head is limited by size: 100 KiB
+  (httpcore's `MAX_INCOMPLETE_EVENT_SIZE`), over it `RemoteProtocolError`
+  `Receive buffer too long`. h11 has no limit on the number of header
+  lines; hyper's default of 100 is lifted to 24,576, the most an
+  `http::HeaderMap` holds (D-14).
 - `raise_for_status()` text (P1, template from httpx):
   `Client error '404 Not Found' for url '<url>'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404`
   (and the `Redirect response` / `Server error` / `Informational response`
