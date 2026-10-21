@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Update the locked certifi CA bundle to 2026.10.19 for the eMudhra/emSign
+  CA compromise
+  ([GHSA-6q48-6c7w-9gw2](https://github.com/certifi/python-certifi/security/advisories/GHSA-6q48-6c7w-9gw2)).
+  Lock-only change. Re-sync deployed environments and restart long-running
+  processes so they load the new bundle.
+
 - Return only statuses, timestamps and counts from `/v1/health`, `/v1/conditions`
   and `/v1/conditions/<id>` to unauthenticated callers. Component messages, error
   texts, heartbeat details, the InfluxDB name, condition messages, `config` and
