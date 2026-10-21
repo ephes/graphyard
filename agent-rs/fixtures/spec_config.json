@@ -1,0 +1,2979 @@
+{
+ "constants": {
+  "MAX_TIMEOUT_SECONDS": "86400.0",
+  "DEFAULT_REQUEST_TIMEOUT_SECONDS": "10.0",
+  "DEFAULT_PAGE_PROBE_MAX_BODY_BYTES": 10485760,
+  "DEFAULT_PAGE_PROBE_TOTAL_TIMEOUT_FACTOR": 3
+ },
+ "positive_float_config": [
+  {
+   "config": "{}",
+   "key": "knob",
+   "default": "10.0",
+   "value": "10.0"
+  },
+  {
+   "config": "{}",
+   "key": "knob",
+   "default": "1.0",
+   "value": "1.0"
+  },
+  {
+   "config": "{}",
+   "key": "knob",
+   "default": "30.0",
+   "value": "30.0"
+  },
+  {
+   "config": "{}",
+   "key": "knob",
+   "default": "0.5",
+   "value": "0.5"
+  },
+  {
+   "config": "{}",
+   "key": "knob",
+   "default": "0.0",
+   "error": "config.knob must be a number greater than 0, got 0.0"
+  },
+  {
+   "config": "{}",
+   "key": "knob",
+   "default": "-1.0",
+   "error": "config.knob must be a number greater than 0, got -1.0"
+  },
+  {
+   "config": "{}",
+   "key": "knob",
+   "default": "inf",
+   "error": "config.knob must be a number greater than 0, got inf"
+  },
+  {
+   "config": "{}",
+   "key": "knob",
+   "default": "nan",
+   "error": "config.knob must be a number greater than 0, got nan"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": null}",
+   "key": "knob",
+   "default": "10.0",
+   "error": "config.knob must be a number greater than 0, got None"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": true}",
+   "key": "knob",
+   "default": "10.0",
+   "error": "config.knob must be a number greater than 0, got True"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": false}",
+   "key": "knob",
+   "default": "10.0",
+   "error": "config.knob must be a number greater than 0, got False"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": 0}",
+   "key": "knob",
+   "default": "10.0",
+   "error": "config.knob must be a number greater than 0, got 0"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": -0}",
+   "key": "knob",
+   "default": "10.0",
+   "error": "config.knob must be a number greater than 0, got 0"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": 1}",
+   "key": "knob",
+   "default": "10.0",
+   "value": "1.0"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": -1}",
+   "key": "knob",
+   "default": "10.0",
+   "error": "config.knob must be a number greater than 0, got -1"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": 7}",
+   "key": "knob",
+   "default": "10.0",
+   "value": "7.0"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": 15}",
+   "key": "knob",
+   "default": "10.0",
+   "value": "15.0"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": 1.5}",
+   "key": "knob",
+   "default": "10.0",
+   "value": "1.5"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": 0.0}",
+   "key": "knob",
+   "default": "10.0",
+   "error": "config.knob must be a number greater than 0, got 0.0"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": -0.0}",
+   "key": "knob",
+   "default": "10.0",
+   "error": "config.knob must be a number greater than 0, got -0.0"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": -2.5}",
+   "key": "knob",
+   "default": "10.0",
+   "error": "config.knob must be a number greater than 0, got -2.5"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": 0.001}",
+   "key": "knob",
+   "default": "10.0",
+   "value": "0.001"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": 1e-300}",
+   "key": "knob",
+   "default": "10.0",
+   "value": "1e-300"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": 5e-324}",
+   "key": "knob",
+   "default": "10.0",
+   "value": "5e-324"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": 86400}",
+   "key": "knob",
+   "default": "10.0",
+   "value": "86400.0"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": 86400.0}",
+   "key": "knob",
+   "default": "10.0",
+   "value": "86400.0"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": 86400.00000000001}",
+   "key": "knob",
+   "default": "10.0",
+   "value": "86400.00000000001"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": 43200.0}",
+   "key": "knob",
+   "default": "10.0",
+   "value": "43200.0"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": 86401}",
+   "key": "knob",
+   "default": "10.0",
+   "value": "86401.0"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": 1e308}",
+   "key": "knob",
+   "default": "10.0",
+   "value": "1e+308"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": 1e309}",
+   "key": "knob",
+   "default": "10.0",
+   "error": "config.knob must be a number greater than 0, got inf"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": -1e309}",
+   "key": "knob",
+   "default": "10.0",
+   "error": "config.knob must be a number greater than 0, got -inf"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": 10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000}",
+   "key": "knob",
+   "default": "10.0",
+   "error": "config.knob must be a number greater than 0, got 1000000000000000000000000000000000000000000000000000000000000..."
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": 123456789012345678}",
+   "key": "knob",
+   "default": "10.0",
+   "value": "1.2345678901234568e+17"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": 1234567890123456789}",
+   "key": "knob",
+   "default": "10.0",
+   "value": "1.2345678901234568e+18"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": 99999999999999999999999}",
+   "key": "knob",
+   "default": "10.0",
+   "value": "1e+23"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \"\"}",
+   "key": "knob",
+   "default": "10.0",
+   "error": "config.knob must be a number greater than 0, got ''"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \" \"}",
+   "key": "knob",
+   "default": "10.0",
+   "error": "config.knob must be a number greater than 0, got ' '"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \"15\"}",
+   "key": "knob",
+   "default": "10.0",
+   "value": "15.0"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \" 15 \"}",
+   "key": "knob",
+   "default": "10.0",
+   "value": "15.0"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \"\\t2.5\\n\"}",
+   "key": "knob",
+   "default": "10.0",
+   "value": "2.5"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \"\\u00a015\\u2003\"}",
+   "key": "knob",
+   "default": "10.0",
+   "value": "15.0"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \"\\u001c15\\u001f\"}",
+   "key": "knob",
+   "default": "10.0",
+   "value": "15.0"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \"1_0\"}",
+   "key": "knob",
+   "default": "10.0",
+   "value": "10.0"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \"1__0\"}",
+   "key": "knob",
+   "default": "10.0",
+   "error": "config.knob must be a number greater than 0, got '1__0'"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \"5s\"}",
+   "key": "knob",
+   "default": "10.0",
+   "error": "config.knob must be a number greater than 0, got '5s'"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \"abc\"}",
+   "key": "knob",
+   "default": "10.0",
+   "error": "config.knob must be a number greater than 0, got 'abc'"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \"inf\"}",
+   "key": "knob",
+   "default": "10.0",
+   "error": "config.knob must be a number greater than 0, got 'inf'"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \"-inf\"}",
+   "key": "knob",
+   "default": "10.0",
+   "error": "config.knob must be a number greater than 0, got '-inf'"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \"nan\"}",
+   "key": "knob",
+   "default": "10.0",
+   "error": "config.knob must be a number greater than 0, got 'nan'"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \"Infinity\"}",
+   "key": "knob",
+   "default": "10.0",
+   "error": "config.knob must be a number greater than 0, got 'Infinity'"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \"1e3\"}",
+   "key": "knob",
+   "default": "10.0",
+   "value": "1000.0"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \"0\"}",
+   "key": "knob",
+   "default": "10.0",
+   "error": "config.knob must be a number greater than 0, got '0'"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \"000\"}",
+   "key": "knob",
+   "default": "10.0",
+   "error": "config.knob must be a number greater than 0, got '000'"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \"0010\"}",
+   "key": "knob",
+   "default": "10.0",
+   "value": "10.0"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \"-5\"}",
+   "key": "knob",
+   "default": "10.0",
+   "error": "config.knob must be a number greater than 0, got '-5'"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \"+5\"}",
+   "key": "knob",
+   "default": "10.0",
+   "value": "5.0"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \"123456789012345678\"}",
+   "key": "knob",
+   "default": "10.0",
+   "value": "1.2345678901234568e+17"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \"1234567890123456789\"}",
+   "key": "knob",
+   "default": "10.0",
+   "value": "1.2345678901234568e+18"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \"\\u00b2\"}",
+   "key": "knob",
+   "default": "10.0",
+   "error": "config.knob must be a number greater than 0, got '\u00b2'"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \"true\"}",
+   "key": "knob",
+   "default": "10.0",
+   "error": "config.knob must be a number greater than 0, got 'true'"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \"false\"}",
+   "key": "knob",
+   "default": "10.0",
+   "error": "config.knob must be a number greater than 0, got 'false'"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \"it's\"}",
+   "key": "knob",
+   "default": "10.0",
+   "error": "config.knob must be a number greater than 0, got \"it's\""
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\"}",
+   "key": "knob",
+   "default": "10.0",
+   "error": "config.knob must be a number greater than 0, got 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx..."
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": []}",
+   "key": "knob",
+   "default": "10.0",
+   "error": "config.knob must be a number greater than 0, got []"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": [1]}",
+   "key": "knob",
+   "default": "10.0",
+   "error": "config.knob must be a number greater than 0, got [1]"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": {}}",
+   "key": "knob",
+   "default": "10.0",
+   "error": "config.knob must be a number greater than 0, got {}"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": {\"seconds\": 5}}",
+   "key": "knob",
+   "default": "10.0",
+   "error": "config.knob must be a number greater than 0, got {'seconds': 5}"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": {\"$serde_json::private::Number\": \"5\"}}",
+   "key": "knob",
+   "default": "10.0",
+   "error": "config.knob must be a number greater than 0, got {'$serde_json::private::Number': '5'}"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29]}",
+   "key": "knob",
+   "default": "10.0",
+   "error": "config.knob must be a number greater than 0, got [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17..."
+  }
+ ],
+ "positive_int_config": [
+  {
+   "config": "{}",
+   "key": "knob",
+   "default": "1024",
+   "value": "1024"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": null}",
+   "key": "knob",
+   "default": "1024",
+   "error": "config.knob must be a positive integer, got None"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": true}",
+   "key": "knob",
+   "default": "1024",
+   "error": "config.knob must be a positive integer, got True"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": false}",
+   "key": "knob",
+   "default": "1024",
+   "error": "config.knob must be a positive integer, got False"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": 0}",
+   "key": "knob",
+   "default": "1024",
+   "error": "config.knob must be a positive integer, got 0"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": -0}",
+   "key": "knob",
+   "default": "1024",
+   "error": "config.knob must be a positive integer, got 0"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": 1}",
+   "key": "knob",
+   "default": "1024",
+   "value": "1"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": -1}",
+   "key": "knob",
+   "default": "1024",
+   "error": "config.knob must be a positive integer, got -1"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": 7}",
+   "key": "knob",
+   "default": "1024",
+   "value": "7"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": 15}",
+   "key": "knob",
+   "default": "1024",
+   "value": "15"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": 1.5}",
+   "key": "knob",
+   "default": "1024",
+   "error": "config.knob must be a positive integer, got 1.5"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": 0.0}",
+   "key": "knob",
+   "default": "1024",
+   "error": "config.knob must be a positive integer, got 0.0"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": -0.0}",
+   "key": "knob",
+   "default": "1024",
+   "error": "config.knob must be a positive integer, got -0.0"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": -2.5}",
+   "key": "knob",
+   "default": "1024",
+   "error": "config.knob must be a positive integer, got -2.5"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": 0.001}",
+   "key": "knob",
+   "default": "1024",
+   "error": "config.knob must be a positive integer, got 0.001"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": 1e-300}",
+   "key": "knob",
+   "default": "1024",
+   "error": "config.knob must be a positive integer, got 1e-300"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": 5e-324}",
+   "key": "knob",
+   "default": "1024",
+   "error": "config.knob must be a positive integer, got 5e-324"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": 86400}",
+   "key": "knob",
+   "default": "1024",
+   "value": "86400"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": 86400.0}",
+   "key": "knob",
+   "default": "1024",
+   "error": "config.knob must be a positive integer, got 86400.0"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": 86400.00000000001}",
+   "key": "knob",
+   "default": "1024",
+   "error": "config.knob must be a positive integer, got 86400.00000000001"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": 43200.0}",
+   "key": "knob",
+   "default": "1024",
+   "error": "config.knob must be a positive integer, got 43200.0"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": 86401}",
+   "key": "knob",
+   "default": "1024",
+   "value": "86401"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": 1e308}",
+   "key": "knob",
+   "default": "1024",
+   "error": "config.knob must be a positive integer, got 1e+308"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": 1e309}",
+   "key": "knob",
+   "default": "1024",
+   "error": "config.knob must be a positive integer, got inf"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": -1e309}",
+   "key": "knob",
+   "default": "1024",
+   "error": "config.knob must be a positive integer, got -inf"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": 10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000}",
+   "key": "knob",
+   "default": "1024",
+   "value": "10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": 123456789012345678}",
+   "key": "knob",
+   "default": "1024",
+   "value": "123456789012345678"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": 1234567890123456789}",
+   "key": "knob",
+   "default": "1024",
+   "value": "1234567890123456789"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": 99999999999999999999999}",
+   "key": "knob",
+   "default": "1024",
+   "value": "99999999999999999999999"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \"\"}",
+   "key": "knob",
+   "default": "1024",
+   "error": "config.knob must be a positive integer, got ''"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \" \"}",
+   "key": "knob",
+   "default": "1024",
+   "error": "config.knob must be a positive integer, got ' '"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \"15\"}",
+   "key": "knob",
+   "default": "1024",
+   "value": "15"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \" 15 \"}",
+   "key": "knob",
+   "default": "1024",
+   "value": "15"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \"\\t2.5\\n\"}",
+   "key": "knob",
+   "default": "1024",
+   "error": "config.knob must be a positive integer, got '\\t2.5\\n'"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \"\\u00a015\\u2003\"}",
+   "key": "knob",
+   "default": "1024",
+   "value": "15"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \"\\u001c15\\u001f\"}",
+   "key": "knob",
+   "default": "1024",
+   "value": "15"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \"1_0\"}",
+   "key": "knob",
+   "default": "1024",
+   "error": "config.knob must be a positive integer, got '1_0'"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \"1__0\"}",
+   "key": "knob",
+   "default": "1024",
+   "error": "config.knob must be a positive integer, got '1__0'"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \"5s\"}",
+   "key": "knob",
+   "default": "1024",
+   "error": "config.knob must be a positive integer, got '5s'"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \"abc\"}",
+   "key": "knob",
+   "default": "1024",
+   "error": "config.knob must be a positive integer, got 'abc'"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \"inf\"}",
+   "key": "knob",
+   "default": "1024",
+   "error": "config.knob must be a positive integer, got 'inf'"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \"-inf\"}",
+   "key": "knob",
+   "default": "1024",
+   "error": "config.knob must be a positive integer, got '-inf'"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \"nan\"}",
+   "key": "knob",
+   "default": "1024",
+   "error": "config.knob must be a positive integer, got 'nan'"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \"Infinity\"}",
+   "key": "knob",
+   "default": "1024",
+   "error": "config.knob must be a positive integer, got 'Infinity'"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \"1e3\"}",
+   "key": "knob",
+   "default": "1024",
+   "error": "config.knob must be a positive integer, got '1e3'"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \"0\"}",
+   "key": "knob",
+   "default": "1024",
+   "error": "config.knob must be a positive integer, got '0'"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \"000\"}",
+   "key": "knob",
+   "default": "1024",
+   "error": "config.knob must be a positive integer, got '000'"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \"0010\"}",
+   "key": "knob",
+   "default": "1024",
+   "value": "10"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \"-5\"}",
+   "key": "knob",
+   "default": "1024",
+   "error": "config.knob must be a positive integer, got '-5'"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \"+5\"}",
+   "key": "knob",
+   "default": "1024",
+   "error": "config.knob must be a positive integer, got '+5'"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \"123456789012345678\"}",
+   "key": "knob",
+   "default": "1024",
+   "value": "123456789012345678"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \"1234567890123456789\"}",
+   "key": "knob",
+   "default": "1024",
+   "error": "config.knob must be a positive integer, got '1234567890123456789'"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \"\\u00b2\"}",
+   "key": "knob",
+   "default": "1024",
+   "error": "config.knob must be a positive integer, got '\u00b2'"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \"true\"}",
+   "key": "knob",
+   "default": "1024",
+   "error": "config.knob must be a positive integer, got 'true'"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \"false\"}",
+   "key": "knob",
+   "default": "1024",
+   "error": "config.knob must be a positive integer, got 'false'"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \"it's\"}",
+   "key": "knob",
+   "default": "1024",
+   "error": "config.knob must be a positive integer, got \"it's\""
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\"}",
+   "key": "knob",
+   "default": "1024",
+   "error": "config.knob must be a positive integer, got 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx..."
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": []}",
+   "key": "knob",
+   "default": "1024",
+   "error": "config.knob must be a positive integer, got []"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": [1]}",
+   "key": "knob",
+   "default": "1024",
+   "error": "config.knob must be a positive integer, got [1]"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": {}}",
+   "key": "knob",
+   "default": "1024",
+   "error": "config.knob must be a positive integer, got {}"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": {\"seconds\": 5}}",
+   "key": "knob",
+   "default": "1024",
+   "error": "config.knob must be a positive integer, got {'seconds': 5}"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": {\"$serde_json::private::Number\": \"5\"}}",
+   "key": "knob",
+   "default": "1024",
+   "error": "config.knob must be a positive integer, got {'$serde_json::private::Number': '5'}"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29]}",
+   "key": "knob",
+   "default": "1024",
+   "error": "config.knob must be a positive integer, got [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17..."
+  }
+ ],
+ "bool_config": [
+  {
+   "config": "{}",
+   "key": "knob",
+   "default": true,
+   "value": true
+  },
+  {
+   "config": "{}",
+   "key": "knob",
+   "default": false,
+   "value": false
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": null}",
+   "key": "knob",
+   "default": true,
+   "error": "config.knob must be true or false, got None"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": true}",
+   "key": "knob",
+   "default": true,
+   "value": true
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": false}",
+   "key": "knob",
+   "default": true,
+   "value": false
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": 0}",
+   "key": "knob",
+   "default": true,
+   "error": "config.knob must be true or false, got 0"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": -0}",
+   "key": "knob",
+   "default": true,
+   "error": "config.knob must be true or false, got 0"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": 1}",
+   "key": "knob",
+   "default": true,
+   "error": "config.knob must be true or false, got 1"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": -1}",
+   "key": "knob",
+   "default": true,
+   "error": "config.knob must be true or false, got -1"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": 7}",
+   "key": "knob",
+   "default": true,
+   "error": "config.knob must be true or false, got 7"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": 15}",
+   "key": "knob",
+   "default": true,
+   "error": "config.knob must be true or false, got 15"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": 1.5}",
+   "key": "knob",
+   "default": true,
+   "error": "config.knob must be true or false, got 1.5"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": 0.0}",
+   "key": "knob",
+   "default": true,
+   "error": "config.knob must be true or false, got 0.0"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": -0.0}",
+   "key": "knob",
+   "default": true,
+   "error": "config.knob must be true or false, got -0.0"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": -2.5}",
+   "key": "knob",
+   "default": true,
+   "error": "config.knob must be true or false, got -2.5"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": 0.001}",
+   "key": "knob",
+   "default": true,
+   "error": "config.knob must be true or false, got 0.001"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": 1e-300}",
+   "key": "knob",
+   "default": true,
+   "error": "config.knob must be true or false, got 1e-300"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": 5e-324}",
+   "key": "knob",
+   "default": true,
+   "error": "config.knob must be true or false, got 5e-324"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": 86400}",
+   "key": "knob",
+   "default": true,
+   "error": "config.knob must be true or false, got 86400"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": 86400.0}",
+   "key": "knob",
+   "default": true,
+   "error": "config.knob must be true or false, got 86400.0"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": 86400.00000000001}",
+   "key": "knob",
+   "default": true,
+   "error": "config.knob must be true or false, got 86400.00000000001"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": 43200.0}",
+   "key": "knob",
+   "default": true,
+   "error": "config.knob must be true or false, got 43200.0"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": 86401}",
+   "key": "knob",
+   "default": true,
+   "error": "config.knob must be true or false, got 86401"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": 1e308}",
+   "key": "knob",
+   "default": true,
+   "error": "config.knob must be true or false, got 1e+308"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": 1e309}",
+   "key": "knob",
+   "default": true,
+   "error": "config.knob must be true or false, got inf"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": -1e309}",
+   "key": "knob",
+   "default": true,
+   "error": "config.knob must be true or false, got -inf"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": 10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000}",
+   "key": "knob",
+   "default": true,
+   "error": "config.knob must be true or false, got 1000000000000000000000000000000000000000000000000000000000000..."
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": 123456789012345678}",
+   "key": "knob",
+   "default": true,
+   "error": "config.knob must be true or false, got 123456789012345678"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": 1234567890123456789}",
+   "key": "knob",
+   "default": true,
+   "error": "config.knob must be true or false, got 1234567890123456789"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": 99999999999999999999999}",
+   "key": "knob",
+   "default": true,
+   "error": "config.knob must be true or false, got 99999999999999999999999"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \"\"}",
+   "key": "knob",
+   "default": true,
+   "error": "config.knob must be true or false, got ''"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \" \"}",
+   "key": "knob",
+   "default": true,
+   "error": "config.knob must be true or false, got ' '"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \"15\"}",
+   "key": "knob",
+   "default": true,
+   "error": "config.knob must be true or false, got '15'"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \" 15 \"}",
+   "key": "knob",
+   "default": true,
+   "error": "config.knob must be true or false, got ' 15 '"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \"\\t2.5\\n\"}",
+   "key": "knob",
+   "default": true,
+   "error": "config.knob must be true or false, got '\\t2.5\\n'"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \"\\u00a015\\u2003\"}",
+   "key": "knob",
+   "default": true,
+   "error": "config.knob must be true or false, got '\\xa015\\u2003'"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \"\\u001c15\\u001f\"}",
+   "key": "knob",
+   "default": true,
+   "error": "config.knob must be true or false, got '\\x1c15\\x1f'"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \"1_0\"}",
+   "key": "knob",
+   "default": true,
+   "error": "config.knob must be true or false, got '1_0'"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \"1__0\"}",
+   "key": "knob",
+   "default": true,
+   "error": "config.knob must be true or false, got '1__0'"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \"5s\"}",
+   "key": "knob",
+   "default": true,
+   "error": "config.knob must be true or false, got '5s'"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \"abc\"}",
+   "key": "knob",
+   "default": true,
+   "error": "config.knob must be true or false, got 'abc'"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \"inf\"}",
+   "key": "knob",
+   "default": true,
+   "error": "config.knob must be true or false, got 'inf'"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \"-inf\"}",
+   "key": "knob",
+   "default": true,
+   "error": "config.knob must be true or false, got '-inf'"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \"nan\"}",
+   "key": "knob",
+   "default": true,
+   "error": "config.knob must be true or false, got 'nan'"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \"Infinity\"}",
+   "key": "knob",
+   "default": true,
+   "error": "config.knob must be true or false, got 'Infinity'"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \"1e3\"}",
+   "key": "knob",
+   "default": true,
+   "error": "config.knob must be true or false, got '1e3'"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \"0\"}",
+   "key": "knob",
+   "default": true,
+   "error": "config.knob must be true or false, got '0'"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \"000\"}",
+   "key": "knob",
+   "default": true,
+   "error": "config.knob must be true or false, got '000'"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \"0010\"}",
+   "key": "knob",
+   "default": true,
+   "error": "config.knob must be true or false, got '0010'"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \"-5\"}",
+   "key": "knob",
+   "default": true,
+   "error": "config.knob must be true or false, got '-5'"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \"+5\"}",
+   "key": "knob",
+   "default": true,
+   "error": "config.knob must be true or false, got '+5'"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \"123456789012345678\"}",
+   "key": "knob",
+   "default": true,
+   "error": "config.knob must be true or false, got '123456789012345678'"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \"1234567890123456789\"}",
+   "key": "knob",
+   "default": true,
+   "error": "config.knob must be true or false, got '1234567890123456789'"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \"\\u00b2\"}",
+   "key": "knob",
+   "default": true,
+   "error": "config.knob must be true or false, got '\u00b2'"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \"true\"}",
+   "key": "knob",
+   "default": true,
+   "error": "config.knob must be true or false, got 'true'"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \"false\"}",
+   "key": "knob",
+   "default": true,
+   "error": "config.knob must be true or false, got 'false'"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \"it's\"}",
+   "key": "knob",
+   "default": true,
+   "error": "config.knob must be true or false, got \"it's\""
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": \"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\"}",
+   "key": "knob",
+   "default": true,
+   "error": "config.knob must be true or false, got 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx..."
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": []}",
+   "key": "knob",
+   "default": true,
+   "error": "config.knob must be true or false, got []"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": [1]}",
+   "key": "knob",
+   "default": true,
+   "error": "config.knob must be true or false, got [1]"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": {}}",
+   "key": "knob",
+   "default": true,
+   "error": "config.knob must be true or false, got {}"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": {\"seconds\": 5}}",
+   "key": "knob",
+   "default": true,
+   "error": "config.knob must be true or false, got {'seconds': 5}"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": {\"$serde_json::private::Number\": \"5\"}}",
+   "key": "knob",
+   "default": true,
+   "error": "config.knob must be true or false, got {'$serde_json::private::Number': '5'}"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29]}",
+   "key": "knob",
+   "default": true,
+   "error": "config.knob must be true or false, got [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17..."
+  }
+ ],
+ "request_timeout_config": [
+  {
+   "config": "{}",
+   "value": "10.0"
+  },
+  {
+   "config": "{\"other\": 1, \"request_timeout_seconds\": null}",
+   "error": "config.request_timeout_seconds must be a number greater than 0, got None"
+  },
+  {
+   "config": "{\"other\": 1, \"request_timeout_seconds\": true}",
+   "error": "config.request_timeout_seconds must be a number greater than 0, got True"
+  },
+  {
+   "config": "{\"other\": 1, \"request_timeout_seconds\": false}",
+   "error": "config.request_timeout_seconds must be a number greater than 0, got False"
+  },
+  {
+   "config": "{\"other\": 1, \"request_timeout_seconds\": 0}",
+   "error": "config.request_timeout_seconds must be a number greater than 0, got 0"
+  },
+  {
+   "config": "{\"other\": 1, \"request_timeout_seconds\": -0}",
+   "error": "config.request_timeout_seconds must be a number greater than 0, got 0"
+  },
+  {
+   "config": "{\"other\": 1, \"request_timeout_seconds\": 1}",
+   "value": "1.0"
+  },
+  {
+   "config": "{\"other\": 1, \"request_timeout_seconds\": -1}",
+   "error": "config.request_timeout_seconds must be a number greater than 0, got -1"
+  },
+  {
+   "config": "{\"other\": 1, \"request_timeout_seconds\": 7}",
+   "value": "7.0"
+  },
+  {
+   "config": "{\"other\": 1, \"request_timeout_seconds\": 15}",
+   "value": "15.0"
+  },
+  {
+   "config": "{\"other\": 1, \"request_timeout_seconds\": 1.5}",
+   "value": "1.5"
+  },
+  {
+   "config": "{\"other\": 1, \"request_timeout_seconds\": 0.0}",
+   "error": "config.request_timeout_seconds must be a number greater than 0, got 0.0"
+  },
+  {
+   "config": "{\"other\": 1, \"request_timeout_seconds\": -0.0}",
+   "error": "config.request_timeout_seconds must be a number greater than 0, got -0.0"
+  },
+  {
+   "config": "{\"other\": 1, \"request_timeout_seconds\": -2.5}",
+   "error": "config.request_timeout_seconds must be a number greater than 0, got -2.5"
+  },
+  {
+   "config": "{\"other\": 1, \"request_timeout_seconds\": 0.001}",
+   "value": "0.001"
+  },
+  {
+   "config": "{\"other\": 1, \"request_timeout_seconds\": 1e-300}",
+   "value": "1e-300"
+  },
+  {
+   "config": "{\"other\": 1, \"request_timeout_seconds\": 5e-324}",
+   "value": "5e-324"
+  },
+  {
+   "config": "{\"other\": 1, \"request_timeout_seconds\": 86400}",
+   "value": "86400.0"
+  },
+  {
+   "config": "{\"other\": 1, \"request_timeout_seconds\": 86400.0}",
+   "value": "86400.0"
+  },
+  {
+   "config": "{\"other\": 1, \"request_timeout_seconds\": 86400.00000000001}",
+   "error": "config.request_timeout_seconds must be <= 86400.0 seconds"
+  },
+  {
+   "config": "{\"other\": 1, \"request_timeout_seconds\": 43200.0}",
+   "value": "43200.0"
+  },
+  {
+   "config": "{\"other\": 1, \"request_timeout_seconds\": 86401}",
+   "error": "config.request_timeout_seconds must be <= 86400.0 seconds"
+  },
+  {
+   "config": "{\"other\": 1, \"request_timeout_seconds\": 1e308}",
+   "error": "config.request_timeout_seconds must be <= 86400.0 seconds"
+  },
+  {
+   "config": "{\"other\": 1, \"request_timeout_seconds\": 1e309}",
+   "error": "config.request_timeout_seconds must be a number greater than 0, got inf"
+  },
+  {
+   "config": "{\"other\": 1, \"request_timeout_seconds\": -1e309}",
+   "error": "config.request_timeout_seconds must be a number greater than 0, got -inf"
+  },
+  {
+   "config": "{\"other\": 1, \"request_timeout_seconds\": 10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000}",
+   "error": "config.request_timeout_seconds must be a number greater than 0, got 1000000000000000000000000000000000000000000000000000000000000..."
+  },
+  {
+   "config": "{\"other\": 1, \"request_timeout_seconds\": 123456789012345678}",
+   "error": "config.request_timeout_seconds must be <= 86400.0 seconds"
+  },
+  {
+   "config": "{\"other\": 1, \"request_timeout_seconds\": 1234567890123456789}",
+   "error": "config.request_timeout_seconds must be <= 86400.0 seconds"
+  },
+  {
+   "config": "{\"other\": 1, \"request_timeout_seconds\": 99999999999999999999999}",
+   "error": "config.request_timeout_seconds must be <= 86400.0 seconds"
+  },
+  {
+   "config": "{\"other\": 1, \"request_timeout_seconds\": \"\"}",
+   "error": "config.request_timeout_seconds must be a number greater than 0, got ''"
+  },
+  {
+   "config": "{\"other\": 1, \"request_timeout_seconds\": \" \"}",
+   "error": "config.request_timeout_seconds must be a number greater than 0, got ' '"
+  },
+  {
+   "config": "{\"other\": 1, \"request_timeout_seconds\": \"15\"}",
+   "value": "15.0"
+  },
+  {
+   "config": "{\"other\": 1, \"request_timeout_seconds\": \" 15 \"}",
+   "value": "15.0"
+  },
+  {
+   "config": "{\"other\": 1, \"request_timeout_seconds\": \"\\t2.5\\n\"}",
+   "value": "2.5"
+  },
+  {
+   "config": "{\"other\": 1, \"request_timeout_seconds\": \"\\u00a015\\u2003\"}",
+   "value": "15.0"
+  },
+  {
+   "config": "{\"other\": 1, \"request_timeout_seconds\": \"\\u001c15\\u001f\"}",
+   "value": "15.0"
+  },
+  {
+   "config": "{\"other\": 1, \"request_timeout_seconds\": \"1_0\"}",
+   "value": "10.0"
+  },
+  {
+   "config": "{\"other\": 1, \"request_timeout_seconds\": \"1__0\"}",
+   "error": "config.request_timeout_seconds must be a number greater than 0, got '1__0'"
+  },
+  {
+   "config": "{\"other\": 1, \"request_timeout_seconds\": \"5s\"}",
+   "error": "config.request_timeout_seconds must be a number greater than 0, got '5s'"
+  },
+  {
+   "config": "{\"other\": 1, \"request_timeout_seconds\": \"abc\"}",
+   "error": "config.request_timeout_seconds must be a number greater than 0, got 'abc'"
+  },
+  {
+   "config": "{\"other\": 1, \"request_timeout_seconds\": \"inf\"}",
+   "error": "config.request_timeout_seconds must be a number greater than 0, got 'inf'"
+  },
+  {
+   "config": "{\"other\": 1, \"request_timeout_seconds\": \"-inf\"}",
+   "error": "config.request_timeout_seconds must be a number greater than 0, got '-inf'"
+  },
+  {
+   "config": "{\"other\": 1, \"request_timeout_seconds\": \"nan\"}",
+   "error": "config.request_timeout_seconds must be a number greater than 0, got 'nan'"
+  },
+  {
+   "config": "{\"other\": 1, \"request_timeout_seconds\": \"Infinity\"}",
+   "error": "config.request_timeout_seconds must be a number greater than 0, got 'Infinity'"
+  },
+  {
+   "config": "{\"other\": 1, \"request_timeout_seconds\": \"1e3\"}",
+   "value": "1000.0"
+  },
+  {
+   "config": "{\"other\": 1, \"request_timeout_seconds\": \"0\"}",
+   "error": "config.request_timeout_seconds must be a number greater than 0, got '0'"
+  },
+  {
+   "config": "{\"other\": 1, \"request_timeout_seconds\": \"000\"}",
+   "error": "config.request_timeout_seconds must be a number greater than 0, got '000'"
+  },
+  {
+   "config": "{\"other\": 1, \"request_timeout_seconds\": \"0010\"}",
+   "value": "10.0"
+  },
+  {
+   "config": "{\"other\": 1, \"request_timeout_seconds\": \"-5\"}",
+   "error": "config.request_timeout_seconds must be a number greater than 0, got '-5'"
+  },
+  {
+   "config": "{\"other\": 1, \"request_timeout_seconds\": \"+5\"}",
+   "value": "5.0"
+  },
+  {
+   "config": "{\"other\": 1, \"request_timeout_seconds\": \"123456789012345678\"}",
+   "error": "config.request_timeout_seconds must be <= 86400.0 seconds"
+  },
+  {
+   "config": "{\"other\": 1, \"request_timeout_seconds\": \"1234567890123456789\"}",
+   "error": "config.request_timeout_seconds must be <= 86400.0 seconds"
+  },
+  {
+   "config": "{\"other\": 1, \"request_timeout_seconds\": \"\\u00b2\"}",
+   "error": "config.request_timeout_seconds must be a number greater than 0, got '\u00b2'"
+  },
+  {
+   "config": "{\"other\": 1, \"request_timeout_seconds\": \"true\"}",
+   "error": "config.request_timeout_seconds must be a number greater than 0, got 'true'"
+  },
+  {
+   "config": "{\"other\": 1, \"request_timeout_seconds\": \"false\"}",
+   "error": "config.request_timeout_seconds must be a number greater than 0, got 'false'"
+  },
+  {
+   "config": "{\"other\": 1, \"request_timeout_seconds\": \"it's\"}",
+   "error": "config.request_timeout_seconds must be a number greater than 0, got \"it's\""
+  },
+  {
+   "config": "{\"other\": 1, \"request_timeout_seconds\": \"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\"}",
+   "error": "config.request_timeout_seconds must be a number greater than 0, got 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx..."
+  },
+  {
+   "config": "{\"other\": 1, \"request_timeout_seconds\": []}",
+   "error": "config.request_timeout_seconds must be a number greater than 0, got []"
+  },
+  {
+   "config": "{\"other\": 1, \"request_timeout_seconds\": [1]}",
+   "error": "config.request_timeout_seconds must be a number greater than 0, got [1]"
+  },
+  {
+   "config": "{\"other\": 1, \"request_timeout_seconds\": {}}",
+   "error": "config.request_timeout_seconds must be a number greater than 0, got {}"
+  },
+  {
+   "config": "{\"other\": 1, \"request_timeout_seconds\": {\"seconds\": 5}}",
+   "error": "config.request_timeout_seconds must be a number greater than 0, got {'seconds': 5}"
+  },
+  {
+   "config": "{\"other\": 1, \"request_timeout_seconds\": {\"$serde_json::private::Number\": \"5\"}}",
+   "error": "config.request_timeout_seconds must be a number greater than 0, got {'$serde_json::private::Number': '5'}"
+  },
+  {
+   "config": "{\"other\": 1, \"request_timeout_seconds\": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29]}",
+   "error": "config.request_timeout_seconds must be a number greater than 0, got [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17..."
+  }
+ ],
+ "page_probe_total_timeout_config": [
+  {
+   "config": "{}",
+   "request_timeout_seconds": "10.0",
+   "value": "30.0"
+  },
+  {
+   "config": "{}",
+   "request_timeout_seconds": "0.5",
+   "value": "1.5"
+  },
+  {
+   "config": "{}",
+   "request_timeout_seconds": "15.0",
+   "value": "45.0"
+  },
+  {
+   "config": "{}",
+   "request_timeout_seconds": "28800.0",
+   "value": "86400.0"
+  },
+  {
+   "config": "{}",
+   "request_timeout_seconds": "28800.000000000004",
+   "error": "config.total_timeout_seconds must be <= 86400.0 seconds"
+  },
+  {
+   "config": "{}",
+   "request_timeout_seconds": "43200.0",
+   "error": "config.total_timeout_seconds must be <= 86400.0 seconds"
+  },
+  {
+   "config": "{}",
+   "request_timeout_seconds": "1e+308",
+   "error": "config.total_timeout_seconds must be a number greater than 0, got inf"
+  },
+  {
+   "config": "{\"total_timeout_seconds\": 45.0}",
+   "request_timeout_seconds": "10.0",
+   "value": "45.0"
+  },
+  {
+   "config": "{\"total_timeout_seconds\": 45.0}",
+   "request_timeout_seconds": "0.5",
+   "value": "45.0"
+  },
+  {
+   "config": "{\"total_timeout_seconds\": 45.0}",
+   "request_timeout_seconds": "15.0",
+   "value": "45.0"
+  },
+  {
+   "config": "{\"total_timeout_seconds\": 45.0}",
+   "request_timeout_seconds": "28800.0",
+   "value": "45.0"
+  },
+  {
+   "config": "{\"total_timeout_seconds\": 45.0}",
+   "request_timeout_seconds": "28800.000000000004",
+   "value": "45.0"
+  },
+  {
+   "config": "{\"total_timeout_seconds\": 45.0}",
+   "request_timeout_seconds": "43200.0",
+   "value": "45.0"
+  },
+  {
+   "config": "{\"total_timeout_seconds\": 45.0}",
+   "request_timeout_seconds": "1e+308",
+   "value": "45.0"
+  },
+  {
+   "config": "{\"total_timeout_seconds\": 30}",
+   "request_timeout_seconds": "10.0",
+   "value": "30.0"
+  },
+  {
+   "config": "{\"total_timeout_seconds\": 30}",
+   "request_timeout_seconds": "0.5",
+   "value": "30.0"
+  },
+  {
+   "config": "{\"total_timeout_seconds\": 30}",
+   "request_timeout_seconds": "15.0",
+   "value": "30.0"
+  },
+  {
+   "config": "{\"total_timeout_seconds\": 30}",
+   "request_timeout_seconds": "28800.0",
+   "value": "30.0"
+  },
+  {
+   "config": "{\"total_timeout_seconds\": 30}",
+   "request_timeout_seconds": "28800.000000000004",
+   "value": "30.0"
+  },
+  {
+   "config": "{\"total_timeout_seconds\": 30}",
+   "request_timeout_seconds": "43200.0",
+   "value": "30.0"
+  },
+  {
+   "config": "{\"total_timeout_seconds\": 30}",
+   "request_timeout_seconds": "1e+308",
+   "value": "30.0"
+  },
+  {
+   "config": "{\"total_timeout_seconds\": \"60\"}",
+   "request_timeout_seconds": "10.0",
+   "value": "60.0"
+  },
+  {
+   "config": "{\"total_timeout_seconds\": \"60\"}",
+   "request_timeout_seconds": "0.5",
+   "value": "60.0"
+  },
+  {
+   "config": "{\"total_timeout_seconds\": \"60\"}",
+   "request_timeout_seconds": "15.0",
+   "value": "60.0"
+  },
+  {
+   "config": "{\"total_timeout_seconds\": \"60\"}",
+   "request_timeout_seconds": "28800.0",
+   "value": "60.0"
+  },
+  {
+   "config": "{\"total_timeout_seconds\": \"60\"}",
+   "request_timeout_seconds": "28800.000000000004",
+   "value": "60.0"
+  },
+  {
+   "config": "{\"total_timeout_seconds\": \"60\"}",
+   "request_timeout_seconds": "43200.0",
+   "value": "60.0"
+  },
+  {
+   "config": "{\"total_timeout_seconds\": \"60\"}",
+   "request_timeout_seconds": "1e+308",
+   "value": "60.0"
+  },
+  {
+   "config": "{\"total_timeout_seconds\": 86400}",
+   "request_timeout_seconds": "10.0",
+   "value": "86400.0"
+  },
+  {
+   "config": "{\"total_timeout_seconds\": 86400}",
+   "request_timeout_seconds": "0.5",
+   "value": "86400.0"
+  },
+  {
+   "config": "{\"total_timeout_seconds\": 86400}",
+   "request_timeout_seconds": "15.0",
+   "value": "86400.0"
+  },
+  {
+   "config": "{\"total_timeout_seconds\": 86400}",
+   "request_timeout_seconds": "28800.0",
+   "value": "86400.0"
+  },
+  {
+   "config": "{\"total_timeout_seconds\": 86400}",
+   "request_timeout_seconds": "28800.000000000004",
+   "value": "86400.0"
+  },
+  {
+   "config": "{\"total_timeout_seconds\": 86400}",
+   "request_timeout_seconds": "43200.0",
+   "value": "86400.0"
+  },
+  {
+   "config": "{\"total_timeout_seconds\": 86400}",
+   "request_timeout_seconds": "1e+308",
+   "value": "86400.0"
+  },
+  {
+   "config": "{\"total_timeout_seconds\": 86401}",
+   "request_timeout_seconds": "10.0",
+   "error": "config.total_timeout_seconds must be <= 86400.0 seconds"
+  },
+  {
+   "config": "{\"total_timeout_seconds\": 86401}",
+   "request_timeout_seconds": "0.5",
+   "error": "config.total_timeout_seconds must be <= 86400.0 seconds"
+  },
+  {
+   "config": "{\"total_timeout_seconds\": 86401}",
+   "request_timeout_seconds": "15.0",
+   "error": "config.total_timeout_seconds must be <= 86400.0 seconds"
+  },
+  {
+   "config": "{\"total_timeout_seconds\": 86401}",
+   "request_timeout_seconds": "28800.0",
+   "error": "config.total_timeout_seconds must be <= 86400.0 seconds"
+  },
+  {
+   "config": "{\"total_timeout_seconds\": 86401}",
+   "request_timeout_seconds": "28800.000000000004",
+   "error": "config.total_timeout_seconds must be <= 86400.0 seconds"
+  },
+  {
+   "config": "{\"total_timeout_seconds\": 86401}",
+   "request_timeout_seconds": "43200.0",
+   "error": "config.total_timeout_seconds must be <= 86400.0 seconds"
+  },
+  {
+   "config": "{\"total_timeout_seconds\": 86401}",
+   "request_timeout_seconds": "1e+308",
+   "error": "config.total_timeout_seconds must be <= 86400.0 seconds"
+  },
+  {
+   "config": "{\"total_timeout_seconds\": 1e308}",
+   "request_timeout_seconds": "10.0",
+   "error": "config.total_timeout_seconds must be <= 86400.0 seconds"
+  },
+  {
+   "config": "{\"total_timeout_seconds\": 1e308}",
+   "request_timeout_seconds": "0.5",
+   "error": "config.total_timeout_seconds must be <= 86400.0 seconds"
+  },
+  {
+   "config": "{\"total_timeout_seconds\": 1e308}",
+   "request_timeout_seconds": "15.0",
+   "error": "config.total_timeout_seconds must be <= 86400.0 seconds"
+  },
+  {
+   "config": "{\"total_timeout_seconds\": 1e308}",
+   "request_timeout_seconds": "28800.0",
+   "error": "config.total_timeout_seconds must be <= 86400.0 seconds"
+  },
+  {
+   "config": "{\"total_timeout_seconds\": 1e308}",
+   "request_timeout_seconds": "28800.000000000004",
+   "error": "config.total_timeout_seconds must be <= 86400.0 seconds"
+  },
+  {
+   "config": "{\"total_timeout_seconds\": 1e308}",
+   "request_timeout_seconds": "43200.0",
+   "error": "config.total_timeout_seconds must be <= 86400.0 seconds"
+  },
+  {
+   "config": "{\"total_timeout_seconds\": 1e308}",
+   "request_timeout_seconds": "1e+308",
+   "error": "config.total_timeout_seconds must be <= 86400.0 seconds"
+  },
+  {
+   "config": "{\"total_timeout_seconds\": 0}",
+   "request_timeout_seconds": "10.0",
+   "error": "config.total_timeout_seconds must be a number greater than 0, got 0"
+  },
+  {
+   "config": "{\"total_timeout_seconds\": 0}",
+   "request_timeout_seconds": "0.5",
+   "error": "config.total_timeout_seconds must be a number greater than 0, got 0"
+  },
+  {
+   "config": "{\"total_timeout_seconds\": 0}",
+   "request_timeout_seconds": "15.0",
+   "error": "config.total_timeout_seconds must be a number greater than 0, got 0"
+  },
+  {
+   "config": "{\"total_timeout_seconds\": 0}",
+   "request_timeout_seconds": "28800.0",
+   "error": "config.total_timeout_seconds must be a number greater than 0, got 0"
+  },
+  {
+   "config": "{\"total_timeout_seconds\": 0}",
+   "request_timeout_seconds": "28800.000000000004",
+   "error": "config.total_timeout_seconds must be a number greater than 0, got 0"
+  },
+  {
+   "config": "{\"total_timeout_seconds\": 0}",
+   "request_timeout_seconds": "43200.0",
+   "error": "config.total_timeout_seconds must be a number greater than 0, got 0"
+  },
+  {
+   "config": "{\"total_timeout_seconds\": 0}",
+   "request_timeout_seconds": "1e+308",
+   "error": "config.total_timeout_seconds must be a number greater than 0, got 0"
+  },
+  {
+   "config": "{\"total_timeout_seconds\": \"abc\"}",
+   "request_timeout_seconds": "10.0",
+   "error": "config.total_timeout_seconds must be a number greater than 0, got 'abc'"
+  },
+  {
+   "config": "{\"total_timeout_seconds\": \"abc\"}",
+   "request_timeout_seconds": "0.5",
+   "error": "config.total_timeout_seconds must be a number greater than 0, got 'abc'"
+  },
+  {
+   "config": "{\"total_timeout_seconds\": \"abc\"}",
+   "request_timeout_seconds": "15.0",
+   "error": "config.total_timeout_seconds must be a number greater than 0, got 'abc'"
+  },
+  {
+   "config": "{\"total_timeout_seconds\": \"abc\"}",
+   "request_timeout_seconds": "28800.0",
+   "error": "config.total_timeout_seconds must be a number greater than 0, got 'abc'"
+  },
+  {
+   "config": "{\"total_timeout_seconds\": \"abc\"}",
+   "request_timeout_seconds": "28800.000000000004",
+   "error": "config.total_timeout_seconds must be a number greater than 0, got 'abc'"
+  },
+  {
+   "config": "{\"total_timeout_seconds\": \"abc\"}",
+   "request_timeout_seconds": "43200.0",
+   "error": "config.total_timeout_seconds must be a number greater than 0, got 'abc'"
+  },
+  {
+   "config": "{\"total_timeout_seconds\": \"abc\"}",
+   "request_timeout_seconds": "1e+308",
+   "error": "config.total_timeout_seconds must be a number greater than 0, got 'abc'"
+  },
+  {
+   "config": "{\"total_timeout_seconds\": null}",
+   "request_timeout_seconds": "10.0",
+   "error": "config.total_timeout_seconds must be a number greater than 0, got None"
+  },
+  {
+   "config": "{\"total_timeout_seconds\": null}",
+   "request_timeout_seconds": "0.5",
+   "error": "config.total_timeout_seconds must be a number greater than 0, got None"
+  },
+  {
+   "config": "{\"total_timeout_seconds\": null}",
+   "request_timeout_seconds": "15.0",
+   "error": "config.total_timeout_seconds must be a number greater than 0, got None"
+  },
+  {
+   "config": "{\"total_timeout_seconds\": null}",
+   "request_timeout_seconds": "28800.0",
+   "error": "config.total_timeout_seconds must be a number greater than 0, got None"
+  },
+  {
+   "config": "{\"total_timeout_seconds\": null}",
+   "request_timeout_seconds": "28800.000000000004",
+   "error": "config.total_timeout_seconds must be a number greater than 0, got None"
+  },
+  {
+   "config": "{\"total_timeout_seconds\": null}",
+   "request_timeout_seconds": "43200.0",
+   "error": "config.total_timeout_seconds must be a number greater than 0, got None"
+  },
+  {
+   "config": "{\"total_timeout_seconds\": null}",
+   "request_timeout_seconds": "1e+308",
+   "error": "config.total_timeout_seconds must be a number greater than 0, got None"
+  },
+  {
+   "config": "{\"total_timeout_seconds\": true}",
+   "request_timeout_seconds": "10.0",
+   "error": "config.total_timeout_seconds must be a number greater than 0, got True"
+  },
+  {
+   "config": "{\"total_timeout_seconds\": true}",
+   "request_timeout_seconds": "0.5",
+   "error": "config.total_timeout_seconds must be a number greater than 0, got True"
+  },
+  {
+   "config": "{\"total_timeout_seconds\": true}",
+   "request_timeout_seconds": "15.0",
+   "error": "config.total_timeout_seconds must be a number greater than 0, got True"
+  },
+  {
+   "config": "{\"total_timeout_seconds\": true}",
+   "request_timeout_seconds": "28800.0",
+   "error": "config.total_timeout_seconds must be a number greater than 0, got True"
+  },
+  {
+   "config": "{\"total_timeout_seconds\": true}",
+   "request_timeout_seconds": "28800.000000000004",
+   "error": "config.total_timeout_seconds must be a number greater than 0, got True"
+  },
+  {
+   "config": "{\"total_timeout_seconds\": true}",
+   "request_timeout_seconds": "43200.0",
+   "error": "config.total_timeout_seconds must be a number greater than 0, got True"
+  },
+  {
+   "config": "{\"total_timeout_seconds\": true}",
+   "request_timeout_seconds": "1e+308",
+   "error": "config.total_timeout_seconds must be a number greater than 0, got True"
+  }
+ ],
+ "validate_spec_config": [
+  {
+   "spec_type": "home_assistant_sensor",
+   "config": "{}",
+   "errors": []
+  },
+  {
+   "spec_type": "home_assistant_env_scan",
+   "config": "{}",
+   "errors": []
+  },
+  {
+   "spec_type": "http_json_metric",
+   "config": "{}",
+   "errors": []
+  },
+  {
+   "spec_type": "http_page_probe",
+   "config": "{}",
+   "errors": []
+  },
+  {
+   "spec_type": "unifi_device_traffic",
+   "config": "{}",
+   "errors": []
+  },
+  {
+   "spec_type": "unknown_type",
+   "config": "{}",
+   "errors": []
+  },
+  {
+   "spec_type": "home_assistant_sensor",
+   "config": "[]",
+   "errors": [
+    "config must be an object"
+   ]
+  },
+  {
+   "spec_type": "home_assistant_env_scan",
+   "config": "[]",
+   "errors": [
+    "config must be an object"
+   ]
+  },
+  {
+   "spec_type": "http_json_metric",
+   "config": "[]",
+   "errors": [
+    "config must be an object"
+   ]
+  },
+  {
+   "spec_type": "http_page_probe",
+   "config": "[]",
+   "errors": [
+    "config must be an object"
+   ]
+  },
+  {
+   "spec_type": "unifi_device_traffic",
+   "config": "[]",
+   "errors": [
+    "config must be an object"
+   ]
+  },
+  {
+   "spec_type": "unknown_type",
+   "config": "[]",
+   "errors": [
+    "config must be an object"
+   ]
+  },
+  {
+   "spec_type": "home_assistant_sensor",
+   "config": "null",
+   "errors": [
+    "config must be an object"
+   ]
+  },
+  {
+   "spec_type": "home_assistant_env_scan",
+   "config": "null",
+   "errors": [
+    "config must be an object"
+   ]
+  },
+  {
+   "spec_type": "http_json_metric",
+   "config": "null",
+   "errors": [
+    "config must be an object"
+   ]
+  },
+  {
+   "spec_type": "http_page_probe",
+   "config": "null",
+   "errors": [
+    "config must be an object"
+   ]
+  },
+  {
+   "spec_type": "unifi_device_traffic",
+   "config": "null",
+   "errors": [
+    "config must be an object"
+   ]
+  },
+  {
+   "spec_type": "unknown_type",
+   "config": "null",
+   "errors": [
+    "config must be an object"
+   ]
+  },
+  {
+   "spec_type": "home_assistant_sensor",
+   "config": "\"config\"",
+   "errors": [
+    "config must be an object"
+   ]
+  },
+  {
+   "spec_type": "home_assistant_env_scan",
+   "config": "\"config\"",
+   "errors": [
+    "config must be an object"
+   ]
+  },
+  {
+   "spec_type": "http_json_metric",
+   "config": "\"config\"",
+   "errors": [
+    "config must be an object"
+   ]
+  },
+  {
+   "spec_type": "http_page_probe",
+   "config": "\"config\"",
+   "errors": [
+    "config must be an object"
+   ]
+  },
+  {
+   "spec_type": "unifi_device_traffic",
+   "config": "\"config\"",
+   "errors": [
+    "config must be an object"
+   ]
+  },
+  {
+   "spec_type": "unknown_type",
+   "config": "\"config\"",
+   "errors": [
+    "config must be an object"
+   ]
+  },
+  {
+   "spec_type": "home_assistant_sensor",
+   "config": "42",
+   "errors": [
+    "config must be an object"
+   ]
+  },
+  {
+   "spec_type": "home_assistant_env_scan",
+   "config": "42",
+   "errors": [
+    "config must be an object"
+   ]
+  },
+  {
+   "spec_type": "http_json_metric",
+   "config": "42",
+   "errors": [
+    "config must be an object"
+   ]
+  },
+  {
+   "spec_type": "http_page_probe",
+   "config": "42",
+   "errors": [
+    "config must be an object"
+   ]
+  },
+  {
+   "spec_type": "unifi_device_traffic",
+   "config": "42",
+   "errors": [
+    "config must be an object"
+   ]
+  },
+  {
+   "spec_type": "unknown_type",
+   "config": "42",
+   "errors": [
+    "config must be an object"
+   ]
+  },
+  {
+   "spec_type": "home_assistant_sensor",
+   "config": "{\"url\": \"https://example.test/\", \"subject_id\": \"example\"}",
+   "errors": []
+  },
+  {
+   "spec_type": "home_assistant_env_scan",
+   "config": "{\"url\": \"https://example.test/\", \"subject_id\": \"example\"}",
+   "errors": []
+  },
+  {
+   "spec_type": "http_json_metric",
+   "config": "{\"url\": \"https://example.test/\", \"subject_id\": \"example\"}",
+   "errors": []
+  },
+  {
+   "spec_type": "http_page_probe",
+   "config": "{\"url\": \"https://example.test/\", \"subject_id\": \"example\"}",
+   "errors": []
+  },
+  {
+   "spec_type": "unifi_device_traffic",
+   "config": "{\"url\": \"https://example.test/\", \"subject_id\": \"example\"}",
+   "errors": []
+  },
+  {
+   "spec_type": "unknown_type",
+   "config": "{\"url\": \"https://example.test/\", \"subject_id\": \"example\"}",
+   "errors": []
+  },
+  {
+   "spec_type": "home_assistant_sensor",
+   "config": "{\"url\": \"https://example.test/\", \"subject_id\": \"example\", \"request_timeout_seconds\": \"15\", \"max_body_bytes\": 1024, \"verify_tls\": false, \"follow_redirects\": true}",
+   "errors": []
+  },
+  {
+   "spec_type": "home_assistant_env_scan",
+   "config": "{\"url\": \"https://example.test/\", \"subject_id\": \"example\", \"request_timeout_seconds\": \"15\", \"max_body_bytes\": 1024, \"verify_tls\": false, \"follow_redirects\": true}",
+   "errors": []
+  },
+  {
+   "spec_type": "http_json_metric",
+   "config": "{\"url\": \"https://example.test/\", \"subject_id\": \"example\", \"request_timeout_seconds\": \"15\", \"max_body_bytes\": 1024, \"verify_tls\": false, \"follow_redirects\": true}",
+   "errors": []
+  },
+  {
+   "spec_type": "http_page_probe",
+   "config": "{\"url\": \"https://example.test/\", \"subject_id\": \"example\", \"request_timeout_seconds\": \"15\", \"max_body_bytes\": 1024, \"verify_tls\": false, \"follow_redirects\": true}",
+   "errors": []
+  },
+  {
+   "spec_type": "unifi_device_traffic",
+   "config": "{\"url\": \"https://example.test/\", \"subject_id\": \"example\", \"request_timeout_seconds\": \"15\", \"max_body_bytes\": 1024, \"verify_tls\": false, \"follow_redirects\": true}",
+   "errors": []
+  },
+  {
+   "spec_type": "unknown_type",
+   "config": "{\"url\": \"https://example.test/\", \"subject_id\": \"example\", \"request_timeout_seconds\": \"15\", \"max_body_bytes\": 1024, \"verify_tls\": false, \"follow_redirects\": true}",
+   "errors": []
+  },
+  {
+   "spec_type": "home_assistant_sensor",
+   "config": "{\"request_timeout_seconds\": \"5s\"}",
+   "errors": [
+    "config.request_timeout_seconds must be a number greater than 0, got '5s'"
+   ]
+  },
+  {
+   "spec_type": "home_assistant_env_scan",
+   "config": "{\"request_timeout_seconds\": \"5s\"}",
+   "errors": [
+    "config.request_timeout_seconds must be a number greater than 0, got '5s'"
+   ]
+  },
+  {
+   "spec_type": "http_json_metric",
+   "config": "{\"request_timeout_seconds\": \"5s\"}",
+   "errors": [
+    "config.request_timeout_seconds must be a number greater than 0, got '5s'"
+   ]
+  },
+  {
+   "spec_type": "http_page_probe",
+   "config": "{\"request_timeout_seconds\": \"5s\"}",
+   "errors": [
+    "config.request_timeout_seconds must be a number greater than 0, got '5s'"
+   ]
+  },
+  {
+   "spec_type": "unifi_device_traffic",
+   "config": "{\"request_timeout_seconds\": \"5s\"}",
+   "errors": [
+    "config.request_timeout_seconds must be a number greater than 0, got '5s'"
+   ]
+  },
+  {
+   "spec_type": "unknown_type",
+   "config": "{\"request_timeout_seconds\": \"5s\"}",
+   "errors": [
+    "config.request_timeout_seconds must be a number greater than 0, got '5s'"
+   ]
+  },
+  {
+   "spec_type": "home_assistant_sensor",
+   "config": "{\"request_timeout_seconds\": null}",
+   "errors": [
+    "config.request_timeout_seconds must be a number greater than 0, got None"
+   ]
+  },
+  {
+   "spec_type": "home_assistant_env_scan",
+   "config": "{\"request_timeout_seconds\": null}",
+   "errors": [
+    "config.request_timeout_seconds must be a number greater than 0, got None"
+   ]
+  },
+  {
+   "spec_type": "http_json_metric",
+   "config": "{\"request_timeout_seconds\": null}",
+   "errors": [
+    "config.request_timeout_seconds must be a number greater than 0, got None"
+   ]
+  },
+  {
+   "spec_type": "http_page_probe",
+   "config": "{\"request_timeout_seconds\": null}",
+   "errors": [
+    "config.request_timeout_seconds must be a number greater than 0, got None"
+   ]
+  },
+  {
+   "spec_type": "unifi_device_traffic",
+   "config": "{\"request_timeout_seconds\": null}",
+   "errors": [
+    "config.request_timeout_seconds must be a number greater than 0, got None"
+   ]
+  },
+  {
+   "spec_type": "unknown_type",
+   "config": "{\"request_timeout_seconds\": null}",
+   "errors": [
+    "config.request_timeout_seconds must be a number greater than 0, got None"
+   ]
+  },
+  {
+   "spec_type": "home_assistant_sensor",
+   "config": "{\"request_timeout_seconds\": 0}",
+   "errors": [
+    "config.request_timeout_seconds must be a number greater than 0, got 0"
+   ]
+  },
+  {
+   "spec_type": "home_assistant_env_scan",
+   "config": "{\"request_timeout_seconds\": 0}",
+   "errors": [
+    "config.request_timeout_seconds must be a number greater than 0, got 0"
+   ]
+  },
+  {
+   "spec_type": "http_json_metric",
+   "config": "{\"request_timeout_seconds\": 0}",
+   "errors": [
+    "config.request_timeout_seconds must be a number greater than 0, got 0"
+   ]
+  },
+  {
+   "spec_type": "http_page_probe",
+   "config": "{\"request_timeout_seconds\": 0}",
+   "errors": [
+    "config.request_timeout_seconds must be a number greater than 0, got 0"
+   ]
+  },
+  {
+   "spec_type": "unifi_device_traffic",
+   "config": "{\"request_timeout_seconds\": 0}",
+   "errors": [
+    "config.request_timeout_seconds must be a number greater than 0, got 0"
+   ]
+  },
+  {
+   "spec_type": "unknown_type",
+   "config": "{\"request_timeout_seconds\": 0}",
+   "errors": [
+    "config.request_timeout_seconds must be a number greater than 0, got 0"
+   ]
+  },
+  {
+   "spec_type": "home_assistant_sensor",
+   "config": "{\"request_timeout_seconds\": true}",
+   "errors": [
+    "config.request_timeout_seconds must be a number greater than 0, got True"
+   ]
+  },
+  {
+   "spec_type": "home_assistant_env_scan",
+   "config": "{\"request_timeout_seconds\": true}",
+   "errors": [
+    "config.request_timeout_seconds must be a number greater than 0, got True"
+   ]
+  },
+  {
+   "spec_type": "http_json_metric",
+   "config": "{\"request_timeout_seconds\": true}",
+   "errors": [
+    "config.request_timeout_seconds must be a number greater than 0, got True"
+   ]
+  },
+  {
+   "spec_type": "http_page_probe",
+   "config": "{\"request_timeout_seconds\": true}",
+   "errors": [
+    "config.request_timeout_seconds must be a number greater than 0, got True"
+   ]
+  },
+  {
+   "spec_type": "unifi_device_traffic",
+   "config": "{\"request_timeout_seconds\": true}",
+   "errors": [
+    "config.request_timeout_seconds must be a number greater than 0, got True"
+   ]
+  },
+  {
+   "spec_type": "unknown_type",
+   "config": "{\"request_timeout_seconds\": true}",
+   "errors": [
+    "config.request_timeout_seconds must be a number greater than 0, got True"
+   ]
+  },
+  {
+   "spec_type": "home_assistant_sensor",
+   "config": "{\"verify_tls\": \"false\"}",
+   "errors": [
+    "config.verify_tls must be true or false, got 'false'"
+   ]
+  },
+  {
+   "spec_type": "home_assistant_env_scan",
+   "config": "{\"verify_tls\": \"false\"}",
+   "errors": [
+    "config.verify_tls must be true or false, got 'false'"
+   ]
+  },
+  {
+   "spec_type": "http_json_metric",
+   "config": "{\"verify_tls\": \"false\"}",
+   "errors": [
+    "config.verify_tls must be true or false, got 'false'"
+   ]
+  },
+  {
+   "spec_type": "http_page_probe",
+   "config": "{\"verify_tls\": \"false\"}",
+   "errors": [
+    "config.verify_tls must be true or false, got 'false'"
+   ]
+  },
+  {
+   "spec_type": "unifi_device_traffic",
+   "config": "{\"verify_tls\": \"false\"}",
+   "errors": [
+    "config.verify_tls must be true or false, got 'false'"
+   ]
+  },
+  {
+   "spec_type": "unknown_type",
+   "config": "{\"verify_tls\": \"false\"}",
+   "errors": [
+    "config.verify_tls must be true or false, got 'false'"
+   ]
+  },
+  {
+   "spec_type": "home_assistant_sensor",
+   "config": "{\"follow_redirects\": \"true\"}",
+   "errors": [
+    "config.follow_redirects must be true or false, got 'true'"
+   ]
+  },
+  {
+   "spec_type": "home_assistant_env_scan",
+   "config": "{\"follow_redirects\": \"true\"}",
+   "errors": [
+    "config.follow_redirects must be true or false, got 'true'"
+   ]
+  },
+  {
+   "spec_type": "http_json_metric",
+   "config": "{\"follow_redirects\": \"true\"}",
+   "errors": [
+    "config.follow_redirects must be true or false, got 'true'"
+   ]
+  },
+  {
+   "spec_type": "http_page_probe",
+   "config": "{\"follow_redirects\": \"true\"}",
+   "errors": [
+    "config.follow_redirects must be true or false, got 'true'"
+   ]
+  },
+  {
+   "spec_type": "unifi_device_traffic",
+   "config": "{\"follow_redirects\": \"true\"}",
+   "errors": [
+    "config.follow_redirects must be true or false, got 'true'"
+   ]
+  },
+  {
+   "spec_type": "unknown_type",
+   "config": "{\"follow_redirects\": \"true\"}",
+   "errors": [
+    "config.follow_redirects must be true or false, got 'true'"
+   ]
+  },
+  {
+   "spec_type": "home_assistant_sensor",
+   "config": "{\"max_body_bytes\": 1.5}",
+   "errors": [
+    "config.max_body_bytes must be a positive integer, got 1.5"
+   ]
+  },
+  {
+   "spec_type": "home_assistant_env_scan",
+   "config": "{\"max_body_bytes\": 1.5}",
+   "errors": [
+    "config.max_body_bytes must be a positive integer, got 1.5"
+   ]
+  },
+  {
+   "spec_type": "http_json_metric",
+   "config": "{\"max_body_bytes\": 1.5}",
+   "errors": [
+    "config.max_body_bytes must be a positive integer, got 1.5"
+   ]
+  },
+  {
+   "spec_type": "http_page_probe",
+   "config": "{\"max_body_bytes\": 1.5}",
+   "errors": [
+    "config.max_body_bytes must be a positive integer, got 1.5"
+   ]
+  },
+  {
+   "spec_type": "unifi_device_traffic",
+   "config": "{\"max_body_bytes\": 1.5}",
+   "errors": [
+    "config.max_body_bytes must be a positive integer, got 1.5"
+   ]
+  },
+  {
+   "spec_type": "unknown_type",
+   "config": "{\"max_body_bytes\": 1.5}",
+   "errors": [
+    "config.max_body_bytes must be a positive integer, got 1.5"
+   ]
+  },
+  {
+   "spec_type": "home_assistant_sensor",
+   "config": "{\"request_timeout_seconds\": 10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000}",
+   "errors": [
+    "config.request_timeout_seconds must be a number greater than 0, got 1000000000000000000000000000000000000000000000000000000000000..."
+   ]
+  },
+  {
+   "spec_type": "home_assistant_env_scan",
+   "config": "{\"request_timeout_seconds\": 10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000}",
+   "errors": [
+    "config.request_timeout_seconds must be a number greater than 0, got 1000000000000000000000000000000000000000000000000000000000000..."
+   ]
+  },
+  {
+   "spec_type": "http_json_metric",
+   "config": "{\"request_timeout_seconds\": 10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000}",
+   "errors": [
+    "config.request_timeout_seconds must be a number greater than 0, got 1000000000000000000000000000000000000000000000000000000000000..."
+   ]
+  },
+  {
+   "spec_type": "http_page_probe",
+   "config": "{\"request_timeout_seconds\": 10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000}",
+   "errors": [
+    "config.request_timeout_seconds must be a number greater than 0, got 1000000000000000000000000000000000000000000000000000000000000..."
+   ]
+  },
+  {
+   "spec_type": "unifi_device_traffic",
+   "config": "{\"request_timeout_seconds\": 10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000}",
+   "errors": [
+    "config.request_timeout_seconds must be a number greater than 0, got 1000000000000000000000000000000000000000000000000000000000000..."
+   ]
+  },
+  {
+   "spec_type": "unknown_type",
+   "config": "{\"request_timeout_seconds\": 10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000}",
+   "errors": [
+    "config.request_timeout_seconds must be a number greater than 0, got 1000000000000000000000000000000000000000000000000000000000000..."
+   ]
+  },
+  {
+   "spec_type": "home_assistant_sensor",
+   "config": "{\"max_body_bytes\": \"\\u00b2\"}",
+   "errors": [
+    "config.max_body_bytes must be a positive integer, got '\u00b2'"
+   ]
+  },
+  {
+   "spec_type": "home_assistant_env_scan",
+   "config": "{\"max_body_bytes\": \"\\u00b2\"}",
+   "errors": [
+    "config.max_body_bytes must be a positive integer, got '\u00b2'"
+   ]
+  },
+  {
+   "spec_type": "http_json_metric",
+   "config": "{\"max_body_bytes\": \"\\u00b2\"}",
+   "errors": [
+    "config.max_body_bytes must be a positive integer, got '\u00b2'"
+   ]
+  },
+  {
+   "spec_type": "http_page_probe",
+   "config": "{\"max_body_bytes\": \"\\u00b2\"}",
+   "errors": [
+    "config.max_body_bytes must be a positive integer, got '\u00b2'"
+   ]
+  },
+  {
+   "spec_type": "unifi_device_traffic",
+   "config": "{\"max_body_bytes\": \"\\u00b2\"}",
+   "errors": [
+    "config.max_body_bytes must be a positive integer, got '\u00b2'"
+   ]
+  },
+  {
+   "spec_type": "unknown_type",
+   "config": "{\"max_body_bytes\": \"\\u00b2\"}",
+   "errors": [
+    "config.max_body_bytes must be a positive integer, got '\u00b2'"
+   ]
+  },
+  {
+   "spec_type": "home_assistant_sensor",
+   "config": "{\"max_body_bytes\": \"\\u0661\"}",
+   "errors": [
+    "config.max_body_bytes must be a positive integer, got '\u0661'"
+   ]
+  },
+  {
+   "spec_type": "home_assistant_env_scan",
+   "config": "{\"max_body_bytes\": \"\\u0661\"}",
+   "errors": [
+    "config.max_body_bytes must be a positive integer, got '\u0661'"
+   ]
+  },
+  {
+   "spec_type": "http_json_metric",
+   "config": "{\"max_body_bytes\": \"\\u0661\"}",
+   "errors": [
+    "config.max_body_bytes must be a positive integer, got '\u0661'"
+   ]
+  },
+  {
+   "spec_type": "http_page_probe",
+   "config": "{\"max_body_bytes\": \"\\u0661\"}",
+   "errors": [
+    "config.max_body_bytes must be a positive integer, got '\u0661'"
+   ]
+  },
+  {
+   "spec_type": "unifi_device_traffic",
+   "config": "{\"max_body_bytes\": \"\\u0661\"}",
+   "errors": [
+    "config.max_body_bytes must be a positive integer, got '\u0661'"
+   ]
+  },
+  {
+   "spec_type": "unknown_type",
+   "config": "{\"max_body_bytes\": \"\\u0661\"}",
+   "errors": [
+    "config.max_body_bytes must be a positive integer, got '\u0661'"
+   ]
+  },
+  {
+   "spec_type": "home_assistant_sensor",
+   "config": "{\"request_timeout_seconds\": 43200.0}",
+   "errors": [
+    "config.total_timeout_seconds must be <= 86400.0 seconds"
+   ]
+  },
+  {
+   "spec_type": "home_assistant_env_scan",
+   "config": "{\"request_timeout_seconds\": 43200.0}",
+   "errors": [
+    "config.total_timeout_seconds must be <= 86400.0 seconds"
+   ]
+  },
+  {
+   "spec_type": "http_json_metric",
+   "config": "{\"request_timeout_seconds\": 43200.0}",
+   "errors": [
+    "config.total_timeout_seconds must be <= 86400.0 seconds"
+   ]
+  },
+  {
+   "spec_type": "http_page_probe",
+   "config": "{\"request_timeout_seconds\": 43200.0}",
+   "errors": [
+    "config.total_timeout_seconds must be <= 86400.0 seconds"
+   ]
+  },
+  {
+   "spec_type": "unifi_device_traffic",
+   "config": "{\"request_timeout_seconds\": 43200.0}",
+   "errors": []
+  },
+  {
+   "spec_type": "unknown_type",
+   "config": "{\"request_timeout_seconds\": 43200.0}",
+   "errors": []
+  },
+  {
+   "spec_type": "home_assistant_sensor",
+   "config": "{\"request_timeout_seconds\": 43200.0, \"total_timeout_seconds\": 30.0}",
+   "errors": []
+  },
+  {
+   "spec_type": "home_assistant_env_scan",
+   "config": "{\"request_timeout_seconds\": 43200.0, \"total_timeout_seconds\": 30.0}",
+   "errors": []
+  },
+  {
+   "spec_type": "http_json_metric",
+   "config": "{\"request_timeout_seconds\": 43200.0, \"total_timeout_seconds\": 30.0}",
+   "errors": []
+  },
+  {
+   "spec_type": "http_page_probe",
+   "config": "{\"request_timeout_seconds\": 43200.0, \"total_timeout_seconds\": 30.0}",
+   "errors": []
+  },
+  {
+   "spec_type": "unifi_device_traffic",
+   "config": "{\"request_timeout_seconds\": 43200.0, \"total_timeout_seconds\": 30.0}",
+   "errors": []
+  },
+  {
+   "spec_type": "unknown_type",
+   "config": "{\"request_timeout_seconds\": 43200.0, \"total_timeout_seconds\": 30.0}",
+   "errors": []
+  },
+  {
+   "spec_type": "home_assistant_sensor",
+   "config": "{\"request_timeout_seconds\": \"5s\", \"total_timeout_seconds\": \"abc\"}",
+   "errors": [
+    "config.request_timeout_seconds must be a number greater than 0, got '5s'",
+    "config.total_timeout_seconds must be a number greater than 0, got 'abc'"
+   ]
+  },
+  {
+   "spec_type": "home_assistant_env_scan",
+   "config": "{\"request_timeout_seconds\": \"5s\", \"total_timeout_seconds\": \"abc\"}",
+   "errors": [
+    "config.request_timeout_seconds must be a number greater than 0, got '5s'",
+    "config.total_timeout_seconds must be a number greater than 0, got 'abc'"
+   ]
+  },
+  {
+   "spec_type": "http_json_metric",
+   "config": "{\"request_timeout_seconds\": \"5s\", \"total_timeout_seconds\": \"abc\"}",
+   "errors": [
+    "config.request_timeout_seconds must be a number greater than 0, got '5s'",
+    "config.total_timeout_seconds must be a number greater than 0, got 'abc'"
+   ]
+  },
+  {
+   "spec_type": "http_page_probe",
+   "config": "{\"request_timeout_seconds\": \"5s\", \"total_timeout_seconds\": \"abc\"}",
+   "errors": [
+    "config.request_timeout_seconds must be a number greater than 0, got '5s'",
+    "config.total_timeout_seconds must be a number greater than 0, got 'abc'"
+   ]
+  },
+  {
+   "spec_type": "unifi_device_traffic",
+   "config": "{\"request_timeout_seconds\": \"5s\", \"total_timeout_seconds\": \"abc\"}",
+   "errors": [
+    "config.request_timeout_seconds must be a number greater than 0, got '5s'",
+    "config.total_timeout_seconds must be a number greater than 0, got 'abc'"
+   ]
+  },
+  {
+   "spec_type": "unknown_type",
+   "config": "{\"request_timeout_seconds\": \"5s\", \"total_timeout_seconds\": \"abc\"}",
+   "errors": [
+    "config.request_timeout_seconds must be a number greater than 0, got '5s'",
+    "config.total_timeout_seconds must be a number greater than 0, got 'abc'"
+   ]
+  },
+  {
+   "spec_type": "home_assistant_sensor",
+   "config": "{\"request_timeout_seconds\": 1e308}",
+   "errors": [
+    "config.request_timeout_seconds must be <= 86400.0 seconds"
+   ]
+  },
+  {
+   "spec_type": "home_assistant_env_scan",
+   "config": "{\"request_timeout_seconds\": 1e308}",
+   "errors": [
+    "config.request_timeout_seconds must be <= 86400.0 seconds"
+   ]
+  },
+  {
+   "spec_type": "http_json_metric",
+   "config": "{\"request_timeout_seconds\": 1e308}",
+   "errors": [
+    "config.request_timeout_seconds must be <= 86400.0 seconds"
+   ]
+  },
+  {
+   "spec_type": "http_page_probe",
+   "config": "{\"request_timeout_seconds\": 1e308}",
+   "errors": [
+    "config.request_timeout_seconds must be <= 86400.0 seconds"
+   ]
+  },
+  {
+   "spec_type": "unifi_device_traffic",
+   "config": "{\"request_timeout_seconds\": 1e308}",
+   "errors": [
+    "config.request_timeout_seconds must be <= 86400.0 seconds"
+   ]
+  },
+  {
+   "spec_type": "unknown_type",
+   "config": "{\"request_timeout_seconds\": 1e308}",
+   "errors": [
+    "config.request_timeout_seconds must be <= 86400.0 seconds"
+   ]
+  },
+  {
+   "spec_type": "home_assistant_sensor",
+   "config": "{\"request_timeout_seconds\": 1e308, \"total_timeout_seconds\": 30.0}",
+   "errors": [
+    "config.request_timeout_seconds must be <= 86400.0 seconds"
+   ]
+  },
+  {
+   "spec_type": "home_assistant_env_scan",
+   "config": "{\"request_timeout_seconds\": 1e308, \"total_timeout_seconds\": 30.0}",
+   "errors": [
+    "config.request_timeout_seconds must be <= 86400.0 seconds"
+   ]
+  },
+  {
+   "spec_type": "http_json_metric",
+   "config": "{\"request_timeout_seconds\": 1e308, \"total_timeout_seconds\": 30.0}",
+   "errors": [
+    "config.request_timeout_seconds must be <= 86400.0 seconds"
+   ]
+  },
+  {
+   "spec_type": "http_page_probe",
+   "config": "{\"request_timeout_seconds\": 1e308, \"total_timeout_seconds\": 30.0}",
+   "errors": [
+    "config.request_timeout_seconds must be <= 86400.0 seconds"
+   ]
+  },
+  {
+   "spec_type": "unifi_device_traffic",
+   "config": "{\"request_timeout_seconds\": 1e308, \"total_timeout_seconds\": 30.0}",
+   "errors": [
+    "config.request_timeout_seconds must be <= 86400.0 seconds"
+   ]
+  },
+  {
+   "spec_type": "unknown_type",
+   "config": "{\"request_timeout_seconds\": 1e308, \"total_timeout_seconds\": 30.0}",
+   "errors": [
+    "config.request_timeout_seconds must be <= 86400.0 seconds"
+   ]
+  },
+  {
+   "spec_type": "home_assistant_sensor",
+   "config": "{\"total_timeout_seconds\": 1e308}",
+   "errors": [
+    "config.total_timeout_seconds must be <= 86400.0 seconds"
+   ]
+  },
+  {
+   "spec_type": "home_assistant_env_scan",
+   "config": "{\"total_timeout_seconds\": 1e308}",
+   "errors": [
+    "config.total_timeout_seconds must be <= 86400.0 seconds"
+   ]
+  },
+  {
+   "spec_type": "http_json_metric",
+   "config": "{\"total_timeout_seconds\": 1e308}",
+   "errors": [
+    "config.total_timeout_seconds must be <= 86400.0 seconds"
+   ]
+  },
+  {
+   "spec_type": "http_page_probe",
+   "config": "{\"total_timeout_seconds\": 1e308}",
+   "errors": [
+    "config.total_timeout_seconds must be <= 86400.0 seconds"
+   ]
+  },
+  {
+   "spec_type": "unifi_device_traffic",
+   "config": "{\"total_timeout_seconds\": 1e308}",
+   "errors": []
+  },
+  {
+   "spec_type": "unknown_type",
+   "config": "{\"total_timeout_seconds\": 1e308}",
+   "errors": []
+  },
+  {
+   "spec_type": "home_assistant_sensor",
+   "config": "{\"request_timeout_seconds\": 28800.000000000004}",
+   "errors": [
+    "config.total_timeout_seconds must be <= 86400.0 seconds"
+   ]
+  },
+  {
+   "spec_type": "home_assistant_env_scan",
+   "config": "{\"request_timeout_seconds\": 28800.000000000004}",
+   "errors": [
+    "config.total_timeout_seconds must be <= 86400.0 seconds"
+   ]
+  },
+  {
+   "spec_type": "http_json_metric",
+   "config": "{\"request_timeout_seconds\": 28800.000000000004}",
+   "errors": [
+    "config.total_timeout_seconds must be <= 86400.0 seconds"
+   ]
+  },
+  {
+   "spec_type": "http_page_probe",
+   "config": "{\"request_timeout_seconds\": 28800.000000000004}",
+   "errors": [
+    "config.total_timeout_seconds must be <= 86400.0 seconds"
+   ]
+  },
+  {
+   "spec_type": "unifi_device_traffic",
+   "config": "{\"request_timeout_seconds\": 28800.000000000004}",
+   "errors": []
+  },
+  {
+   "spec_type": "unknown_type",
+   "config": "{\"request_timeout_seconds\": 28800.000000000004}",
+   "errors": []
+  },
+  {
+   "spec_type": "home_assistant_sensor",
+   "config": "{\"request_timeout_seconds\": 100000, \"total_timeout_seconds\": 0, \"verify_tls\": 1, \"follow_redirects\": null, \"max_body_bytes\": 0}",
+   "errors": [
+    "config.request_timeout_seconds must be <= 86400.0 seconds",
+    "config.total_timeout_seconds must be a number greater than 0, got 0",
+    "config.verify_tls must be true or false, got 1",
+    "config.follow_redirects must be true or false, got None",
+    "config.max_body_bytes must be a positive integer, got 0"
+   ]
+  },
+  {
+   "spec_type": "home_assistant_env_scan",
+   "config": "{\"request_timeout_seconds\": 100000, \"total_timeout_seconds\": 0, \"verify_tls\": 1, \"follow_redirects\": null, \"max_body_bytes\": 0}",
+   "errors": [
+    "config.request_timeout_seconds must be <= 86400.0 seconds",
+    "config.total_timeout_seconds must be a number greater than 0, got 0",
+    "config.verify_tls must be true or false, got 1",
+    "config.follow_redirects must be true or false, got None",
+    "config.max_body_bytes must be a positive integer, got 0"
+   ]
+  },
+  {
+   "spec_type": "http_json_metric",
+   "config": "{\"request_timeout_seconds\": 100000, \"total_timeout_seconds\": 0, \"verify_tls\": 1, \"follow_redirects\": null, \"max_body_bytes\": 0}",
+   "errors": [
+    "config.request_timeout_seconds must be <= 86400.0 seconds",
+    "config.total_timeout_seconds must be a number greater than 0, got 0",
+    "config.verify_tls must be true or false, got 1",
+    "config.follow_redirects must be true or false, got None",
+    "config.max_body_bytes must be a positive integer, got 0"
+   ]
+  },
+  {
+   "spec_type": "http_page_probe",
+   "config": "{\"request_timeout_seconds\": 100000, \"total_timeout_seconds\": 0, \"verify_tls\": 1, \"follow_redirects\": null, \"max_body_bytes\": 0}",
+   "errors": [
+    "config.request_timeout_seconds must be <= 86400.0 seconds",
+    "config.total_timeout_seconds must be a number greater than 0, got 0",
+    "config.verify_tls must be true or false, got 1",
+    "config.follow_redirects must be true or false, got None",
+    "config.max_body_bytes must be a positive integer, got 0"
+   ]
+  },
+  {
+   "spec_type": "unifi_device_traffic",
+   "config": "{\"request_timeout_seconds\": 100000, \"total_timeout_seconds\": 0, \"verify_tls\": 1, \"follow_redirects\": null, \"max_body_bytes\": 0}",
+   "errors": [
+    "config.request_timeout_seconds must be <= 86400.0 seconds",
+    "config.total_timeout_seconds must be a number greater than 0, got 0",
+    "config.verify_tls must be true or false, got 1",
+    "config.follow_redirects must be true or false, got None",
+    "config.max_body_bytes must be a positive integer, got 0"
+   ]
+  },
+  {
+   "spec_type": "unknown_type",
+   "config": "{\"request_timeout_seconds\": 100000, \"total_timeout_seconds\": 0, \"verify_tls\": 1, \"follow_redirects\": null, \"max_body_bytes\": 0}",
+   "errors": [
+    "config.request_timeout_seconds must be <= 86400.0 seconds",
+    "config.total_timeout_seconds must be a number greater than 0, got 0",
+    "config.verify_tls must be true or false, got 1",
+    "config.follow_redirects must be true or false, got None",
+    "config.max_body_bytes must be a positive integer, got 0"
+   ]
+  },
+  {
+   "spec_type": "home_assistant_sensor",
+   "config": "{\"total_timeout_seconds\": \"nan\", \"max_body_bytes\": \"  42  \"}",
+   "errors": [
+    "config.total_timeout_seconds must be a number greater than 0, got 'nan'"
+   ]
+  },
+  {
+   "spec_type": "home_assistant_env_scan",
+   "config": "{\"total_timeout_seconds\": \"nan\", \"max_body_bytes\": \"  42  \"}",
+   "errors": [
+    "config.total_timeout_seconds must be a number greater than 0, got 'nan'"
+   ]
+  },
+  {
+   "spec_type": "http_json_metric",
+   "config": "{\"total_timeout_seconds\": \"nan\", \"max_body_bytes\": \"  42  \"}",
+   "errors": [
+    "config.total_timeout_seconds must be a number greater than 0, got 'nan'"
+   ]
+  },
+  {
+   "spec_type": "http_page_probe",
+   "config": "{\"total_timeout_seconds\": \"nan\", \"max_body_bytes\": \"  42  \"}",
+   "errors": [
+    "config.total_timeout_seconds must be a number greater than 0, got 'nan'"
+   ]
+  },
+  {
+   "spec_type": "unifi_device_traffic",
+   "config": "{\"total_timeout_seconds\": \"nan\", \"max_body_bytes\": \"  42  \"}",
+   "errors": [
+    "config.total_timeout_seconds must be a number greater than 0, got 'nan'"
+   ]
+  },
+  {
+   "spec_type": "unknown_type",
+   "config": "{\"total_timeout_seconds\": \"nan\", \"max_body_bytes\": \"  42  \"}",
+   "errors": [
+    "config.total_timeout_seconds must be a number greater than 0, got 'nan'"
+   ]
+  },
+  {
+   "spec_type": "home_assistant_sensor",
+   "config": "{\"request_timeout_seconds\": {\"$serde_json::private::Number\": \"5\"}, \"max_body_bytes\": {\"$serde_json::private::Number\": \"5\"}}",
+   "errors": [
+    "config.request_timeout_seconds must be a number greater than 0, got {'$serde_json::private::Number': '5'}",
+    "config.max_body_bytes must be a positive integer, got {'$serde_json::private::Number': '5'}"
+   ]
+  },
+  {
+   "spec_type": "home_assistant_env_scan",
+   "config": "{\"request_timeout_seconds\": {\"$serde_json::private::Number\": \"5\"}, \"max_body_bytes\": {\"$serde_json::private::Number\": \"5\"}}",
+   "errors": [
+    "config.request_timeout_seconds must be a number greater than 0, got {'$serde_json::private::Number': '5'}",
+    "config.max_body_bytes must be a positive integer, got {'$serde_json::private::Number': '5'}"
+   ]
+  },
+  {
+   "spec_type": "http_json_metric",
+   "config": "{\"request_timeout_seconds\": {\"$serde_json::private::Number\": \"5\"}, \"max_body_bytes\": {\"$serde_json::private::Number\": \"5\"}}",
+   "errors": [
+    "config.request_timeout_seconds must be a number greater than 0, got {'$serde_json::private::Number': '5'}",
+    "config.max_body_bytes must be a positive integer, got {'$serde_json::private::Number': '5'}"
+   ]
+  },
+  {
+   "spec_type": "http_page_probe",
+   "config": "{\"request_timeout_seconds\": {\"$serde_json::private::Number\": \"5\"}, \"max_body_bytes\": {\"$serde_json::private::Number\": \"5\"}}",
+   "errors": [
+    "config.request_timeout_seconds must be a number greater than 0, got {'$serde_json::private::Number': '5'}",
+    "config.max_body_bytes must be a positive integer, got {'$serde_json::private::Number': '5'}"
+   ]
+  },
+  {
+   "spec_type": "unifi_device_traffic",
+   "config": "{\"request_timeout_seconds\": {\"$serde_json::private::Number\": \"5\"}, \"max_body_bytes\": {\"$serde_json::private::Number\": \"5\"}}",
+   "errors": [
+    "config.request_timeout_seconds must be a number greater than 0, got {'$serde_json::private::Number': '5'}",
+    "config.max_body_bytes must be a positive integer, got {'$serde_json::private::Number': '5'}"
+   ]
+  },
+  {
+   "spec_type": "unknown_type",
+   "config": "{\"request_timeout_seconds\": {\"$serde_json::private::Number\": \"5\"}, \"max_body_bytes\": {\"$serde_json::private::Number\": \"5\"}}",
+   "errors": [
+    "config.request_timeout_seconds must be a number greater than 0, got {'$serde_json::private::Number': '5'}",
+    "config.max_body_bytes must be a positive integer, got {'$serde_json::private::Number': '5'}"
+   ]
+  },
+  {
+   "spec_type": "home_assistant_sensor",
+   "config": "{\"$serde_json::private::Number\": \"5\"}",
+   "errors": []
+  },
+  {
+   "spec_type": "home_assistant_env_scan",
+   "config": "{\"$serde_json::private::Number\": \"5\"}",
+   "errors": []
+  },
+  {
+   "spec_type": "http_json_metric",
+   "config": "{\"$serde_json::private::Number\": \"5\"}",
+   "errors": []
+  },
+  {
+   "spec_type": "http_page_probe",
+   "config": "{\"$serde_json::private::Number\": \"5\"}",
+   "errors": []
+  },
+  {
+   "spec_type": "unifi_device_traffic",
+   "config": "{\"$serde_json::private::Number\": \"5\"}",
+   "errors": []
+  },
+  {
+   "spec_type": "unknown_type",
+   "config": "{\"$serde_json::private::Number\": \"5\"}",
+   "errors": []
+  }
+ ]
+}

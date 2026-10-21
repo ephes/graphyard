@@ -1,0 +1,691 @@
+{
+ "cases": [
+  {
+   "name": "defaults",
+   "env": {},
+   "settings": {
+    "sqlite_timeout_seconds": "30",
+    "sqlite_busy_timeout_ms": "30000",
+    "sqlite_journal_mode": "WAL",
+    "sqlite_synchronous": "NORMAL",
+    "influx_url": "",
+    "influx_token": "",
+    "influx_org": "",
+    "influx_bucket": "graphyard",
+    "influx_measurement": "graphyard_metrics",
+    "influx_timeout_ms": "10000",
+    "influx_api_mode": "auto",
+    "metric_collection_interval_seconds": "60",
+    "condition_eval_interval_seconds": "60",
+    "condition_data_stale_warning_seconds": "600"
+   },
+   "pragmas": {
+    "statements": [
+     "PRAGMA busy_timeout = 30000",
+     "PRAGMA journal_mode = WAL",
+     "PRAGMA synchronous = NORMAL"
+    ],
+    "warnings": []
+   }
+  },
+  {
+   "name": "production values (macmini, PLAN.md section 1)",
+   "env": {
+    "DJANGO_SETTINGS_MODULE": "config.settings.production",
+    "INFLUX_URL": "http://127.0.0.1:8086",
+    "INFLUX_TOKEN": "influx-token-value",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": "10000",
+    "INFLUX_API_MODE": "v2",
+    "GRAPHYARD_METRIC_COLLECTION_INTERVAL_SECONDS": "60",
+    "GRAPHYARD_CONDITION_EVAL_INTERVAL_SECONDS": "60",
+    "GRAPHYARD_CONDITION_DATA_STALE_WARNING_SECONDS": "600",
+    "GRAPHYARD_SQLITE_TIMEOUT_SECONDS": "30",
+    "GRAPHYARD_SQLITE_BUSY_TIMEOUT_MS": "30000",
+    "GRAPHYARD_SQLITE_JOURNAL_MODE": "WAL",
+    "GRAPHYARD_SQLITE_SYNCHRONOUS": "FULL"
+   },
+   "settings": {
+    "sqlite_timeout_seconds": "30",
+    "sqlite_busy_timeout_ms": "30000",
+    "sqlite_journal_mode": "WAL",
+    "sqlite_synchronous": "FULL",
+    "influx_url": "http://127.0.0.1:8086",
+    "influx_token": "influx-token-value",
+    "influx_org": "graphyard",
+    "influx_bucket": "graphyard",
+    "influx_measurement": "graphyard_metrics",
+    "influx_timeout_ms": "10000",
+    "influx_api_mode": "v2",
+    "metric_collection_interval_seconds": "60",
+    "condition_eval_interval_seconds": "60",
+    "condition_data_stale_warning_seconds": "600"
+   },
+   "pragmas": {
+    "statements": [
+     "PRAGMA busy_timeout = 30000",
+     "PRAGMA journal_mode = WAL",
+     "PRAGMA synchronous = FULL"
+    ],
+    "warnings": []
+   }
+  },
+  {
+   "name": "integers with whitespace, sign, underscores and leading zeros",
+   "env": {
+    "GRAPHYARD_SQLITE_TIMEOUT_SECONDS": " 15 ",
+    "GRAPHYARD_SQLITE_BUSY_TIMEOUT_MS": "-5",
+    "INFLUX_TIMEOUT_MS": "1_000",
+    "GRAPHYARD_CONDITION_EVAL_INTERVAL_SECONDS": "+0030",
+    "GRAPHYARD_CONDITION_DATA_STALE_WARNING_SECONDS": "\t900\n"
+   },
+   "settings": {
+    "sqlite_timeout_seconds": "15",
+    "sqlite_busy_timeout_ms": "-5",
+    "sqlite_journal_mode": "WAL",
+    "sqlite_synchronous": "NORMAL",
+    "influx_url": "",
+    "influx_token": "",
+    "influx_org": "",
+    "influx_bucket": "graphyard",
+    "influx_measurement": "graphyard_metrics",
+    "influx_timeout_ms": "1000",
+    "influx_api_mode": "auto",
+    "metric_collection_interval_seconds": "60",
+    "condition_eval_interval_seconds": "30",
+    "condition_data_stale_warning_seconds": "900"
+   },
+   "pragmas": {
+    "statements": [
+     "PRAGMA busy_timeout = 0",
+     "PRAGMA journal_mode = WAL",
+     "PRAGMA synchronous = NORMAL"
+    ],
+    "warnings": []
+   }
+  },
+  {
+   "name": "integers beyond 64 bits",
+   "env": {
+    "GRAPHYARD_SQLITE_BUSY_TIMEOUT_MS": "99999999999999999999",
+    "GRAPHYARD_METRIC_COLLECTION_INTERVAL_SECONDS": "-99999999999999999999"
+   },
+   "settings": {
+    "sqlite_timeout_seconds": "30",
+    "sqlite_busy_timeout_ms": "99999999999999999999",
+    "sqlite_journal_mode": "WAL",
+    "sqlite_synchronous": "NORMAL",
+    "influx_url": "",
+    "influx_token": "",
+    "influx_org": "",
+    "influx_bucket": "graphyard",
+    "influx_measurement": "graphyard_metrics",
+    "influx_timeout_ms": "10000",
+    "influx_api_mode": "auto",
+    "metric_collection_interval_seconds": "-99999999999999999999",
+    "condition_eval_interval_seconds": "60",
+    "condition_data_stale_warning_seconds": "600"
+   },
+   "pragmas": {
+    "statements": [
+     "PRAGMA busy_timeout = 99999999999999999999",
+     "PRAGMA journal_mode = WAL",
+     "PRAGMA synchronous = NORMAL"
+    ],
+    "warnings": []
+   }
+  },
+  {
+   "name": "metric interval from the legacy HA poll interval",
+   "env": {
+    "GRAPHYARD_HA_POLL_INTERVAL_SECONDS": "45"
+   },
+   "settings": {
+    "sqlite_timeout_seconds": "30",
+    "sqlite_busy_timeout_ms": "30000",
+    "sqlite_journal_mode": "WAL",
+    "sqlite_synchronous": "NORMAL",
+    "influx_url": "",
+    "influx_token": "",
+    "influx_org": "",
+    "influx_bucket": "graphyard",
+    "influx_measurement": "graphyard_metrics",
+    "influx_timeout_ms": "10000",
+    "influx_api_mode": "auto",
+    "metric_collection_interval_seconds": "45",
+    "condition_eval_interval_seconds": "60",
+    "condition_data_stale_warning_seconds": "600"
+   },
+   "pragmas": {
+    "statements": [
+     "PRAGMA busy_timeout = 30000",
+     "PRAGMA journal_mode = WAL",
+     "PRAGMA synchronous = NORMAL"
+    ],
+    "warnings": []
+   }
+  },
+  {
+   "name": "metric interval set wins over the HA poll interval",
+   "env": {
+    "GRAPHYARD_HA_POLL_INTERVAL_SECONDS": "45",
+    "GRAPHYARD_METRIC_COLLECTION_INTERVAL_SECONDS": "90"
+   },
+   "settings": {
+    "sqlite_timeout_seconds": "30",
+    "sqlite_busy_timeout_ms": "30000",
+    "sqlite_journal_mode": "WAL",
+    "sqlite_synchronous": "NORMAL",
+    "influx_url": "",
+    "influx_token": "",
+    "influx_org": "",
+    "influx_bucket": "graphyard",
+    "influx_measurement": "graphyard_metrics",
+    "influx_timeout_ms": "10000",
+    "influx_api_mode": "auto",
+    "metric_collection_interval_seconds": "90",
+    "condition_eval_interval_seconds": "60",
+    "condition_data_stale_warning_seconds": "600"
+   },
+   "pragmas": {
+    "statements": [
+     "PRAGMA busy_timeout = 30000",
+     "PRAGMA journal_mode = WAL",
+     "PRAGMA synchronous = NORMAL"
+    ],
+    "warnings": []
+   }
+  },
+  {
+   "name": "invalid HA poll interval fails although the metric interval is set",
+   "env": {
+    "GRAPHYARD_HA_POLL_INTERVAL_SECONDS": "often",
+    "GRAPHYARD_METRIC_COLLECTION_INTERVAL_SECONDS": "90"
+   },
+   "error": {
+    "class": "ValueError",
+    "message": "invalid literal for int() with base 10: 'often'"
+   }
+  },
+  {
+   "name": "proxy to another variable",
+   "env": {
+    "GRAPHYARD_CONDITION_EVAL_INTERVAL_SECONDS": "$EVAL_EVERY",
+    "EVAL_EVERY": "120",
+    "INFLUX_TOKEN": "$SHARED_TOKEN",
+    "SHARED_TOKEN": "proxied-token"
+   },
+   "settings": {
+    "sqlite_timeout_seconds": "30",
+    "sqlite_busy_timeout_ms": "30000",
+    "sqlite_journal_mode": "WAL",
+    "sqlite_synchronous": "NORMAL",
+    "influx_url": "",
+    "influx_token": "proxied-token",
+    "influx_org": "",
+    "influx_bucket": "graphyard",
+    "influx_measurement": "graphyard_metrics",
+    "influx_timeout_ms": "10000",
+    "influx_api_mode": "auto",
+    "metric_collection_interval_seconds": "60",
+    "condition_eval_interval_seconds": "120",
+    "condition_data_stale_warning_seconds": "600"
+   },
+   "pragmas": {
+    "statements": [
+     "PRAGMA busy_timeout = 30000",
+     "PRAGMA journal_mode = WAL",
+     "PRAGMA synchronous = NORMAL"
+    ],
+    "warnings": []
+   }
+  },
+  {
+   "name": "proxy chain with repeated dollar signs",
+   "env": {
+    "INFLUX_TIMEOUT_MS": "$$FIRST",
+    "FIRST": "$SECOND",
+    "SECOND": "2500",
+    "INFLUX_ORG": "$$$ORG_SOURCE",
+    "ORG_SOURCE": "proxied-org"
+   },
+   "settings": {
+    "sqlite_timeout_seconds": "30",
+    "sqlite_busy_timeout_ms": "30000",
+    "sqlite_journal_mode": "WAL",
+    "sqlite_synchronous": "NORMAL",
+    "influx_url": "",
+    "influx_token": "",
+    "influx_org": "proxied-org",
+    "influx_bucket": "graphyard",
+    "influx_measurement": "graphyard_metrics",
+    "influx_timeout_ms": "2500",
+    "influx_api_mode": "auto",
+    "metric_collection_interval_seconds": "60",
+    "condition_eval_interval_seconds": "60",
+    "condition_data_stale_warning_seconds": "600"
+   },
+   "pragmas": {
+    "statements": [
+     "PRAGMA busy_timeout = 30000",
+     "PRAGMA journal_mode = WAL",
+     "PRAGMA synchronous = NORMAL"
+    ],
+    "warnings": []
+   }
+  },
+  {
+   "name": "proxy to a missing variable takes the default",
+   "env": {
+    "INFLUX_TIMEOUT_MS": "$MISSING_TIMEOUT",
+    "INFLUX_BUCKET": "$MISSING_BUCKET",
+    "GRAPHYARD_SQLITE_JOURNAL_MODE": "$"
+   },
+   "settings": {
+    "sqlite_timeout_seconds": "30",
+    "sqlite_busy_timeout_ms": "30000",
+    "sqlite_journal_mode": "WAL",
+    "sqlite_synchronous": "NORMAL",
+    "influx_url": "",
+    "influx_token": "",
+    "influx_org": "",
+    "influx_bucket": "graphyard",
+    "influx_measurement": "graphyard_metrics",
+    "influx_timeout_ms": "10000",
+    "influx_api_mode": "auto",
+    "metric_collection_interval_seconds": "60",
+    "condition_eval_interval_seconds": "60",
+    "condition_data_stale_warning_seconds": "600"
+   },
+   "pragmas": {
+    "statements": [
+     "PRAGMA busy_timeout = 30000",
+     "PRAGMA journal_mode = WAL",
+     "PRAGMA synchronous = NORMAL"
+    ],
+    "warnings": []
+   }
+  },
+  {
+   "name": "proxy of the metric interval to a missing variable takes the HA poll interval",
+   "env": {
+    "GRAPHYARD_HA_POLL_INTERVAL_SECONDS": "33",
+    "GRAPHYARD_METRIC_COLLECTION_INTERVAL_SECONDS": "$NOT_SET"
+   },
+   "settings": {
+    "sqlite_timeout_seconds": "30",
+    "sqlite_busy_timeout_ms": "30000",
+    "sqlite_journal_mode": "WAL",
+    "sqlite_synchronous": "NORMAL",
+    "influx_url": "",
+    "influx_token": "",
+    "influx_org": "",
+    "influx_bucket": "graphyard",
+    "influx_measurement": "graphyard_metrics",
+    "influx_timeout_ms": "10000",
+    "influx_api_mode": "auto",
+    "metric_collection_interval_seconds": "33",
+    "condition_eval_interval_seconds": "60",
+    "condition_data_stale_warning_seconds": "600"
+   },
+   "pragmas": {
+    "statements": [
+     "PRAGMA busy_timeout = 30000",
+     "PRAGMA journal_mode = WAL",
+     "PRAGMA synchronous = NORMAL"
+    ],
+    "warnings": []
+   }
+  },
+  {
+   "name": "proxy to an invalid integer",
+   "env": {
+    "INFLUX_TIMEOUT_MS": "$INFLUX_URL",
+    "INFLUX_URL": "http://influx:8086"
+   },
+   "error": {
+    "class": "ValueError",
+    "message": "invalid literal for int() with base 10: 'http://influx:8086'"
+   }
+  },
+  {
+   "name": "proxy cycle",
+   "env": {
+    "INFLUX_URL": "$LOOP_A",
+    "LOOP_A": "$LOOP_B",
+    "LOOP_B": "$LOOP_A"
+   },
+   "error": {
+    "class": "RecursionError",
+    "p2": true
+   }
+  },
+  {
+   "name": "dollar sign inside a value is not a proxy",
+   "env": {
+    "INFLUX_TOKEN": "tok$en",
+    "INFLUX_URL": " http://spaced/ "
+   },
+   "settings": {
+    "sqlite_timeout_seconds": "30",
+    "sqlite_busy_timeout_ms": "30000",
+    "sqlite_journal_mode": "WAL",
+    "sqlite_synchronous": "NORMAL",
+    "influx_url": " http://spaced/ ",
+    "influx_token": "tok$en",
+    "influx_org": "",
+    "influx_bucket": "graphyard",
+    "influx_measurement": "graphyard_metrics",
+    "influx_timeout_ms": "10000",
+    "influx_api_mode": "auto",
+    "metric_collection_interval_seconds": "60",
+    "condition_eval_interval_seconds": "60",
+    "condition_data_stale_warning_seconds": "600"
+   },
+   "pragmas": {
+    "statements": [
+     "PRAGMA busy_timeout = 30000",
+     "PRAGMA journal_mode = WAL",
+     "PRAGMA synchronous = NORMAL"
+    ],
+    "warnings": []
+   }
+  },
+  {
+   "name": "empty integer",
+   "env": {
+    "GRAPHYARD_SQLITE_TIMEOUT_SECONDS": ""
+   },
+   "error": {
+    "class": "ValueError",
+    "message": "invalid literal for int() with base 10: ''"
+   }
+  },
+  {
+   "name": "float integer",
+   "env": {
+    "INFLUX_TIMEOUT_MS": "10000.0"
+   },
+   "error": {
+    "class": "ValueError",
+    "message": "invalid literal for int() with base 10: '10000.0'"
+   }
+  },
+  {
+   "name": "suffixed integer",
+   "env": {
+    "GRAPHYARD_CONDITION_DATA_STALE_WARNING_SECONDS": "600s"
+   },
+   "error": {
+    "class": "ValueError",
+    "message": "invalid literal for int() with base 10: '600s'"
+   }
+  },
+  {
+   "name": "first invalid variable in settings order wins",
+   "env": {
+    "GRAPHYARD_CONDITION_EVAL_INTERVAL_SECONDS": "x",
+    "GRAPHYARD_SQLITE_BUSY_TIMEOUT_MS": "y"
+   },
+   "error": {
+    "class": "ValueError",
+    "message": "invalid literal for int() with base 10: 'y'"
+   }
+  },
+  {
+   "name": "long invalid integer is cut in the message",
+   "env": {
+    "INFLUX_TIMEOUT_MS": "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz"
+   },
+   "error": {
+    "class": "ValueError",
+    "message": "invalid literal for int() with base 10: 'zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz"
+   }
+  },
+  {
+   "name": "integer beyond the 4300 digit limit",
+   "env": {
+    "INFLUX_TIMEOUT_MS": "77777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777"
+   },
+   "error": {
+    "class": "ValueError",
+    "message": "Exceeds the limit (4300 digits) for integer string conversion: value has 4301 digits; use sys.set_int_max_str_digits() to increase the limit"
+   }
+  },
+  {
+   "name": "empty strings",
+   "env": {
+    "INFLUX_URL": "",
+    "INFLUX_BUCKET": "",
+    "INFLUX_MEASUREMENT": "",
+    "INFLUX_API_MODE": ""
+   },
+   "settings": {
+    "sqlite_timeout_seconds": "30",
+    "sqlite_busy_timeout_ms": "30000",
+    "sqlite_journal_mode": "WAL",
+    "sqlite_synchronous": "NORMAL",
+    "influx_url": "",
+    "influx_token": "",
+    "influx_org": "",
+    "influx_bucket": "",
+    "influx_measurement": "",
+    "influx_timeout_ms": "10000",
+    "influx_api_mode": "",
+    "metric_collection_interval_seconds": "60",
+    "condition_eval_interval_seconds": "60",
+    "condition_data_stale_warning_seconds": "600"
+   },
+   "pragmas": {
+    "statements": [
+     "PRAGMA busy_timeout = 30000",
+     "PRAGMA journal_mode = WAL",
+     "PRAGMA synchronous = NORMAL"
+    ],
+    "warnings": []
+   }
+  },
+  {
+   "name": "API mode is lower-cased",
+   "env": {
+    "INFLUX_API_MODE": "V3"
+   },
+   "settings": {
+    "sqlite_timeout_seconds": "30",
+    "sqlite_busy_timeout_ms": "30000",
+    "sqlite_journal_mode": "WAL",
+    "sqlite_synchronous": "NORMAL",
+    "influx_url": "",
+    "influx_token": "",
+    "influx_org": "",
+    "influx_bucket": "graphyard",
+    "influx_measurement": "graphyard_metrics",
+    "influx_timeout_ms": "10000",
+    "influx_api_mode": "v3",
+    "metric_collection_interval_seconds": "60",
+    "condition_eval_interval_seconds": "60",
+    "condition_data_stale_warning_seconds": "600"
+   },
+   "pragmas": {
+    "statements": [
+     "PRAGMA busy_timeout = 30000",
+     "PRAGMA journal_mode = WAL",
+     "PRAGMA synchronous = NORMAL"
+    ],
+    "warnings": []
+   }
+  },
+  {
+   "name": "API mode auto in capitals",
+   "env": {
+    "INFLUX_API_MODE": "AUTO"
+   },
+   "settings": {
+    "sqlite_timeout_seconds": "30",
+    "sqlite_busy_timeout_ms": "30000",
+    "sqlite_journal_mode": "WAL",
+    "sqlite_synchronous": "NORMAL",
+    "influx_url": "",
+    "influx_token": "",
+    "influx_org": "",
+    "influx_bucket": "graphyard",
+    "influx_measurement": "graphyard_metrics",
+    "influx_timeout_ms": "10000",
+    "influx_api_mode": "auto",
+    "metric_collection_interval_seconds": "60",
+    "condition_eval_interval_seconds": "60",
+    "condition_data_stale_warning_seconds": "600"
+   },
+   "pragmas": {
+    "statements": [
+     "PRAGMA busy_timeout = 30000",
+     "PRAGMA journal_mode = WAL",
+     "PRAGMA synchronous = NORMAL"
+    ],
+    "warnings": []
+   }
+  },
+  {
+   "name": "API mode with spaces is not stripped",
+   "env": {
+    "INFLUX_API_MODE": " v3 "
+   },
+   "settings": {
+    "sqlite_timeout_seconds": "30",
+    "sqlite_busy_timeout_ms": "30000",
+    "sqlite_journal_mode": "WAL",
+    "sqlite_synchronous": "NORMAL",
+    "influx_url": "",
+    "influx_token": "",
+    "influx_org": "",
+    "influx_bucket": "graphyard",
+    "influx_measurement": "graphyard_metrics",
+    "influx_timeout_ms": "10000",
+    "influx_api_mode": " v3 ",
+    "metric_collection_interval_seconds": "60",
+    "condition_eval_interval_seconds": "60",
+    "condition_data_stale_warning_seconds": "600"
+   },
+   "pragmas": {
+    "statements": [
+     "PRAGMA busy_timeout = 30000",
+     "PRAGMA journal_mode = WAL",
+     "PRAGMA synchronous = NORMAL"
+    ],
+    "warnings": []
+   }
+  },
+  {
+   "name": "SQLite modes are stripped and upper-cased",
+   "env": {
+    "GRAPHYARD_SQLITE_JOURNAL_MODE": "  delete\n",
+    "GRAPHYARD_SQLITE_SYNCHRONOUS": "\textra "
+   },
+   "settings": {
+    "sqlite_timeout_seconds": "30",
+    "sqlite_busy_timeout_ms": "30000",
+    "sqlite_journal_mode": "delete",
+    "sqlite_synchronous": "extra",
+    "influx_url": "",
+    "influx_token": "",
+    "influx_org": "",
+    "influx_bucket": "graphyard",
+    "influx_measurement": "graphyard_metrics",
+    "influx_timeout_ms": "10000",
+    "influx_api_mode": "auto",
+    "metric_collection_interval_seconds": "60",
+    "condition_eval_interval_seconds": "60",
+    "condition_data_stale_warning_seconds": "600"
+   },
+   "pragmas": {
+    "statements": [
+     "PRAGMA busy_timeout = 30000",
+     "PRAGMA journal_mode = DELETE",
+     "PRAGMA synchronous = EXTRA"
+    ],
+    "warnings": []
+   }
+  },
+  {
+   "name": "invalid SQLite modes fall back with warnings",
+   "env": {
+    "GRAPHYARD_SQLITE_JOURNAL_MODE": "wal2",
+    "GRAPHYARD_SQLITE_SYNCHRONOUS": "fast"
+   },
+   "settings": {
+    "sqlite_timeout_seconds": "30",
+    "sqlite_busy_timeout_ms": "30000",
+    "sqlite_journal_mode": "wal2",
+    "sqlite_synchronous": "fast",
+    "influx_url": "",
+    "influx_token": "",
+    "influx_org": "",
+    "influx_bucket": "graphyard",
+    "influx_measurement": "graphyard_metrics",
+    "influx_timeout_ms": "10000",
+    "influx_api_mode": "auto",
+    "metric_collection_interval_seconds": "60",
+    "condition_eval_interval_seconds": "60",
+    "condition_data_stale_warning_seconds": "600"
+   },
+   "pragmas": {
+    "statements": [
+     "PRAGMA busy_timeout = 30000",
+     "PRAGMA journal_mode = WAL",
+     "PRAGMA synchronous = NORMAL"
+    ],
+    "warnings": [
+     "Invalid GRAPHYARD_SQLITE_JOURNAL_MODE=WAL2, falling back to WAL",
+     "Invalid GRAPHYARD_SQLITE_SYNCHRONOUS=FAST, falling back to NORMAL"
+    ]
+   }
+  },
+  {
+   "name": "empty SQLite modes fall back",
+   "env": {
+    "GRAPHYARD_SQLITE_JOURNAL_MODE": "   ",
+    "GRAPHYARD_SQLITE_SYNCHRONOUS": ""
+   },
+   "settings": {
+    "sqlite_timeout_seconds": "30",
+    "sqlite_busy_timeout_ms": "30000",
+    "sqlite_journal_mode": "",
+    "sqlite_synchronous": "",
+    "influx_url": "",
+    "influx_token": "",
+    "influx_org": "",
+    "influx_bucket": "graphyard",
+    "influx_measurement": "graphyard_metrics",
+    "influx_timeout_ms": "10000",
+    "influx_api_mode": "auto",
+    "metric_collection_interval_seconds": "60",
+    "condition_eval_interval_seconds": "60",
+    "condition_data_stale_warning_seconds": "600"
+   },
+   "pragmas": {
+    "statements": [
+     "PRAGMA busy_timeout = 30000",
+     "PRAGMA journal_mode = WAL",
+     "PRAGMA synchronous = NORMAL"
+    ],
+    "warnings": [
+     "Invalid GRAPHYARD_SQLITE_JOURNAL_MODE=, falling back to WAL",
+     "Invalid GRAPHYARD_SQLITE_SYNCHRONOUS=, falling back to NORMAL"
+    ]
+   }
+  },
+  {
+   "name": "web-only setting is not validated by the agent",
+   "env": {
+    "GRAPHYARD_LOGIN_FAILURE_WINDOW_SECONDS": "0"
+   },
+   "divergence": "D-7",
+   "error": {
+    "class": "ImproperlyConfigured",
+    "message": "GRAPHYARD_LOGIN_FAILURE_WINDOW_SECONDS must be at least 1, got 0"
+   }
+  }
+ ]
+}

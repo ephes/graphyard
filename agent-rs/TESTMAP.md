@@ -19,6 +19,15 @@ fixture no longer matches the Python code.
 | `influx.py` `MetricPoint`, `MetricSample`; `services.py` `ConditionEvaluation`, `ConditionEvaluationRun`, `MetricCollectionSpecRun` (fields, order, defaults) | `model/tests.rs::metric_point_matches_the_python_dataclass`, `::metric_sample_matches_the_python_dataclass`, `::result_types_match_the_python_dataclasses` | done |
 | Fixture drift guard (a hand-edited, missing or orphaned fixture fails) | `tests/test_agent_rs_fixtures.py` | done |
 
+## S2 — Python compat + settings
+
+| Python behaviour / test | Rust counterpart | Status |
+| --- | --- | --- |
+| `repr(float)`, `str(float)`, `format(x, "g")`, `float(str)`, `int(str)` (whitespace, sign, `_`, `inf`/`nan` spellings, the 4300-digit limit and its message), `str()`/`repr()`/`type().__name__`/`float()` of `json.loads` values, `str.strip()`/`str.split()`, `==` across `bool`/`int`/`float`/containers, the `json.loads` integer digit limit (D-11), `json.loads` of objects that spell `serde_json`'s private number/raw-value keys and of repeated keys | `graphyard-core/src/pycompat/tests.rs` against `fixtures/pycompat.json` (`gen_pycompat.py`) | done |
+| `config/settings/base.py` agent variables via django-environ (defaults, `$` proxies and chains, proxy cycles, invalid/empty/huge integers, the inner `GRAPHYARD_HA_POLL_INTERVAL_SECONDS` default, settings order of the first error, `INFLUX_API_MODE` lower-casing, SQLite mode stripping); `apps.py:_configure_sqlite_connection` pragma statements and warnings; D-7 (a web-only variable is not validated) | `graphyard-core/src/settings/tests.rs` against `fixtures/settings.json` (`gen_settings.py`) | done |
+| `spec_config.py`: `positive_float_config`, `positive_int_config`, `bool_config`, `request_timeout_config`, `page_probe_total_timeout_config`, `_supported_timeout`, `_describe`, `validate_spec_config` (all spec types) | `graphyard-core/src/spec_config/tests.rs` against `fixtures/spec_config.json` (`gen_spec_config.py`) | done |
+| `test_metric_collection_spec_isolation.py::test_full_clean_rejects_malformed_config` (all parameters), `::test_full_clean_accepts_valid_config`, `::test_validate_spec_config_rejects_non_object`, `::test_model_validates_derived_wait_limit`, `::test_derived_timeout_defaults_are_validated`, `::test_invalid_timeouts_report_each_key_once`, the config-validation part of `::test_impractical_timeout_rejected_before_collection` and `::test_explicit_oversized_total_rejected_before_transport` | `spec_config.json` cases; `spec_config/tests.rs::every_python_test_config_of_the_slice_is_in_the_corpus` | done |
+
 ## S10a — release workflow
 
 Not Python agent behaviour: the release pipeline of PLAN.md 8.2 has no Python
@@ -45,8 +54,8 @@ counterpart. Its tests:
 | `test_metric_collection_specs.py` UniFi tests (incl. redaction) | fake-server tests + `unifi.json` | S7b | pending |
 | `test_metric_collection_specs.py::test_http_json_metric_spec_skips_non_finite_value` | `normalize.json` + fake-server test | S4a, S7a | pending |
 | `test_metric_collection_spec_isolation.py::test_bad_spec_does_not_stop_later_specs`, `::test_unexpected_collector_exception_is_isolated` | run isolation tests | S8 | pending |
-| `test_metric_collection_spec_isolation.py` cap/redirect/timeout tests | `spec_config.json` + fake-server tests | S2, S6 | pending |
-| `test_metric_collection_spec_isolation.py::test_full_clean_*`, `::test_validate_spec_config_rejects_non_object`, `::test_model_validates_derived_wait_limit` | `spec_config.json` (`validate_spec_config` is web-side but shares helpers) | S2 | pending |
+| `test_metric_collection_spec_isolation.py` cap/redirect/timeout tests | `spec_config.json` (config validation: done in S2) + fake-server tests (transport: S6) | S2, S6 | pending (S6) |
+| `test_metric_collection_spec_isolation.py::test_full_clean_*`, `::test_validate_spec_config_rejects_non_object`, `::test_model_validates_derived_wait_limit` | `spec_config.json` (`validate_spec_config` is web-side but shares helpers) | S2 | done |
 | `test_page_probe_deadline.py` (all, incl. `caps_abandoned_workers`) | deadline/abandoned-lookup tests | S6 | pending |
 | `test_http_json_budget.py`, `test_home_assistant_budget.py` | budget/deadline tests | S6, S7a | pending |
 | `test_influx_modes.py` normalisation/write tests | `normalize.json`, `line_protocol.json` | S4a | pending |
