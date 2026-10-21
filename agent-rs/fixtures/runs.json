@@ -1,0 +1,1655 @@
+{
+ "now": "2026-10-21T08:15:30.123456+00:00",
+ "now_ts": 1792570530,
+ "scenarios": [
+  {
+   "name": "mixed_due_run",
+   "kind": "metrics",
+   "due_only": true,
+   "seed": {
+    "metric_collection_spec": [
+     {
+      "id": 1,
+      "name": "c ok",
+      "enabled": 1,
+      "spec_type": "http_json_metric",
+      "interval_seconds": 300,
+      "next_run_time": 1792570530,
+      "config": "{\"url\": \"http://127.0.0.1:9/metrics\", \"metric_path\": \"$.value\"}",
+      "last_run_at": null,
+      "last_status": "warning",
+      "last_error": "",
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901"
+     },
+     {
+      "id": 2,
+      "name": "a bad timeout",
+      "enabled": 1,
+      "spec_type": "http_json_metric",
+      "interval_seconds": 300,
+      "next_run_time": 1792570530,
+      "config": "{\"url\": \"http://127.0.0.1:9/metrics\", \"metric_path\": \"$.value\"}",
+      "last_run_at": null,
+      "last_status": "warning",
+      "last_error": "",
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901"
+     },
+     {
+      "id": 3,
+      "name": "b crashing",
+      "enabled": 1,
+      "spec_type": "http_json_metric",
+      "interval_seconds": 300,
+      "next_run_time": 1792570530,
+      "config": "{\"url\": \"http://127.0.0.1:9/metrics\", \"metric_path\": \"$.value\"}",
+      "last_run_at": null,
+      "last_status": "warning",
+      "last_error": "",
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901"
+     },
+     {
+      "id": 4,
+      "name": "d warning",
+      "enabled": 1,
+      "spec_type": "http_json_metric",
+      "interval_seconds": 300,
+      "next_run_time": 1792570530,
+      "config": "{\"url\": \"http://127.0.0.1:9/metrics\", \"metric_path\": \"$.value\"}",
+      "last_run_at": null,
+      "last_status": "warning",
+      "last_error": "",
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901"
+     },
+     {
+      "id": 5,
+      "name": "e quiet warning",
+      "enabled": 1,
+      "spec_type": "http_json_metric",
+      "interval_seconds": 300,
+      "next_run_time": 1792570530,
+      "config": "{\"url\": \"http://127.0.0.1:9/metrics\", \"metric_path\": \"$.value\"}",
+      "last_run_at": null,
+      "last_status": "warning",
+      "last_error": "",
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901"
+     },
+     {
+      "id": 6,
+      "name": "f unknown",
+      "enabled": 1,
+      "spec_type": "legacy_type",
+      "interval_seconds": 300,
+      "next_run_time": 1792570530,
+      "config": "{\"url\": \"http://127.0.0.1:9/metrics\", \"metric_path\": \"$.value\"}",
+      "last_run_at": null,
+      "last_status": "warning",
+      "last_error": "",
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901"
+     },
+     {
+      "id": 7,
+      "name": "g disabled",
+      "enabled": 0,
+      "spec_type": "http_json_metric",
+      "interval_seconds": 300,
+      "next_run_time": 1792570530,
+      "config": "{\"url\": \"http://127.0.0.1:9/metrics\", \"metric_path\": \"$.value\"}",
+      "last_run_at": null,
+      "last_status": "warning",
+      "last_error": "",
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901"
+     },
+     {
+      "id": 8,
+      "name": "h not due",
+      "enabled": 1,
+      "spec_type": "http_json_metric",
+      "interval_seconds": 300,
+      "next_run_time": 1792570531,
+      "config": "{\"url\": \"http://127.0.0.1:9/metrics\", \"metric_path\": \"$.value\"}",
+      "last_run_at": null,
+      "last_status": "warning",
+      "last_error": "",
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901"
+     },
+     {
+      "id": 9,
+      "name": "i interval zero",
+      "enabled": 1,
+      "spec_type": "http_json_metric",
+      "interval_seconds": 0,
+      "next_run_time": 1792570530,
+      "config": "{\"url\": \"http://127.0.0.1:9/metrics\", \"metric_path\": \"$.value\"}",
+      "last_run_at": null,
+      "last_status": "warning",
+      "last_error": "",
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901"
+     },
+     {
+      "id": 10,
+      "name": "Z upper",
+      "enabled": 1,
+      "spec_type": "http_json_metric",
+      "interval_seconds": 300,
+      "next_run_time": 1792570530,
+      "config": "{\"url\": \"http://127.0.0.1:9/metrics\", \"metric_path\": \"$.value\"}",
+      "last_run_at": null,
+      "last_status": "warning",
+      "last_error": "",
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901"
+     },
+     {
+      "id": 11,
+      "name": "j truthy enabled",
+      "enabled": 2,
+      "spec_type": "http_json_metric",
+      "interval_seconds": 300,
+      "next_run_time": 1792570530,
+      "config": "{\"url\": \"http://127.0.0.1:9/metrics\", \"metric_path\": \"$.value\"}",
+      "last_run_at": null,
+      "last_status": "warning",
+      "last_error": "",
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901"
+     }
+    ],
+    "pipeline_heartbeat": [
+     {
+      "id": 1,
+      "name": "metric_collectors",
+      "status": "ok",
+      "last_success": "2026-10-20 07:00:00.250000",
+      "last_error": "",
+      "details": "{\"total\": 1}",
+      "updated_at": "2026-10-20 07:00:00.250001"
+     }
+    ]
+   },
+   "scripts": {
+    "c ok": {
+     "outcome": [
+      "ok",
+      2,
+      1,
+      ""
+     ]
+    },
+    "a bad timeout": {
+     "raise": {
+      "class": "SpecConfigError",
+      "message": "config.request_timeout_seconds must be a positive number"
+     }
+    },
+    "b crashing": {
+     "raise": {
+      "class": "RuntimeError",
+      "message": "collector bug"
+     }
+    },
+    "d warning": {
+     "outcome": [
+      "warning",
+      0,
+      3,
+      "no numeric values found"
+     ]
+    },
+    "e quiet warning": {
+     "outcome": [
+      "warning",
+      1,
+      0,
+      ""
+     ]
+    },
+    "i interval zero": {
+     "outcome": [
+      "ok",
+      1,
+      0,
+      ""
+     ]
+    },
+    "Z upper": {
+     "outcome": [
+      "ok",
+      1,
+      0,
+      ""
+     ]
+    },
+    "j truthy enabled": {
+     "outcome": [
+      "ok",
+      4,
+      0,
+      ""
+     ]
+    }
+   },
+   "result": {
+    "total": 9,
+    "failed": 3,
+    "warning": 2,
+    "ingested": 9,
+    "skipped": 4
+   },
+   "after": {
+    "metric_collection_spec": [
+     {
+      "id": 1,
+      "name": "c ok",
+      "enabled": 1,
+      "spec_type": "http_json_metric",
+      "interval_seconds": 300,
+      "next_run_time": 1792570830,
+      "config": "{\"url\": \"http://127.0.0.1:9/metrics\", \"metric_path\": \"$.value\"}",
+      "last_run_at": "2026-10-21 08:15:30.123456",
+      "last_status": "ok",
+      "last_error": "",
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901"
+     },
+     {
+      "id": 2,
+      "name": "a bad timeout",
+      "enabled": 1,
+      "spec_type": "http_json_metric",
+      "interval_seconds": 300,
+      "next_run_time": 1792570830,
+      "config": "{\"url\": \"http://127.0.0.1:9/metrics\", \"metric_path\": \"$.value\"}",
+      "last_run_at": "2026-10-21 08:15:30.123456",
+      "last_status": "critical",
+      "last_error": "config.request_timeout_seconds must be a positive number",
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901"
+     },
+     {
+      "id": 3,
+      "name": "b crashing",
+      "enabled": 1,
+      "spec_type": "http_json_metric",
+      "interval_seconds": 300,
+      "next_run_time": 1792570830,
+      "config": "{\"url\": \"http://127.0.0.1:9/metrics\", \"metric_path\": \"$.value\"}",
+      "last_run_at": "2026-10-21 08:15:30.123456",
+      "last_status": "critical",
+      "last_error": "collector raised RuntimeError: collector bug",
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901"
+     },
+     {
+      "id": 4,
+      "name": "d warning",
+      "enabled": 1,
+      "spec_type": "http_json_metric",
+      "interval_seconds": 300,
+      "next_run_time": 1792570830,
+      "config": "{\"url\": \"http://127.0.0.1:9/metrics\", \"metric_path\": \"$.value\"}",
+      "last_run_at": "2026-10-21 08:15:30.123456",
+      "last_status": "warning",
+      "last_error": "no numeric values found",
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901"
+     },
+     {
+      "id": 5,
+      "name": "e quiet warning",
+      "enabled": 1,
+      "spec_type": "http_json_metric",
+      "interval_seconds": 300,
+      "next_run_time": 1792570830,
+      "config": "{\"url\": \"http://127.0.0.1:9/metrics\", \"metric_path\": \"$.value\"}",
+      "last_run_at": "2026-10-21 08:15:30.123456",
+      "last_status": "warning",
+      "last_error": "",
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901"
+     },
+     {
+      "id": 6,
+      "name": "f unknown",
+      "enabled": 1,
+      "spec_type": "legacy_type",
+      "interval_seconds": 300,
+      "next_run_time": 1792570830,
+      "config": "{\"url\": \"http://127.0.0.1:9/metrics\", \"metric_path\": \"$.value\"}",
+      "last_run_at": "2026-10-21 08:15:30.123456",
+      "last_status": "critical",
+      "last_error": "unsupported spec_type: legacy_type",
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901"
+     },
+     {
+      "id": 7,
+      "name": "g disabled",
+      "enabled": 0,
+      "spec_type": "http_json_metric",
+      "interval_seconds": 300,
+      "next_run_time": 1792570530,
+      "config": "{\"url\": \"http://127.0.0.1:9/metrics\", \"metric_path\": \"$.value\"}",
+      "last_run_at": null,
+      "last_status": "warning",
+      "last_error": "",
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901"
+     },
+     {
+      "id": 8,
+      "name": "h not due",
+      "enabled": 1,
+      "spec_type": "http_json_metric",
+      "interval_seconds": 300,
+      "next_run_time": 1792570531,
+      "config": "{\"url\": \"http://127.0.0.1:9/metrics\", \"metric_path\": \"$.value\"}",
+      "last_run_at": null,
+      "last_status": "warning",
+      "last_error": "",
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901"
+     },
+     {
+      "id": 9,
+      "name": "i interval zero",
+      "enabled": 1,
+      "spec_type": "http_json_metric",
+      "interval_seconds": 0,
+      "next_run_time": 1792570531,
+      "config": "{\"url\": \"http://127.0.0.1:9/metrics\", \"metric_path\": \"$.value\"}",
+      "last_run_at": "2026-10-21 08:15:30.123456",
+      "last_status": "ok",
+      "last_error": "",
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901"
+     },
+     {
+      "id": 10,
+      "name": "Z upper",
+      "enabled": 1,
+      "spec_type": "http_json_metric",
+      "interval_seconds": 300,
+      "next_run_time": 1792570830,
+      "config": "{\"url\": \"http://127.0.0.1:9/metrics\", \"metric_path\": \"$.value\"}",
+      "last_run_at": "2026-10-21 08:15:30.123456",
+      "last_status": "ok",
+      "last_error": "",
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901"
+     },
+     {
+      "id": 11,
+      "name": "j truthy enabled",
+      "enabled": 2,
+      "spec_type": "http_json_metric",
+      "interval_seconds": 300,
+      "next_run_time": 1792570830,
+      "config": "{\"url\": \"http://127.0.0.1:9/metrics\", \"metric_path\": \"$.value\"}",
+      "last_run_at": "2026-10-21 08:15:30.123456",
+      "last_status": "ok",
+      "last_error": "",
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901"
+     }
+    ],
+    "condition_definition": [],
+    "pipeline_heartbeat": [
+     {
+      "id": 1,
+      "name": "metric_collectors",
+      "status": "warning",
+      "last_success": "2026-10-21 08:15:30.123456",
+      "last_error": "a bad timeout: config.request_timeout_seconds must be a positive number; b crashing: collector raised RuntimeError: collector bug; d warning: no numeric values found; f unknown: unsupported spec_type: legacy_type",
+      "details": "{\"total\": 9, \"failed\": 3, \"warning\": 2, \"ingested\": 9, \"skipped\": 4}",
+      "updated_at": "2026-10-21 08:15:30.123456"
+     }
+    ]
+   }
+  },
+  {
+   "name": "all_failed_keeps_last_success",
+   "kind": "metrics",
+   "due_only": false,
+   "seed": {
+    "metric_collection_spec": [
+     {
+      "id": 1,
+      "name": "one",
+      "enabled": 1,
+      "spec_type": "http_json_metric",
+      "interval_seconds": 300,
+      "next_run_time": 0,
+      "config": "{\"url\": \"http://127.0.0.1:9/metrics\", \"metric_path\": \"$.value\"}",
+      "last_run_at": null,
+      "last_status": "warning",
+      "last_error": "",
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901"
+     },
+     {
+      "id": 2,
+      "name": "two",
+      "enabled": 1,
+      "spec_type": "http_json_metric",
+      "interval_seconds": 300,
+      "next_run_time": 1792570531,
+      "config": "{\"url\": \"http://127.0.0.1:9/metrics\", \"metric_path\": \"$.value\"}",
+      "last_run_at": null,
+      "last_status": "warning",
+      "last_error": "",
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901"
+     }
+    ],
+    "pipeline_heartbeat": [
+     {
+      "id": 4,
+      "name": "metric_collectors",
+      "status": "ok",
+      "last_success": "2026-10-20 07:00:00.250000",
+      "last_error": "",
+      "details": "{\"total\": 1}",
+      "updated_at": "2026-10-20 07:00:00.250001"
+     }
+    ]
+   },
+   "scripts": {
+    "one": {
+     "outcome": [
+      "critical",
+      0,
+      0,
+      "HTTP 500"
+     ]
+    },
+    "two": {
+     "raise": {
+      "class": "ValueError",
+      "message": "bad\nvalue"
+     }
+    }
+   },
+   "result": {
+    "total": 2,
+    "failed": 2,
+    "warning": 0,
+    "ingested": 0,
+    "skipped": 0
+   },
+   "after": {
+    "metric_collection_spec": [
+     {
+      "id": 1,
+      "name": "one",
+      "enabled": 1,
+      "spec_type": "http_json_metric",
+      "interval_seconds": 300,
+      "next_run_time": 1792570830,
+      "config": "{\"url\": \"http://127.0.0.1:9/metrics\", \"metric_path\": \"$.value\"}",
+      "last_run_at": "2026-10-21 08:15:30.123456",
+      "last_status": "critical",
+      "last_error": "HTTP 500",
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901"
+     },
+     {
+      "id": 2,
+      "name": "two",
+      "enabled": 1,
+      "spec_type": "http_json_metric",
+      "interval_seconds": 300,
+      "next_run_time": 1792570830,
+      "config": "{\"url\": \"http://127.0.0.1:9/metrics\", \"metric_path\": \"$.value\"}",
+      "last_run_at": "2026-10-21 08:15:30.123456",
+      "last_status": "critical",
+      "last_error": "collector raised ValueError: bad\nvalue",
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901"
+     }
+    ],
+    "condition_definition": [],
+    "pipeline_heartbeat": [
+     {
+      "id": 4,
+      "name": "metric_collectors",
+      "status": "critical",
+      "last_success": "2026-10-20 07:00:00.250000",
+      "last_error": "one: HTTP 500; two: collector raised ValueError: bad\nvalue",
+      "details": "{\"total\": 2, \"failed\": 2, \"warning\": 0, \"ingested\": 0, \"skipped\": 0}",
+      "updated_at": "2026-10-21 08:15:30.123456"
+     }
+    ]
+   }
+  },
+  {
+   "name": "error_list_is_capped_at_five",
+   "kind": "metrics",
+   "due_only": true,
+   "seed": {
+    "metric_collection_spec": [
+     {
+      "id": 1,
+      "name": "spec 1",
+      "enabled": 1,
+      "spec_type": "http_json_metric",
+      "interval_seconds": 300,
+      "next_run_time": 1792570530,
+      "config": "{\"url\": \"http://127.0.0.1:9/metrics\", \"metric_path\": \"$.value\"}",
+      "last_run_at": null,
+      "last_status": "warning",
+      "last_error": "",
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901"
+     },
+     {
+      "id": 2,
+      "name": "spec 2",
+      "enabled": 1,
+      "spec_type": "http_json_metric",
+      "interval_seconds": 300,
+      "next_run_time": 1792570530,
+      "config": "{\"url\": \"http://127.0.0.1:9/metrics\", \"metric_path\": \"$.value\"}",
+      "last_run_at": null,
+      "last_status": "warning",
+      "last_error": "",
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901"
+     },
+     {
+      "id": 3,
+      "name": "spec 3",
+      "enabled": 1,
+      "spec_type": "http_json_metric",
+      "interval_seconds": 300,
+      "next_run_time": 1792570530,
+      "config": "{\"url\": \"http://127.0.0.1:9/metrics\", \"metric_path\": \"$.value\"}",
+      "last_run_at": null,
+      "last_status": "warning",
+      "last_error": "",
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901"
+     },
+     {
+      "id": 4,
+      "name": "spec 4",
+      "enabled": 1,
+      "spec_type": "http_json_metric",
+      "interval_seconds": 300,
+      "next_run_time": 1792570530,
+      "config": "{\"url\": \"http://127.0.0.1:9/metrics\", \"metric_path\": \"$.value\"}",
+      "last_run_at": null,
+      "last_status": "warning",
+      "last_error": "",
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901"
+     },
+     {
+      "id": 5,
+      "name": "spec 5",
+      "enabled": 1,
+      "spec_type": "http_json_metric",
+      "interval_seconds": 300,
+      "next_run_time": 1792570530,
+      "config": "{\"url\": \"http://127.0.0.1:9/metrics\", \"metric_path\": \"$.value\"}",
+      "last_run_at": null,
+      "last_status": "warning",
+      "last_error": "",
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901"
+     },
+     {
+      "id": 6,
+      "name": "spec 6",
+      "enabled": 1,
+      "spec_type": "http_json_metric",
+      "interval_seconds": 300,
+      "next_run_time": 1792570530,
+      "config": "{\"url\": \"http://127.0.0.1:9/metrics\", \"metric_path\": \"$.value\"}",
+      "last_run_at": null,
+      "last_status": "warning",
+      "last_error": "",
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901"
+     },
+     {
+      "id": 7,
+      "name": "spec 7",
+      "enabled": 1,
+      "spec_type": "http_json_metric",
+      "interval_seconds": 300,
+      "next_run_time": 1792570530,
+      "config": "{\"url\": \"http://127.0.0.1:9/metrics\", \"metric_path\": \"$.value\"}",
+      "last_run_at": null,
+      "last_status": "warning",
+      "last_error": "",
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901"
+     },
+     {
+      "id": 8,
+      "name": "spec 8",
+      "enabled": 1,
+      "spec_type": "http_json_metric",
+      "interval_seconds": 300,
+      "next_run_time": 1792570530,
+      "config": "{\"url\": \"http://127.0.0.1:9/metrics\", \"metric_path\": \"$.value\"}",
+      "last_run_at": null,
+      "last_status": "warning",
+      "last_error": "",
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901"
+     }
+    ]
+   },
+   "scripts": {
+    "spec 1": {
+     "outcome": [
+      "critical",
+      0,
+      0,
+      "failure 1"
+     ]
+    },
+    "spec 2": {
+     "outcome": [
+      "critical",
+      0,
+      0,
+      "failure 2"
+     ]
+    },
+    "spec 3": {
+     "outcome": [
+      "critical",
+      0,
+      0,
+      "failure 3"
+     ]
+    },
+    "spec 4": {
+     "outcome": [
+      "critical",
+      0,
+      0,
+      "failure 4"
+     ]
+    },
+    "spec 5": {
+     "outcome": [
+      "warning",
+      0,
+      1,
+      "warned 5"
+     ]
+    },
+    "spec 6": {
+     "outcome": [
+      "warning",
+      2,
+      0,
+      "warned 6"
+     ]
+    },
+    "spec 7": {
+     "outcome": [
+      "critical",
+      0,
+      0,
+      "failure 7"
+     ]
+    },
+    "spec 8": {
+     "outcome": [
+      "ok",
+      5,
+      2,
+      ""
+     ]
+    }
+   },
+   "result": {
+    "total": 8,
+    "failed": 5,
+    "warning": 2,
+    "ingested": 7,
+    "skipped": 3
+   },
+   "after": {
+    "metric_collection_spec": [
+     {
+      "id": 1,
+      "name": "spec 1",
+      "enabled": 1,
+      "spec_type": "http_json_metric",
+      "interval_seconds": 300,
+      "next_run_time": 1792570830,
+      "config": "{\"url\": \"http://127.0.0.1:9/metrics\", \"metric_path\": \"$.value\"}",
+      "last_run_at": "2026-10-21 08:15:30.123456",
+      "last_status": "critical",
+      "last_error": "failure 1",
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901"
+     },
+     {
+      "id": 2,
+      "name": "spec 2",
+      "enabled": 1,
+      "spec_type": "http_json_metric",
+      "interval_seconds": 300,
+      "next_run_time": 1792570830,
+      "config": "{\"url\": \"http://127.0.0.1:9/metrics\", \"metric_path\": \"$.value\"}",
+      "last_run_at": "2026-10-21 08:15:30.123456",
+      "last_status": "critical",
+      "last_error": "failure 2",
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901"
+     },
+     {
+      "id": 3,
+      "name": "spec 3",
+      "enabled": 1,
+      "spec_type": "http_json_metric",
+      "interval_seconds": 300,
+      "next_run_time": 1792570830,
+      "config": "{\"url\": \"http://127.0.0.1:9/metrics\", \"metric_path\": \"$.value\"}",
+      "last_run_at": "2026-10-21 08:15:30.123456",
+      "last_status": "critical",
+      "last_error": "failure 3",
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901"
+     },
+     {
+      "id": 4,
+      "name": "spec 4",
+      "enabled": 1,
+      "spec_type": "http_json_metric",
+      "interval_seconds": 300,
+      "next_run_time": 1792570830,
+      "config": "{\"url\": \"http://127.0.0.1:9/metrics\", \"metric_path\": \"$.value\"}",
+      "last_run_at": "2026-10-21 08:15:30.123456",
+      "last_status": "critical",
+      "last_error": "failure 4",
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901"
+     },
+     {
+      "id": 5,
+      "name": "spec 5",
+      "enabled": 1,
+      "spec_type": "http_json_metric",
+      "interval_seconds": 300,
+      "next_run_time": 1792570830,
+      "config": "{\"url\": \"http://127.0.0.1:9/metrics\", \"metric_path\": \"$.value\"}",
+      "last_run_at": "2026-10-21 08:15:30.123456",
+      "last_status": "warning",
+      "last_error": "warned 5",
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901"
+     },
+     {
+      "id": 6,
+      "name": "spec 6",
+      "enabled": 1,
+      "spec_type": "http_json_metric",
+      "interval_seconds": 300,
+      "next_run_time": 1792570830,
+      "config": "{\"url\": \"http://127.0.0.1:9/metrics\", \"metric_path\": \"$.value\"}",
+      "last_run_at": "2026-10-21 08:15:30.123456",
+      "last_status": "warning",
+      "last_error": "warned 6",
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901"
+     },
+     {
+      "id": 7,
+      "name": "spec 7",
+      "enabled": 1,
+      "spec_type": "http_json_metric",
+      "interval_seconds": 300,
+      "next_run_time": 1792570830,
+      "config": "{\"url\": \"http://127.0.0.1:9/metrics\", \"metric_path\": \"$.value\"}",
+      "last_run_at": "2026-10-21 08:15:30.123456",
+      "last_status": "critical",
+      "last_error": "failure 7",
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901"
+     },
+     {
+      "id": 8,
+      "name": "spec 8",
+      "enabled": 1,
+      "spec_type": "http_json_metric",
+      "interval_seconds": 300,
+      "next_run_time": 1792570830,
+      "config": "{\"url\": \"http://127.0.0.1:9/metrics\", \"metric_path\": \"$.value\"}",
+      "last_run_at": "2026-10-21 08:15:30.123456",
+      "last_status": "ok",
+      "last_error": "",
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901"
+     }
+    ],
+    "condition_definition": [],
+    "pipeline_heartbeat": [
+     {
+      "id": 1,
+      "name": "metric_collectors",
+      "status": "warning",
+      "last_success": "2026-10-21 08:15:30.123456",
+      "last_error": "spec 1: failure 1; spec 2: failure 2; spec 3: failure 3; spec 4: failure 4; spec 5: warned 5",
+      "details": "{\"total\": 8, \"failed\": 5, \"warning\": 2, \"ingested\": 7, \"skipped\": 3}",
+      "updated_at": "2026-10-21 08:15:30.123456"
+     }
+    ]
+   }
+  },
+  {
+   "name": "nothing_due_writes_nothing",
+   "kind": "metrics",
+   "due_only": true,
+   "seed": {
+    "metric_collection_spec": [
+     {
+      "id": 1,
+      "name": "later",
+      "enabled": 1,
+      "spec_type": "http_json_metric",
+      "interval_seconds": 300,
+      "next_run_time": 1792570531,
+      "config": "{\"url\": \"http://127.0.0.1:9/metrics\", \"metric_path\": \"$.value\"}",
+      "last_run_at": null,
+      "last_status": "warning",
+      "last_error": "",
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901"
+     }
+    ]
+   },
+   "scripts": {},
+   "result": {
+    "total": 0,
+    "failed": 0,
+    "warning": 0,
+    "ingested": 0,
+    "skipped": 0
+   },
+   "after": {
+    "metric_collection_spec": [
+     {
+      "id": 1,
+      "name": "later",
+      "enabled": 1,
+      "spec_type": "http_json_metric",
+      "interval_seconds": 300,
+      "next_run_time": 1792570531,
+      "config": "{\"url\": \"http://127.0.0.1:9/metrics\", \"metric_path\": \"$.value\"}",
+      "last_run_at": null,
+      "last_status": "warning",
+      "last_error": "",
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901"
+     }
+    ],
+    "condition_definition": [],
+    "pipeline_heartbeat": []
+   }
+  },
+  {
+   "name": "run_once_without_enabled_specs_fails",
+   "kind": "metrics",
+   "due_only": false,
+   "seed": {
+    "metric_collection_spec": [
+     {
+      "id": 1,
+      "name": "off",
+      "enabled": 0,
+      "spec_type": "http_json_metric",
+      "interval_seconds": 300,
+      "next_run_time": 0,
+      "config": "{\"url\": \"http://127.0.0.1:9/metrics\", \"metric_path\": \"$.value\"}",
+      "last_run_at": null,
+      "last_status": "warning",
+      "last_error": "",
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901"
+     }
+    ]
+   },
+   "scripts": {},
+   "error": {
+    "class": "ValueError",
+    "message": "No matching enabled metric collection specs"
+   },
+   "after": {
+    "metric_collection_spec": [
+     {
+      "id": 1,
+      "name": "off",
+      "enabled": 0,
+      "spec_type": "http_json_metric",
+      "interval_seconds": 300,
+      "next_run_time": 0,
+      "config": "{\"url\": \"http://127.0.0.1:9/metrics\", \"metric_path\": \"$.value\"}",
+      "last_run_at": null,
+      "last_status": "warning",
+      "last_error": "",
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901"
+     }
+    ],
+    "condition_definition": [],
+    "pipeline_heartbeat": []
+   }
+  },
+  {
+   "name": "spec_deleted_during_run_aborts",
+   "kind": "metrics",
+   "due_only": false,
+   "seed": {
+    "metric_collection_spec": [
+     {
+      "id": 1,
+      "name": "a first",
+      "enabled": 1,
+      "spec_type": "http_json_metric",
+      "interval_seconds": 300,
+      "next_run_time": 0,
+      "config": "{\"url\": \"http://127.0.0.1:9/metrics\", \"metric_path\": \"$.value\"}",
+      "last_run_at": null,
+      "last_status": "warning",
+      "last_error": "",
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901"
+     },
+     {
+      "id": 2,
+      "name": "b second",
+      "enabled": 1,
+      "spec_type": "http_json_metric",
+      "interval_seconds": 300,
+      "next_run_time": 0,
+      "config": "{\"url\": \"http://127.0.0.1:9/metrics\", \"metric_path\": \"$.value\"}",
+      "last_run_at": null,
+      "last_status": "warning",
+      "last_error": "",
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901"
+     }
+    ]
+   },
+   "scripts": {
+    "a first": {
+     "outcome": [
+      "ok",
+      1,
+      0,
+      ""
+     ],
+     "delete": [
+      "metric_collection_spec",
+      "b second"
+     ]
+    },
+    "b second": {
+     "outcome": [
+      "ok",
+      1,
+      0,
+      ""
+     ]
+    }
+   },
+   "error": {
+    "class": "NotUpdated",
+    "message": "Save with update_fields did not affect any rows."
+   },
+   "after": {
+    "metric_collection_spec": [
+     {
+      "id": 1,
+      "name": "a first",
+      "enabled": 1,
+      "spec_type": "http_json_metric",
+      "interval_seconds": 300,
+      "next_run_time": 1792570830,
+      "config": "{\"url\": \"http://127.0.0.1:9/metrics\", \"metric_path\": \"$.value\"}",
+      "last_run_at": "2026-10-21 08:15:30.123456",
+      "last_status": "ok",
+      "last_error": "",
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901"
+     }
+    ],
+    "condition_definition": [],
+    "pipeline_heartbeat": []
+   }
+  },
+  {
+   "name": "mixed_conditions",
+   "kind": "conditions",
+   "seed": {
+    "condition_definition": [
+     {
+      "id": 1,
+      "name": "c ok",
+      "enabled": 1,
+      "metric_name": "host.filesystem_used_ratio",
+      "host_filter": "",
+      "service_filter": "",
+      "tags_filter": "{}",
+      "operator": "gte",
+      "warning_threshold": 0.8,
+      "critical_threshold": 0.9,
+      "window_minutes": 30,
+      "breach_minutes": 5,
+      "status": "warning",
+      "last_evaluated": null,
+      "message": "",
+      "last_value": null,
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901",
+      "subject_id_filter": "",
+      "subject_type_filter": "",
+      "alert_when_stale": 1,
+      "stale_after_seconds": null
+     },
+     {
+      "id": 2,
+      "name": "b query fails",
+      "enabled": 1,
+      "metric_name": "host.filesystem_used_ratio",
+      "host_filter": "",
+      "service_filter": "",
+      "tags_filter": "{}",
+      "operator": "gte",
+      "warning_threshold": 0.8,
+      "critical_threshold": 0.9,
+      "window_minutes": 30,
+      "breach_minutes": 5,
+      "status": "ok",
+      "last_evaluated": null,
+      "message": "",
+      "last_value": null,
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901",
+      "subject_id_filter": "",
+      "subject_type_filter": "",
+      "alert_when_stale": 1,
+      "stale_after_seconds": null
+     },
+     {
+      "id": 3,
+      "name": "a no samples",
+      "enabled": 1,
+      "metric_name": "host.filesystem_used_ratio",
+      "host_filter": "",
+      "service_filter": "",
+      "tags_filter": "{}",
+      "operator": "gte",
+      "warning_threshold": 0.8,
+      "critical_threshold": 0.9,
+      "window_minutes": 30,
+      "breach_minutes": 5,
+      "status": "ok",
+      "last_evaluated": null,
+      "message": "",
+      "last_value": null,
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901",
+      "subject_id_filter": "",
+      "subject_type_filter": "",
+      "alert_when_stale": 1,
+      "stale_after_seconds": null
+     },
+     {
+      "id": 4,
+      "name": "d critical",
+      "enabled": 1,
+      "metric_name": "host.filesystem_used_ratio",
+      "host_filter": "",
+      "service_filter": "",
+      "tags_filter": "{}",
+      "operator": "gte",
+      "warning_threshold": 0.8,
+      "critical_threshold": 0.9,
+      "window_minutes": 30,
+      "breach_minutes": 5,
+      "status": "ok",
+      "last_evaluated": null,
+      "message": "",
+      "last_value": null,
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901",
+      "subject_id_filter": "",
+      "subject_type_filter": "",
+      "alert_when_stale": 1,
+      "stale_after_seconds": null
+     },
+     {
+      "id": 5,
+      "name": "e disabled",
+      "enabled": 0,
+      "metric_name": "host.filesystem_used_ratio",
+      "host_filter": "",
+      "service_filter": "",
+      "tags_filter": "{}",
+      "operator": "gte",
+      "warning_threshold": 0.8,
+      "critical_threshold": 0.9,
+      "window_minutes": 30,
+      "breach_minutes": 5,
+      "status": "ok",
+      "last_evaluated": null,
+      "message": "",
+      "last_value": null,
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901",
+      "subject_id_filter": "",
+      "subject_type_filter": "",
+      "alert_when_stale": 1,
+      "stale_after_seconds": null
+     },
+     {
+      "id": 6,
+      "name": "f intermittent",
+      "enabled": 1,
+      "metric_name": "host.filesystem_used_ratio",
+      "host_filter": "",
+      "service_filter": "",
+      "tags_filter": "{}",
+      "operator": "gte",
+      "warning_threshold": 0.8,
+      "critical_threshold": 0.9,
+      "window_minutes": 30,
+      "breach_minutes": 5,
+      "status": "ok",
+      "last_evaluated": null,
+      "message": "",
+      "last_value": null,
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901",
+      "subject_id_filter": "",
+      "subject_type_filter": "",
+      "alert_when_stale": 0,
+      "stale_after_seconds": null
+     }
+    ],
+    "pipeline_heartbeat": [
+     {
+      "id": 2,
+      "name": "condition_evaluator",
+      "status": "ok",
+      "last_success": "2026-10-20 07:00:00.250000",
+      "last_error": "",
+      "details": "{\"total\": 1}",
+      "updated_at": "2026-10-20 07:00:00.250001"
+     }
+    ]
+   },
+   "scripts": {
+    "c ok": {
+     "samples": [
+      {
+       "ts": "2026-10-21T08:14:30+00:00",
+       "value": 0.5,
+       "host": "macmini",
+       "metric": "host.filesystem_used_ratio"
+      }
+     ]
+    },
+    "b query fails": {
+     "raise": {
+      "class": "InfluxConfigurationError",
+      "message": "Influx settings missing: INFLUX_URL, INFLUX_TOKEN, INFLUX_ORG are required"
+     }
+    },
+    "a no samples": {
+     "samples": []
+    },
+    "d critical": {
+     "samples": [
+      {
+       "ts": "2026-10-21T08:09:00+00:00",
+       "value": 0.95,
+       "host": "macmini",
+       "metric": "host.filesystem_used_ratio"
+      },
+      {
+       "ts": "2026-10-21T08:14:30+00:00",
+       "value": 0.95,
+       "host": "macmini",
+       "metric": "host.filesystem_used_ratio"
+      }
+     ]
+    },
+    "f intermittent": {
+     "samples": []
+    }
+   },
+   "result": {
+    "total": 5,
+    "failed": 1
+   },
+   "after": {
+    "metric_collection_spec": [],
+    "condition_definition": [
+     {
+      "id": 1,
+      "name": "c ok",
+      "enabled": 1,
+      "metric_name": "host.filesystem_used_ratio",
+      "host_filter": "",
+      "service_filter": "",
+      "tags_filter": "{}",
+      "operator": "gte",
+      "warning_threshold": 0.8,
+      "critical_threshold": 0.9,
+      "window_minutes": 30,
+      "breach_minutes": 5,
+      "status": "ok",
+      "last_evaluated": "2026-10-21 08:15:30.123456",
+      "message": "Condition is within thresholds",
+      "last_value": 0.5,
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901",
+      "subject_id_filter": "",
+      "subject_type_filter": "",
+      "alert_when_stale": 1,
+      "stale_after_seconds": null
+     },
+     {
+      "id": 2,
+      "name": "b query fails",
+      "enabled": 1,
+      "metric_name": "host.filesystem_used_ratio",
+      "host_filter": "",
+      "service_filter": "",
+      "tags_filter": "{}",
+      "operator": "gte",
+      "warning_threshold": 0.8,
+      "critical_threshold": 0.9,
+      "window_minutes": 30,
+      "breach_minutes": 5,
+      "status": "critical",
+      "last_evaluated": null,
+      "message": "evaluation error: Influx settings missing: INFLUX_URL, INFLUX_TOKEN, INFLUX_ORG are required",
+      "last_value": null,
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901",
+      "subject_id_filter": "",
+      "subject_type_filter": "",
+      "alert_when_stale": 1,
+      "stale_after_seconds": null
+     },
+     {
+      "id": 3,
+      "name": "a no samples",
+      "enabled": 1,
+      "metric_name": "host.filesystem_used_ratio",
+      "host_filter": "",
+      "service_filter": "",
+      "tags_filter": "{}",
+      "operator": "gte",
+      "warning_threshold": 0.8,
+      "critical_threshold": 0.9,
+      "window_minutes": 30,
+      "breach_minutes": 5,
+      "status": "warning",
+      "last_evaluated": "2026-10-21 08:15:30.123456",
+      "message": "No samples available in condition window",
+      "last_value": null,
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901",
+      "subject_id_filter": "",
+      "subject_type_filter": "",
+      "alert_when_stale": 1,
+      "stale_after_seconds": null
+     },
+     {
+      "id": 4,
+      "name": "d critical",
+      "enabled": 1,
+      "metric_name": "host.filesystem_used_ratio",
+      "host_filter": "",
+      "service_filter": "",
+      "tags_filter": "{}",
+      "operator": "gte",
+      "warning_threshold": 0.8,
+      "critical_threshold": 0.9,
+      "window_minutes": 30,
+      "breach_minutes": 5,
+      "status": "critical",
+      "last_evaluated": "2026-10-21 08:15:30.123456",
+      "message": "host.filesystem_used_ratio gte 0.9 for 5m",
+      "last_value": 0.95,
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901",
+      "subject_id_filter": "",
+      "subject_type_filter": "",
+      "alert_when_stale": 1,
+      "stale_after_seconds": null
+     },
+     {
+      "id": 5,
+      "name": "e disabled",
+      "enabled": 0,
+      "metric_name": "host.filesystem_used_ratio",
+      "host_filter": "",
+      "service_filter": "",
+      "tags_filter": "{}",
+      "operator": "gte",
+      "warning_threshold": 0.8,
+      "critical_threshold": 0.9,
+      "window_minutes": 30,
+      "breach_minutes": 5,
+      "status": "ok",
+      "last_evaluated": null,
+      "message": "",
+      "last_value": null,
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901",
+      "subject_id_filter": "",
+      "subject_type_filter": "",
+      "alert_when_stale": 1,
+      "stale_after_seconds": null
+     },
+     {
+      "id": 6,
+      "name": "f intermittent",
+      "enabled": 1,
+      "metric_name": "host.filesystem_used_ratio",
+      "host_filter": "",
+      "service_filter": "",
+      "tags_filter": "{}",
+      "operator": "gte",
+      "warning_threshold": 0.8,
+      "critical_threshold": 0.9,
+      "window_minutes": 30,
+      "breach_minutes": 5,
+      "status": "ok",
+      "last_evaluated": "2026-10-21 08:15:30.123456",
+      "message": "No samples available in condition window, not alerting (intermittent)",
+      "last_value": null,
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901",
+      "subject_id_filter": "",
+      "subject_type_filter": "",
+      "alert_when_stale": 0,
+      "stale_after_seconds": null
+     }
+    ],
+    "pipeline_heartbeat": [
+     {
+      "id": 2,
+      "name": "condition_evaluator",
+      "status": "warning",
+      "last_success": "2026-10-20 07:00:00.250000",
+      "last_error": "1 condition(s) failed",
+      "details": "{\"evaluated\": 5, \"failed\": 1}",
+      "updated_at": "2026-10-21 08:15:30.123456"
+     }
+    ]
+   }
+  },
+  {
+   "name": "all_conditions_ok_inserts_heartbeat",
+   "kind": "conditions",
+   "seed": {
+    "condition_definition": [
+     {
+      "id": 1,
+      "name": "only",
+      "enabled": 1,
+      "metric_name": "host.filesystem_used_ratio",
+      "host_filter": "",
+      "service_filter": "",
+      "tags_filter": "{}",
+      "operator": "gte",
+      "warning_threshold": 0.8,
+      "critical_threshold": 0.9,
+      "window_minutes": 30,
+      "breach_minutes": 5,
+      "status": "ok",
+      "last_evaluated": null,
+      "message": "",
+      "last_value": null,
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901",
+      "subject_id_filter": "",
+      "subject_type_filter": "",
+      "alert_when_stale": 1,
+      "stale_after_seconds": null
+     }
+    ]
+   },
+   "scripts": {
+    "only": {
+     "samples": [
+      {
+       "ts": "2026-10-21T08:14:30+00:00",
+       "value": 0.1,
+       "host": "macmini",
+       "metric": "host.filesystem_used_ratio"
+      }
+     ]
+    }
+   },
+   "result": {
+    "total": 1,
+    "failed": 0
+   },
+   "after": {
+    "metric_collection_spec": [],
+    "condition_definition": [
+     {
+      "id": 1,
+      "name": "only",
+      "enabled": 1,
+      "metric_name": "host.filesystem_used_ratio",
+      "host_filter": "",
+      "service_filter": "",
+      "tags_filter": "{}",
+      "operator": "gte",
+      "warning_threshold": 0.8,
+      "critical_threshold": 0.9,
+      "window_minutes": 30,
+      "breach_minutes": 5,
+      "status": "ok",
+      "last_evaluated": "2026-10-21 08:15:30.123456",
+      "message": "Condition is within thresholds",
+      "last_value": 0.1,
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901",
+      "subject_id_filter": "",
+      "subject_type_filter": "",
+      "alert_when_stale": 1,
+      "stale_after_seconds": null
+     }
+    ],
+    "pipeline_heartbeat": [
+     {
+      "id": 1,
+      "name": "condition_evaluator",
+      "status": "ok",
+      "last_success": "2026-10-21 08:15:30.123456",
+      "last_error": "",
+      "details": "{\"evaluated\": 1, \"failed\": 0}",
+      "updated_at": "2026-10-21 08:15:30.123456"
+     }
+    ]
+   }
+  },
+  {
+   "name": "no_conditions",
+   "kind": "conditions",
+   "seed": {},
+   "scripts": {},
+   "result": {
+    "total": 0,
+    "failed": 0
+   },
+   "after": {
+    "metric_collection_spec": [],
+    "condition_definition": [],
+    "pipeline_heartbeat": [
+     {
+      "id": 1,
+      "name": "condition_evaluator",
+      "status": "ok",
+      "last_success": "2026-10-21 08:15:30.123456",
+      "last_error": "",
+      "details": "{\"evaluated\": 0, \"failed\": 0}",
+      "updated_at": "2026-10-21 08:15:30.123456"
+     }
+    ]
+   }
+  },
+  {
+   "name": "condition_deleted_during_run_aborts",
+   "kind": "conditions",
+   "seed": {
+    "condition_definition": [
+     {
+      "id": 1,
+      "name": "a first",
+      "enabled": 1,
+      "metric_name": "host.filesystem_used_ratio",
+      "host_filter": "",
+      "service_filter": "",
+      "tags_filter": "{}",
+      "operator": "gte",
+      "warning_threshold": 0.8,
+      "critical_threshold": 0.9,
+      "window_minutes": 30,
+      "breach_minutes": 5,
+      "status": "ok",
+      "last_evaluated": null,
+      "message": "",
+      "last_value": null,
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901",
+      "subject_id_filter": "",
+      "subject_type_filter": "",
+      "alert_when_stale": 1,
+      "stale_after_seconds": null
+     },
+     {
+      "id": 2,
+      "name": "b second",
+      "enabled": 1,
+      "metric_name": "host.filesystem_used_ratio",
+      "host_filter": "",
+      "service_filter": "",
+      "tags_filter": "{}",
+      "operator": "gte",
+      "warning_threshold": 0.8,
+      "critical_threshold": 0.9,
+      "window_minutes": 30,
+      "breach_minutes": 5,
+      "status": "ok",
+      "last_evaluated": null,
+      "message": "",
+      "last_value": null,
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901",
+      "subject_id_filter": "",
+      "subject_type_filter": "",
+      "alert_when_stale": 1,
+      "stale_after_seconds": null
+     }
+    ],
+    "pipeline_heartbeat": [
+     {
+      "id": 1,
+      "name": "condition_evaluator",
+      "status": "ok",
+      "last_success": "2026-10-20 07:00:00.250000",
+      "last_error": "",
+      "details": "{\"total\": 1}",
+      "updated_at": "2026-10-20 07:00:00.250001"
+     }
+    ]
+   },
+   "scripts": {
+    "a first": {
+     "samples": [
+      {
+       "ts": "2026-10-21T08:14:30+00:00",
+       "value": 0.2,
+       "host": "macmini",
+       "metric": "host.filesystem_used_ratio"
+      }
+     ],
+     "delete": [
+      "condition_definition",
+      "b second"
+     ]
+    },
+    "b second": {
+     "samples": [
+      {
+       "ts": "2026-10-21T08:14:30+00:00",
+       "value": 0.2,
+       "host": "macmini",
+       "metric": "host.filesystem_used_ratio"
+      }
+     ]
+    }
+   },
+   "error": {
+    "class": "NotUpdated",
+    "message": "Save with update_fields did not affect any rows."
+   },
+   "after": {
+    "metric_collection_spec": [],
+    "condition_definition": [
+     {
+      "id": 1,
+      "name": "a first",
+      "enabled": 1,
+      "metric_name": "host.filesystem_used_ratio",
+      "host_filter": "",
+      "service_filter": "",
+      "tags_filter": "{}",
+      "operator": "gte",
+      "warning_threshold": 0.8,
+      "critical_threshold": 0.9,
+      "window_minutes": 30,
+      "breach_minutes": 5,
+      "status": "ok",
+      "last_evaluated": "2026-10-21 08:15:30.123456",
+      "message": "Condition is within thresholds",
+      "last_value": 0.2,
+      "created_at": "2026-01-02 03:04:05.678901",
+      "updated_at": "2026-01-02 03:04:05.678901",
+      "subject_id_filter": "",
+      "subject_type_filter": "",
+      "alert_when_stale": 1,
+      "stale_after_seconds": null
+     }
+    ],
+    "pipeline_heartbeat": [
+     {
+      "id": 1,
+      "name": "condition_evaluator",
+      "status": "ok",
+      "last_success": "2026-10-20 07:00:00.250000",
+      "last_error": "",
+      "details": "{\"total\": 1}",
+      "updated_at": "2026-10-20 07:00:00.250001"
+     }
+    ]
+   }
+  }
+ ]
+}

@@ -7,7 +7,7 @@ target. Nothing runs this code in production yet: the deployment selects it
 only through a systemd drop-in that later slices add (PLAN.md 8.3), and
 deploys ship `agent-rs/` only as a release archive.
 
-Status: slices S1 (scaffold), S2, S3a, S3b, S4a, S5, S6, S7a, S7b and S10a. S1: the workspace, the toolchain pin,
+Status: slices S1 (scaffold), S2, S3a, S3b, S4a, S5, S6, S7a, S7b, S8 and S10a. S1: the workspace, the toolchain pin,
 the cargo-deny policy, the CI `rust` job, the `just rs-*` recipes, the shared
 model types (`graphyard_core::model`) and the fixture pipeline with its drift
 test. S2: the CPython compatibility helpers (`graphyard_core::pycompat`), the
@@ -24,9 +24,15 @@ configuration check (`graphyard_influx::InfluxWriter`,
 servers. S5: the
 condition evaluation (`graphyard_core::conditions`: `evaluate_condition`
 over a `SampleSource`, `evaluate_samples` on samples already read), pinned
-by `conditions.json`. The
-`graphyard-agent` binary is a placeholder that exits 1 until slice S8; it
-answers only `--version`.
+by `conditions.json`.
+
+Slice S8 makes `graphyard-agent` the agent (PLAN.md 3): the CLI of
+`manage.py start_agent` plus the Rust-only flags, the scheduler loop, the
+metrics and conditions runs with executor isolation and heartbeats, the
+stdout/stderr report lines, signals and `--run-once`, `--check-schema`,
+`--version` and the shadow mode `--influx-write-file`; see
+[Running the agent](#running-the-agent). The runs are pinned by `runs.json`
+(the Python runs with stubbed executors and condition samples).
 
 Slice S4b adds the condition queries in `graphyard-influx` (PLAN.md 6.5):
 the lookback window of a condition, the v2 Flux text and request, the
@@ -116,7 +122,9 @@ agent-rs/
     graphyard-collect/  HTTP layer (S6: `http`) and the five executors
                         (`executors`: page probe and UniFi in S7b, HA and
                         JSON metric in S7a)
-    graphyard-agent/    the binary: CLI, scheduler, runs, signals (S8)
+    graphyard-agent/    the binary (S8): cli, scheduler, runs, collectors
+                        (real executors, sink, samples), app (startup,
+                        signals, shutdown), logging
   fixtures/
     generate.py         fixture driver (`just rs-fixtures`)
     gen_*.py            builder modules, one or more per slice
@@ -154,6 +162,36 @@ From the repository root:
 
 `just test`, `just lint` and `just typecheck` run the Python checks and then
 the Rust ones. The parity harness recipe `rs-parity` arrives with slice S9a.
+
+## Running the agent
+
+```bash
+graphyard-agent --db /opt/apps/graphyard/site/src/django/db.sqlite3        # the loop
+graphyard-agent --run-once --db db.sqlite3                                 # both runs once, exit 0
+graphyard-agent --check-schema --db db.sqlite3                             # read-only, exit 0/1
+graphyard-agent --run-once --influx-write-file /tmp/writes.lp --db copy.sqlite3   # shadow: no InfluxDB writes
+graphyard-agent --version
+```
+
+The Python flags are unchanged: `--metrics-interval N`,
+`--condition-interval N` (defaults from
+`GRAPHYARD_METRIC_COLLECTION_INTERVAL_SECONDS` /
+`GRAPHYARD_CONDITION_EVAL_INTERVAL_SECONDS`), `--disable-metrics` (alias
+`--disable-ha`), `--disable-conditions`, `--run-once`. The settings come
+from the process environment only (the unit's `EnvironmentFile`; no `.env`,
+D-9). `--db` defaults to `db.sqlite3` in the working directory, which must
+exist and pass the schema check (D-2); the agent never creates it.
+
+stdout carries the start line, `Metric specs: ...`, `Condition eval: ...` and
+`graphyard-agent interrupted, exiting`, each flushed at once. stderr carries
+the log records as bare messages (INFO and above from the agent's crates,
+warnings from libraries), `CommandError: ...` and the `Metric collection
+failed: ...` / `Condition eval failed: ...` lines. Exit codes: 0 for
+`--run-once` (also after a failed run), SIGINT and SIGTERM; 1 for a
+`CommandError`, an invalid environment value, a missing database or a failed
+schema check; 2 for a usage error. `--influx-write-file PATH` appends every
+batch the agent would write as `# write <utc> points=<n>` followed by its
+line protocol and counts it as written; queries still go to InfluxDB.
 
 ## Fixtures
 

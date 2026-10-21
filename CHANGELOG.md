@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+- Rust agent port (`agent-rs/`, slice S8): `graphyard-agent` is now the
+  agent, a drop-in for `manage.py start_agent`: the same flags, defaults,
+  validation messages and exit codes, the scheduler loop, the metrics and
+  conditions runs with executor isolation (a panicking executor included),
+  the `metric_collectors`/`condition_evaluator` heartbeats, the stdout and
+  stderr report lines, SIGINT/SIGTERM handling that lets an in-flight SQLite
+  statement finish and never waits for a blocked name lookup, plus the
+  Rust-only `--db`, `--check-schema`, `--version` and the shadow mode
+  `--influx-write-file` (batches appended to a file, no InfluxDB write
+  request). Pinned by a new fixture `runs.json` generated from the Python
+  runs with stubbed executors. Nothing deploys the Rust agent yet; the
+  Python agent is unchanged.
+
 - Rust agent port (`agent-rs/`, slice S7a): the Home Assistant and HTTP JSON
   executors (`graphyard-collect::executors`: `home_assistant_sensor`,
   `home_assistant_env_scan`, `http_json_metric`) with the HA state

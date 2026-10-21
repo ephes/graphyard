@@ -24,7 +24,12 @@ graphyard-store = { path = "crates/graphyard-store" }
 graphyard-influx = { path = "crates/graphyard-influx" }
 graphyard-collect = { path = "crates/graphyard-collect" }
 chrono = { version = "0.4", default-features = false, features = ["std"] }
+# The agent's CLI (PLAN.md 3.1, 4.3).
+clap = { version = "4", default-features = false, features = ["std", "derive", "help", "usage", "error-context"] }
 csv = "1"
+# `catch_unwind` on an executor future: a panicking collector is isolated
+# like a raising one (PLAN.md 3.4).
+futures-util = { version = "0.3", default-features = false, features = ["std"] }
 # User regexes of spec configs (PLAN.md 4.3, D-5): Python `re` features such
 # as lookaround and backreferences.
 fancy-regex = "0.19"
