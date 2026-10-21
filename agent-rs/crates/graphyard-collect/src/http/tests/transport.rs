@@ -297,6 +297,108 @@ async fn automatic_redirects_follow_httpx_rules() {
 }
 
 #[tokio::test]
+async fn client_auth_runs_once_per_send() {
+    // httpx `auth=`: `_send_handling_auth` authenticates the first request of
+    // `send()` only, so an automatic cross-origin redirect goes without it,
+    // while the page probe's manual hops (`client.send(next_request)`) are
+    // authenticated again.
+    let other = Server::start(|_| response("200 OK", &[], b"other")).await;
+    let other_origin = other.origin();
+    let server = Server::start(move |request| match request.target.as_str() {
+        "/cross" => response(
+            "302 Found",
+            &[("Location", &format!("{other_origin}/x"))],
+            b"",
+        ),
+        "/same" => response("302 Found", &[("Location", "/landing")], b""),
+        _ => response("200 OK", &[], b"landed"),
+    })
+    .await;
+    let origin = server.origin();
+    let client = client(
+        &HttpContext::new(),
+        &ClientOptions::new(10.0, true).basic_auth("user", "pass"),
+    );
+    for path in ["/cross", "/same"] {
+        send_following_redirects(
+            &client,
+            client
+                .build_request(Method::Get, &format!("{origin}{path}"), &[], None)
+                .expect("request"),
+        )
+        .await
+        .expect("redirect followed");
+    }
+    run_page_probe(
+        &client,
+        &format!("{origin}/cross"),
+        1000,
+        true,
+        &Deadline::none(),
+    )
+    .await
+    .expect("page probe");
+    let authorizations = |server: &Server| -> Vec<(String, Vec<String>)> {
+        server
+            .requests()
+            .iter()
+            .map(|request| {
+                let values = request.header_values("authorization");
+                (
+                    request.target.clone(),
+                    values.into_iter().map(str::to_owned).collect(),
+                )
+            })
+            .collect()
+    };
+    let basic = vec!["Basic dXNlcjpwYXNz".to_owned()];
+    assert_eq!(
+        authorizations(&server),
+        [
+            ("/cross".to_owned(), basic.clone()),
+            ("/same".to_owned(), basic.clone()),
+            ("/landing".to_owned(), basic.clone()),
+            ("/cross".to_owned(), basic.clone()),
+        ]
+    );
+    assert_eq!(
+        authorizations(&other),
+        [("/x".to_owned(), vec![]), ("/x".to_owned(), basic)],
+        "automatic redirect: no Authorization; page probe hop: authenticated again"
+    );
+}
+
+#[tokio::test]
+async fn response_heads_are_limited_by_size_not_header_count() {
+    // h11 has no limit on the number of header lines; httpcore limits an
+    // incomplete head to 100 KiB (`Receive buffer too long`).
+    let mut many = b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n".to_vec();
+    for index in 0..1000 {
+        many.extend_from_slice(format!("X-Header-{index}: {index}\r\n").as_bytes());
+    }
+    many.extend_from_slice(b"\r\n{}");
+    let mut huge = b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\nX-Big: ".to_vec();
+    huge.extend(std::iter::repeat_n(b'x', 200 * 1024));
+    huge.extend_from_slice(b"\r\n\r\n{}");
+    let server = Server::start(move |request| match request.target.as_str() {
+        "/many" => Reply::Raw(many.clone()),
+        _ => Reply::Raw(huge.clone()),
+    })
+    .await;
+    let origin = server.origin();
+    let client = default_client();
+    read_http_json(&client, &format!("{origin}/many"), 100, &Deadline::none())
+        .await
+        .expect("1002 header lines are accepted");
+    let err = read_http_json(&client, &format!("{origin}/huge"), 100, &Deadline::none())
+        .await
+        .expect_err("head over 100 KiB");
+    assert_eq!(err.kind, ErrorKind::RemoteProtocolError, "{err:?}");
+    assert_eq!(err.message, "Receive buffer too long");
+    assert!(err.kind.is_page_probe_warning());
+}
+
+#[tokio::test]
 async fn redirect_to_another_scheme_is_unsupported_protocol() {
     let server =
         Server::start(|_| response("302 Found", &[("Location", "ftp://files.test/file")], b""))

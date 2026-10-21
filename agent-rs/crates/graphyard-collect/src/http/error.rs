@@ -151,6 +151,14 @@ impl HttpError {
             }
         }
         if let Some(hyper_err) = find_source::<hyper::Error>(err)
+            && hyper_err.is_parse()
+            && hyper_err.to_string() == "message head is too large"
+        {
+            // h11's error for a response head over httpcore's limit
+            // (`is_parse_too_large` exists only with hyper's server feature).
+            return Self::new(ErrorKind::RemoteProtocolError, "Receive buffer too long");
+        }
+        if let Some(hyper_err) = find_source::<hyper::Error>(err)
             && hyper_err.is_incomplete_message()
         {
             let text = if in_body {

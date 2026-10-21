@@ -156,7 +156,10 @@ pub async fn run_page_probe(
 
 /// `client.send(request, follow_redirects=True)`: redirects followed with
 /// each redirect body read in full (`response.read()`), at most
-/// [`MAX_REDIRECTS`]; the final response is returned unread.
+/// [`MAX_REDIRECTS`]; the final response is returned unread. The auth flow
+/// runs once, on the first request (`_send_handling_auth`); the hops are
+/// sent as `_build_redirect_request` made them, so an `Authorization`
+/// stripped on a cross-origin redirect is not added back.
 ///
 /// # Errors
 /// The errors of [`HttpClient::send`], body read errors of the redirect
@@ -165,13 +168,13 @@ pub async fn send_following_redirects(
     client: &HttpClient,
     request: Request,
 ) -> Result<Response, HttpError> {
-    let mut request = request;
+    let mut request = client.authenticated(&request);
     let mut history: u32 = 0;
     loop {
         if history > MAX_REDIRECTS {
             return Err(HttpError::too_many_redirects());
         }
-        let mut response = client.send(&request).await?;
+        let mut response = client.send_single(&request).await?;
         let Some(next) = response.next_request.take() else {
             return Ok(response);
         };

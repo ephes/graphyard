@@ -395,6 +395,17 @@ fn header_text(headers: &HeaderMap, name: &str) -> Option<String> {
     )
 }
 
+/// httpcore's `HTTP11Connection.MAX_INCOMPLETE_EVENT_SIZE` (100 KiB): h11
+/// fails a response head that is still incomplete beyond this size with
+/// `RemoteProtocolError` `Receive buffer too long`. h11 checks it only
+/// while the head is incomplete, so with httpcore's 64 KiB reads httpx can
+/// accept a head of up to 128 KiB that arrives at once; here any head over
+/// the limit fails (D-14).
+const MAX_RESPONSE_HEAD_BYTES: usize = 100 * 1024;
+
+/// The shortest header line h11 accepts (`a:` and CRLF).
+const MIN_HEADER_LINE_BYTES: usize = 4;
+
 /// `httpx.Client` for one spec execution.
 pub struct HttpClient {
     timeout: Duration,
@@ -470,13 +481,29 @@ impl HttpClient {
     /// scheme other than http(s)/ws(s); connect, TLS, read and timeout
     /// errors; the redirect errors of [`Request::redirect`].
     pub async fn send(&self, request: &Request) -> Result<Response, HttpError> {
+        self.send_single(&self.authenticated(request)).await
+    }
+
+    /// `Client._send_single_request`: the request exactly as given, without
+    /// the auth flow; [`HttpClient::send`] authenticates first, automatic
+    /// redirects ([`crate::http::send_following_redirects`]) send the hops
+    /// `_build_redirect_request` made as they are.
+    ///
+    /// # Errors
+    /// As [`HttpClient::send`].
+    pub(crate) async fn send_single(&self, request: &Request) -> Result<Response, HttpError> {
         let tls = check_scheme(&request.url)?;
-        let request = &self.authenticated(request);
         let url = &request.url;
         let outgoing = self.hyper_request(request)?;
         let stream = self.connect(url, tls).await?;
         let io = TokioIo::new(TimeoutIo::new(stream, self.timeout));
-        let (mut sender, connection) = hyper::client::conn::http1::handshake(io)
+        // h11 (httpcore) limits the response head by size only, not by the
+        // number of header lines; hyper's default of 100 lines is lifted so
+        // the size limit is the one that applies.
+        let (mut sender, connection) = hyper::client::conn::http1::Builder::new()
+            .max_header_size(MAX_RESPONSE_HEAD_BYTES)
+            .max_headers(MAX_RESPONSE_HEAD_BYTES / MIN_HEADER_LINE_BYTES)
+            .handshake(io)
             .await
             .map_err(|err| HttpError::transport(&err, false))?;
         let connection = tokio::spawn(async move {

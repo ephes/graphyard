@@ -253,7 +253,10 @@ that differs is a bug.
   are matched by `cookie_store`, not `http.cookiejar` (same `Cookie` order,
   domain and path corner cases may differ); httpx's `trust_env` proxy
   variables (`HTTP(S)_PROXY`, `ALL_PROXY`, `NO_PROXY`) are not read
-  (`SSL_CERT_FILE`/`SSL_CERT_DIR` are, by `rustls-native-certs`). The
+  (`SSL_CERT_FILE`/`SSL_CERT_DIR` are, by `rustls-native-certs`); a
+  response head over 100 KiB always fails, where h11 checks the limit only
+  while the head is incomplete, so httpx accepts a head of up to 128 KiB
+  that arrives in two 64 KiB reads. The
   production unit sets none of these variables, and the 32 production
   endpoints use ASCII host names, gzip from regular servers and (UniFi)
   plain session cookies.
@@ -785,7 +788,10 @@ holds all of the agent's SQL, for `ingest_token` and fails if found.
   HTTP/TLS requests as in httpcore), the host text `getaddrinfo` gets, the
   request target (`raw_path`) and `Host` (netloc). Credentials in the URL
   are sent as basic auth when the client has no `auth=`
-  (`_build_request_auth`).
+  (`_build_request_auth`). The auth flow runs once per `send()`: on every
+  manual page-probe hop (each is its own `client.send`), but only on the
+  first request of an automatic redirect chain, whose hops keep or drop
+  `Authorization` as `_build_redirect_request` decides.
 - `verify_tls: false` disables certificate and hostname verification (the
   handshake signature is still checked, as with `CERT_NONE`).
 - Request headers sent by Python and kept (P1): `Accept` as set by the
@@ -794,7 +800,9 @@ holds all of the agent's SQL, for `ingest_token` and fails if found.
   nyxmon port; a `graphyard-agent/<ver>` UA is a later, separate change),
   `Authorization` as set by the executor. Decoded bytes count towards
   `max_body_bytes`, as `iter_bytes()` yields decoded content.
-- HTTP/1.1 only.
+- HTTP/1.1 only. The response head is limited by size, not by its number
+  of header lines: 100 KiB (httpcore's `MAX_INCOMPLETE_EVENT_SIZE`), over
+  it `RemoteProtocolError` `Receive buffer too long` (D-14).
 - `raise_for_status()` text (P1, template from httpx):
   `Client error '404 Not Found' for url '<url>'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404`
   (and the `Redirect response` / `Server error` / `Informational response`
