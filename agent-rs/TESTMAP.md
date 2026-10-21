@@ -19,6 +19,17 @@ fixture no longer matches the Python code.
 | `influx.py` `MetricPoint`, `MetricSample`; `services.py` `ConditionEvaluation`, `ConditionEvaluationRun`, `MetricCollectionSpecRun` (fields, order, defaults) | `model/tests.rs::metric_point_matches_the_python_dataclass`, `::metric_sample_matches_the_python_dataclass`, `::result_types_match_the_python_dataclasses` | done |
 | Fixture drift guard (a hand-edited, missing or orphaned fixture fails) | `tests/test_agent_rs_fixtures.py` | done |
 
+## S10a — release workflow
+
+Not Python agent behaviour: the release pipeline of PLAN.md 8.2 has no Python
+counterpart. Its tests:
+
+| Behaviour | Test | Status |
+| --- | --- | --- |
+| `--version` prints `graphyard-agent <version> (<commit>)`; every other invocation of the placeholder exits 1 | `graphyard-agent/tests/version.rs` | done |
+| Commit stamp: commit format, the git paths Cargo watches (branch, packed refs, nested branch, linked worktree, detached HEAD, no git) | `graphyard-agent/tests/build_script.rs` (compiles `build.rs`) | done |
+| `release_checks.py`: version and tag, GLIBC floor and `NEEDED` libraries, smoke test (output, exit code, timeout), deterministic archive and `.sha256`, name validation; the workflow runs every check | `tests/test_agent_rs_release_checks.py` | done |
+
 ## Planned counterparts (PLAN.md 9.5)
 
 | Python tests | Rust counterpart | Slice | Status |

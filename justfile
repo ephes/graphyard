@@ -89,5 +89,6 @@ rs-build-linux:
       -v "{{justfile_directory()}}/agent-rs:/work" -w /work \
       -v graphyard-agent-rs-cargo-registry:/usr/local/cargo/registry \
       -e CARGO_TARGET_DIR=/work/target/docker-linux-amd64 \
+      -e GRAPHYARD_AGENT_GIT_COMMIT="$(git -C "{{justfile_directory()}}" rev-parse HEAD)" \
       rust:1.99.0-bookworm \
       cargo build --release --locked --target x86_64-unknown-linux-gnu

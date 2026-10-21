@@ -26,6 +26,7 @@ graphyard-collect = { path = "crates/graphyard-collect" }
 chrono = { version = "0.4", default-features = false, features = ["std"] }
 indexmap = "2"
 serde_json = { version = "1", features = ["preserve_order", "arbitrary_precision"] }
+tempfile = "3"
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

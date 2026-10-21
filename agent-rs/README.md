@@ -11,7 +11,14 @@ Status: slice S1 (scaffold): the workspace, the toolchain pin, the
 cargo-deny policy, the CI `rust` job, the `just rs-*` recipes, the shared
 model types (`graphyard_core::model`) and the fixture pipeline with its drift
 test. The `graphyard-agent` binary is a placeholder that exits 1 until slice
-S8. The slice table is PLAN.md section 12; the test coverage per slice is
+S8; it answers only `--version`.
+
+Slice S10a adds the release pipeline (PLAN.md 8.2): the workflow
+`.github/workflows/agent-rs-release.yml`, the checks in
+`scripts/release_checks.py` and the commit stamp of `--version`
+(`crates/graphyard-agent/build.rs`); see [Releases](#releases).
+
+The slice table is PLAN.md section 12; the test coverage per slice is
 [`TESTMAP.md`](TESTMAP.md).
 
 ## Layout
@@ -36,6 +43,8 @@ agent-rs/
     generate.py         fixture driver (`just rs-fixtures`)
     gen_*.py            builder modules, one or more per slice
     *.json              generated fixtures, embedded by the Rust tests
+  scripts/
+    release_checks.py   release workflow checks (version, GLIBC floor, smoke, pack)
 ```
 
 ## Requirements
@@ -93,3 +102,43 @@ loading the file in Rust with `include_str!`.
 Rust tests parse fixtures with `serde_json` (`preserve_order`,
 `arbitrary_precision`) through the helpers in
 `crates/graphyard-core/src/fixture.rs`.
+
+## Releases
+
+`.github/workflows/agent-rs-release.yml` builds and publishes the binary
+(PLAN.md 8.1, 8.2). Deploys install only such a release archive, pinned by
+version and sha256; nothing builds on the host.
+
+- **Release**: push a tag `agent-rs-v<version>` on a commit of `main`, where
+  `<version>` equals the `graphyard-agent` crate version (the workspace
+  `version` in `Cargo.toml`, semver without build metadata). A version with
+  a pre-release part (`0.2.0-rc.1`) becomes a GitHub pre-release.
+- **Dry build**: run the workflow by hand (`gh workflow run
+  agent-rs-release.yml --ref <branch>`, the workflow file must be on the
+  default branch); it runs every check and uploads the archive as a workflow
+  artifact, without a tag check and without a release.
+
+The `build` job runs on `ubuntu-22.04` (glibc 2.35, the floor below
+macmini's 2.39) without a cargo cache: `cargo fmt --check`, clippy, `cargo
+test --locked`, `cargo build --release --locked --target
+x86_64-unknown-linux-gnu`, then `scripts/release_checks.py`:
+
+| Check | Rule |
+| --- | --- |
+| `version` | the crate version from `cargo metadata`; on a tag push the tag must be `agent-rs-v<that version>` |
+| `glibc-floor` | `objdump -T`/`-p`: no `GLIBC_*` symbol version above 2.35, `NEEDED` only glibc and libgcc (`libc`, `libm`, `libgcc_s`, `ld-linux-x86-64`, ...) |
+| `smoke` | `graphyard-agent --version` prints exactly `graphyard-agent <version> (<workflow commit>)` and exits 0 |
+| `pack` | deterministic `graphyard-agent-<version>-x86_64-unknown-linux-gnu.tar.gz` (`graphyard-agent` 0755 and `LICENSE` 0644 at the root, root:root, commit time as mtime) and its `.sha256` in `sha256sum` format |
+
+The `fixtures` job runs the fixture drift test and the release check tests
+(`tests/test_agent_rs_fixtures.py`, `tests/test_agent_rs_release_checks.py`)
+with the locked Python environment. The `release` job (the only one with
+`contents: write`) needs both, verifies the checksum again and creates the
+GitHub release with the archive and its `.sha256` file; the job summary and
+the release notes name the commit and the sha256 the deployment pins.
+
+`--version` names the git commit `build.rs` embeds: the
+`GRAPHYARD_AGENT_GIT_COMMIT` environment variable when set (the workflow sets
+it to its commit, `just rs-build-linux` to the checkout's `HEAD` because the
+container sees no `.git`), else `git rev-parse HEAD`, else `unknown`; a value
+that is not 7 to 40 lowercase hex digits fails the build.
