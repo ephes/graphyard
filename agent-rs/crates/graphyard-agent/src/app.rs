@@ -70,29 +70,36 @@ pub enum Shutdown {
     Terminate,
 }
 
-/// The production signal future: SIGTERM and SIGINT.
+/// Register the production signal handlers (SIGTERM, SIGINT) and return
+/// the future that resolves on the first signal. [`run_agent`] calls it
+/// inside the runtime before it opens the database, so a signal during the
+/// startup is already handled.
 ///
 /// # Errors
 /// When a handler cannot be registered.
 #[cfg(unix)]
-pub async fn signals() -> std::io::Result<Shutdown> {
+pub fn signals() -> std::io::Result<impl Future<Output = Shutdown>> {
     use tokio::signal::unix::{SignalKind, signal};
     let mut terminate = signal(SignalKind::terminate())?;
     let mut interrupt = signal(SignalKind::interrupt())?;
-    Ok(tokio::select! {
-        _ = terminate.recv() => Shutdown::Terminate,
-        _ = interrupt.recv() => Shutdown::Interrupt,
+    Ok(async move {
+        tokio::select! {
+            _ = terminate.recv() => Shutdown::Terminate,
+            _ = interrupt.recv() => Shutdown::Interrupt,
+        }
     })
 }
 
 /// The production signal future: Ctrl-C only (development builds).
 ///
 /// # Errors
-/// When the handler cannot be registered.
+/// Never; the handler is registered when the future is first polled.
 #[cfg(not(unix))]
-pub async fn signals() -> std::io::Result<Shutdown> {
-    tokio::signal::ctrl_c().await?;
-    Ok(Shutdown::Interrupt)
+pub fn signals() -> std::io::Result<impl Future<Output = Shutdown>> {
+    Ok(async {
+        let _ = tokio::signal::ctrl_c().await;
+        Shutdown::Interrupt
+    })
 }
 
 /// The command's runs with their report lines (`_run_metric_specs`,
@@ -189,13 +196,59 @@ fn describe_loop(enabled: bool, interval: &BigInt) -> String {
     }
 }
 
-/// Open the database, verify the schema (D-2) and run the loops until they
-/// end (`--run-once`) or `shutdown` resolves. `shutdown` is called inside
-/// the runtime.
+/// Open the database off the runtime thread (a locked database can hold
+/// the open up to the busy timeout) and verify the schema (D-2); the error
+/// is the exit code after the reported failure.
+async fn open_and_verify(db: &Path, settings: &Settings, loops: &Loops) -> Result<Store, ExitCode> {
+    let (path, open_settings) = (db.to_path_buf(), settings.clone());
+    let opened = tokio::task::spawn_blocking(move || Store::open(&path, &open_settings)).await;
+    let store = match opened {
+        Ok(Ok(store)) => store,
+        Ok(Err(err)) => return Err(database_error(db, err)),
+        Err(err) => return Err(database_error(db, err)),
+    };
+    match store.verify_schema().await {
+        Ok(report) if report.is_ok() => {
+            log::info!("graphyard-agent {VERSION}");
+            log::info!("{report}");
+            log::info!(
+                "metrics {}, conditions {}{}",
+                describe_loop(loops.run_metrics, &loops.metrics_interval),
+                describe_loop(loops.run_conditions, &loops.condition_interval),
+                if loops.run_once { ", run once" } else { "" }
+            );
+            Ok(store)
+        }
+        Ok(report) => {
+            print_stderr(&report.to_string());
+            store.close();
+            Err(ExitCode::FAILURE)
+        }
+        Err(err) => {
+            store.close();
+            Err(database_error(db, err))
+        }
+    }
+}
+
+/// End the runtime with the grace for blocking work and report the signal.
+fn finish(runtime: tokio::runtime::Runtime, signal: Option<Shutdown>, code: ExitCode) -> ExitCode {
+    if signal == Some(Shutdown::Interrupt) {
+        print_stdout(INTERRUPTED_LINE);
+    }
+    runtime.shutdown_timeout(SHUTDOWN_GRACE);
+    code
+}
+
+/// Register the signal handlers (`shutdown`, called inside the runtime),
+/// open the database, verify the schema (D-2) and run the loops until they
+/// end (`--run-once`) or a signal arrives. A signal during the startup
+/// ends the agent the same way: the open or the schema read in flight is
+/// abandoned (both only read or set pragmas), exit 0.
 pub fn run_agent<F, Fut>(config: AgentConfig, shutdown: F) -> ExitCode
 where
-    F: FnOnce() -> Fut,
-    Fut: Future<Output = std::io::Result<Shutdown>>,
+    F: FnOnce() -> std::io::Result<Fut>,
+    Fut: Future<Output = Shutdown>,
 {
     let AgentConfig {
         db,
@@ -214,31 +267,30 @@ where
             return ExitCode::FAILURE;
         }
     };
-    let store = match Store::open(&db, &settings) {
-        Ok(store) => store,
-        Err(err) => return database_error(&db, err),
+    let registered = {
+        let _context = runtime.enter();
+        shutdown()
     };
-    match runtime.block_on(store.verify_schema()) {
-        Ok(report) if report.is_ok() => {
-            log::info!("graphyard-agent {VERSION}");
-            log::info!("{report}");
-            log::info!(
-                "metrics {}, conditions {}{}",
-                describe_loop(loops.run_metrics, &loops.metrics_interval),
-                describe_loop(loops.run_conditions, &loops.condition_interval),
-                if loops.run_once { ", run once" } else { "" }
-            );
-        }
-        Ok(report) => {
-            print_stderr(&report.to_string());
-            store.close();
+    let mut shutdown = match registered {
+        Ok(shutdown) => Box::pin(shutdown),
+        Err(err) => {
+            print_stderr(&format!("cannot register the signal handlers: {err}"));
             return ExitCode::FAILURE;
         }
-        Err(err) => {
-            store.close();
-            return database_error(&db, err);
+    };
+
+    let started = runtime.block_on(async {
+        tokio::select! {
+            biased;
+            signal = &mut shutdown => Err(signal),
+            store = open_and_verify(&db, &settings, &loops) => Ok(store),
         }
-    }
+    });
+    let store = match started {
+        Ok(Ok(store)) => store,
+        Ok(Err(code)) => return finish(runtime, None, code),
+        Err(signal) => return finish(runtime, Some(signal), ExitCode::SUCCESS),
+    };
 
     let settings = Arc::new(settings);
     let mut agent = Agent {
@@ -265,25 +317,13 @@ where
         };
         tokio::select! {
             biased;
-            signal = shutdown() => Some(signal),
+            signal = &mut shutdown => Some(signal),
             () = work => None,
         }
     });
     // The main task is gone: wait for the statement the DB thread runs.
     store.close();
-    let code = match ended {
-        Some(Ok(Shutdown::Interrupt)) => {
-            print_stdout(INTERRUPTED_LINE);
-            ExitCode::SUCCESS
-        }
-        Some(Err(err)) => {
-            print_stderr(&format!("cannot register the signal handlers: {err}"));
-            ExitCode::FAILURE
-        }
-        Some(Ok(Shutdown::Terminate)) | None => ExitCode::SUCCESS,
-    };
-    runtime.shutdown_timeout(SHUTDOWN_GRACE);
-    code
+    finish(runtime, ended, ExitCode::SUCCESS)
 }
 
 /// The binary: parse, validate, start (PLAN.md 3.1).

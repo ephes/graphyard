@@ -325,3 +325,40 @@ fn sigterm_exits_0_silently() {
     assert_eq!(db.count("pipeline_heartbeat"), 1);
     assert!(Path::new(db.path()).exists());
 }
+
+#[cfg(unix)]
+#[test]
+fn sigterm_during_a_locked_startup_exits_0() {
+    let db = TestDb::new();
+    let holder = db.raw();
+    holder.execute_batch("BEGIN EXCLUSIVE").unwrap();
+    let mut child = command(
+        &["--db", db_arg(&db)],
+        &[("GRAPHYARD_SQLITE_BUSY_TIMEOUT_MS", "20000")],
+    )
+    .stdout(Stdio::piped())
+    .stderr(Stdio::piped())
+    .spawn()
+    .unwrap();
+    let mut stdout = BufReader::new(child.stdout.take().unwrap());
+    let mut start = String::new();
+    stdout.read_line(&mut start).unwrap();
+    assert!(start.starts_with("Starting graphyard-agent"), "{start}");
+    // The handlers are registered right after the start line, before the
+    // database is opened (where the agent now waits on the lock).
+    std::thread::sleep(Duration::from_millis(500));
+    let killed = std::time::Instant::now();
+    let status = Command::new("kill")
+        .args(["-TERM", &child.id().to_string()])
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let status = child.wait().unwrap();
+    assert!(
+        killed.elapsed() < Duration::from_secs(5),
+        "{:?}",
+        killed.elapsed()
+    );
+    assert_eq!(status.code(), Some(0), "{status:?}");
+    holder.execute_batch("COMMIT").unwrap();
+}

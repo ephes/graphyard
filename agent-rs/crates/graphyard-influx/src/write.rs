@@ -41,7 +41,9 @@ use graphyard_core::model::MetricPoint;
 use graphyard_core::pycompat::{PyError, py_float_repr, py_str_repr};
 use graphyard_core::settings::Settings;
 use percent_encoding::{AsciiSet, NON_ALPHANUMERIC, utf8_percent_encode};
-use reqwest::header::{ACCEPT, ACCEPT_ENCODING, AUTHORIZATION, CONTENT_TYPE, USER_AGENT};
+use reqwest::header::{
+    ACCEPT, ACCEPT_ENCODING, AUTHORIZATION, CONTENT_TYPE, HeaderValue, USER_AGENT,
+};
 use reqwest::{StatusCode, Url};
 
 use crate::config::{InfluxClientConfig, InfluxConfigurationError, RequestTimeout};
@@ -283,7 +285,7 @@ impl InfluxWriter {
             .header(ACCEPT_ENCODING, "identity")
             .header(CONTENT_TYPE, "text/plain")
             .header(ACCEPT, "application/json")
-            .header(AUTHORIZATION, format!("Token {}", config.token))
+            .header(AUTHORIZATION, authorization(&config.token)?)
             .header(USER_AGENT, USER_AGENT_VALUE)
             .body(prepared.body());
         let response = request
@@ -321,9 +323,19 @@ impl InfluxWriter {
     }
 }
 
-/// The shadow write: the request's timeout and URL checks (so a setting
-/// the real write rejects fails here too), then one `write_all` of the
-/// comment line and the batch.
+/// `Authorization: Token <token>` as the write request carries it. A value
+/// the HTTP stack refuses (a control character such as a line break) is the
+/// same `ValueError` in both write modes (P2 text).
+fn authorization(token: &str) -> Result<HeaderValue, WriteError> {
+    HeaderValue::try_from(format!("Token {token}")).map_err(|err| WriteError::Transport {
+        class: "ValueError",
+        message: format!("Invalid request: {err}"),
+    })
+}
+
+/// The shadow write: the request's timeout, URL and header checks (so a
+/// setting the real write rejects fails here too), then one `write_all` of
+/// the comment line and the batch.
 fn append_batch(
     file: &Mutex<File>,
     config: &InfluxClientConfig,
@@ -332,6 +344,7 @@ fn append_batch(
 ) -> Result<(), WriteError> {
     config.request_timeout().map_err(WriteError::Timeout)?;
     write_url(&config.host, &settings.influx_org, &settings.influx_bucket)?;
+    authorization(&config.token)?;
     let record = format!(
         "# write {} points={}\n{}\n",
         Utc::now().format("%Y-%m-%dT%H:%M:%S%.6fZ"),

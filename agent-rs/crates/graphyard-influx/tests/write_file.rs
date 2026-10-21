@@ -138,6 +138,26 @@ async fn configuration_errors_still_fail_the_write() {
         .unwrap_err();
     assert_eq!(err.python_class(), "URLSchemeUnknown");
 
+    // A token the HTTP stack refuses fails both writers the same way.
+    let (_listener, url) = untouched_port();
+    let token = settings(&[
+        ("INFLUX_URL", &url),
+        ("INFLUX_TOKEN", "t\nX-Injected: 1"),
+        ("INFLUX_ORG", "o"),
+    ]);
+    let shadow = writer
+        .write_points(&token, &[point("macmini", 1.0)])
+        .await
+        .unwrap_err();
+    let real = InfluxWriter::new()
+        .unwrap()
+        .write_points(&token, &[point("macmini", 1.0)])
+        .await
+        .unwrap_err();
+    assert_eq!(shadow.python_class(), "ValueError");
+    assert_eq!(real.python_class(), "ValueError");
+    assert_eq!(shadow.to_string(), real.to_string());
+
     assert_eq!(std::fs::read_to_string(&path).unwrap(), "");
 }
 

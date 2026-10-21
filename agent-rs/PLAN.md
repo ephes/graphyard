@@ -341,13 +341,18 @@ Rust-only additions (absent from the Python CLI, used by deploy and shadow):
 
 As implemented in S8: argparse conveniences are kept (unique prefixes of
 long flags, the last of repeated flags wins, a negative interval reaches the
-validation); `--version` prints and exits 0 whatever else is given;
-otherwise the environment is read first, as Python imports the settings
+validation); `--version` prints and exits 0 whatever other valid flags
+are given and even with an invalid environment (a usage error still exits
+2); otherwise the environment is read first, as Python imports the settings
 before argparse runs, so an invalid environment value exits 1 even with bad
 flags. `--check-schema` prints its line on stdout when the schema passes,
 on stderr when it fails, and needs no loop validation and no InfluxDB
 settings. The start line is printed before the database is opened, as in
 Python; a missing database or failed schema check then exits 1 (D-2).
+The signal handlers are registered before the database is opened, and the
+open runs off the runtime thread, so a SIGTERM or SIGINT while the startup
+waits on a locked database ends the agent as in D-1 (exit 0; the open or
+schema read in flight is abandoned, neither writes).
 
 Exit codes: 0 normal end (`--run-once`, SIGINT, SIGTERM), 1 `CommandError`,
 invalid environment value, schema/database failure, 2 usage error.

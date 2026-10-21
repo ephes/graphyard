@@ -45,9 +45,9 @@ fn config(db: &TestDb, http: HttpContext, busy_timeout_ms: &str) -> AgentConfig 
     }
 }
 
-async fn signal_after(millis: u64, signal: Shutdown) -> std::io::Result<Shutdown> {
+async fn signal_after(millis: u64, signal: Shutdown) -> Shutdown {
     tokio::time::sleep(Duration::from_millis(millis)).await;
-    Ok(signal)
+    signal
 }
 
 #[test]
@@ -62,7 +62,7 @@ fn sigterm_does_not_wait_for_a_blocked_lookup() {
     let http = HttpContext::new().with_lookup(Arc::new(Stuck));
     let started = Instant::now();
     let code = run_agent(config(&db, http, "30000"), || {
-        signal_after(300, Shutdown::Terminate)
+        Ok(signal_after(300, Shutdown::Terminate))
     });
     assert_eq!(code, ExitCode::SUCCESS);
     assert!(
@@ -94,7 +94,7 @@ fn shutdown_waits_for_the_statement_the_db_thread_is_running() {
     });
     let started = Instant::now();
     let code = run_agent(config(&db, HttpContext::new(), "10000"), || {
-        signal_after(300, Shutdown::Interrupt)
+        Ok(signal_after(300, Shutdown::Interrupt))
     });
     let elapsed = started.elapsed();
     release.join().unwrap();
@@ -114,11 +114,40 @@ fn run_once_ends_without_a_signal() {
     let db = TestDb::new();
     common::insert_spec(&db, "unknown", "legacy_type", &json!({}));
     let code = run_agent(config(&db, HttpContext::new(), "1000"), || {
-        std::future::pending::<std::io::Result<Shutdown>>()
+        Ok(std::future::pending::<Shutdown>())
     });
     assert_eq!(code, ExitCode::SUCCESS);
     assert_eq!(
         db.text("pipeline_heartbeat", "metric_collectors", "status"),
         "critical"
     );
+}
+
+#[test]
+fn a_signal_during_a_blocked_startup_ends_the_agent() {
+    // Another connection holds an exclusive lock: opening (the WAL switch)
+    // and the schema check wait on the busy timeout when the signal comes.
+    let db = TestDb::new();
+    let holder = db.raw();
+    holder.execute_batch("BEGIN EXCLUSIVE").unwrap();
+    let started = Instant::now();
+    let code = run_agent(config(&db, HttpContext::new(), "20000"), || {
+        Ok(signal_after(300, Shutdown::Terminate))
+    });
+    let elapsed = started.elapsed();
+    holder.execute_batch("COMMIT").unwrap();
+    assert_eq!(code, ExitCode::SUCCESS);
+    assert!(elapsed >= Duration::from_millis(300), "{elapsed:?}");
+    assert!(elapsed < Duration::from_secs(3), "{elapsed:?}");
+    assert_eq!(db.count("pipeline_heartbeat"), 0);
+}
+
+#[test]
+fn a_failed_signal_registration_exits_1() {
+    let db = TestDb::new();
+    let code = run_agent(config(&db, HttpContext::new(), "1000"), || {
+        Err::<std::future::Pending<Shutdown>, _>(std::io::Error::other("no signals"))
+    });
+    assert_eq!(code, ExitCode::FAILURE);
+    assert_eq!(db.count("pipeline_heartbeat"), 0);
 }
