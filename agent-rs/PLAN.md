@@ -1,12 +1,13 @@
 # Rust port of the graphyard agent — implementation plan
 
 Status: plan, not yet implemented. Stream `rust-graphyard-agent` of the
-campaign "Rust-Ports Runde 2" (umbrella item `rust-ports-campaign`).
+campaign "Rust-Ports Runde 2" (umbrella item `rust-ports-campaign`). The
+owner decided the open questions on 2026-10-21 (section 14).
 
 This document is the contract for porting the long-running graphyard agent
 (`src/graphyard/management/commands/start_agent.py`, run by
 `graphyard-agent.service` on macmini) to a Rust binary `graphyard-agent` in
-`agent-rs/`. It is written for the implementers of the slices in section 10
+`agent-rs/`. It is written for the implementers of the slices in section 12
 and for the reviewers of each slice. Every behavioural statement cites the
 Python code that defines it (graphyard `85cdb60`). When this document and the
 Python code disagree, the Python code wins and this document must be
@@ -36,7 +37,7 @@ owning the database schema. Only the agent process is replaced.
 | Runtimes in the venv | Python 3.12, Django 6.0.8, httpx 0.28.1 (no brotli/zstandard/h2 installed, so `Accept-Encoding: gzip, deflate`, HTTP/1.1 only), influxdb-client 1.50.0, certifi **2026.02.25** (the relock to 2026.10.19 is merged as `85cdb60` but not yet deployed; live source commit `7d46493` in `.ops-deploy-source`) |
 | Database | SQLite `/opt/apps/graphyard/site/src/django/db.sqlite3` (14.8 MB + 20.6 MB WAL), `journal_mode=wal`, migrations applied up to `graphyard.0012_ingest_token_subject_binding`, `graphyard:graphyard 0640`; host SQLite CLI 3.45.1 |
 | Env (non-secret values) | `DJANGO_SETTINGS_MODULE=config.settings.production`, `INFLUX_URL=http://127.0.0.1:8086`, `INFLUX_ORG=graphyard`, `INFLUX_BUCKET=graphyard`, `INFLUX_MEASUREMENT=graphyard_metrics`, `INFLUX_TIMEOUT_MS=10000`, `INFLUX_API_MODE=v2`, metric and condition intervals 60 s, `GRAPHYARD_CONDITION_DATA_STALE_WARNING_SECONDS=600`, `GRAPHYARD_SQLITE_TIMEOUT_SECONDS=30`, `GRAPHYARD_SQLITE_BUSY_TIMEOUT_MS=30000`, `GRAPHYARD_SQLITE_JOURNAL_MODE=WAL`, `GRAPHYARD_SQLITE_SYNCHRONOUS=FULL` |
-| Legacy `.env` | `src/django/.env` exists (Mar 2026, **mode 0644**, contains secrets). django-environ loads it with `setdefault` semantics; the only keys it adds beyond the EnvironmentFile are unused `HOME_ASSISTANT_*` legacy keys. The Rust agent does not read it (D-9); its removal is owner question Q5 |
+| Legacy `.env` | `src/django/.env` exists (Mar 2026, **mode 0644**, contains secrets). django-environ loads it with `setdefault` semantics; the only keys it adds beyond the EnvironmentFile are unused `HOME_ASSISTANT_*` legacy keys. The Rust agent does not read it (D-9); its removal is the separate item `graphyard-stale-env-macmini`, not part of this plan (section 14, Q5) |
 | InfluxDB | container `graphyard-influxdb`, `influxdb:2.7` = InfluxDB v2.7.12, on `127.0.0.1:8086`; Grafana container alongside |
 | Specs (`metric_collection_spec`) | 32 enabled: 24 `http_json_metric` (300 s; fractal/macmini storage, thermal, IPMI, fan metrics over HTTP Basic), 6 `http_page_probe` (300 s; public websites), 1 `home_assistant_env_scan` (60 s, `http://macmini.local:10020`, an mDNS name), 1 `unifi_device_traffic` (60 s, `https://127.0.0.1:8443`, `verify_tls: false`); all `last_status=ok` |
 | Conditions | 2 enabled (`host.filesystem_used_ratio`, `gte`, `tags_filter` `mountpoint`), both currently `warning` with "No samples available in condition window" (pre-existing, not caused by the agent; reported to the coordinator) |
@@ -77,17 +78,18 @@ A Rust binary `graphyard-agent` that is a drop-in for `manage.py start_agent`:
 ### 2.2 Non-goals
 
 - No change to Django models, migrations, views, admin or management commands
-  other than the Python retirement slice (S15a). The web app must not be able
+  other than the Python retirement slice (S15c). The web app must not be able
   to tell which agent wrote a row.
 - No port of the web ingest path (`views.py`, `record_token_host_usage`,
   `touch_registry_from_points(bound_subject_id=…)` with a bound subject),
   `apply_metric_collection_specs`, the token commands, inventory code,
-  `evaluate_conditions` (manual operator command; ported only in S15a, Q4).
+  `evaluate_conditions` (manual operator command; replaced by
+  `graphyard-agent evaluate-conditions` in S15a and removed in S15c, Q4).
 - No change to Vector (`graphyard_vector`), the ingest tokens or their
   bindings. The agent never reads or writes `ingest_token` or
   `ingest_token_host_usage` (section 5.7).
 - No new features, no behaviour fixes except the divergences of section 2.4.
-  Python quirks are reproduced (section 11.1 R3 lists the notable ones).
+  Python quirks are reproduced (section 13.1 R3 lists the notable ones).
 - No unit hardening change (the base unit has none; adding it is a separate
   change for both implementations).
 - No Django system checks (`BaseCommand.requires_system_checks`), no
@@ -205,10 +207,13 @@ that differs is a bug.
     error>`. Production configs have neither (depth ≤ 5, ASCII escapes only;
     re-checked by `shadow_prepare.py`, which scans the copied rows and lists
     any spec or condition that would hit one of these cases).
-- **D-12 TLS trust anchors** (Q1). Python verifies against certifi; Rust
-  verifies against the system CA store (Ubuntu `ca-certificates`), so a CA
-  incident is fixed by the ops trust rollout plus a restart instead of a new
-  agent release.
+- **D-12 TLS trust anchors** (Q1, decided 2026-10-21). Python verifies
+  against certifi; Rust verifies against the system CA store (Ubuntu
+  `ca-certificates`), so a CA incident is fixed by the ops trust rollout plus
+  a restart instead of a new agent release. `graphyard-agent.service` is
+  added to macmini's `restart_units` in ops-control
+  `playbooks/ca-trust-consumers.yml` (S11c), so the `ca_trust_consumers`
+  rollout restarts the agent after a CA update.
 
 ---
 
@@ -440,7 +445,7 @@ keep every fixture-tested function in `graphyard-core`.
 | --- | --- | --- |
 | async runtime | `tokio` (rt, time, signal, macros) | |
 | HTTP (collectors, Influx) | `reqwest` (no default features; `rustls` TLS, `gzip`, `deflate`, `cookies`, `stream`) | maintained client covering everything httpx does for us: per-connect and per-read timeouts, streaming bodies for byte caps, cookie jar (UniFi session), `danger_accept_invalid_certs` for `verify_tls: false`, redirect policy `none` for the hand-driven page-probe redirects; the rules of section 6.1 are applied on top, not a new HTTP implementation |
-| name resolution | reqwest custom `Resolve` running libc `getaddrinfo` on the blocking pool | `macmini.local` needs nss-mdns, so glibc resolution is mandatory (section 11.1 R2); the wrapper counts abandoned lookups (D-3) |
+| name resolution | reqwest custom `Resolve` running libc `getaddrinfo` on the blocking pool | `macmini.local` needs nss-mdns, so glibc resolution is mandatory (section 13.1 R2); the wrapper counts abandoned lookups (D-3) |
 | TLS roots | system store via rustls (`rustls-native-certs` or reqwest's platform verifier) | Q1, D-12 |
 | InfluxDB v2 write | plain HTTP `POST /api/v2/write` with our line formatter (section 6.4) | the Python client is itself a thin wrapper over this documented API (`SYNCHRONOUS` write, no batching, no retries); the Rust InfluxDB crates are either unmaintained (`influxdb2`, last release 2024-07) or InfluxQL/v1-oriented (`influxdb`); series identity needs `influxdb_client`'s exact escaping and float rendering, which no crate promises |
 | line protocol parsing (tests only) | `influxdb-line-protocol` (InfluxData) as dev-dependency | semantic comparison of written lines in fixtures, harness and shadow tooling |
@@ -878,7 +883,10 @@ not under the install root. Then prune versions beyond `keep_versions`, never
 the active or the previous one. Also: add `agent-rs/target/` to
 `graphyard_rsync_excludes` (a local-checkout deploy must never ship a cargo
 target directory). README, CHANGELOG under "Unreleased", molecule/test
-coverage; `galaxy.yml` is not bumped (release by the ops-library owner).
+coverage. Workers never bump `galaxy.yml`: the coordinator makes the
+collection release commit (`galaxy.yml` bump + CHANGELOG heading) on
+ops-library main right before the production deploy that needs it (S12, and
+again before S15b; section 14).
 
 **ops-deploy `services/graphyard`** (S11b): `GraphyardConfig` gains
 `agent_impl`, `agent_rust_version`, `agent_rust_sha256`,
@@ -891,7 +899,7 @@ migrations and around `service_rollout` of the agent unit; the drop-in
 template byte-identical to the role's (parity copy in
 `tests/parity/ansible/`); `agent-rs/target/` in `SOURCE_EXCLUDES`. Whether
 nyxmon's module is generalised into a shared helper is a coordinator decision
-(section 11.3); the default is a graphyard module that reuses ops-deploy's
+(section 13.2); the default is a graphyard module that reuses ops-deploy's
 existing helpers and leaves nyxmon untouched.
 
 **ops-control** (S11c): `pyinfra_support/services.py` maps
@@ -904,10 +912,15 @@ not set them as role vars); `requirements-ops-deploy.txt` pins the ops-deploy
 commit with S11b; `docs/GRAPHYARD_RUST_AGENT.md` (install, shadow, cutover,
 verification, rollback), CHANGELOG; tests (`tests/test_pyinfra_graphyard.py`
 literals, refusal of unmapped vars; the real host-var value may be `python` or
-`rust`, the lesson of nyxmon S16). For the Ansible path,
+`rust`, the lesson of nyxmon S16). Trust (Q1): `graphyard-agent.service` in
+macmini's `restart_units` of `playbooks/ca-trust-consumers.yml` (health
+command `sleep 5 && systemctl is-active --quiet graphyard-agent.service`, as
+for `vector.service`), the macmini row of `docs/CA_TRUST_CONSUMERS.md` and
+`tests/test_ca_trust_consumers_playbook.py`. For the Ansible path,
 `playbooks/deploy-graphyard-core.yml` gets a pre-task asserting the
-ops-library version that knows `graphyard_agent_impl`, once that version is
-released.
+ops-library version that knows `graphyard_agent_impl`; that version exists
+only after the coordinator's release commit, so the assert is added at the
+start of S12 (11.1), not in S11c.
 
 ### 8.4 Production deploy rules (binding)
 
@@ -925,6 +938,9 @@ released.
 - A `graphyard_core` deploy ships the current graphyard main to macmini
   (including, today, the not-yet-deployed certifi relock) and restarts web
   and agent when code changed.
+- No production step of this stream runs alongside the
+  `echoport-command-guard` cutover, which is scheduled last in the campaign
+  and alone (section 14).
 
 ### 8.5 Rollback
 
@@ -1063,7 +1079,7 @@ rows.
 | `test_metric_dimensions.py::test_touch_registry_*` | `store_ops.json` | S3b |
 | `test_query_and_ingest_log_escaping.py::test_flux_interpolation_literal_in_query` | `flux.json` | S4b |
 | `test_query_and_ingest_log_escaping.py::test_metric_log_escapes_newline`, `::test_ingest_normalization_record_caps_error_details` | n/a (web ingest) | — |
-| `test_evaluate_conditions_command.py` | n/a until S15a (Q4) | S15a |
+| `test_evaluate_conditions_command.py` | `evaluate-conditions` subcommand tests + e2e (11.4) | S15a |
 | web/ingest/inventory/token/admin/login tests | n/a (web only) | — |
 
 ### 9.6 just recipes and CI
@@ -1100,15 +1116,21 @@ allocator is considered.
 
 ### 11.1 Install (S12)
 
-With S10b's release and S11a–c merged: set the version and sha256 with
+With S10b's release and S11a–c merged and the coordinator's ops-library
+collection release commit on ops-library main (section 14): add the
+`deploy-graphyard-core.yml` pre-task asserting that released version (8.3,
+reviewed ops-control commit), set the version and sha256 with
 `graphyard_agent_impl: python` in macmini host vars, take the deploy lock,
 `just deploy-one graphyard_core`. Verify: `/opt/graphyard-agent/0.1.0/` exists,
 `--check-schema` passed, no drop-in, `graphyard-agent` still runs Python
 (`/proc/<pid>/cmdline`), web healthy.
 
-### 11.2 Shadow run on macmini (S13, ≥ 24 h, no production writes)
+### 11.2 Shadow run on macmini (S13, ≈ 24 h, no production writes)
 
-Prerequisites: S9b tooling, S12, owner approval (Q2).
+Prerequisites: S9b tooling, S12. Owner approval given 2026-10-21 (Q2): about
+24 h, the database copy in a 0700 directory deleted afterwards, nothing
+written to InfluxDB, doubled collector traffic accepted. Anything beyond
+these conditions needs a new owner decision.
 
 1. `parity/shadow_prepare.py` (stdlib only, run as `graphyard`, lock taken):
    online copy of the live database through SQLite's backup API into
@@ -1135,12 +1157,19 @@ Prerequisites: S9b tooling, S12, owner approval (Q2).
    explained by an endpoint change between the two samples; condition and
    heartbeat statuses identical; registry rows identical (timestamps masked);
    no restart; lean goals met. Findings are fixed in a follow-up slice and
-   the shadow repeated (shorter) if code changed. Teardown: stop the unit,
-   delete the shadow directory.
+   the shadow repeated (shorter, within the Q2 conditions) if code changed.
+   Teardown: stop the unit, delete the shadow directory.
 
 ### 11.3 Cutover and rollback drill (S14)
 
-Owner approval (Q3), coordinator check of the schedule, deploy lock, tmux.
+Owner decision Q3 (2026-10-21): one cutover window after the S13 shadow
+report, coordinated with the eMudhra stream. The cutover deploy ships the
+then-current graphyard main, so the coordinator agrees the window with that
+stream's certifi relock (`85cdb60`): either the eMudhra `graphyard_core`
+deploy has already shipped the relock, or the cutover deploy is that deploy,
+as agreed with the eMudhra stream. Either way the Python agent of the
+rollback drill runs with certifi 2026.10.19. Then coordinator check of the
+schedule, deploy lock, tmux.
 Set `graphyard_agent_impl: rust`, `just deploy-one graphyard_core`; record T1.
 Verification: unit active, exe under `/opt/graphyard-agent/<ver>/`,
 `NRestarts=0`; every enabled spec has `last_run_at > T1` within its interval
@@ -1155,15 +1184,47 @@ re-verify. Soak 7 days with a daily check of the same queries; roll back on
 a spec without a run for `2 × interval`, a heartbeat older than 15 minutes, a
 restart loop, a series-key change, or memory trending above budget.
 
-### 11.4 Python retirement (S15a/S15b, ≥ 30 days after T1, Q4)
+### 11.4 `evaluate-conditions` and Python retirement (S15a, S15b, S15c; Q4)
 
-S15a (graphyard): remove `start_agent` and the Python collector/evaluation
-code that the web does not use; port `evaluate_conditions [--condition-id N]`
-as `graphyard-agent evaluate-conditions` (same summary lines, exit 1 on
-failures) if the owner keeps that tool; freeze the fixtures (drift test
-removed, fixtures kept as Rust test data); docs and CHANGELOG. S15b
-(ops-library, ops-deploy, ops-control): `graphyard_agent_impl` default and
-only value `rust`, Python option removed; the venv stays (web).
+Owner decision Q4 (2026-10-21): the Python agent is retired 30 days after
+T1, and `manage.py evaluate_conditions` is replaced by `graphyard-agent
+evaluate-conditions`, in separate slices.
+
+**S15a** (graphyard, after S10b, not tied to the 30 days, before S15b):
+`graphyard-agent evaluate-conditions [--condition-id N]` ports
+`evaluate_conditions.py` (`evaluate_conditions_once(condition_id=…)`):
+enabled conditions, optionally only the given id, `ORDER BY name`; the
+per-condition writes and the `condition_evaluator` heartbeat exactly as 3.5
+(Python records the heartbeat for a single-condition run too). stdout
+`Condition evaluation completed (<total>).`, or `Condition evaluation
+completed with failures (<failed>/<total>).` followed by stderr
+`CommandError: <failed> condition evaluation(s) failed.` and exit 1. A
+failure outside a condition exits 1 with one error line (Python: traceback,
+P2); no colour (D-7); `--condition-id` parsed like the argparse `type=int`
+flags of 3.1. Like the agent it reads only the process environment (D-9), so
+the documented operator call uses the unit's environment:
+`systemd-run --wait --pipe --quiet -p User=graphyard -p Group=graphyard -p EnvironmentFile=/etc/graphyard/graphyard.env -p WorkingDirectory=/opt/apps/graphyard/site/src/django /opt/graphyard-agent/<ver>/graphyard-agent evaluate-conditions --db /opt/apps/graphyard/site/src/django/db.sqlite3`.
+Tests: counterparts of `test_evaluate_conditions_command.py`, an e2e case
+and a parity-harness case running both commands on identical inputs; docs,
+CHANGELOG; the slice ends with the next `agent-rs-v*` release through the
+S10a workflow.
+
+**S15b** (ops-library, ops-deploy, ops-control; ≥ 30 days after T1;
+production): pin the release containing `evaluate-conditions` in macmini
+host vars; `graphyard_agent_impl` default and only value `rust`, Python
+option removed (the venv stays for the web); ops-control
+`docs/GRAPHYARD_NYXMON_CHECKS.md` and `docs/GRAPHYARD_RUST_AGENT.md` switch
+the manual evaluation call to `evaluate-conditions` as above; CHANGELOGs;
+the coordinator's ops-library collection release commit before the deploy;
+deploy with lock (8.4), verification as in 11.3.
+
+**S15c** (graphyard, after S15b is deployed): remove `start_agent`,
+`evaluate_conditions` and the Python collector/evaluation code that the web
+does not use; remove the parity harness and its CI job; freeze the fixtures
+(drift test removed, fixtures kept as Rust test data); README, docs,
+CHANGELOG. The order is deliberate: after S15b no deploy can select the
+Python agent and the documented manual call is the Rust one, so a later
+`graphyard_core` deploy shipping S15c removes nothing that still runs.
 
 ---
 
@@ -1171,7 +1232,10 @@ only value `rust`, Python option removed; the venv stays (web).
 
 Rules: one branch per slice (`rust-agent/<id>-<name>`), each reviewed by
 `gpt-6.1-sol` at high reasoning through the codex review loop, then merged to
-the repo's default branch and pushed. Merging `agent-rs/` to graphyard main
+the repo's default branch and pushed. A slice gets at most three review
+rounds, the third only over the repair delta of the second (owner rule of
+2026-10-21); if round 3 is not clean, the slice stops and is reported to the
+coordinator. Merging `agent-rs/` to graphyard main
 is safe at any time: nothing runs it until the drop-in exists, and the
 default pyinfra deploy syncs a fresh git tree without `target/` (S11a/b add
 the exclude for local-source deploys). Every slice keeps `just test`,
@@ -1198,12 +1262,13 @@ excluding generated fixtures.
 | S10b | First release | tag `agent-rs-v0.1.0`, verify archive + sha256 | S9a, S9b, S10a | — | no | 0.5 |
 | S11a | ops-library role | impl selector (8.3), drop-in template, verify, prune, rsync exclude, README, CHANGELOG "Unreleased", tests with a stub archive | — (contract in 8.3) | with S1–S10 | no | 3.5 |
 | S11b | ops-deploy port | `GraphyardConfig` fields, agent module, wiring in `core_steps`, parity template copy, `SOURCE_EXCLUDES`, tests | S11a | with S2–S10 | no | 3.5 |
-| S11c | ops-control wiring | pyinfra mapping + refusal, macmini host vars (impl python, version, sha256), ops-deploy pin, playbook assert (when the role is released), `docs/GRAPHYARD_RUST_AGENT.md`, CHANGELOG, tests | S11b, S10b | — | no | 3 |
-| S12 | Install on macmini | 11.1 (impl python) | S11c | — | **yes** | 1.5 |
-| S13 | Shadow run | 11.2, report | S9b, S12, Q2 | — | **yes** (host, no prod writes) | 3 + 24 h |
-| S14 | Cutover + drill | 11.3, final docs in all repos | S13, Q3 | — | **yes** | 3 + 7 d soak |
-| S15a | Python retirement (graphyard) | 11.4 | S14 + 30 d, Q4 | with S15b prep | no (code), deploy in S15b | 3 |
-| S15b | Retirement (ops repos) | 11.4, deploy | S15a | — | **yes** | 3 |
+| S11c | ops-control wiring | pyinfra mapping + refusal, macmini host vars (impl python, version, sha256), ops-deploy pin, `ca-trust-consumers.yml` entry (Q1), `docs/GRAPHYARD_RUST_AGENT.md`, CHANGELOG, tests (playbook assert follows in S12) | S11b, S10b | — | no | 3 |
+| S12 | Install on macmini | 11.1 (playbook assert, impl python) | S11c, coordinator's ops-library collection release | — | **yes** | 1.5 |
+| S13 | Shadow run | 11.2 (approved, Q2), report | S9b, S12 | — | **yes** (host, no prod writes) | 3 + 24 h |
+| S14 | Cutover + drill | 11.3, final docs in all repos | S13 report, window agreed with the eMudhra stream (Q3) | — | **yes** | 3 + 7 d soak |
+| S15a | `evaluate-conditions` subcommand | 11.4: port of `manage.py evaluate_conditions`, tests, parity case, docs, next release | S8, S10b | with S11c–S14 (code only) | no | 2.5 |
+| S15b | Python retirement (ops repos) | 11.4: pin, impl `rust` only, docs, deploy | S14 + 30 d, S15a, coordinator's ops-library collection release | — | **yes** | 3 |
+| S15c | Python code removal (graphyard) | 11.4: `start_agent`, `evaluate_conditions`, harness, fixture freeze | S15b | — | no | 3 |
 
 Parallel waves (maximum five workers):
 
@@ -1213,7 +1278,8 @@ Parallel waves (maximum five workers):
 - W3: S3b, S7a, S7b
 - W4: S8
 - W5: S9a, S9b
-- W6 (serial, production): S10b → S11c → S12 → S13 → S14 → soak → S15a → S15b
+- W6 (serial, production): S10b → S11c → S12 → S13 → S14 → soak → (T1 + 30 d) S15b → S15c
+- S15a: any time after S10b, before S15b (code and a release only)
 
 Acceptance per slice (in addition to green checks and a clean review):
 
@@ -1235,10 +1301,17 @@ Acceptance per slice (in addition to green checks and a clean review):
 - **S12**: binary installed, unit still Python, no unintended restart.
 - **S13**: 11.2 acceptance with numbers.
 - **S14**: every 11.3 check recorded, drill done, soak started.
+- **S15a**: summary lines, exit codes, row and heartbeat effects equal the
+  Python command's on the same database (fixtures and parity case).
+- **S15b**: the Python option is refused by role, ops-deploy and
+  ops-control; the deployed agent is the pinned release; the documented
+  manual call works on macmini.
+- **S15c**: no Python agent code left; `just test` green with frozen
+  fixtures.
 
 ---
 
-## 13. Risks, owner questions, coordinator notes
+## 13. Risks and coordinator notes
 
 ### 13.1 Risks
 
@@ -1274,35 +1347,11 @@ Acceptance per slice (in addition to green checks and a clean review):
 - **R10 Pre-existing issues seen while gathering facts** (not caused by this
   stream, reported to the coordinator): both conditions read "No samples
   available in condition window"; `src/django/.env` on macmini is
-  world-readable and holds secrets (Q5); the venv still has certifi
+  world-readable and holds secrets (separate item
+  `graphyard-stale-env-macmini`, section 14 Q5); the venv still has certifi
   2026.02.25 until the next `graphyard_core` deploy.
 
-### 13.2 Owner questions (each with a recommendation)
-
-- **Q1 TLS trust anchors** (D-12): verify against the system CA store
-  (Ubuntu `ca-certificates`, managed by the ops trust rollout; add
-  `graphyard-agent.service` to the `ca_trust_consumers` restart list) instead
-  of embedding the Mozilla bundle (`webpki-roots`, which would need a new
-  agent release per CA incident)? **Recommended: system store.**
-- **Q2 Shadow run approval**: a second agent process on macmini for about
-  24 h, doubled collector traffic (UniFi login every minute, HA, fractal
-  endpoints, six public pages), a database copy with spec secrets in a 0700
-  directory deleted afterwards, no InfluxDB writes. **Recommended: approve.**
-- **Q3 Cutover window**: three agent restarts (cutover and drill) through
-  `just deploy-one graphyard_core`, each losing at most one collection tick;
-  the deploy also ships the then-current graphyard main (today including the
-  certifi relock). **Recommended: approve one window after the shadow
-  report, coordinated with the eMudhra stream.**
-- **Q4 Retirement**: remove the Python agent 30 days after the cutover;
-  replace `manage.py evaluate_conditions` with `graphyard-agent
-  evaluate-conditions`? **Recommended: yes to both; retirement as its own
-  slice pair S15a/S15b.**
-- **Q5 Stale `src/django/.env` on macmini** (0644, secrets, only unused
-  legacy keys beyond the EnvironmentFile): remove it in a separate ops item?
-  **Recommended: yes, independent of this port** (the Rust agent ignores it;
-  the web would only lose unused `HOME_ASSISTANT_*` defaults).
-
-### 13.3 Coordinator notes (no owner decision needed)
+### 13.2 Coordinator notes (no owner decision needed)
 
 - Shared Rust-agent deploy helper in ops-deploy (nyxmon, graphyard and other
   Runde-2 agents): default here is a graphyard-specific module; extracting a
@@ -1311,3 +1360,48 @@ Acceptance per slice (in addition to green checks and a clean review):
 - Production slices S12–S15b need a slot outside the eMudhra `graphyard_core`
   deploy and must not overlap a `graphyard_vector` or token change while the
   Atlas step is open.
+
+---
+
+## 14. Owner decisions (2026-10-21)
+
+The owner answered the questions of this plan on 2026-10-21 (given in chat
+to the campaign coordinator) and accepted every recommendation:
+
+- **Q1 TLS trust anchors**: the Rust agent verifies against the **system CA
+  store** (D-12), not an embedded Mozilla bundle; `graphyard-agent.service`
+  is added to `ca_trust_consumers` (macmini `restart_units`, S11c).
+- **Q2 Shadow run**: **approved**, about 24 h on macmini (S13): a second
+  agent process with doubled collector traffic, the database copy with spec
+  secrets in a 0700 directory and deleted afterwards, nothing written to
+  InfluxDB (11.2).
+- **Q3 Cutover window**: **one window after the S13 shadow report**,
+  coordinated with the eMudhra stream (certifi relock, 11.3); three agent
+  restarts (cutover and drill).
+- **Q4 Retirement**: the Python agent is retired **30 days after the
+  cutover**, and `manage.py evaluate_conditions` is replaced by
+  `graphyard-agent evaluate-conditions`, as **separate slices** (S15a port,
+  S15b ops retirement, S15c code removal; 11.4).
+- **Q5 Stale `src/django/.env` on macmini**: a **separate item
+  `graphyard-stale-env-macmini`**, not part of this plan; the Rust agent
+  ignores the file (D-9). That item has to account for the documented
+  manual `manage.py evaluate_conditions` call (ops-control
+  `docs/GRAPHYARD_NYXMON_CHECKS.md`), which runs without the unit's
+  EnvironmentFile and may take its settings from that file; after S15b the
+  documented call is the Rust one with the EnvironmentFile.
+
+Campaign-wide decisions of the same day that bind this stream:
+
+- **ops-library releases**: workers never bump `galaxy.yml`; the coordinator
+  makes the collection release commit (`galaxy.yml` bump + CHANGELOG
+  heading) on ops-library main right before the production deploys that
+  need it, here before S12 and before S15b (8.3, 11.1).
+- **ops-library GitHub Actions** (foundation slices of the metrics-httpd
+  stream) cover ops-library's `rust/` only. This stream releases from the
+  graphyard repository (8.2) and does not depend on them.
+- **echoport-command-guard** is ported last in the campaign and never
+  alongside other production or staging changes; no production step of this
+  stream overlaps it (8.4).
+- **Review rounds**: a slice, and this plan, may get a third review round
+  over the repair delta; if round 3 is not clean, work stops and is reported
+  (section 12).
