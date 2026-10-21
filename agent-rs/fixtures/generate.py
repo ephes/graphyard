@@ -28,6 +28,8 @@ Rendering rules (Rust parses the files with ``serde_json``):
 * Non-finite floats are not JSON: builders encode them explicitly (for
   example as ``repr`` text), ``allow_nan=False`` rejects them otherwise.
 * Library-derived (P2) messages are stored as ``{"class": ..., "p2": true}``.
+* A builder that returns a ``str`` produces a text file written verbatim
+  (``schema/schema.sql``); every other result is rendered as JSON.
 
 Determinism: the driver re-executes itself with ``PYTHONHASHSEED=0``, removes
 every ``DJANGO_*``, ``GRAPHYARD_*`` and ``INFLUX_*`` variable from the
@@ -102,6 +104,8 @@ def discover_generators(directory: Path = FIXTURES_DIR) -> dict[str, Builder]:
 
 def render(content: object) -> str:
     """Render fixture content exactly as it is committed."""
+    if isinstance(content, str):
+        return content
     return json.dumps(content, indent=1, ensure_ascii=True, allow_nan=False) + "\n"
 
 

@@ -39,13 +39,27 @@ counterpart. Its tests:
 | Commit stamp: commit format, the git paths Cargo watches (branch, packed refs, nested branch, linked worktree, detached HEAD, no git) | `graphyard-agent/tests/build_script.rs` (compiles `build.rs`) | done |
 | `release_checks.py`: version and tag, GLIBC floor and `NEEDED` libraries, smoke test (output, exit code, timeout), deterministic archive and `.sha256`, name validation; the workflow runs every check | `tests/test_agent_rs_release_checks.py` | done |
 
+## S3a — store core
+
+| Python behaviour / test | Rust counterpart | Status |
+| --- | --- | --- |
+| Django migrations vs the Rust schema contract (PLAN.md 5.1): a migration that drops an agent column, any new migration, the minimum migration from the migration operations | `tests/test_agent_rs_schema_contract.py` (`fixtures/gen_schema.py`); `graphyard-store/tests/schema.rs::contract_constants_match_the_generated_agent_tables`, `::schema_fixture_matches_the_generated_agent_tables` | done |
+| D-2 startup check and `--check-schema` core: missing tables, columns, migration named in one line; read-only, never creates the file | `graphyard-store/tests/schema.rs` | done |
+| `apps.py:_configure_sqlite_connection` (pragma order, invalid modes fall back with a warning) and Django's connection setup (`foreign_keys`, `legacy_alter_table`, connect timeout) | `graphyard-store/src/actor.rs` tests | done |
+| Django datetime column conversion: `parse_datetime` (CPython 3.12 `fromisoformat` + `datetime_re`) through the `sqlite3` converter, `convert_datetimefield_value`, `adapt_datetimefield_value`, `str(datetime)` of clock values | `graphyard-store/tests/datetime_codec.rs` against `fixtures/datetime_codec.json` (`gen_store.py`) | done |
+| `run_metric_collection_specs_once` spec load (`enabled`, `due_only`, ordering, conversions) and `spec.save(update_fields=...)` incl. the 0-row `NotUpdated` | `graphyard-store/tests/store_ops.rs` against `fixtures/store_ops.json` | done |
+| `evaluate_conditions_once` condition load (incl. `condition_id`) and both `condition.save(update_fields=...)` calls incl. 0 rows; the condition side of `test_condition_evaluation.py::test_evaluate_conditions_once_updates_condition_and_heartbeat` | `store_ops.rs` | done |
+| `record_heartbeat` (`update_or_create`: insert, update, `last_success` written back, conversions, details JSON) | `store_ops.rs`; `src/heartbeat.rs` unit test for `json.dumps` | done |
+| `record_heartbeat` retry on `database is locked` (3 attempts, 50/100 ms), no retry otherwise | `graphyard-store/tests/heartbeat_retry.rs` | done |
+| PLAN.md 5.7: no agent SQL names the ingest token tables | `graphyard-store/tests/no_ingest_token.rs` | done |
+
 ## Planned counterparts (PLAN.md 9.5)
 
 | Python tests | Rust counterpart | Slice | Status |
 | --- | --- | --- | --- |
 | `test_agent_command.py` (both) | CLI/run-once tests in `graphyard-agent`, e2e | S8 | pending |
 | `test_condition_evaluation.py`: all `evaluate_condition`/series/anchor/staleness/intermittent tests | `conditions.json` cases (`graphyard-core::conditions`) | S5 | pending |
-| `test_condition_evaluation.py::test_evaluate_conditions_once_updates_condition_and_heartbeat` | run aggregation test + `store_ops.json` | S8, S3a | pending |
+| `test_condition_evaluation.py::test_evaluate_conditions_once_updates_condition_and_heartbeat` | run aggregation test (S8) + `store_ops.json` (S3a, done) | S8, S3a | pending (S8) |
 | `test_condition_evaluation.py::test_query_condition_window_*`, `test_metric_dimensions.py::test_query_condition_window_*` | `flux.json` | S4b | pending |
 | `test_condition_evaluation.py::test_stale_allowance_must_be_positive`, `test_condition_clean_*`, `test_condition_admin_form_*` | — (model/admin validation, web only) | — | n/a |
 | `test_metric_collection_specs.py` HTTP JSON tests | `graphyard-collect` fake-server tests | S7a | pending |

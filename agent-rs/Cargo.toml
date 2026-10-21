@@ -25,11 +25,15 @@ graphyard-influx = { path = "crates/graphyard-influx" }
 graphyard-collect = { path = "crates/graphyard-collect" }
 chrono = { version = "0.4", default-features = false, features = ["std"] }
 indexmap = "2"
+log = "0.4"
 num-bigint = "0.4"
 num-traits = "0.2"
+regex = { version = "1", default-features = false, features = ["std", "perf", "unicode"] }
+rusqlite = { version = "0.40", features = ["bundled"] }
 serde = "1"
 serde_json = { version = "1", features = ["preserve_order", "arbitrary_precision", "raw_value"] }
 tempfile = "3"
+tokio = "1"
 
 [workspace.lints.rust]
 unsafe_code = "forbid"
