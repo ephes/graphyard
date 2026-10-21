@@ -68,7 +68,7 @@ counterpart. Its tests:
 
 | Behaviour | Test | Status |
 | --- | --- | --- |
-| `--version` prints `graphyard-agent <version> (<commit>)`; every other invocation of the placeholder exits 1 | `graphyard-agent/tests/version.rs` | done |
+| `--version` prints `graphyard-agent <version> (<commit>)` (since S8 whatever other flags and environment are given; the placeholder's exit 1 for everything else is gone) | `graphyard-agent/tests/version.rs` | done |
 | Commit stamp: commit format, the git paths Cargo watches (branch, packed refs, nested branch, linked worktree, detached HEAD, no git) | `graphyard-agent/tests/build_script.rs` (compiles `build.rs`) | done |
 | `release_checks.py`: version and tag, GLIBC floor and `NEEDED` libraries, smoke test (output, exit code, timeout), deterministic archive and `.sha256`, name validation; the workflow runs every check | `tests/test_agent_rs_release_checks.py` | done |
 
@@ -128,7 +128,7 @@ counterpart. Its tests:
 | `test_http_json_budget.py::test_streaming_json_byte_budget` (executor level) | `ha_json_executors.json` (`sensor body over cap`, `sensor gzip body counted decoded`, `sensor body exactly at cap`) | done |
 | `test_http_json_budget.py::test_dripping_json_total_deadline` (executor level) | `executors/tests/ha_json_budget.rs::dripping_json_hits_the_total_deadline` | done |
 | `test_http_json_budget.py::test_json_stream_preserves_authentication_and_tls` (executor level) | `ha_json_budget.rs::json_stream_preserves_authentication_and_tls` | done |
-| `test_home_assistant_budget.py::test_ha_budgets_and_next_spec` (executor level; modes `exact`, `bytes`, `gzip` as fixture scenarios, `headers`, `drip` with real sockets; `parse` at the HTTP layer in S6; the next spec runs: S8 isolation) | `ha_json_executors.json`, `ha_json_budget.rs::ha_deadline_covers_headers_and_body` | done (next-spec part: S8) |
+| `test_home_assistant_budget.py::test_ha_budgets_and_next_spec` (executor level; modes `exact`, `bytes`, `gzip` as fixture scenarios, `headers`, `drip` with real sockets; `parse` at the HTTP layer in S6; the next spec runs: S8 isolation) | `ha_json_executors.json`, `ha_json_budget.rs::ha_deadline_covers_headers_and_body`; next spec: `graphyard-agent/tests/isolation.rs::the_spec_after_one_that_hits_its_deadline_still_runs` (S8) | done |
 | `test_home_assistant_budget.py::test_ha_total_deadline_validation` | `spec_config.json` (S2) | done |
 | `json.loads` of a body with an integer beyond 4300 digits (`ValueError`) | `http_errors.json` `read_json` (`integer beyond the digit limit`), `exception_classes` (`ValueError`) | done |
 
@@ -147,13 +147,30 @@ counterpart. Its tests:
 | `test_metric_collection_specs.py::test_unifi_device_traffic_spec_ingests_uplink_rates`, `::test_unifi_device_traffic_spec_falls_back_to_unifi_os_auth`, `::test_unifi_device_traffic_spec_reports_login_response_body`, `::test_unifi_device_traffic_spec_redacts_login_response_body`, `::test_unifi_device_traffic_spec_keeps_short_values_from_over_redacting` | `unifi.json` scenarios "legacy login and uplink rates", "falls back to UniFi OS auth with a CSRF token", "legacy mode reports the login response body", "both attempts fail", "short values are not redacted" | done |
 | The production UniFi spec (`https://127.0.0.1:8443`, `verify_tls: false`); transport failures | `executors/tests/unifi.rs::self_signed_controller_with_verify_tls_false`, `::transport_failures_are_critical` | done |
 
+## S8 — agent runtime
+
+| Python behaviour / test | Rust counterpart | Status |
+| --- | --- | --- |
+| `services.py:run_metric_collection_specs_once` and `_run_single_metric_collection_spec`: warn-once reset, one `now`/`now_ts` per run, enabled and due selection ordered by name (a truthy `enabled = 2`), the empty cases (zero counters without a heartbeat, `No matching enabled metric collection specs`), unknown spec types, `SpecConfigError` and other exceptions (`collector raised <class>: <msg>`), the row update with `next_run_time = now_ts + max(1, interval)`, counters, the error list capped at five, the `metric_collectors` heartbeat (critical when all failed, warning, ok; `last_success` kept on failure), a spec deleted during the run (`NotUpdated` aborts without a heartbeat) | `graphyard-agent/tests/runs.rs::every_run_scenario_matches_python` against `fixtures/runs.json` (`gen_runs.py`: the Python runs with stubbed executors on a migrated database, all rows after) | done |
+| `services.py:evaluate_conditions_once`: per-condition `now`, success and failure updates, `evaluation error: <err>`, the `condition_evaluator` heartbeat (`<n> condition(s) failed`, no success), no conditions, a condition deleted during the run (both saves fail, the run aborts) | `runs.rs::every_run_scenario_matches_python` (`runs.json` condition scenarios with the real `evaluate_condition`) | done |
+| `test_condition_evaluation.py::test_evaluate_conditions_once_updates_condition_and_heartbeat` | `runs.json` "mixed_conditions", "all_conditions_ok_inserts_heartbeat" | done |
+| `test_metric_collection_spec_isolation.py::test_bad_spec_does_not_stop_later_specs`, `::test_unexpected_collector_exception_is_isolated` (with the real collectors, a fake JSON server, the shadow writer and the registry touch) | `graphyard-agent/tests/isolation.rs::a_bad_spec_does_not_stop_later_specs`, `::an_unexpected_collector_exception_is_isolated` | done |
+| The next spec after one that hits its deadline (`test_http_json_budget.py`, `test_home_assistant_budget.py`, run part) | `isolation.rs::the_spec_after_one_that_hits_its_deadline_still_runs` | done |
+| Rust-only: a panicking executor is isolated (D-15), stored JSON Python cannot load fails only its row (D-11), `next_run_time` beyond SQLite's INTEGER range (`OverflowError`) | `runs.rs::a_panicking_executor_is_isolated`, `::stored_json_python_cannot_load_fails_only_its_spec_or_condition`, `::a_next_run_time_beyond_sqlite_integers_aborts_the_run`; `src/runs.rs` unit tests | done |
+| `test_agent_command.py::test_start_agent_run_once_calls_both_loops` | `graphyard-agent/tests/process.rs::run_once_calls_both_loops_and_writes_only_to_the_file` (binary against a fake JSON server and fake InfluxDB: stdout lines, rows, query sent, no write request), `src/scheduler.rs::run_once_runs_metrics_without_the_due_filter_then_conditions` | done |
+| `test_agent_command.py::test_start_agent_requires_at_least_one_loop_enabled`; `handle`'s validation order and messages, defaults from the settings, argparse `type=int`, prefixes and repeated flags, exit codes 1/2, invalid environment before the flags | `process.rs::start_agent_requires_at_least_one_loop_enabled`, `::validation_errors_exit_1_and_usage_errors_exit_2`, `::an_invalid_environment_exits_1_before_the_flags_are_checked`; `src/cli.rs` tests | done |
+| `start_agent.py:handle` scheduler (start at once, `next += interval`, restart after an overrun, sleep clamped to 0.2–1 s, sequential loops, disabled loops) | `src/scheduler.rs` tests on tokio's paused clock | done |
+| `KeyboardInterrupt` handler; SIGTERM (D-1); shutdown with a blocked `getaddrinfo` and with a statement in flight (PLAN.md 4.1) | `process.rs::sigint_prints_the_interrupted_line_and_exits_0`, `::sigterm_exits_0_silently`; `graphyard-agent/tests/shutdown.rs` | done |
+| D-2 startup check, `--check-schema`, a missing database never created; `--version`; `--influx-write-file` (no write request, comment line, counts, the same configuration errors) | `process.rs::check_schema_reports_in_one_line`, `::a_missing_database_exits_1_and_is_never_created`, `tests/version.rs`, `graphyard-influx/tests/write_file.rs` | done |
+| Report lines: `Metric specs: ...`, `Condition eval: ...`, `Metric collection failed: <err>` with its error record, run-once exit 0 after a failed run | `process.rs::run_once_calls_both_loops_and_writes_only_to_the_file`, `::a_failed_run_is_reported_and_run_once_still_exits_0` | done |
+
 ## Planned counterparts (PLAN.md 9.5)
 
 | Python tests | Rust counterpart | Slice | Status |
 | --- | --- | --- | --- |
-| `test_agent_command.py` (both) | CLI/run-once tests in `graphyard-agent`, e2e | S8 | pending |
+| `test_agent_command.py` (both) | CLI/run-once tests in `graphyard-agent` (process e2e of PLAN.md 9.3 follows in S9b) | S8 | done |
 | `test_condition_evaluation.py`: all `evaluate_condition`/series/anchor/staleness/intermittent tests | `conditions.json` cases (`graphyard-core::conditions`) | S5 | done |
-| `test_condition_evaluation.py::test_evaluate_conditions_once_updates_condition_and_heartbeat` | run aggregation test (S8) + `store_ops.json` (S3a, done) | S8, S3a | pending (S8) |
+| `test_condition_evaluation.py::test_evaluate_conditions_once_updates_condition_and_heartbeat` | `runs.json` (S8) + `store_ops.json` (S3a) | S8, S3a | done |
 | `test_condition_evaluation.py::test_query_condition_window_*`, `test_metric_dimensions.py::test_query_condition_window_*` | `flux.json` | S4b | done |
 | `test_condition_evaluation.py::test_stale_allowance_must_be_positive`, `test_condition_clean_*`, `test_condition_admin_form_*` | — (model/admin validation, web only) | — | n/a |
 | `test_metric_collection_specs.py` HTTP JSON tests | `graphyard-collect` fake-server tests (`ha_json_executors.json`) | S7a | done |
@@ -161,11 +178,11 @@ counterpart. Its tests:
 | `test_metric_collection_specs.py` HA sensor/env scan tests | fake-server tests (`ha_json_executors.json`) + `ha_mapping.json` | S7a | done |
 | `test_metric_collection_specs.py` UniFi tests (incl. redaction) | `unifi.json` (helper corpora and executor scenarios) + fake-server tests | S7b | done |
 | `test_metric_collection_specs.py::test_http_json_metric_spec_skips_non_finite_value` | `normalize.json` (`parse_finite_float` of `"NaN"`: done in S4a) + fake-server scenario (S7a) | S4a, S7a | done |
-| `test_metric_collection_spec_isolation.py::test_bad_spec_does_not_stop_later_specs`, `::test_unexpected_collector_exception_is_isolated` | run isolation tests | S8 | pending |
+| `test_metric_collection_spec_isolation.py::test_bad_spec_does_not_stop_later_specs`, `::test_unexpected_collector_exception_is_isolated` | `graphyard-agent/tests/isolation.rs` | S8 | done |
 | `test_metric_collection_spec_isolation.py` cap/redirect/timeout tests | `spec_config.json` (config validation: done in S2) + fake-server tests (HTTP layer: done in S6) + `page_probe.json` (executor outcomes and points: done in S7b; the spec rows follow from the outcome in S8) | S2, S6, S7b | done |
 | `test_metric_collection_spec_isolation.py::test_full_clean_*`, `::test_validate_spec_config_rejects_non_object`, `::test_model_validates_derived_wait_limit` | `spec_config.json` (`validate_spec_config` is web-side but shares helpers) | S2 | done |
 | `test_page_probe_deadline.py` (all, incl. `caps_abandoned_workers`) | deadline/abandoned-lookup tests (HTTP layer: done in S6; executor outcome and points: done in S7b) | S6, S7b | done |
-| `test_http_json_budget.py`, `test_home_assistant_budget.py` | budget/deadline tests (HTTP layer: done in S6; executors: done in S7a; the next spec after a failing one is run isolation: S8) | S6, S7a, S8 | pending (S8: next-spec isolation) |
+| `test_http_json_budget.py`, `test_home_assistant_budget.py` | budget/deadline tests (HTTP layer: S6; executors: S7a; the next spec after a failing one: `isolation.rs`, S8) | S6, S7a, S8 | done |
 | `test_influx_modes.py` normalisation/write tests | `normalize.json`, `line_protocol.json` | S4a | done |
 | `test_influx_modes.py` query mode tests | fake InfluxDB tests | S4b | done |
 | `test_influx_query_safety.py` (all) | v3 SQL fake tests, `flux.json` NaN case | S4b | done |

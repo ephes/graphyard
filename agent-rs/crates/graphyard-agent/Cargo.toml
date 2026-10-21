@@ -14,14 +14,27 @@ build = "build.rs"
 name = "graphyard-agent"
 path = "src/main.rs"
 
+[lib]
+path = "src/lib.rs"
+
 [dependencies]
 graphyard-core.workspace = true
 graphyard-store.workspace = true
 graphyard-influx.workspace = true
 graphyard-collect.workspace = true
+chrono = { workspace = true, features = ["now"] }
+clap.workspace = true
+futures-util.workspace = true
+log.workspace = true
+num-bigint.workspace = true
+num-traits.workspace = true
+serde_json.workspace = true
+tokio = { workspace = true, features = ["macros", "rt", "signal", "sync", "time"] }
 
 [dev-dependencies]
+rusqlite.workspace = true
 tempfile.workspace = true
+tokio = { workspace = true, features = ["macros", "net", "rt", "signal", "sync", "time", "test-util", "io-util"] }
 
 [lints]
 workspace = true

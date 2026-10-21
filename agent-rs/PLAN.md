@@ -149,7 +149,9 @@ that differs is a bug.
   completes first), prints nothing and exits 0. systemd reports both as
   "Deactivated successfully". SIGINT behaves like Python's
   `KeyboardInterrupt` handler: stdout `graphyard-agent interrupted, exiting`,
-  exit 0.
+  exit 0. Rust does the same during `--run-once`, where Python's handler is
+  not active (the interrupt escapes `handle`: a traceback, and the process
+  ends by SIGINT).
 - **D-2 Startup schema check.** Python starts against any database and fails
   each run ("no such table …"); Rust verifies the schema contract
   (section 5.1) before the first run and exits 1 with one error line naming
@@ -287,6 +289,15 @@ that differs is a bug.
   h11 accepts it. The production unit sets none of these variables, and
   the 32 production endpoints use ASCII host names, gzip from regular
   servers and (UniFi) plain session cookies.
+- **D-15 Agent runtime corner cases** (S8). A panicking executor (a Rust
+  bug; Python has no counterpart) is isolated like a raising one: the spec
+  turns `critical` with `collector raised panic: <message>`, the run goes
+  on. An interval beyond `tokio::time::Instant`'s range (about 2^63
+  seconds) never fires again; Python's float arithmetic does the same up to
+  the float range and raises `OverflowError` after the first run beyond it.
+  Unique prefixes of long flags are matched among all flags, the Rust-only
+  ones included, so `--c` is ambiguous in Rust (`--condition-interval`,
+  `--check-schema`) where argparse expands it.
 
 ---
 
@@ -322,8 +333,21 @@ Rust-only additions (absent from the Python CLI, used by deploy and shadow):
 - `--version` — `graphyard-agent <version> (<full git commit>)`.
 - `--influx-write-file PATH` — shadow mode: no InfluxDB write request is ever
   built; every batch that would be written is appended to PATH as line
-  protocol (with a `# write <utc> points=<n>` comment line) and counted as
-  written. Queries still go to InfluxDB.
+  protocol (with a `# write <utc> points=<n>` comment line, `<utc>` in RFC
+  3339 with microseconds and `Z`) and counted as written. The batch passes
+  the same normalisation, configuration, timeout and URL checks as a real
+  write first, so spec statuses match. PATH is opened (created) for
+  appending at startup; a failure exits 1. Queries still go to InfluxDB.
+
+As implemented in S8: argparse conveniences are kept (unique prefixes of
+long flags, the last of repeated flags wins, a negative interval reaches the
+validation); `--version` prints and exits 0 whatever else is given;
+otherwise the environment is read first, as Python imports the settings
+before argparse runs, so an invalid environment value exits 1 even with bad
+flags. `--check-schema` prints its line on stdout when the schema passes,
+on stderr when it fails, and needs no loop validation and no InfluxDB
+settings. The start line is printed before the database is opened, as in
+Python; a missing database or failed schema check then exits 1 (D-2).
 
 Exit codes: 0 normal end (`--run-once`, SIGINT, SIGTERM), 1 `CommandError`,
 invalid environment value, schema/database failure, 2 usage error.
@@ -418,6 +442,15 @@ A failure outside a spec (database error, spec deleted during the run →
 failed`, stderr `Metric collection failed: <err>`, no heartbeat, the loop
 continues.
 
+As implemented in S8 (`graphyard-agent::runs`, pinned by `runs.json`): the
+executors receive the stored `config` decoded with
+`pycompat::json_loads` after the spec type is known; D-11 documents become
+the spec's `critical` message (the CPython digit-limit text, or `config is
+not valid JSON: <err>`), and a condition's `tags_filter` likewise its
+`evaluation error: ...`. A `next_run_time` beyond SQLite's INTEGER range
+aborts the run with sqlite3's `OverflowError` text `Python int too large to
+convert to SQLite INTEGER`. A panicking executor is isolated (D-15).
+
 ### 3.5 Conditions run (`services.py:evaluate_conditions_once`, P1)
 
 Select `enabled = 1 ORDER BY name`. Per condition, sequentially:
@@ -455,10 +488,15 @@ text up to the interpolated exception text; D-10 escaping):
 - `HTTP collector worker for <url> still running after it was cancelled`;
 - the SQLite pragma warnings of 3.3; `Metric collection failed`,
   `Condition evaluation failed`, `Metric collection spec … raised` (one line
-  with the error instead of a traceback, P2).
+  with the error instead of a traceback, P2). As implemented in S8 the line
+  ends like the traceback's last line: `Metric collection failed: <class>:
+  <err>`, `Condition evaluation failed: <class>: <err>`, `Metric collection
+  spec '<name>' (<type>) raised: <class>: <message>`.
 
 Rust adds three INFO lines at startup (version, schema check result with
 journal mode, effective intervals) and nothing per run beyond the above.
+The graphyard crates log at INFO; other crates (reqwest, rustls, hyper) only
+warnings and errors.
 
 ### 3.7 systemd behaviour
 
@@ -1411,6 +1449,7 @@ a string produces a text file written verbatim (`schema/schema.sql`).
 | `isoformat.json` | `datetime.fromisoformat` (C, 3.12), `str(datetime)`, `influx._ensure_utc` | string corpus → fields, offset, `str()`, UTC, or the `ValueError` |
 | `conditions.json` | `evaluate_condition` with stubbed samples, `timedelta.total_seconds()` | condition × samples × now → evaluation or exception; microseconds → `total_seconds()` |
 | `store_ops.json` | spec/condition loads and updates, `record_heartbeat` (S3a), `touch_registry_from_points` (S3b) on a temp DB | rows before → loaded values or exception, rows after |
+| `runs.json` (S8, `gen_runs.py`) | `run_metric_collection_specs_once`, `evaluate_conditions_once` with `_SPEC_EXECUTORS` and `query_condition_window` stubbed by scripts, clocks fixed | scenario rows before + scripts → counters or the aborting exception, spec/condition/heartbeat rows after |
 | `datetime_codec.json` | `parse_datetime` through the `sqlite3` converter, `convert_datetimefield_value`, `adapt_datetimefield_value` | stored text → loaded instant or exception, text written back |
 | `schema/` (`gen_schema.py`) | `manage.py migrate`, the migration operations | section 5.1 |
 

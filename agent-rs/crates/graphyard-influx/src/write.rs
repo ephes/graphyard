@@ -27,10 +27,14 @@
 //! write (or instead of it when every point was rejected).
 
 use std::fmt;
+use std::fs::{File, OpenOptions};
+use std::io::Write as _;
+use std::path::Path;
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
+use chrono::Utc;
 use graphyard_core::line_protocol::{PreparedWrite, prepare_write};
 use graphyard_core::logline::{LogEvent, LogLevel};
 use graphyard_core::model::MetricPoint;
@@ -162,9 +166,14 @@ pub(crate) fn build_client(timeout: Option<Duration>) -> Result<reqwest::Client,
 /// connection, like the Python client that is closed after each call.
 /// reqwest sets read timeouts per client, so the client is built for the
 /// timeout in use and kept until the timeout changes.
+///
+/// [`InfluxWriter::to_file`] is the shadow mode of `--influx-write-file`
+/// (PLAN.md 3.1): every batch that would be posted is appended to a file
+/// instead and no write request is ever built.
 #[derive(Debug)]
 pub struct InfluxWriter {
     clients: Mutex<Option<(Option<Duration>, reqwest::Client)>>,
+    file: Option<Mutex<File>>,
 }
 
 impl InfluxWriter {
@@ -178,6 +187,23 @@ impl InfluxWriter {
         let client = build_client(timeout)?;
         Ok(Self {
             clients: Mutex::new(Some((timeout, client))),
+            file: None,
+        })
+    }
+
+    /// The shadow writer: opens (creates) `path` for appending. Every batch
+    /// goes through the same normalisation, log records, configuration,
+    /// timeout and URL checks as a real write, then is appended as a
+    /// `# write <utc> points=<n>` comment line followed by its line
+    /// protocol lines, and counts as written. No HTTP client is built.
+    ///
+    /// # Errors
+    /// When the file cannot be opened.
+    pub fn to_file(path: &Path) -> std::io::Result<Self> {
+        let file = OpenOptions::new().create(true).append(true).open(path)?;
+        Ok(Self {
+            clients: Mutex::new(None),
+            file: Some(Mutex::new(file)),
         })
     }
 
@@ -225,7 +251,10 @@ impl InfluxWriter {
         }
         let config = InfluxClientConfig::from_settings(settings)?;
         warn_hash_measurement(&settings.influx_measurement);
-        self.post(&config, settings, &prepared).await?;
+        match &self.file {
+            Some(file) => append_batch(file, &config, settings, &prepared)?,
+            None => self.post(&config, settings, &prepared).await?,
+        }
         if let Some(event) = prepared.rejected_event() {
             emit(&event);
         }
@@ -290,6 +319,32 @@ impl InfluxWriter {
             message: api_exception_text(status, &headers, &body),
         })
     }
+}
+
+/// The shadow write: the request's timeout and URL checks (so a setting
+/// the real write rejects fails here too), then one `write_all` of the
+/// comment line and the batch.
+fn append_batch(
+    file: &Mutex<File>,
+    config: &InfluxClientConfig,
+    settings: &Settings,
+    prepared: &PreparedWrite,
+) -> Result<(), WriteError> {
+    config.request_timeout().map_err(WriteError::Timeout)?;
+    write_url(&config.host, &settings.influx_org, &settings.influx_bucket)?;
+    let record = format!(
+        "# write {} points={}\n{}\n",
+        Utc::now().format("%Y-%m-%dT%H:%M:%S%.6fZ"),
+        prepared.written(),
+        prepared.body()
+    );
+    let mut file = file.lock().unwrap_or_else(|poison| poison.into_inner());
+    file.write_all(record.as_bytes())
+        .and_then(|()| file.flush())
+        .map_err(|err| WriteError::Transport {
+            class: "OSError",
+            message: err.to_string(),
+        })
 }
 
 /// `str(ApiException)` of the Python client: status, reason, headers (as

@@ -70,6 +70,26 @@ impl From<DateTimeError> for StoreError {
 }
 
 impl StoreError {
+    /// `type(err).__name__` of the exception Python raises for the same
+    /// failure: Django's `IntegrityError` for a constraint violation and
+    /// `OperationalError` for other SQLite errors, Django's `NotUpdated`,
+    /// the class of a conversion error. The agent reports it where an
+    /// executor's sink failure escapes (`collector raised <class>: ...`).
+    pub fn python_class(&self) -> &'static str {
+        match self {
+            StoreError::Sqlite(rusqlite::Error::SqliteFailure(failure, _))
+                if failure.code == rusqlite::ErrorCode::ConstraintViolation =>
+            {
+                "IntegrityError"
+            }
+            StoreError::Sqlite(_) | StoreError::ThreadGone => "OperationalError",
+            StoreError::DateTime(err) => err.class,
+            StoreError::NotUpdated => "NotUpdated",
+            StoreError::Io(_) => "OSError",
+            StoreError::Point(err) => err.python_class(),
+        }
+    }
+
     /// `record_heartbeat`'s retry test: an SQLite error (Python's
     /// `OperationalError`) whose text contains `database is locked`, ignoring
     /// case. SQLite reports a busy timeout with exactly that text.
