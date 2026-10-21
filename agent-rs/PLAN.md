@@ -1476,6 +1476,10 @@ also while a `getaddrinfo` lookup is blocked (4.1);
 old schema or missing database exits 1; `--check-schema` reports precisely;
 `--influx-write-file` produces zero requests to the fake InfluxDB write
 endpoint while queries still reach it; CLI validation messages and exit codes.
+As implemented in S9b (`graphyard-agent/tests/e2e.rs`, with the S8 cases in
+`process.rs`): the blocked `getaddrinfo` case needs a resolver stub, which
+the binary cannot take, so it runs on `run_agent`, the function `main`
+calls, with the signal future injected (`shutdown.rs`, S8).
 
 ### 9.4 Offline parity harness (Python vs Rust on identical inputs)
 
@@ -1635,6 +1639,22 @@ these conditions needs a new owner decision.
    no restart; lean goals met. Findings are fixed in a follow-up slice and
    the shadow repeated (shorter, within the Q2 conditions) if code changed.
    Teardown: stop the unit, delete the shadow directory.
+
+As implemented in S9b (operator commands in `docs/agent-rs.md`): the shadow
+directory is created by root (`install -d -o graphyard -g graphyard -m
+0700`), `shadow_prepare.py` refuses one that is not the caller's or not 0700
+and never overwrites a copy; besides the D-11 documents it lists values of
+another storage class (D-13) and `NaN` tokens (D-4), and exits 2 when it
+lists anything (the copy is kept); `--disable-spec` is the R6 option. The
+record (`record.jsonl`) holds per tick only the rows that changed, and spec
+rows without `config`. `shadow_compare.py` pairs a JSON/UniFi shadow point
+with the production point of the same series nearest in time within 60 s
+(`--align-seconds`) instead of a fixed minute grid, since the two agents run
+a spec up to a minute apart; a series whose median relative difference
+exceeds the tolerance (default 5 %) is a finding, single pairs beyond it are
+notes. Status sequences are compared with repeats collapsed; `last_error`,
+condition messages and heartbeat details are notes (P2). It reports
+findings and notes and exits 1 on findings only with `--fail-on-findings`.
 
 ### 11.3 Cutover and rollback drill (S14)
 

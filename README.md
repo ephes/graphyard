@@ -690,11 +690,16 @@ just manage start_agent --disable-metrics
 just manage start_agent --disable-conditions
 ```
 
-A Rust port of the agent is in progress in `agent-rs/` (contract:
+A Rust port of the agent, `graphyard-agent`, lives in `agent-rs/` (contract:
 [`agent-rs/PLAN.md`](agent-rs/PLAN.md), build and test:
-[`agent-rs/README.md`](agent-rs/README.md)). It is not deployed; the Python
-command above remains the agent. Release archives of the Rust binary are built
-by `.github/workflows/agent-rs-release.yml` from `agent-rs-v<version>` tags.
+[`agent-rs/README.md`](agent-rs/README.md), architecture, schema contract,
+divergences and operations including the shadow run:
+[`docs/agent-rs.md`](docs/agent-rs.md)). It is a drop-in for `start_agent`
+with the same flags plus `--db`, `--check-schema`, `--version` and the shadow
+mode `--influx-write-file`. It is not deployed yet; the Python command above
+remains the agent until the cutover. Release archives of the Rust binary are
+built by `.github/workflows/agent-rs-release.yml` from `agent-rs-v<version>`
+tags.
 
 ## Nyxmon Integration Contract
 

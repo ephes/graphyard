@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+- Rust agent port (`agent-rs/`, slice S9b): process e2e tests of the
+  `graphyard-agent` binary (a `--run-once` over every collector family
+  against fake servers with all rows, heartbeats, registry rows and written
+  lines checked, the loop's due selection, SIGTERM/SIGINT while a request is
+  stalled, the shadow write file, missing tables in `--check-schema`); the
+  shadow-run tooling `agent-rs/parity/shadow_prepare.py` (online database
+  copy, T0, scan for stored values the two agents read differently),
+  `shadow_record.py` (samples both databases and both units) and
+  `shadow_compare.py` (series, values, statuses, registry, restarts and
+  memory/CPU against production), tested on two local databases; and the
+  operator documentation `docs/agent-rs.md`. Nothing deploys the Rust agent
+  yet; the Python agent is unchanged.
+
 - Rust agent port (`agent-rs/`, slice S9a): an offline parity harness
   (`agent-rs/parity/`, `just rs-parity`, new CI job `parity`) runs
   `manage.py start_agent --run-once` and `graphyard-agent --run-once` on two
