@@ -7,7 +7,7 @@ target. Nothing runs this code in production yet: the deployment selects it
 only through a systemd drop-in that later slices add (PLAN.md 8.3), and
 deploys ship `agent-rs/` only as a release archive.
 
-Status: slices S1 (scaffold), S2, S3a, S3b, S4a, S5, S6 and S10a. S1: the workspace, the toolchain pin,
+Status: slices S1 (scaffold), S2, S3a, S3b, S4a, S5, S6, S7b and S10a. S1: the workspace, the toolchain pin,
 the cargo-deny policy, the CI `rust` job, the `just rs-*` recipes, the shared
 model types (`graphyard_core::model`) and the fixture pipeline with its drift
 test. S2: the CPython compatibility helpers (`graphyard_core::pycompat`), the
@@ -54,6 +54,19 @@ with the abandoned-lookup cap (`run_with_deadline`), the JSON reader, the
 page-probe redirect loop and automatic redirects. Pinned by
 `http_errors.json` and fake-server tests; the executors follow in S7a/S7b.
 
+Slice S7b adds the first executors in `graphyard-collect::executors`
+(PLAN.md 6.3): `http_page_probe` (the probe under the total deadline, five
+timing and status points, two failure points on the warning path) and
+`unifi_device_traffic` (legacy and UniFi OS login with redacted error
+summaries, CSRF header and cookies, automatic redirects, the device and
+interface lookup, receive/transmit rate points). Executors deliver their
+points through a `MetricSink` (InfluxDB write and registry touch, wired up in
+S8) and return the Python `(status, ingested, skipped, message)` tuple as a
+`SpecOutcome`, or an `ExecutorError` for what Python lets escape. Pinned by
+`page_probe.json` and `unifi.json`, whose executor scenarios ran the Python
+executors with the real httpx client on `MockTransport` and are replayed on
+fake servers with a recording sink.
+
 Slice S3a adds the store core in `graphyard-store` (PLAN.md 5): the DB thread
 owning the connection, Django's connection setup and the graphyard pragmas,
 the schema contract and `check_schema`, Django's datetime column conversion,
@@ -90,7 +103,8 @@ agent-rs/
     graphyard-influx/   InfluxDB write client and config check (S4a),
                         query clients (S4b)
     graphyard-collect/  HTTP layer (S6: `http`) and the five executors
-                        (S7a/S7b)
+                        (`executors`: page probe and UniFi in S7b, HA and
+                        JSON metric in S7a)
     graphyard-agent/    the binary: CLI, scheduler, runs, signals (S8)
   fixtures/
     generate.py         fixture driver (`just rs-fixtures`)
