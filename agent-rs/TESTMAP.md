@@ -93,6 +93,11 @@ extracted binary.
 | The command end to end with samples from a fake InfluxDB (rows, heartbeat, log line, no spec run, `--condition-id`) | `graphyard-agent/tests/e2e.rs::evaluate_conditions_writes_the_condition_rows_and_the_heartbeat` | done |
 | `manage.py evaluate_conditions` against `graphyard-agent evaluate-conditions` on identical inputs (all conditions with failures, one by id in `v3` mode, a disabled id): exit codes, stdout, `CommandError` and operator lines, rows, requests | `agent-rs/parity/run_parity.py` rounds 6 to 8 (`just rs-parity`); `tests/test_agent_rs_parity.py::test_evaluate_rounds_run_both_commands_on_their_database` | done |
 
+The release `agent-rs-v0.2.0` that ends the slice ran the S10a checks in the
+release workflow; its assets were checked by hand (README "Published
+releases"): checksum, archive contents and modes, GLIBC floor on the
+extracted binary.
+
 ## S3a — store core
 
 | Python behaviour / test | Rust counterpart | Status |

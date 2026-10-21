@@ -1,7 +1,8 @@
 # Rust port of the graphyard agent — implementation plan
 
 Status: slices S1 to S10b implemented (first release `agent-rs-v0.1.0`,
-section 8.2) and S15a (`evaluate-conditions`, version 0.2.0, section 11.4);
+section 8.2) and S15a (`evaluate-conditions`, release `agent-rs-v0.2.0`,
+section 11.4);
 nothing deployed yet. Stream `rust-graphyard-agent` of the
 campaign "Rust-Ports Runde 2" (umbrella item `rust-ports-campaign`). The
 owner decided the open questions on 2026-10-21 (section 14).
@@ -1256,7 +1257,9 @@ write`), pinned action SHAs, no cargo cache in the release job. CI
 check`) and a `parity` job (section 9.4). First release `agent-rs-v0.1.0`
 (S10b, published 2026-10-21 from `19f56e6`; archive sha256
 `42d6dbb5b931599c1b35ab7f19a29823bf9583d65b45e2259a69b5dbc64b80e2`; recorded in
-`agent-rs/README.md`, "Published releases").
+`agent-rs/README.md`, "Published releases"). Second release `agent-rs-v0.2.0`
+(S15a, `evaluate-conditions`, published 2026-10-21 from `17a929f`; archive
+sha256 `d8efcb78fd09f5047d5e747696bc7966c94e70de8a44bbe1d5d34111a7a058d4`).
 
 ### 8.3 Deploy mechanism today and the changes
 

@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Rust agent port (`agent-rs/`, slice S15a): release `agent-rs-v0.2.0`
+  (<https://github.com/ephes/graphyard/releases/tag/agent-rs-v0.2.0>) with the
+  `evaluate-conditions` subcommand, built by the release workflow from
+  `17a929f`. Asset `graphyard-agent-0.2.0-x86_64-unknown-linux-gnu.tar.gz`,
+  sha256 `d8efcb78fd09f5047d5e747696bc7966c94e70de8a44bbe1d5d34111a7a058d4`; the binary needs at most `GLIBC_2.34`. The Python
+  retirement (slice S15b) pins this release; nothing deploys it yet.
+
 - Rust agent port (`agent-rs/`, slice S15a): new subcommand
   `graphyard-agent evaluate-conditions [--condition-id N] [--db PATH]`, the
   port of `manage.py evaluate_conditions` (agent-rs/PLAN.md 11.4): the same
