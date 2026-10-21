@@ -1,9 +1,9 @@
 # Rust port of the graphyard agent — implementation plan
 
-Status: slices S1 to S10b implemented (first release `agent-rs-v0.1.0`,
-section 8.2) and S15a (`evaluate-conditions`, release `agent-rs-v0.2.0`,
-section 11.4);
-nothing deployed yet. Stream `rust-graphyard-agent` of the
+Status: slices S1 to S11c implemented (first release `agent-rs-v0.1.0`,
+section 8.2; deploy wiring in ops-library, ops-deploy and ops-control,
+section 8.3) and S15a (`evaluate-conditions`, release `agent-rs-v0.2.0`,
+section 11.4); nothing deployed yet. Stream `rust-graphyard-agent` of the
 campaign "Rust-Ports Runde 2" (umbrella item `rust-ports-campaign`). The
 owner decided the open questions on 2026-10-21 (section 14).
 
@@ -1271,7 +1271,8 @@ execs `just pyinfra-deploy-one graphyard_core macmini`. ops-control's
 `pyinfra_support/services.py` builds a `GraphyardConfig` from the inventory
 (`macmini_graphyard_*` host vars, SOPS secrets `secrets/prod/graphyard.yml`
 and the spec secrets) and runs ops-deploy (pinned in
-`requirements-ops-deploy.txt`, currently `f8f24ce`)
+`requirements-ops-deploy.txt`; `f8f24ce` when this plan was written,
+`5b866ed` since before S11c)
 `ops_deploy.services.graphyard.core.deploy_graphyard_core`: rsync of the tree,
 `uv sync`, migrate/collectstatic when needed, units rendered byte-identical to
 the Ansible role `graphyard_deploy` (ops-library), restart of web and agent
@@ -1352,7 +1353,14 @@ not set them as role vars); `requirements-ops-deploy.txt` pins the ops-deploy
 commit with S11b; `docs/GRAPHYARD_RUST_AGENT.md` (install, shadow, cutover,
 verification, rollback), CHANGELOG; tests (`tests/test_pyinfra_graphyard.py`
 literals, refusal of unmapped vars; the real host-var value may be `python` or
-`rust`, the lesson of nyxmon S16). Trust (Q1): `graphyard-agent.service` in
+`rust`, the lesson of nyxmon S16). As implemented (S11c): ops-control's
+pin was already ops-deploy `5b866ed`, which contains the S11b merge
+`82c6a82`, so the pin did not change; `graphyard_agent_settings()` also
+refuses a null or non-string value, and a test checks that every
+`graphyard_agent_impl`/`graphyard_agent_rust_*` default of the role is mapped
+or refused. With the version pinned in S11c, the next `graphyard_core` deploy
+installs and validates the release (impl `python`, no agent restart for it),
+whoever runs it; S12 is that deploy when no other comes first. Trust (Q1): `graphyard-agent.service` in
 macmini's `restart_units` of `playbooks/ca-trust-consumers.yml` (health
 command `sleep 5 && systemctl is-active --quiet graphyard-agent.service`, as
 for `vector.service`), the macmini row of `docs/CA_TRUST_CONSUMERS.md` and
@@ -1611,9 +1619,11 @@ allocator is considered.
 With S10b's release and S11a–c merged and the coordinator's ops-library
 collection release commit on ops-library main (section 14): add the
 `deploy-graphyard-core.yml` pre-task asserting that released version (8.3,
-reviewed ops-control commit), set the version and sha256 with
-`graphyard_agent_impl: python` in macmini host vars, take the deploy lock,
-`just deploy-one graphyard_core`. Verify: `/opt/graphyard-agent/0.1.0/` exists,
+reviewed ops-control commit), check that macmini's host vars still hold
+`graphyard_agent_impl: python` with the version and sha256 pinned in S11c
+(or pin a newer release), take the deploy lock,
+`just deploy-one graphyard_core`. Verify: `/opt/graphyard-agent/<version>/`
+(the pinned version, `0.1.0` as of S11c) exists,
 `--check-schema` passed, no drop-in, `graphyard-agent` still runs Python
 (`/proc/<pid>/cmdline`), web healthy.
 

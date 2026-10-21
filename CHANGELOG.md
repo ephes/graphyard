@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- Rust agent port (`agent-rs/`, slice S11c): ops-control wires the agent
+  switch. The pyinfra `graphyard_core` deploy maps macmini's
+  `graphyard_agent_impl`, `graphyard_agent_rust_version` and
+  `graphyard_agent_rust_sha256` (and refuses the other
+  `graphyard_agent_rust_*` variables); macmini selects `python` and pins
+  `agent-rs-v0.1.0`, so the next `graphyard_core` deploy installs and
+  validates the binary while the Python agent keeps running;
+  `graphyard-agent.service` joins macmini's CA trust consumers (D-12); runbook
+  ops-control `docs/GRAPHYARD_RUST_AGENT.md`. PLAN.md 8.3 and 11.1 record
+  that the ops-deploy pin already contained S11b and that S12 keeps the S11c
+  pin.
+
 - Rust agent port (`agent-rs/`, slice S15a): release `agent-rs-v0.2.0`
   (<https://github.com/ephes/graphyard/releases/tag/agent-rs-v0.2.0>) with the
   `evaluate-conditions` subcommand, built by the release workflow from
