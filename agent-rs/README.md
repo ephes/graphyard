@@ -7,7 +7,7 @@ target. Nothing runs this code in production yet: the deployment selects it
 only through a systemd drop-in that later slices add (PLAN.md 8.3), and
 deploys ship `agent-rs/` only as a release archive.
 
-Status: slices S1 (scaffold), S2, S3a, S3b, S4a, S5, S6, S7a, S7b, S8, S9a and S10a. S1: the workspace, the toolchain pin,
+Status: slices S1 (scaffold), S2, S3a, S3b, S4a, S5, S6, S7a, S7b, S8, S9a, S9b and S10a. S1: the workspace, the toolchain pin,
 the cargo-deny policy, the CI `rust` job, the `just rs-*` recipes, the shared
 model types (`graphyard_core::model`) and the fixture pipeline with its drift
 test. S2: the CPython compatibility helpers (`graphyard_core::pycompat`), the
@@ -39,6 +39,16 @@ CI job `parity`): the Python agent (`manage.py start_agent --run-once`) and
 the Rust agent run on two copies of one seeded database against their own
 fake collector endpoints and fake InfluxDB, round by round, and every
 unmasked difference fails the run; see [Parity harness](#parity-harness).
+
+Slice S9b adds the process e2e of the binary
+(`crates/graphyard-agent/tests/e2e.rs`, PLAN.md 9.3: a `--run-once` over
+every collector family against fake servers with every row, heartbeat,
+registry row and written line checked, the loop's due selection, SIGTERM
+and SIGINT while a spec waits on a stalled server, the write file and the
+schema check's missing tables), the shadow-run tooling in `parity/`
+(`shadow_prepare.py`, `shadow_record.py`, `shadow_compare.py`, PLAN.md 11.2;
+tested by `tests/test_agent_rs_shadow.py` on two local databases) and the
+operator documentation [`docs/agent-rs.md`](../docs/agent-rs.md).
 
 Slice S4b adds the condition queries in `graphyard-influx` (PLAN.md 6.5):
 the lookback window of a condition, the v2 Flux text and request, the
@@ -143,6 +153,9 @@ agent-rs/
                         rounds, comparison
     fakes.py            scripted collector endpoints and fake InfluxDB
     settings_parity.py  Django settings of the Python agent in the harness
+    shadow_prepare.py   shadow run: database copy, T0, D-11/D-13 scan (stdlib only)
+    shadow_record.py    shadow run: samples both databases and units (stdlib only)
+    shadow_compare.py   shadow run: report against production (stdlib only)
   scripts/
     release_checks.py   release workflow checks (version, GLIBC floor, smoke, pack)
 ```
@@ -243,6 +256,17 @@ The Python results must also match the statuses the corpus was written for,
 so a corpus that stops exercising its branches fails too. A failing run
 prints every difference per round and exits 1. The helpers are tested in
 `tests/test_agent_rs_parity.py`.
+
+## Shadow run
+
+Before the cutover the binary runs beside the Python agent on a copy of the
+production database with `--influx-write-file` (PLAN.md 11.2). The tools in
+`parity/` use only the Python standard library, so they run with macmini's
+`python3`: `shadow_prepare.py` makes the copy and records T0,
+`shadow_record.py` samples both databases and both units every minute,
+`shadow_compare.py` compares the record and the written points with what the
+Python agent wrote to InfluxDB. The procedure with the exact commands is in
+[`docs/agent-rs.md`](../docs/agent-rs.md#shadow-run).
 
 ## Fixtures
 

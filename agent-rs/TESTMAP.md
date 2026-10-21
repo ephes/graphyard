@@ -171,11 +171,25 @@ counterpart. Its tests:
 | `manage.py start_agent --run-once` end to end on a seeded database (PLAN.md 9.4): every spec type and its outcomes, the condition branches, `INFLUX_API_MODE` `v2`/`v3`/`auto`, the lazy InfluxDB configuration errors, spec/condition/heartbeat/registry rows, stdout and operator log lines, collector and InfluxDB requests | `agent-rs/parity/run_parity.py` (`just rs-parity`, CI job `parity`): the Rust binary on the same corpus and fakes, zero unmasked differences | done |
 | Harness helpers: request-index scripts, the fake InfluxDB read by the real `influx.query_range` (v2, v3, auto), masks of written lines, query bounds and rows, operator line filter, difference report, corpus coverage | `tests/test_agent_rs_parity.py` | done |
 
+## S9b — process e2e and shadow tooling
+
+| Behaviour (PLAN.md) | Test | Status |
+| --- | --- | --- |
+| 9.3 `--run-once` against fakes writes the expected rows and lines: every collector family (JSON metric, page probe, HA sensor), a config error, an unknown type, a disabled spec, two conditions with Flux samples (one with a non-host `host_filter`); stdout lines, `HTTP Request:` and mapping log lines, request order, Flux request, spec rows (`next_run_time`, untouched `updated_at`), heartbeats, conditions, registry rows, the write file's batches and lines | `graphyard-agent/tests/e2e.rs::run_once_writes_the_rows_and_lines_of_every_collector_family` | done |
+| 3.2 the loop's first metrics run selects only due specs; SIGINT ends it | `e2e.rs::the_loop_runs_only_due_specs` | done |
+| 9.3 SIGTERM (silent) and SIGINT (interrupted line) while a spec waits on a stalled server: exit 0 within 3 s, no spec row written, no heartbeat, nothing written | `e2e.rs::a_signal_during_a_slow_spec_exits_promptly_without_a_partial_row` | done |
+| 9.3 SIGTERM while a `getaddrinfo` lookup is blocked (resolver stub, on the `run_agent` the binary's `main` calls) | `graphyard-agent/tests/shutdown.rs::sigterm_does_not_wait_for_a_blocked_lookup` (S8) | done |
+| 3.1 `--influx-write-file` that cannot be opened exits 1 before the first run; an existing file is appended to | `e2e.rs::a_write_file_that_cannot_be_opened_exits_1_before_the_first_run` | done |
+| 5.1 `--check-schema` names missing tables in one line and accepts extra columns (missing columns, migration and database: `process.rs`, S8) | `e2e.rs::check_schema_names_missing_tables_and_accepts_extra_columns` | done |
+| 11.2 step 1 `shadow_prepare.py`: online copy (0600 in a 0700 directory of the caller, never overwritten), `quick_check`, `--disable-spec`, T0 and summary in `shadow.json`, D-11 scan (4300-digit integers, lone surrogates, nesting ≥ 128, `NaN`), D-13 storage-class scan, exit 0/1/2 | `tests/test_agent_rs_shadow.py::test_json_issues_*`, `::test_expected_storage_classes_*`, `::test_prepare_*` | done |
+| 11.2 step 3 `shadow_record.py`: read-only, one snapshot per tick, only changed rows, no spec `config`, unreadable database recorded and caught up, unit and `/proc` samples | `test_agent_rs_shadow.py::test_recorder_*` | done |
+| 11.2 step 4 `shadow_compare.py`: line protocol and annotated CSV parsing, the Flux query and the `influx` command, series keys, HA values by `(series, ts)`, JSON/UniFi pairing and tolerance, page-probe sequences and timings, spec/condition/heartbeat sequences with P2 masks, registry rows, restarts and lean goals, excluded specs, exit codes | `test_agent_rs_shadow.py::test_line_protocol_*`, `::test_annotated_csv_*`, `::test_rfc3339_*`, `::test_flux_query_*`, `::test_compare_*`, `::test_prepare_record_compare_chain_on_two_databases` | done |
+
 ## Planned counterparts (PLAN.md 9.5)
 
 | Python tests | Rust counterpart | Slice | Status |
 | --- | --- | --- | --- |
-| `test_agent_command.py` (both) | CLI/run-once tests in `graphyard-agent` (process e2e of PLAN.md 9.3 follows in S9b) | S8 | done |
+| `test_agent_command.py` (both) | CLI/run-once tests in `graphyard-agent` (S8); process e2e of PLAN.md 9.3 in `graphyard-agent/tests/e2e.rs` (S9b) | S8, S9b | done |
 | `test_condition_evaluation.py`: all `evaluate_condition`/series/anchor/staleness/intermittent tests | `conditions.json` cases (`graphyard-core::conditions`) | S5 | done |
 | `test_condition_evaluation.py::test_evaluate_conditions_once_updates_condition_and_heartbeat` | `runs.json` (S8) + `store_ops.json` (S3a) | S8, S3a | done |
 | `test_condition_evaluation.py::test_query_condition_window_*`, `test_metric_dimensions.py::test_query_condition_window_*` | `flux.json` | S4b | done |
