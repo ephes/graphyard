@@ -22,7 +22,8 @@ through the ``sqlite3`` converter (``parse_datetime``) and
 ``adapt_datetimefield_value``, for a curated and a seeded random corpus.
 
 Integers in row images are SQLite INTEGER values, floats (always written with
-a fraction or exponent by ``json.dumps``) are REAL values.
+a fraction or exponent by ``json.dumps``) are REAL values, ``{"blob_hex": ...}``
+is a BLOB.
 """
 
 from __future__ import annotations
@@ -97,10 +98,25 @@ def temp_database() -> Iterator[sqlite3.Connection]:
             django_connection.settings_dict["NAME"] = original
 
 
+def _cell(value: Any) -> Any:
+    if isinstance(value, bytes):
+        return {"blob_hex": value.hex()}
+    return value
+
+
+def _sql(value: Any) -> Any:
+    if isinstance(value, dict):
+        return bytes.fromhex(value["blob_hex"])
+    return value
+
+
 def _rows(raw: sqlite3.Connection, table: str) -> list[dict[str, Any]]:
     cursor = raw.execute(f'SELECT * FROM "{table}" ORDER BY id')
     columns = [description[0] for description in cursor.description]
-    return [dict(zip(columns, row, strict=True)) for row in cursor.fetchall()]
+    return [
+        {column: _cell(value) for column, value in zip(columns, row, strict=True)}
+        for row in cursor.fetchall()
+    ]
 
 
 def _seed(raw: sqlite3.Connection, table: str, rows: list[dict[str, Any]]) -> None:
@@ -112,7 +128,8 @@ def _seed(raw: sqlite3.Connection, table: str, rows: list[dict[str, Any]]) -> No
         columns = ", ".join(f'"{column}"' for column in row)
         marks = ", ".join("?" for _ in row)
         raw.execute(
-            f'INSERT INTO "{table}" ({columns}) VALUES ({marks})', list(row.values())
+            f'INSERT INTO "{table}" ({columns}) VALUES ({marks})',
+            [_sql(value) for value in row.values()],
         )
 
 
@@ -367,6 +384,8 @@ SPEC_ROWS = [
     ),
     spec_row(9, "a10", next_run_time=151),
     spec_row(10, "a9", next_run_time=149, interval_seconds=0),
+    # The bool converter compares the raw bytes: selected, loaded as false.
+    spec_row(11, "blob-enabled", enabled={"blob_hex": "31ff"}),
 ]
 
 CONDITION_ROWS = [
@@ -392,6 +411,12 @@ CONDITION_ROWS = [
     condition_row(4, "truthy-alert-flag", alert_when_stale=2, enabled=2),
     condition_row(5, "text-alert-flag", alert_when_stale="1", operator="lt"),
     condition_row(6, "Upper", last_evaluated="garbage"),
+    condition_row(
+        7,
+        "blob-flags",
+        enabled={"blob_hex": "31ff"},
+        alert_when_stale={"blob_hex": "31"},
+    ),
 ]
 
 

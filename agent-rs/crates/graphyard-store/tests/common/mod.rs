@@ -125,10 +125,19 @@ impl TestDb {
 
 /// A fixture value as the SQLite value Python's `sqlite3` stored: integers
 /// (no fraction or exponent in the JSON text) are INTEGER, other numbers
-/// REAL.
+/// REAL, `{"blob_hex": ...}` a BLOB.
 pub fn sql_value(value: &Value) -> SqlValue {
     match value {
         Value::Null => SqlValue::Null,
+        Value::Object(blob) => {
+            let hex = blob["blob_hex"].as_str().expect("blob_hex");
+            SqlValue::Blob(
+                (0..hex.len())
+                    .step_by(2)
+                    .map(|index| u8::from_str_radix(&hex[index..index + 2], 16).unwrap())
+                    .collect(),
+            )
+        }
         Value::String(text) => SqlValue::Text(text.clone()),
         Value::Number(number) => {
             let text = number.to_string();

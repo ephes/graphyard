@@ -143,6 +143,22 @@
      "last_error": "",
      "created_at": "2026-01-02 03:04:05.678901",
      "updated_at": "2026-01-02 03:04:05.678901"
+    },
+    {
+     "id": 11,
+     "name": "blob-enabled",
+     "enabled": {
+      "blob_hex": "31ff"
+     },
+     "spec_type": "http_json_metric",
+     "interval_seconds": 300,
+     "next_run_time": 0,
+     "config": "{\"url\": \"http://127.0.0.1:9/metrics\", \"metric_path\": \"$.value\"}",
+     "last_run_at": null,
+     "last_status": "warning",
+     "last_error": "",
+     "created_at": "2026-01-02 03:04:05.678901",
+     "updated_at": "2026-01-02 03:04:05.678901"
     }
    ],
    "name": "load all enabled specs ordered by name",
@@ -251,6 +267,20 @@
      "config": "{\"url\": \"http://127.0.0.1:9/metrics\", \"metric_path\": \"$.value\"}"
     },
     {
+     "id": 11,
+     "name": "blob-enabled",
+     "enabled": false,
+     "spec_type": "http_json_metric",
+     "interval_seconds": 300,
+     "next_run_time": 0,
+     "last_run_at": null,
+     "last_status": "warning",
+     "last_error": "",
+     "created_at": "2026-01-02 03:04:05.678901",
+     "updated_at": "2026-01-02 03:04:05.678901",
+     "config": "{\"url\": \"http://127.0.0.1:9/metrics\", \"metric_path\": \"$.value\"}"
+    },
+    {
      "id": 5,
      "name": "z-truthy-enabled",
      "enabled": false,
@@ -419,6 +449,22 @@
      "last_error": "",
      "created_at": "2026-01-02 03:04:05.678901",
      "updated_at": "2026-01-02 03:04:05.678901"
+    },
+    {
+     "id": 11,
+     "name": "blob-enabled",
+     "enabled": {
+      "blob_hex": "31ff"
+     },
+     "spec_type": "http_json_metric",
+     "interval_seconds": 300,
+     "next_run_time": 0,
+     "config": "{\"url\": \"http://127.0.0.1:9/metrics\", \"metric_path\": \"$.value\"}",
+     "last_run_at": null,
+     "last_status": "warning",
+     "last_error": "",
+     "created_at": "2026-01-02 03:04:05.678901",
+     "updated_at": "2026-01-02 03:04:05.678901"
     }
    ]
   },
@@ -558,6 +604,22 @@
      "spec_type": "http_json_metric",
      "interval_seconds": 0,
      "next_run_time": 149,
+     "config": "{\"url\": \"http://127.0.0.1:9/metrics\", \"metric_path\": \"$.value\"}",
+     "last_run_at": null,
+     "last_status": "warning",
+     "last_error": "",
+     "created_at": "2026-01-02 03:04:05.678901",
+     "updated_at": "2026-01-02 03:04:05.678901"
+    },
+    {
+     "id": 11,
+     "name": "blob-enabled",
+     "enabled": {
+      "blob_hex": "31ff"
+     },
+     "spec_type": "http_json_metric",
+     "interval_seconds": 300,
+     "next_run_time": 0,
      "config": "{\"url\": \"http://127.0.0.1:9/metrics\", \"metric_path\": \"$.value\"}",
      "last_run_at": null,
      "last_status": "warning",
@@ -630,6 +692,20 @@
      "config": "{\"url\": \"http://127.0.0.1:9/metrics\", \"metric_path\": \"$.value\"}"
     },
     {
+     "id": 11,
+     "name": "blob-enabled",
+     "enabled": false,
+     "spec_type": "http_json_metric",
+     "interval_seconds": 300,
+     "next_run_time": 0,
+     "last_run_at": null,
+     "last_status": "warning",
+     "last_error": "",
+     "created_at": "2026-01-02 03:04:05.678901",
+     "updated_at": "2026-01-02 03:04:05.678901",
+     "config": "{\"url\": \"http://127.0.0.1:9/metrics\", \"metric_path\": \"$.value\"}"
+    },
+    {
      "id": 5,
      "name": "z-truthy-enabled",
      "enabled": false,
@@ -798,6 +874,22 @@
      "last_error": "",
      "created_at": "2026-01-02 03:04:05.678901",
      "updated_at": "2026-01-02 03:04:05.678901"
+    },
+    {
+     "id": 11,
+     "name": "blob-enabled",
+     "enabled": {
+      "blob_hex": "31ff"
+     },
+     "spec_type": "http_json_metric",
+     "interval_seconds": 300,
+     "next_run_time": 0,
+     "config": "{\"url\": \"http://127.0.0.1:9/metrics\", \"metric_path\": \"$.value\"}",
+     "last_run_at": null,
+     "last_status": "warning",
+     "last_error": "",
+     "created_at": "2026-01-02 03:04:05.678901",
+     "updated_at": "2026-01-02 03:04:05.678901"
     }
    ]
   },
@@ -943,6 +1035,22 @@
      "last_error": "",
      "created_at": "2026-01-02 03:04:05.678901",
      "updated_at": "2026-01-02 03:04:05.678901"
+    },
+    {
+     "id": 11,
+     "name": "blob-enabled",
+     "enabled": {
+      "blob_hex": "31ff"
+     },
+     "spec_type": "http_json_metric",
+     "interval_seconds": 300,
+     "next_run_time": 0,
+     "config": "{\"url\": \"http://127.0.0.1:9/metrics\", \"metric_path\": \"$.value\"}",
+     "last_run_at": null,
+     "last_status": "warning",
+     "last_error": "",
+     "created_at": "2026-01-02 03:04:05.678901",
+     "updated_at": "2026-01-02 03:04:05.678901"
     }
    ],
    "name": "load due specs at time zero",
@@ -958,6 +1066,20 @@
      "enabled": true,
      "spec_type": "http_json_metric",
      "interval_seconds": 60,
+     "next_run_time": 0,
+     "last_run_at": null,
+     "last_status": "warning",
+     "last_error": "",
+     "created_at": "2026-01-02 03:04:05.678901",
+     "updated_at": "2026-01-02 03:04:05.678901",
+     "config": "{\"url\": \"http://127.0.0.1:9/metrics\", \"metric_path\": \"$.value\"}"
+    },
+    {
+     "id": 11,
+     "name": "blob-enabled",
+     "enabled": false,
+     "spec_type": "http_json_metric",
+     "interval_seconds": 300,
      "next_run_time": 0,
      "last_run_at": null,
      "last_status": "warning",
@@ -1101,6 +1223,22 @@
      "spec_type": "http_json_metric",
      "interval_seconds": 0,
      "next_run_time": 149,
+     "config": "{\"url\": \"http://127.0.0.1:9/metrics\", \"metric_path\": \"$.value\"}",
+     "last_run_at": null,
+     "last_status": "warning",
+     "last_error": "",
+     "created_at": "2026-01-02 03:04:05.678901",
+     "updated_at": "2026-01-02 03:04:05.678901"
+    },
+    {
+     "id": 11,
+     "name": "blob-enabled",
+     "enabled": {
+      "blob_hex": "31ff"
+     },
+     "spec_type": "http_json_metric",
+     "interval_seconds": 300,
+     "next_run_time": 0,
      "config": "{\"url\": \"http://127.0.0.1:9/metrics\", \"metric_path\": \"$.value\"}",
      "last_run_at": null,
      "last_status": "warning",
@@ -1764,6 +1902,34 @@
      "subject_type_filter": "",
      "alert_when_stale": 1,
      "stale_after_seconds": null
+    },
+    {
+     "id": 7,
+     "name": "blob-flags",
+     "enabled": {
+      "blob_hex": "31ff"
+     },
+     "metric_name": "host.filesystem_used_ratio",
+     "host_filter": "",
+     "service_filter": "",
+     "tags_filter": "{}",
+     "operator": "gte",
+     "warning_threshold": 0.8,
+     "critical_threshold": 0.9,
+     "window_minutes": 30,
+     "breach_minutes": 5,
+     "status": "ok",
+     "last_evaluated": null,
+     "message": "",
+     "last_value": null,
+     "created_at": "2026-01-02 03:04:05.678901",
+     "updated_at": "2026-01-02 03:04:05.678901",
+     "subject_id_filter": "",
+     "subject_type_filter": "",
+     "alert_when_stale": {
+      "blob_hex": "31"
+     },
+     "stale_after_seconds": null
     }
    ],
    "name": "load enabled conditions ordered by name",
@@ -1777,6 +1943,30 @@
      "id": 6,
      "name": "Upper",
      "enabled": true,
+     "metric_name": "host.filesystem_used_ratio",
+     "host_filter": "",
+     "service_filter": "",
+     "subject_type_filter": "",
+     "subject_id_filter": "",
+     "operator": "gte",
+     "warning_threshold": 0.8,
+     "critical_threshold": 0.9,
+     "window_minutes": 30,
+     "breach_minutes": 5,
+     "stale_after_seconds": null,
+     "alert_when_stale": true,
+     "status": "ok",
+     "message": "",
+     "last_value": null,
+     "last_evaluated": null,
+     "created_at": "2026-01-02 03:04:05.678901",
+     "updated_at": "2026-01-02 03:04:05.678901",
+     "tags_filter": "{}"
+    },
+    {
+     "id": 7,
+     "name": "blob-flags",
+     "enabled": false,
      "metric_name": "host.filesystem_used_ratio",
      "host_filter": "",
      "service_filter": "",
@@ -2038,6 +2228,34 @@
      "subject_type_filter": "",
      "alert_when_stale": 1,
      "stale_after_seconds": null
+    },
+    {
+     "id": 7,
+     "name": "blob-flags",
+     "enabled": {
+      "blob_hex": "31ff"
+     },
+     "metric_name": "host.filesystem_used_ratio",
+     "host_filter": "",
+     "service_filter": "",
+     "tags_filter": "{}",
+     "operator": "gte",
+     "warning_threshold": 0.8,
+     "critical_threshold": 0.9,
+     "window_minutes": 30,
+     "breach_minutes": 5,
+     "status": "ok",
+     "last_evaluated": null,
+     "message": "",
+     "last_value": null,
+     "created_at": "2026-01-02 03:04:05.678901",
+     "updated_at": "2026-01-02 03:04:05.678901",
+     "subject_id_filter": "",
+     "subject_type_filter": "",
+     "alert_when_stale": {
+      "blob_hex": "31"
+     },
+     "stale_after_seconds": null
     }
    ]
   },
@@ -2186,6 +2404,34 @@
      "subject_id_filter": "",
      "subject_type_filter": "",
      "alert_when_stale": 1,
+     "stale_after_seconds": null
+    },
+    {
+     "id": 7,
+     "name": "blob-flags",
+     "enabled": {
+      "blob_hex": "31ff"
+     },
+     "metric_name": "host.filesystem_used_ratio",
+     "host_filter": "",
+     "service_filter": "",
+     "tags_filter": "{}",
+     "operator": "gte",
+     "warning_threshold": 0.8,
+     "critical_threshold": 0.9,
+     "window_minutes": 30,
+     "breach_minutes": 5,
+     "status": "ok",
+     "last_evaluated": null,
+     "message": "",
+     "last_value": null,
+     "created_at": "2026-01-02 03:04:05.678901",
+     "updated_at": "2026-01-02 03:04:05.678901",
+     "subject_id_filter": "",
+     "subject_type_filter": "",
+     "alert_when_stale": {
+      "blob_hex": "31"
+     },
      "stale_after_seconds": null
     }
    ],
@@ -2365,6 +2611,34 @@
      "subject_type_filter": "",
      "alert_when_stale": 1,
      "stale_after_seconds": null
+    },
+    {
+     "id": 7,
+     "name": "blob-flags",
+     "enabled": {
+      "blob_hex": "31ff"
+     },
+     "metric_name": "host.filesystem_used_ratio",
+     "host_filter": "",
+     "service_filter": "",
+     "tags_filter": "{}",
+     "operator": "gte",
+     "warning_threshold": 0.8,
+     "critical_threshold": 0.9,
+     "window_minutes": 30,
+     "breach_minutes": 5,
+     "status": "ok",
+     "last_evaluated": null,
+     "message": "",
+     "last_value": null,
+     "created_at": "2026-01-02 03:04:05.678901",
+     "updated_at": "2026-01-02 03:04:05.678901",
+     "subject_id_filter": "",
+     "subject_type_filter": "",
+     "alert_when_stale": {
+      "blob_hex": "31"
+     },
+     "stale_after_seconds": null
     }
    ]
   },
@@ -2513,6 +2787,34 @@
      "subject_id_filter": "",
      "subject_type_filter": "",
      "alert_when_stale": 1,
+     "stale_after_seconds": null
+    },
+    {
+     "id": 7,
+     "name": "blob-flags",
+     "enabled": {
+      "blob_hex": "31ff"
+     },
+     "metric_name": "host.filesystem_used_ratio",
+     "host_filter": "",
+     "service_filter": "",
+     "tags_filter": "{}",
+     "operator": "gte",
+     "warning_threshold": 0.8,
+     "critical_threshold": 0.9,
+     "window_minutes": 30,
+     "breach_minutes": 5,
+     "status": "ok",
+     "last_evaluated": null,
+     "message": "",
+     "last_value": null,
+     "created_at": "2026-01-02 03:04:05.678901",
+     "updated_at": "2026-01-02 03:04:05.678901",
+     "subject_id_filter": "",
+     "subject_type_filter": "",
+     "alert_when_stale": {
+      "blob_hex": "31"
+     },
      "stale_after_seconds": null
     }
    ],
@@ -2666,6 +2968,34 @@
      "subject_id_filter": "",
      "subject_type_filter": "",
      "alert_when_stale": 1,
+     "stale_after_seconds": null
+    },
+    {
+     "id": 7,
+     "name": "blob-flags",
+     "enabled": {
+      "blob_hex": "31ff"
+     },
+     "metric_name": "host.filesystem_used_ratio",
+     "host_filter": "",
+     "service_filter": "",
+     "tags_filter": "{}",
+     "operator": "gte",
+     "warning_threshold": 0.8,
+     "critical_threshold": 0.9,
+     "window_minutes": 30,
+     "breach_minutes": 5,
+     "status": "ok",
+     "last_evaluated": null,
+     "message": "",
+     "last_value": null,
+     "created_at": "2026-01-02 03:04:05.678901",
+     "updated_at": "2026-01-02 03:04:05.678901",
+     "subject_id_filter": "",
+     "subject_type_filter": "",
+     "alert_when_stale": {
+      "blob_hex": "31"
+     },
      "stale_after_seconds": null
     }
    ]

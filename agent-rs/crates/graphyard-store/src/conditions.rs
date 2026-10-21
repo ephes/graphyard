@@ -44,11 +44,10 @@ const SELECT_CONDITIONS: &str = "SELECT id, name, CAST(enabled AS TEXT), metric_
      CAST(alert_when_stale AS TEXT), status, message, last_value, CAST(last_evaluated AS TEXT), \
      CAST(created_at AS TEXT), CAST(updated_at AS TEXT) FROM condition_definition";
 
-/// The raw row: everything but the converted columns, which follow as text.
+/// The raw row: the datetime columns follow as text, converted after the
+/// query (a conversion error fails the load).
 struct RawCondition {
     row: ConditionRow,
-    enabled: Option<String>,
-    alert_when_stale: Option<String>,
     last_evaluated: Option<String>,
     created_at: Option<String>,
     updated_at: Option<String>,
@@ -59,7 +58,7 @@ fn raw_condition(row: &rusqlite::Row<'_>) -> rusqlite::Result<RawCondition> {
         row: ConditionRow {
             id: row.get(0)?,
             name: row.get(1)?,
-            enabled: false,
+            enabled: bool_column(row, 2)?,
             metric_name: row.get(3)?,
             host_filter: row.get(4)?,
             service_filter: row.get(5)?,
@@ -72,7 +71,7 @@ fn raw_condition(row: &rusqlite::Row<'_>) -> rusqlite::Result<RawCondition> {
             window_minutes: row.get(12)?,
             breach_minutes: row.get(13)?,
             stale_after_seconds: row.get(14)?,
-            alert_when_stale: false,
+            alert_when_stale: bool_column(row, 15)?,
             status: row.get(16)?,
             message: row.get(17)?,
             last_value: row.get(18)?,
@@ -80,8 +79,6 @@ fn raw_condition(row: &rusqlite::Row<'_>) -> rusqlite::Result<RawCondition> {
             created_at: None,
             updated_at: None,
         },
-        enabled: row.get(2)?,
-        alert_when_stale: row.get(15)?,
         last_evaluated: row.get(19)?,
         created_at: row.get(20)?,
         updated_at: row.get(21)?,
@@ -115,8 +112,6 @@ pub(crate) fn load_conditions(
     raw.into_iter()
         .map(|raw| {
             let mut row = raw.row;
-            row.enabled = bool_column(raw.enabled.as_deref());
-            row.alert_when_stale = bool_column(raw.alert_when_stale.as_deref());
             row.last_evaluated = datetime_column(raw.last_evaluated.as_deref())?;
             row.created_at = datetime_column(raw.created_at.as_deref())?;
             row.updated_at = datetime_column(raw.updated_at.as_deref())?;

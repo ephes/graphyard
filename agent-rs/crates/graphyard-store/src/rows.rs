@@ -8,15 +8,22 @@
 //! hands them to Python's converter).
 
 use chrono::{DateTime, Utc};
+use rusqlite::types::ValueRef;
 
 use crate::datetime::{DbDateTime, parse_column};
 use crate::error::StoreError;
 
-/// The `bool` converter `b"1".__eq__`: true only for the text `1` (so a
-/// stored `2` loads as false, although `WHERE enabled` selects it); NULL is
+/// The `bool` converter `b"1".__eq__` on column `index` (selected as
+/// `CAST(col AS TEXT)`): true only for the bytes `1` (so a stored `2` loads
+/// as false, although `WHERE enabled` selects it). The bytes are compared
+/// as they are, without UTF-8 decoding, like Python's converter. NULL is
 /// `None`, which Python treats as false.
-pub(crate) fn bool_column(text: Option<&str>) -> bool {
-    text == Some("1")
+pub(crate) fn bool_column(row: &rusqlite::Row<'_>, index: usize) -> rusqlite::Result<bool> {
+    Ok(match row.get_ref(index)? {
+        ValueRef::Text(bytes) | ValueRef::Blob(bytes) => bytes == b"1",
+        ValueRef::Integer(value) => value == 1,
+        ValueRef::Real(_) | ValueRef::Null => false,
+    })
 }
 
 /// The `datetime` converter followed by `convert_datetimefield_value`.

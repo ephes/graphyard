@@ -606,7 +606,8 @@ statement or transaction short) and closes the connection.
   `OverflowError: date value out of range` outside Python's years 1–9999.
   Pinned by `datetime_codec.json` (curated plus a seeded random corpus).
 - Booleans: written `0/1`; read through Django's `bool` converter
-  `b"1".__eq__`, so only a stored `1` loads as true. `WHERE enabled` still
+  `b"1".__eq__` on the raw bytes of the value's text form (no UTF-8
+  decoding), so only a stored `1` loads as true. `WHERE enabled` still
   selects any truthy value (a stored `2` is loaded, with `enabled` false).
 - `pipeline_heartbeat.details`: `json.dumps` default separators and
   `ensure_ascii` (`{"evaluated": 2, "failed": 0}`), key order as in 3.4/3.5.

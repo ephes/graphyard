@@ -45,7 +45,7 @@ pub struct SpecRunUpdate {
 type RawSpec = (
     i64,
     String,
-    Option<String>,
+    bool,
     String,
     i64,
     i64,
@@ -71,7 +71,7 @@ pub(crate) fn load_specs(
         Ok((
             row.get(0)?,
             row.get(1)?,
-            row.get(2)?,
+            bool_column(row, 2)?,
             row.get(3)?,
             row.get(4)?,
             row.get(5)?,
@@ -119,7 +119,7 @@ pub(crate) fn load_specs(
                 Ok(SpecRow {
                     id,
                     name,
-                    enabled: bool_column(enabled.as_deref()),
+                    enabled,
                     spec_type,
                     interval_seconds,
                     next_run_time,
