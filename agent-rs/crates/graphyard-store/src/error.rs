@@ -2,6 +2,8 @@
 
 use std::fmt;
 
+use graphyard_core::pycompat::PyError;
+
 use crate::datetime::DateTimeError;
 
 /// Why a store operation failed. `Display` is the text Python's `str(err)`
@@ -22,6 +24,9 @@ pub enum StoreError {
     ThreadGone,
     /// Spawning the DB thread failed.
     Io(std::io::Error),
+    /// A metric point failed `normalize_metric_point` before the registry
+    /// touch read anything (the `ValueError` text is P1).
+    Point(PyError),
 }
 
 /// Django's message for a `save(update_fields=...)` that matched no row
@@ -36,6 +41,7 @@ impl fmt::Display for StoreError {
             StoreError::NotUpdated => f.write_str(NOT_UPDATED_MESSAGE),
             StoreError::ThreadGone => f.write_str("the database thread is gone"),
             StoreError::Io(err) => write!(f, "{err}"),
+            StoreError::Point(err) => write!(f, "{err}"),
         }
     }
 }
@@ -46,7 +52,7 @@ impl std::error::Error for StoreError {
             StoreError::Sqlite(err) => Some(err),
             StoreError::DateTime(err) => Some(err),
             StoreError::Io(err) => Some(err),
-            StoreError::NotUpdated | StoreError::ThreadGone => None,
+            StoreError::NotUpdated | StoreError::ThreadGone | StoreError::Point(_) => None,
         }
     }
 }

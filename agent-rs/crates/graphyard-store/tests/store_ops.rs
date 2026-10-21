@@ -1,11 +1,14 @@
 //! Store operations against `fixtures/store_ops.json` (built by
-//! `fixtures/gen_store.py` from the Django ORM calls; PLAN.md 5.3, 5.4):
-//! the same starting rows, the same operation, identical row images
-//! afterwards and the same loaded values or exception.
+//! `fixtures/gen_store.py` from the Django ORM calls; PLAN.md 5.3, 5.4,
+//! 5.5): the same starting rows, the same operation, identical row images
+//! afterwards and the same loaded values or exception. The registry
+//! statement sequences are checked by the unit tests of `src/registry`.
 
 mod common;
 
-use common::{STORE_OPS_JSON, TestDb, assert_rows, load, now};
+use common::{
+    REGISTRY_TABLES, STORE_OPS_JSON, TestDb, assert_rows, load, metric_point, now, python_class,
+};
 use graphyard_core::{ConditionEvaluation, StatusLevel};
 use graphyard_store::{
     ConditionRow, DbDateTime, HeartbeatRecord, SpecRow, SpecRunUpdate, StoreError,
@@ -89,14 +92,6 @@ fn assert_loaded(actual: &[Value], expected: &Value, context: &str) {
 
 fn status(op: &Value, key: &str) -> StatusLevel {
     StatusLevel::parse(op[key].as_str().unwrap()).unwrap()
-}
-
-fn python_class(err: &StoreError) -> &'static str {
-    match err {
-        StoreError::DateTime(err) => err.class,
-        StoreError::NotUpdated => "NotUpdated",
-        other => panic!("unexpected store error {other:?}"),
-    }
 }
 
 async fn run_case(case: &Value) {
@@ -209,5 +204,63 @@ async fn store_operations_match_the_django_orm() {
     assert!(cases.len() >= 30);
     for case in cases {
         run_case(case).await;
+    }
+}
+
+/// One `registry_cases` entry through [`graphyard_store::Store::touch_registry`].
+async fn run_registry_case(case: &Value) {
+    let name = case["name"].as_str().unwrap();
+    let op = &case["op"];
+    let db = TestDb::new();
+    db.seed_registry(case);
+    let store = db.store();
+    let points = op["points"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(metric_point)
+        .collect();
+    let result = store
+        .touch_registry(points, now(op["now"].as_str().unwrap()))
+        .await;
+    match (result, case.get("error")) {
+        (Ok(()), None) => {}
+        (Err(err), Some(expected)) => {
+            assert_eq!(
+                python_class(&err),
+                expected["class"].as_str().unwrap(),
+                "{name}"
+            );
+            assert_eq!(
+                err.to_string(),
+                expected["message"].as_str().unwrap(),
+                "{name}"
+            );
+        }
+        (Ok(()), Some(expected)) => panic!("{name}: expected {expected}"),
+        (Err(err), None) => panic!("{name}: unexpected {err:?}"),
+    }
+    for table in REGISTRY_TABLES {
+        assert_rows(
+            &db.rows(table),
+            case["after"][table].as_array().unwrap(),
+            &format!("{name}: {table}"),
+        );
+    }
+    store.close();
+}
+
+#[tokio::test]
+async fn registry_touch_matches_the_django_orm() {
+    let fixture = load(STORE_OPS_JSON);
+    let cases = fixture["registry_cases"].as_array().unwrap();
+    assert!(cases.len() >= 30);
+    for case in cases {
+        // A concurrent insert between the check and the transaction needs
+        // the split phases: `src/registry/tests.rs` runs those cases.
+        if case.get("insert_after_check").is_some() {
+            continue;
+        }
+        run_registry_case(case).await;
     }
 }

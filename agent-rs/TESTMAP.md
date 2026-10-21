@@ -71,6 +71,15 @@ counterpart. Its tests:
 | `record_heartbeat` retry on `database is locked` (3 attempts, 50/100 ms), no retry otherwise | `graphyard-store/tests/heartbeat_retry.rs` | done |
 | PLAN.md 5.7: no agent SQL names the ingest token tables | `graphyard-store/tests/no_ingest_token.rs` | done |
 
+## S3b — registry touch
+
+| Python behaviour / test | Rust counterpart | Status |
+| --- | --- | --- |
+| `services.py:touch_registry_from_points` without a bound subject (graphyard `4d5baf1`): batch collection (first-seen order, last source system, first host index, service candidates), the autocommit load (hosts, subject cross product, services; no query for an empty list), creates with `get_or_create`, the 60 s rule (NULL, exactly 60 s, just under, future, unparseable and offset values), source system changes, re-parenting by batch position, the update order, normalisation errors before any read, an out-of-range stored datetime failing the call, `IntegrityError` rolling the transaction back | `graphyard-store/tests/store_ops.rs::registry_touch_matches_the_django_orm` (row images, errors) and `graphyard-store/src/registry/tests.rs::every_registry_case_sends_the_django_statements` (also the statement sequence: verb, table, inside the transaction) against the `registry_cases` of `fixtures/store_ops.json` (`gen_store.py`) | done |
+| `test_metric_dimensions.py::test_touch_registry_tracks_subjects_and_keeps_host_registry_host_only`, `::test_touch_registry_links_service_to_collector_host_for_non_host_subject` | `registry_cases` "subjects, the host only for host subjects, and services are created", "a service of a non-host subject belongs to the existing collector host" | done |
+| `test_registry_write_batching.py` (`binding=None`): `::test_fifty_point_batch_writes_each_registry_row_once` (7 INSERTs in one transaction, then 3 reads and no write), `::test_stale_last_seen_refresh_is_one_update_per_table`, `::test_recent_last_seen_is_not_rewritten`, `::test_batch_keeps_last_source_system_and_reparents_to_last_host`, `::test_collector_host_resolves_at_its_position_in_the_batch` (both orders), `::test_new_service_from_unknown_collector_host_has_no_host` | `registry_cases` of the same names; statement counts through the fixture's `statements`; `registry/tests.rs::steady_state_takes_no_write_lock` | done |
+| A row the web app inserts between the check and the registry transaction (reloaded, refreshed, not inserted twice) | `registry_cases` "a row inserted after the check is reloaded in the transaction" (`registry/tests.rs` runs the two phases) | done |
+
 ## Planned counterparts (PLAN.md 9.5)
 
 | Python tests | Rust counterpart | Slice | Status |
@@ -94,8 +103,8 @@ counterpart. Its tests:
 | `test_influx_modes.py` query mode tests | fake InfluxDB tests | S4b | pending |
 | `test_influx_query_safety.py` (all) | v3 SQL fake tests, `flux.json` NaN case | S4b | pending |
 | `test_metric_dimensions.py` mapping/emission tests | `ha_mapping.json`, fake-server tests | S7a, S7b | pending |
-| `test_metric_dimensions.py::test_touch_registry_*` | `store_ops.json` | S3b | pending |
-| `test_registry_write_batching.py` registry semantics without a bound subject (`binding=None` of `::test_fifty_point_batch_writes_each_registry_row_once`, `::test_stale_last_seen_refresh_is_one_update_per_table`; the 60 s rule of `::test_recent_last_seen_is_not_rewritten`; `::test_batch_keeps_last_source_system_and_reparents_to_last_host`, `::test_collector_host_resolves_at_its_position_in_the_batch`, `::test_new_service_from_unknown_collector_host_has_no_host`) | `store_ops.json` registry cases + statement-count tests | S3b | pending |
+| `test_metric_dimensions.py::test_touch_registry_*` | `store_ops.json` `registry_cases` | S3b | done |
+| `test_registry_write_batching.py` registry semantics without a bound subject (`binding=None` of `::test_fifty_point_batch_writes_each_registry_row_once`, `::test_stale_last_seen_refresh_is_one_update_per_table`; the 60 s rule of `::test_recent_last_seen_is_not_rewritten`; `::test_batch_keeps_last_source_system_and_reparents_to_last_host`, `::test_collector_host_resolves_at_its_position_in_the_batch`, `::test_new_service_from_unknown_collector_host_has_no_host`) | `store_ops.json` registry cases + statement-count tests | S3b | done |
 | `test_registry_write_batching.py` bound-token parts (`binding="edge"`, the view's ownership read, `::test_bound_stale_refresh_skips_service_taken_after_validation`) | — (bound-subject branch, web ingest only, PLAN.md 5.7) | — | n/a |
 | `test_query_and_ingest_log_escaping.py::test_flux_interpolation_literal_in_query` | `flux.json` | S4b | pending |
 | `test_query_and_ingest_log_escaping.py::test_metric_log_escapes_newline`, `::test_ingest_normalization_record_caps_error_details` | — (web ingest) | — | n/a |
