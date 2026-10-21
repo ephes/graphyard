@@ -94,8 +94,10 @@ would write to InfluxDB is appended to `PATH` as line protocol after a
 ### Deployment, cutover and rollback
 
 Release archives come from `agent-rs-v<version>` tags
-(`.github/workflows/agent-rs-release.yml`, see `agent-rs/README.md`). The
-ops-library role `graphyard_deploy` and the ops-deploy pyinfra service
+(`.github/workflows/agent-rs-release.yml`, see `agent-rs/README.md`); the
+first is `agent-rs-v0.1.0`, its sha256 is listed in `agent-rs/README.md`
+("Published releases").
+The ops-library role `graphyard_deploy` and the ops-deploy pyinfra service
 install a pinned release under `/opt/graphyard-agent/<version>/` and select
 it with the variable `graphyard_agent_impl` (`python` | `rust`), which adds
 or removes the drop-in

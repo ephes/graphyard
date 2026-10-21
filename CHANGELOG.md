@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- Rust agent port (`agent-rs/`, slice S10b): first release of the Rust
+  agent, `agent-rs-v0.1.0`
+  (<https://github.com/ephes/graphyard/releases/tag/agent-rs-v0.1.0>), built
+  by the release workflow from `19f56e6` (the merge of S9b). Asset
+  `graphyard-agent-0.1.0-x86_64-unknown-linux-gnu.tar.gz`, sha256
+  `42d6dbb5b931599c1b35ab7f19a29823bf9583d65b45e2259a69b5dbc64b80e2`; the binary
+  needs at most `GLIBC_2.34` and links only glibc and libgcc. Slice S11c pins
+  this version and sha256 in the ops-control host vars. Nothing deploys the
+  Rust agent yet; the Python agent is unchanged.
+
 - Rust agent port (`agent-rs/`, slice S9b): process e2e tests of the
   `graphyard-agent` binary (a `--run-once` over every collector family
   against fake servers with all rows, heartbeats, registry rows and written

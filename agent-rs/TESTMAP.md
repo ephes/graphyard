@@ -72,6 +72,15 @@ counterpart. Its tests:
 | Commit stamp: commit format, the git paths Cargo watches (branch, packed refs, nested branch, linked worktree, detached HEAD, no git) | `graphyard-agent/tests/build_script.rs` (compiles `build.rs`) | done |
 | `release_checks.py`: version and tag, GLIBC floor and `NEEDED` libraries, smoke test (output, exit code, timeout), deterministic archive and `.sha256`, name validation; the workflow runs every check | `tests/test_agent_rs_release_checks.py` | done |
 
+## S10b — first release
+
+No new tests: the release `agent-rs-v0.1.0` ran the S10a checks in the
+release workflow (Rust tests, fixture drift and release check tests, GLIBC
+floor, smoke test, archive and `.sha256`). The published assets were then
+checked by hand (README "Published releases"): checksum, archive contents and
+modes, byte-identity with a dry build of the same commit, GLIBC floor on the
+extracted binary.
+
 ## S3a — store core
 
 | Python behaviour / test | Rust counterpart | Status |

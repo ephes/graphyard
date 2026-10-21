@@ -7,7 +7,8 @@ target. Nothing runs this code in production yet: the deployment selects it
 only through a systemd drop-in that later slices add (PLAN.md 8.3), and
 deploys ship `agent-rs/` only as a release archive.
 
-Status: slices S1 (scaffold), S2, S3a, S3b, S4a, S5, S6, S7a, S7b, S8, S9a, S9b and S10a. S1: the workspace, the toolchain pin,
+Status: slices S1 (scaffold), S2, S3a, S3b, S4a, S5, S6, S7a, S7b, S8, S9a, S9b, S10a and S10b (first release `agent-rs-v0.1.0`, see
+[Published releases](#published-releases)). S1: the workspace, the toolchain pin,
 the cargo-deny policy, the CI `rust` job, the `just rs-*` recipes, the shared
 model types (`graphyard_core::model`) and the fixture pipeline with its drift
 test. S2: the CPython compatibility helpers (`graphyard_core::pycompat`), the
@@ -349,3 +350,20 @@ the release notes name the commit and the sha256 the deployment pins.
 it to its commit, `just rs-build-linux` to the checkout's `HEAD` because the
 container sees no `.git`), else `git rev-parse HEAD`, else `unknown`; a value
 that is not 7 to 40 lowercase hex digits fails the build.
+
+### Published releases
+
+Deploys pin the version and the archive's sha256 (ops-control host vars,
+slice S11c).
+
+| Tag | Commit | Archive sha256 |
+| --- | --- | --- |
+| [`agent-rs-v0.1.0`](https://github.com/ephes/graphyard/releases/tag/agent-rs-v0.1.0) | `19f56e666173d9cb51639269e1219fcb7edd3e12` | `42d6dbb5b931599c1b35ab7f19a29823bf9583d65b45e2259a69b5dbc64b80e2` |
+
+`agent-rs-v0.1.0` (slice S10b) was checked after publishing: the downloaded
+archive matches its `.sha256` file and is byte-identical to the archive of a
+`workflow_dispatch` dry build of the same commit; it holds `graphyard-agent`
+(0755, 8938360 bytes) and `LICENSE` (0644), owned by root; `release_checks.py
+glibc-floor` passes on the extracted binary (newest symbol version
+`GLIBC_2.34`; `NEEDED`: `libc`, `libm`, `libgcc_s`, `ld-linux-x86-64`); the
+workflow's smoke test printed `graphyard-agent 0.1.0 (19f56e666173d9cb51639269e1219fcb7edd3e12)`.
