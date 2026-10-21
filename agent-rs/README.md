@@ -7,13 +7,21 @@ target. Nothing runs this code in production yet: the deployment selects it
 only through a systemd drop-in that later slices add (PLAN.md 8.3), and
 deploys ship `agent-rs/` only as a release archive.
 
-Status: slices S1 (scaffold), S2, S3a, S5 and S10a. S1: the workspace, the toolchain pin,
+Status: slices S1 (scaffold), S2, S3a, S4a, S5 and S10a. S1: the workspace, the toolchain pin,
 the cargo-deny policy, the CI `rust` job, the `just rs-*` recipes, the shared
 model types (`graphyard_core::model`) and the fixture pipeline with its drift
 test. S2: the CPython compatibility helpers (`graphyard_core::pycompat`), the
 environment settings with django-environ semantics and the SQLite pragma
 values (`graphyard_core::settings`), and the typed spec config knobs
-(`graphyard_core::spec_config`), each pinned by its fixture. S5: the
+(`graphyard_core::spec_config`), each pinned by its fixture. S4a: the metric
+point normalisation (`graphyard_core::normalize`), the line protocol of
+`influxdb-client` 1.50.0 and the pure part of `write_points`
+(`graphyard_core::line_protocol`, log records as values in
+`graphyard_core::logline`), and the InfluxDB write client with the lazy
+configuration check (`graphyard_influx::InfluxWriter`,
+`graphyard_influx::config`), pinned by `normalize.json` and
+`line_protocol.json`; the write tests replay every fixture case against fake
+servers. S5: the
 condition evaluation (`graphyard_core::conditions`: `evaluate_condition`
 over a `SampleSource`, `evaluate_samples` on samples already read), pinned
 by `conditions.json`. The
@@ -46,13 +54,14 @@ agent-rs/
   TESTMAP.md            Python test -> Rust counterpart, per slice
   crates/
     graphyard-core/     pure logic, no I/O: model types (S1); pycompat,
-                        settings, spec_config (S2); conditions (S5);
-                        normalisation, line protocol, JSON path, mappings
-                        (S4a, S7a, S7b)
+                        settings, spec_config (S2); normalize, line_protocol,
+                        logline (S4a); conditions (S5); JSON path, mappings
+                        (S7a, S7b)
     graphyard-store/    rusqlite store: DB thread, schema contract, datetime
                         codec, specs, conditions, heartbeats (S3a); registry
                         (S3b)
-    graphyard-influx/   InfluxDB write and query clients (S4a/S4b)
+    graphyard-influx/   InfluxDB write client and config check (S4a),
+                        query clients (S4b)
     graphyard-collect/  HTTP layer and the five executors (S6/S7a/S7b)
     graphyard-agent/    the binary: CLI, scheduler, runs, signals (S8)
   fixtures/

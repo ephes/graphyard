@@ -36,6 +36,16 @@ fixture no longer matches the Python code.
 | `services.py` branches the tests leave open: all four operators at the threshold and with NaN, the lazy `KeyError` of an unknown operator, threshold `repr` in messages, critical before warning, staleness boundaries (truncation, future samples, allowance 0, huge and negative settings), the anchor carry bound by the global setting, grace and window-start boundaries, `breach_minutes = 0`, stable order of equal timestamps, `timedelta`/`datetime` overflow, series keys (empty dimensions, tags never overriding a dimension), label selection, tie-breaking and equal labels, query errors | `conditions.json` cases; `conditions/tests.rs::overflow_errors_carry_the_cpython_texts`, `::unknown_operator_is_a_key_error_with_the_repr`, `::query_errors_display_as_the_source_error`, `::now_is_truncated_to_microseconds_for_query_and_result` | done |
 | `timedelta.total_seconds()` (correct rounding beyond 2**53 microseconds) | `conditions/tests.rs::total_seconds_rounds_like_cpython` against `conditions.json` `total_seconds` | done |
 
+## S4a — normalisation + InfluxDB writes
+
+| Python behaviour / test | Rust counterpart | Status |
+| --- | --- | --- |
+| `influx.py` `normalize_subject_id`, `_normalize_dimension_value` (fallbacks, Unicode whitespace and lowercasing), `parse_finite_float` (JSON values incl. `nan`/`inf` spellings, overflowing tokens, huge integers, non-numbers), `normalize_metric_point` (check order, host compatibility rules, empty-to-`None` fields, tags, non-finite values), `_RESERVED_TAG_KEYS` | `graphyard-core/src/normalize/tests.rs` against `fixtures/normalize.json` (`gen_normalize.py`) | done |
+| `test_influx_modes.py::test_normalize_metric_point_rejects_host_mismatch`, `::test_normalize_metric_point_drops_host_for_non_host_subject`, `::test_normalize_metric_point_rejects_non_finite_value` (all parameters), `::test_parse_finite_float_rejects_non_finite`, `::test_parse_finite_float_accepts_numbers` | `normalize.json` cases; `normalize/tests.rs::every_python_test_of_the_slice_is_in_the_corpus` | done |
+| `influxdb_client` 1.50.0 `Point.to_line_protocol` (tag sorting, escaping tables, empty key/value dropping, trailing-backslash space, float field rendering, non-finite field, ns timestamps over the whole `datetime` range) | `graphyard-core/src/line_protocol/tests.rs::to_line_protocol_matches_the_python_client` against `fixtures/line_protocol.json` (`gen_line_protocol.py`) | done |
+| `influx.py:write_points`: point building (fixed dimensions, optional tags, reserved-key warnings), validation log lines (D-10 escaping), `metrics_write_rejected` timing, `_build_client` configuration errors per mode, request URL/query encoding/headers/body of the client against a recording server, status handling (2xx success, 3xx/4xx/5xx `ApiException`), response bodies (read in full: truncated, stalled, slowly dripping, not UTF-8), timeout rules (`0`, negative, overflowing, per-read inactivity), transport failures by class, TLS failure as `ApiException(status=0)` | `line_protocol/tests.rs::prepare_write_matches_write_points`; `graphyard-influx/tests/write_points.rs::write_points_replays_the_python_client` (every `writes` case against a fake InfluxDB, byte-level scripts for the body cases), `::transport_errors_use_the_urllib3_forms`, `::tls_failures_are_the_client_api_exception`, `::tls_handshake_eof_is_the_client_api_exception`, `tests/fresh_process.rs` (no preinstalled crypto provider); `graphyard-influx` `config`/`write` unit tests | done |
+| `test_influx_modes.py::test_write_points_skips_invalid_points_in_batch`, `::test_write_points_does_not_count_non_finite_points` | `line_protocol.json` write cases; `line_protocol/tests.rs::every_python_test_of_the_slice_is_in_the_corpus` | done |
+
 ## S10a — release workflow
 
 Not Python agent behaviour: the release pipeline of PLAN.md 8.2 has no Python
@@ -74,13 +84,13 @@ counterpart. Its tests:
 | `test_metric_collection_specs.py` page probe tests | fake-server tests | S7b | pending |
 | `test_metric_collection_specs.py` HA sensor/env scan tests | fake-server tests + `ha_mapping.json` | S7a | pending |
 | `test_metric_collection_specs.py` UniFi tests (incl. redaction) | fake-server tests + `unifi.json` | S7b | pending |
-| `test_metric_collection_specs.py::test_http_json_metric_spec_skips_non_finite_value` | `normalize.json` + fake-server test | S4a, S7a | pending |
+| `test_metric_collection_specs.py::test_http_json_metric_spec_skips_non_finite_value` | `normalize.json` (`parse_finite_float` of `"NaN"`: done in S4a) + fake-server test (S7a) | S4a, S7a | pending (S7a) |
 | `test_metric_collection_spec_isolation.py::test_bad_spec_does_not_stop_later_specs`, `::test_unexpected_collector_exception_is_isolated` | run isolation tests | S8 | pending |
 | `test_metric_collection_spec_isolation.py` cap/redirect/timeout tests | `spec_config.json` (config validation: done in S2) + fake-server tests (transport: S6) | S2, S6 | pending (S6) |
 | `test_metric_collection_spec_isolation.py::test_full_clean_*`, `::test_validate_spec_config_rejects_non_object`, `::test_model_validates_derived_wait_limit` | `spec_config.json` (`validate_spec_config` is web-side but shares helpers) | S2 | done |
 | `test_page_probe_deadline.py` (all, incl. `caps_abandoned_workers`) | deadline/abandoned-lookup tests | S6 | pending |
 | `test_http_json_budget.py`, `test_home_assistant_budget.py` | budget/deadline tests | S6, S7a | pending |
-| `test_influx_modes.py` normalisation/write tests | `normalize.json`, `line_protocol.json` | S4a | pending |
+| `test_influx_modes.py` normalisation/write tests | `normalize.json`, `line_protocol.json` | S4a | done |
 | `test_influx_modes.py` query mode tests | fake InfluxDB tests | S4b | pending |
 | `test_influx_query_safety.py` (all) | v3 SQL fake tests, `flux.json` NaN case | S4b | pending |
 | `test_metric_dimensions.py` mapping/emission tests | `ha_mapping.json`, fake-server tests | S7a, S7b | pending |

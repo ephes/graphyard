@@ -11,6 +11,20 @@
   `evaluate_condition` scenario of `tests/test_condition_evaluation.py`.
   Nothing runs the Rust code yet; the Python agent is unchanged.
 
+- Rust agent port (`agent-rs/`, slice S4a): metric point normalisation
+  (`normalize_metric_point`, `normalize_subject_id`, the dimension rules,
+  `parse_finite_float`), the InfluxDB line protocol exactly as
+  `influxdb-client` 1.50.0 renders it (escaping, empty-tag dropping, float
+  and nanosecond timestamp rendering), and the write client of
+  `influx.py:write_points` (`POST /api/v2/write` with the Python client's
+  query encoding and headers, the lazy `INFLUX_*` configuration errors, the
+  per-read timeout rules, response bodies read in full, TLS and transport
+  failures by the Python client's exception class, the validation and
+  `metrics_write_rejected` log lines). Pinned by `normalize.json` and
+  `line_protocol.json`, generated from the Python client talking to recording
+  and byte-level loopback servers. Nothing runs the Rust code
+  yet; the Python agent is unchanged.
+
 - Rust agent port (`agent-rs/`, slice S2): CPython compatibility helpers
   (`repr(float)`, `format(x, "g")`, `int()`/`float()` of strings, `str()`/
   `repr()` of JSON values, `==`), the agent's environment settings with

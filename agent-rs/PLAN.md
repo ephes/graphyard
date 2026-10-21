@@ -475,11 +475,12 @@ keep every fixture-tested function in `graphyard-core`.
 | Need | Crate | Justification |
 | --- | --- | --- |
 | async runtime | `tokio` (rt, time, signal, macros) | |
-| HTTP (collectors, Influx) | `reqwest` (no default features; `rustls` TLS, `gzip`, `deflate`, `cookies`, `stream`) | maintained client covering everything httpx does for us: per-connect and per-read timeouts, streaming bodies for byte caps, cookie jar (UniFi session), `danger_accept_invalid_certs` for `verify_tls: false`, redirect policy `none` for the hand-driven page-probe redirects; the rules of section 6.1 are applied on top, not a new HTTP implementation |
+| HTTP (collectors, Influx) | `reqwest` 0.13 (no default features; `rustls-no-provider` with `rustls` + `ring` installed as the process provider, as in nyxmon; `gzip`, `deflate`, `cookies`, `stream` where the collectors need them) | maintained client covering everything httpx does for us: per-connect and per-read timeouts, streaming bodies for byte caps, cookie jar (UniFi session), `danger_accept_invalid_certs` for `verify_tls: false`, redirect policy `none` for the hand-driven page-probe redirects; the rules of section 6.1 are applied on top, not a new HTTP implementation |
 | name resolution | reqwest custom `Resolve` running libc `getaddrinfo` on the blocking pool | `macmini.local` needs nss-mdns, so glibc resolution is mandatory (section 13.1 R2); the wrapper counts abandoned lookups (D-3) |
-| TLS roots | system store via rustls (`rustls-native-certs` or reqwest's platform verifier) | Q1, D-12 |
+| TLS roots | system store via reqwest's platform verifier (`rustls-platform-verifier`, which reads the system store on Linux; S4a) | Q1, D-12 |
 | InfluxDB v2 write | plain HTTP `POST /api/v2/write` with our line formatter (section 6.4) | the Python client is itself a thin wrapper over this documented API (`SYNCHRONOUS` write, no batching, no retries); the Rust InfluxDB crates are either unmaintained (`influxdb2`, last release 2024-07) or InfluxQL/v1-oriented (`influxdb`); series identity needs `influxdb_client`'s exact escaping and float rendering, which no crate promises |
 | line protocol parsing (tests only) | `influxdb-line-protocol` (InfluxData) as dev-dependency | semantic comparison of written lines in fixtures, harness and shadow tooling |
+| fake servers (tests only) | `hyper` 1 (`server`, `http1`) + `hyper-util`, `http-body-util` as dev-dependencies | fake InfluxDB and collector endpoints without a hand-written HTTP parser |
 | InfluxDB v2 Flux query | plain HTTP `POST /api/v2/query` + `csv` crate for the annotated CSV | same reasoning; annotated CSV is plain CSV plus `#datatype/#group/#default` rows, read with the maintained `csv` crate |
 | InfluxDB v3 SQL | plain HTTP `POST /api/v3/query_sql` + `serde_json` | mirrors `_read_v3_sql_rows` |
 | SQLite | `rusqlite` (`bundled`) | same as nyxmon; synchronous API keeps Django's statement boundaries reviewable |
@@ -875,6 +876,40 @@ Request: `POST <INFLUX_URL>/api/v2/write?org=<org>&bucket=<bucket>&precision=ns`
 `Authorization: Token <token>`, `Content-Type: text/plain`, timeout
 `INFLUX_TIMEOUT_MS`, no retries (SYNCHRONOUS write). Non-2xx → error (P2
 text, Python's `ApiException` string). `ingested` = number of valid points.
+
+As implemented in S4a (pinned by `line_protocol.json`, recorded from the
+Python client talking to a loopback server): `<INFLUX_URL>` loses one
+trailing `/` and the path is appended as text (a path prefix is kept); a URL
+without a scheme is `http` like urllib3's `parse_url`, other schemes than
+`http`/`https` are `URLSchemeUnknown`; `org` is `INFLUX_ORG` and `bucket`
+`INFLUX_BUCKET` as given (in v3 mode too, where only the client's default
+org falls back to the bucket: an empty org is sent as `org=`), encoded like
+`urllib.parse.urlencode` (`quote_plus`); headers `Accept-Encoding:
+identity`, `Content-Type: text/plain`, `Accept: application/json`,
+`Authorization: Token <token>` (v3: `dev-influxdb3-token` when empty),
+`User-Agent: influxdb-client-python/1.50.0` (kept like the collectors'
+httpx agent, 6.1); one fresh connection per call, no redirects followed (a
+3xx is an `ApiException`), no proxy from the environment. The timeout
+`urllib3.Timeout(total=ms/1000)` is not a deadline for the whole exchange:
+it bounds the connect, and every later socket read waits at most what is
+left of it (an inactivity timeout, so a slowly dripping body completes);
+Rust uses the full value for the connect and for every read (the connect
+time is not subtracted, P2). The response body is read in full and decoded
+as UTF-8 before the status counts, so a truncated (`ProtocolError`) or
+stalled (`ReadTimeoutError`) 2xx body fails the write, and a TLS failure is
+the client's `ApiException` with status 0 (`Reason: SSLError`). `0` means
+no timeout, a negative
+value is urllib3's `ValueError` (`Attempted to set total timeout to …`), an
+overflowing division or a value beyond CPython's nanosecond clock is its
+`OverflowError`; these and the configuration errors come before any
+connection. Order of effects: validation and reserved-key log lines, then
+(only when a valid point exists) the configuration check, the request, and
+the `metrics_write_rejected` warning only after a successful write or
+instead of it when every point was rejected. Transport failures carry the
+urllib3 class names (`NewConnectionError` with `[Errno N] <strerror>`,
+`NameResolutionError`, `ConnectTimeoutError`, `ReadTimeoutError`,
+`ProtocolError`, `UnicodeDecodeError`; texts P2). A measurement starting with `#`
+logs the client's `SyntaxWarning` once per process (P2).
 
 ### 6.5 InfluxDB queries (`influx.py:query_range`, `query_condition_window`, P1)
 

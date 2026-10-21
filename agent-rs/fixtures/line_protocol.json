@@ -1,0 +1,3675 @@
+{
+ "lines": [
+  {
+   "measurement": "graphyard_metrics",
+   "tags": [
+    [
+     "host",
+     "macmini"
+    ],
+    [
+     "metric",
+     "host.cpu_usage"
+    ]
+   ],
+   "value": "1.0",
+   "ts": "2026-10-21T08:15:30.123456+00:00",
+   "line": "graphyard_metrics,host=macmini,metric=host.cpu_usage value=1 1792570530123456000"
+  },
+  {
+   "measurement": "graphyard_metrics",
+   "tags": [
+    [
+     "b",
+     "2"
+    ],
+    [
+     "a",
+     "1"
+    ],
+    [
+     "B",
+     "3"
+    ],
+    [
+     "_",
+     "4"
+    ],
+    [
+     "\u00e4",
+     "5"
+    ]
+   ],
+   "value": "1.0",
+   "ts": "2026-10-21T08:15:30.123456+00:00",
+   "line": "graphyard_metrics,B=3,_=4,a=1,b=2,\u00e4=5 value=1 1792570530123456000"
+  },
+  {
+   "measurement": "graphyard_metrics",
+   "tags": [],
+   "value": "1.0",
+   "ts": "2026-10-21T08:15:30.123456+00:00",
+   "line": "graphyard_metrics value=1 1792570530123456000"
+  },
+  {
+   "measurement": "graphyard_metrics",
+   "tags": [
+    [
+     "k,=y z",
+     "v,=w x"
+    ]
+   ],
+   "value": "1.0",
+   "ts": "2026-10-21T08:15:30.123456+00:00",
+   "line": "graphyard_metrics,k\\,\\=y\\ z=v\\,\\=w\\ x value=1 1792570530123456000"
+  },
+  {
+   "measurement": "graphyard_metrics",
+   "tags": [
+    [
+     "t\tk",
+     "a\nb\rc"
+    ]
+   ],
+   "value": "1.0",
+   "ts": "2026-10-21T08:15:30.123456+00:00",
+   "line": "graphyard_metrics,t\\tk=a\\nb\\rc value=1 1792570530123456000"
+  },
+  {
+   "measurement": "graphyard_metrics",
+   "tags": [
+    [
+     "k\\x",
+     "v\\y"
+    ]
+   ],
+   "value": "1.0",
+   "ts": "2026-10-21T08:15:30.123456+00:00",
+   "line": "graphyard_metrics,k\\x=v\\y value=1 1792570530123456000"
+  },
+  {
+   "measurement": "graphyard_metrics",
+   "tags": [
+    [
+     "k",
+     "value\\"
+    ]
+   ],
+   "value": "1.0",
+   "ts": "2026-10-21T08:15:30.123456+00:00",
+   "line": "graphyard_metrics,k=value\\  value=1 1792570530123456000"
+  },
+  {
+   "measurement": "graphyard_metrics",
+   "tags": [
+    [
+     "k",
+     "\\"
+    ]
+   ],
+   "value": "1.0",
+   "ts": "2026-10-21T08:15:30.123456+00:00",
+   "line": "graphyard_metrics,k=\\  value=1 1792570530123456000"
+  },
+  {
+   "measurement": "graphyard_metrics",
+   "tags": [
+    [
+     "k",
+     "say \"hi\" it's"
+    ]
+   ],
+   "value": "1.0",
+   "ts": "2026-10-21T08:15:30.123456+00:00",
+   "line": "graphyard_metrics,k=say\\ \"hi\"\\ it's value=1 1792570530123456000"
+  },
+  {
+   "measurement": "graphyard_metrics",
+   "tags": [
+    [
+     "",
+     "v"
+    ],
+    [
+     "a",
+     "1"
+    ]
+   ],
+   "value": "1.0",
+   "ts": "2026-10-21T08:15:30.123456+00:00",
+   "line": "graphyard_metrics,a=1 value=1 1792570530123456000"
+  },
+  {
+   "measurement": "graphyard_metrics",
+   "tags": [
+    [
+     "a",
+     ""
+    ],
+    [
+     "b",
+     "1"
+    ]
+   ],
+   "value": "1.0",
+   "ts": "2026-10-21T08:15:30.123456+00:00",
+   "line": "graphyard_metrics,b=1 value=1 1792570530123456000"
+  },
+  {
+   "measurement": "graphyard_metrics",
+   "tags": [
+    [
+     "",
+     ""
+    ],
+    [
+     "a",
+     ""
+    ]
+   ],
+   "value": "1.0",
+   "ts": "2026-10-21T08:15:30.123456+00:00",
+   "line": "graphyard_metrics value=1 1792570530123456000"
+  },
+  {
+   "measurement": "graphyard_metrics",
+   "tags": [
+    [
+     "ort",
+     "K\u00fcche \ud83c\udf21"
+    ]
+   ],
+   "value": "1.0",
+   "ts": "2026-10-21T08:15:30.123456+00:00",
+   "line": "graphyard_metrics,ort=K\u00fcche\\ \ud83c\udf21 value=1 1792570530123456000"
+  },
+  {
+   "measurement": "graphyard_metrics",
+   "tags": [
+    [
+     "#k",
+     "#v"
+    ]
+   ],
+   "value": "1.0",
+   "ts": "2026-10-21T08:15:30.123456+00:00",
+   "line": "graphyard_metrics,#k=#v value=1 1792570530123456000"
+  },
+  {
+   "measurement": "graphyard_metrics",
+   "tags": [
+    [
+     "a",
+     "1"
+    ]
+   ],
+   "value": "1.0",
+   "ts": "2026-10-21T08:15:30.123456+00:00",
+   "line": "graphyard_metrics,a=1 value=1 1792570530123456000"
+  },
+  {
+   "measurement": "my metrics,x=1",
+   "tags": [
+    [
+     "a",
+     "1"
+    ]
+   ],
+   "value": "1.0",
+   "ts": "2026-10-21T08:15:30.123456+00:00",
+   "line": "my\\ metrics\\,x=1,a=1 value=1 1792570530123456000"
+  },
+  {
+   "measurement": "tab\there\nnew\rline",
+   "tags": [
+    [
+     "a",
+     "1"
+    ]
+   ],
+   "value": "1.0",
+   "ts": "2026-10-21T08:15:30.123456+00:00",
+   "line": "tab\\there\\nnew\\rline,a=1 value=1 1792570530123456000"
+  },
+  {
+   "measurement": "equals=kept",
+   "tags": [
+    [
+     "a",
+     "1"
+    ]
+   ],
+   "value": "1.0",
+   "ts": "2026-10-21T08:15:30.123456+00:00",
+   "line": "equals=kept,a=1 value=1 1792570530123456000"
+  },
+  {
+   "measurement": "back\\slash",
+   "tags": [
+    [
+     "a",
+     "1"
+    ]
+   ],
+   "value": "1.0",
+   "ts": "2026-10-21T08:15:30.123456+00:00",
+   "line": "back\\slash,a=1 value=1 1792570530123456000"
+  },
+  {
+   "measurement": "",
+   "tags": [
+    [
+     "a",
+     "1"
+    ]
+   ],
+   "value": "1.0",
+   "ts": "2026-10-21T08:15:30.123456+00:00",
+   "line": ",a=1 value=1 1792570530123456000"
+  },
+  {
+   "measurement": "\u00fcmlaut",
+   "tags": [
+    [
+     "a",
+     "1"
+    ]
+   ],
+   "value": "1.0",
+   "ts": "2026-10-21T08:15:30.123456+00:00",
+   "line": "\u00fcmlaut,a=1 value=1 1792570530123456000"
+  },
+  {
+   "measurement": "m",
+   "tags": [
+    [
+     "a",
+     "1"
+    ]
+   ],
+   "value": "21.0",
+   "ts": "2026-10-21T08:15:30.123456+00:00",
+   "line": "m,a=1 value=21 1792570530123456000"
+  },
+  {
+   "measurement": "m",
+   "tags": [
+    [
+     "a",
+     "1"
+    ]
+   ],
+   "value": "0.1",
+   "ts": "2026-10-21T08:15:30.123456+00:00",
+   "line": "m,a=1 value=0.1 1792570530123456000"
+  },
+  {
+   "measurement": "m",
+   "tags": [
+    [
+     "a",
+     "1"
+    ]
+   ],
+   "value": "0.3",
+   "ts": "2026-10-21T08:15:30.123456+00:00",
+   "line": "m,a=1 value=0.3 1792570530123456000"
+  },
+  {
+   "measurement": "m",
+   "tags": [
+    [
+     "a",
+     "1"
+    ]
+   ],
+   "value": "-0.0",
+   "ts": "2026-10-21T08:15:30.123456+00:00",
+   "line": "m,a=1 value=-0 1792570530123456000"
+  },
+  {
+   "measurement": "m",
+   "tags": [
+    [
+     "a",
+     "1"
+    ]
+   ],
+   "value": "0.0",
+   "ts": "2026-10-21T08:15:30.123456+00:00",
+   "line": "m,a=1 value=0 1792570530123456000"
+  },
+  {
+   "measurement": "m",
+   "tags": [
+    [
+     "a",
+     "1"
+    ]
+   ],
+   "value": "1.5",
+   "ts": "2026-10-21T08:15:30.123456+00:00",
+   "line": "m,a=1 value=1.5 1792570530123456000"
+  },
+  {
+   "measurement": "m",
+   "tags": [
+    [
+     "a",
+     "1"
+    ]
+   ],
+   "value": "100.0",
+   "ts": "2026-10-21T08:15:30.123456+00:00",
+   "line": "m,a=1 value=100 1792570530123456000"
+  },
+  {
+   "measurement": "m",
+   "tags": [
+    [
+     "a",
+     "1"
+    ]
+   ],
+   "value": "123456789.0",
+   "ts": "2026-10-21T08:15:30.123456+00:00",
+   "line": "m,a=1 value=123456789 1792570530123456000"
+  },
+  {
+   "measurement": "m",
+   "tags": [
+    [
+     "a",
+     "1"
+    ]
+   ],
+   "value": "1000000000000000.0",
+   "ts": "2026-10-21T08:15:30.123456+00:00",
+   "line": "m,a=1 value=1000000000000000 1792570530123456000"
+  },
+  {
+   "measurement": "m",
+   "tags": [
+    [
+     "a",
+     "1"
+    ]
+   ],
+   "value": "1e+16",
+   "ts": "2026-10-21T08:15:30.123456+00:00",
+   "line": "m,a=1 value=1e+16 1792570530123456000"
+  },
+  {
+   "measurement": "m",
+   "tags": [
+    [
+     "a",
+     "1"
+    ]
+   ],
+   "value": "1.5e-07",
+   "ts": "2026-10-21T08:15:30.123456+00:00",
+   "line": "m,a=1 value=1.5e-07 1792570530123456000"
+  },
+  {
+   "measurement": "m",
+   "tags": [
+    [
+     "a",
+     "1"
+    ]
+   ],
+   "value": "1e+22",
+   "ts": "2026-10-21T08:15:30.123456+00:00",
+   "line": "m,a=1 value=1e+22 1792570530123456000"
+  },
+  {
+   "measurement": "m",
+   "tags": [
+    [
+     "a",
+     "1"
+    ]
+   ],
+   "value": "5e-324",
+   "ts": "2026-10-21T08:15:30.123456+00:00",
+   "line": "m,a=1 value=5e-324 1792570530123456000"
+  },
+  {
+   "measurement": "m",
+   "tags": [
+    [
+     "a",
+     "1"
+    ]
+   ],
+   "value": "1.7976931348623157e+308",
+   "ts": "2026-10-21T08:15:30.123456+00:00",
+   "line": "m,a=1 value=1.7976931348623157e+308 1792570530123456000"
+  },
+  {
+   "measurement": "m",
+   "tags": [
+    [
+     "a",
+     "1"
+    ]
+   ],
+   "value": "-2.5",
+   "ts": "2026-10-21T08:15:30.123456+00:00",
+   "line": "m,a=1 value=-2.5 1792570530123456000"
+  },
+  {
+   "measurement": "m",
+   "tags": [
+    [
+     "a",
+     "1"
+    ]
+   ],
+   "value": "1e-05",
+   "ts": "2026-10-21T08:15:30.123456+00:00",
+   "line": "m,a=1 value=1e-05 1792570530123456000"
+  },
+  {
+   "measurement": "m",
+   "tags": [
+    [
+     "a",
+     "1"
+    ]
+   ],
+   "value": "0.0001",
+   "ts": "2026-10-21T08:15:30.123456+00:00",
+   "line": "m,a=1 value=0.0001 1792570530123456000"
+  },
+  {
+   "measurement": "m",
+   "tags": [
+    [
+     "a",
+     "1"
+    ]
+   ],
+   "value": "1.2345678901234568e+16",
+   "ts": "2026-10-21T08:15:30.123456+00:00",
+   "line": "m,a=1 value=1.2345678901234568e+16 1792570530123456000"
+  },
+  {
+   "measurement": "m",
+   "tags": [
+    [
+     "a",
+     "1"
+    ]
+   ],
+   "value": "3.141592653589793",
+   "ts": "2026-10-21T08:15:30.123456+00:00",
+   "line": "m,a=1 value=3.141592653589793 1792570530123456000"
+  },
+  {
+   "measurement": "m",
+   "tags": [
+    [
+     "a",
+     "1"
+    ]
+   ],
+   "value": "nan",
+   "ts": "2026-10-21T08:15:30.123456+00:00",
+   "line": ""
+  },
+  {
+   "measurement": "m",
+   "tags": [
+    [
+     "a",
+     "1"
+    ]
+   ],
+   "value": "inf",
+   "ts": "2026-10-21T08:15:30.123456+00:00",
+   "line": ""
+  },
+  {
+   "measurement": "m",
+   "tags": [
+    [
+     "a",
+     "1"
+    ]
+   ],
+   "value": "2.0",
+   "ts": "2026-10-21T08:15:30.123456+00:00",
+   "line": "m,a=1 value=2 1792570530123456000"
+  },
+  {
+   "measurement": "m",
+   "tags": [
+    [
+     "a",
+     "1"
+    ]
+   ],
+   "value": "2.0",
+   "ts": "1970-01-01T00:00:00+00:00",
+   "line": "m,a=1 value=2 0"
+  },
+  {
+   "measurement": "m",
+   "tags": [
+    [
+     "a",
+     "1"
+    ]
+   ],
+   "value": "2.0",
+   "ts": "1969-12-31T23:59:59.999999+00:00",
+   "line": "m,a=1 value=2 -1000"
+  },
+  {
+   "measurement": "m",
+   "tags": [
+    [
+     "a",
+     "1"
+    ]
+   ],
+   "value": "2.0",
+   "ts": "0001-01-01T00:00:00+00:00",
+   "line": "m,a=1 value=2 -62135596800000000000"
+  },
+  {
+   "measurement": "m",
+   "tags": [
+    [
+     "a",
+     "1"
+    ]
+   ],
+   "value": "2.0",
+   "ts": "9999-12-31T23:59:59.999999+00:00",
+   "line": "m,a=1 value=2 253402300799999999000"
+  },
+  {
+   "measurement": "m",
+   "tags": [
+    [
+     "a",
+     "1"
+    ]
+   ],
+   "value": "2.0",
+   "ts": "2262-04-11T23:47:16.854776+00:00",
+   "line": "m,a=1 value=2 9223372036854776000"
+  }
+ ],
+ "writes": [
+  {
+   "name": "empty list",
+   "env": {
+    "INFLUX_URL": "{server}",
+    "INFLUX_TOKEN": "t0k",
+    "INFLUX_ORG": "graphyard"
+   },
+   "respond": {},
+   "points": [],
+   "result": {
+    "written": 0
+   },
+   "requests": [],
+   "logs": []
+  },
+  {
+   "name": "single host point",
+   "env": {
+    "INFLUX_URL": "{server}",
+    "INFLUX_TOKEN": "t0k",
+    "INFLUX_ORG": "graphyard"
+   },
+   "respond": {},
+   "points": [
+    {
+     "ts": "2026-10-21T08:15:30.123456+00:00",
+     "metric": "host.cpu_usage",
+     "value": "0.5",
+     "subject_type": "host",
+     "subject_id": "macmini",
+     "source_system": "vector",
+     "collector_service": "vector",
+     "collector_host": "macmini",
+     "source_instance": "vector-macmini",
+     "source_entity_id": null,
+     "host": null,
+     "service": null,
+     "tags": null
+    }
+   ],
+   "result": {
+    "written": 1
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "path": "/api/v2/write?org=graphyard&bucket=graphyard&precision=ns",
+     "headers": [
+      [
+       "Accept-Encoding",
+       "identity"
+      ],
+      [
+       "Content-Length",
+       "219"
+      ],
+      [
+       "Content-Type",
+       "text/plain"
+      ],
+      [
+       "Accept",
+       "application/json"
+      ],
+      [
+       "Authorization",
+       "Token t0k"
+      ],
+      [
+       "User-Agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "graphyard_metrics,collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,subject_id=macmini,subject_type=host value=0.5 1792570530123456000"
+    }
+   ],
+   "logs": []
+  },
+  {
+   "name": "batch skips invalid point (test_write_points_skips_invalid_points_in_batch)",
+   "env": {
+    "INFLUX_URL": "{server}",
+    "INFLUX_TOKEN": "t0k",
+    "INFLUX_ORG": "graphyard"
+   },
+   "respond": {},
+   "points": [
+    {
+     "ts": "2026-10-21T08:15:30.123456+00:00",
+     "metric": "host.cpu_usage",
+     "value": "0.3",
+     "subject_type": "host",
+     "subject_id": "macmini",
+     "source_system": "vector",
+     "collector_service": "vector",
+     "collector_host": "macmini",
+     "source_instance": "vector-macmini",
+     "source_entity_id": null,
+     "host": "macmini",
+     "service": null,
+     "tags": null
+    },
+    {
+     "ts": "2026-10-21T08:15:30.123456+00:00",
+     "metric": "host.cpu_usage",
+     "value": "0.5",
+     "subject_type": "not_a_subject_type",
+     "subject_id": "macmini",
+     "source_system": "vector",
+     "collector_service": "vector",
+     "collector_host": "macmini",
+     "source_instance": "vector-macmini",
+     "source_entity_id": null,
+     "host": null,
+     "service": null,
+     "tags": null
+    }
+   ],
+   "result": {
+    "written": 1
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "path": "/api/v2/write?org=graphyard&bucket=graphyard&precision=ns",
+     "headers": [
+      [
+       "Accept-Encoding",
+       "identity"
+      ],
+      [
+       "Content-Length",
+       "219"
+      ],
+      [
+       "Content-Type",
+       "text/plain"
+      ],
+      [
+       "Accept",
+       "application/json"
+      ],
+      [
+       "Authorization",
+       "Token t0k"
+      ],
+      [
+       "User-Agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "graphyard_metrics,collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,subject_id=macmini,subject_type=host value=0.3 1792570530123456000"
+    }
+   ],
+   "logs": [
+    {
+     "level": "ERROR",
+     "message": "Metric point validation failed metric=host.cpu_usage subject_type=not_a_subject_type subject_id=macmini: Unknown subject_type 'not_a_subject_type'; expected one of ['environment_sensor', 'host', 'network_device', 'service']"
+    },
+    {
+     "level": "WARNING",
+     "message": "metrics_write_rejected category=normalization rejected_points=1 written_points=1 total_points=2"
+    }
+   ]
+  },
+  {
+   "name": "non-finite point not counted (test_write_points_does_not_count_non_finite_points)",
+   "env": {
+    "INFLUX_URL": "{server}",
+    "INFLUX_TOKEN": "t0k",
+    "INFLUX_ORG": "graphyard"
+   },
+   "respond": {},
+   "points": [
+    {
+     "ts": "2026-10-21T08:15:30.123456+00:00",
+     "metric": "host.cpu_usage",
+     "value": "0.5",
+     "subject_type": "host",
+     "subject_id": "macmini",
+     "source_system": "vector",
+     "collector_service": "vector",
+     "collector_host": "macmini",
+     "source_instance": "vector-macmini",
+     "source_entity_id": null,
+     "host": null,
+     "service": null,
+     "tags": null
+    },
+    {
+     "ts": "2026-10-21T08:15:30.123456+00:00",
+     "metric": "host.cpu_usage",
+     "value": "nan",
+     "subject_type": "host",
+     "subject_id": "macmini",
+     "source_system": "vector",
+     "collector_service": "vector",
+     "collector_host": "macmini",
+     "source_instance": "vector-macmini",
+     "source_entity_id": null,
+     "host": null,
+     "service": null,
+     "tags": null
+    }
+   ],
+   "result": {
+    "written": 1
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "path": "/api/v2/write?org=graphyard&bucket=graphyard&precision=ns",
+     "headers": [
+      [
+       "Accept-Encoding",
+       "identity"
+      ],
+      [
+       "Content-Length",
+       "219"
+      ],
+      [
+       "Content-Type",
+       "text/plain"
+      ],
+      [
+       "Accept",
+       "application/json"
+      ],
+      [
+       "Authorization",
+       "Token t0k"
+      ],
+      [
+       "User-Agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "graphyard_metrics,collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,subject_id=macmini,subject_type=host value=0.5 1792570530123456000"
+    }
+   ],
+   "logs": [
+    {
+     "level": "ERROR",
+     "message": "Metric point validation failed metric=host.cpu_usage subject_type=host subject_id=macmini: metric value must be finite, got nan"
+    },
+    {
+     "level": "WARNING",
+     "message": "metrics_write_rejected category=normalization rejected_points=1 written_points=1 total_points=2"
+    }
+   ]
+  },
+  {
+   "name": "all invalid: no request and no configuration needed",
+   "env": {
+    "INFLUX_URL": ""
+   },
+   "respond": {},
+   "points": [
+    {
+     "ts": "2026-10-21T08:15:30.123456+00:00",
+     "metric": "host.cpu_usage",
+     "value": "0.5",
+     "subject_type": "not_a_subject_type",
+     "subject_id": "macmini",
+     "source_system": "vector",
+     "collector_service": "vector",
+     "collector_host": "macmini",
+     "source_instance": "vector-macmini",
+     "source_entity_id": null,
+     "host": null,
+     "service": null,
+     "tags": null
+    },
+    {
+     "ts": "2026-10-21T08:15:30.123456+00:00",
+     "metric": " ",
+     "value": "0.5",
+     "subject_type": "host",
+     "subject_id": "macmini",
+     "source_system": "vector",
+     "collector_service": "vector",
+     "collector_host": "macmini",
+     "source_instance": "vector-macmini",
+     "source_entity_id": null,
+     "host": null,
+     "service": null,
+     "tags": null
+    },
+    {
+     "ts": "2026-10-21T08:15:30.123456+00:00",
+     "metric": "host.cpu_usage",
+     "value": "inf",
+     "subject_type": "host",
+     "subject_id": "macmini",
+     "source_system": "vector",
+     "collector_service": "vector",
+     "collector_host": "macmini",
+     "source_instance": "vector-macmini",
+     "source_entity_id": null,
+     "host": null,
+     "service": null,
+     "tags": null
+    }
+   ],
+   "result": {
+    "written": 0
+   },
+   "requests": [],
+   "logs": [
+    {
+     "level": "ERROR",
+     "message": "Metric point validation failed metric=host.cpu_usage subject_type=not_a_subject_type subject_id=macmini: Unknown subject_type 'not_a_subject_type'; expected one of ['environment_sensor', 'host', 'network_device', 'service']"
+    },
+    {
+     "level": "ERROR",
+     "message": "Metric point validation failed metric=  subject_type=host subject_id=macmini: metric is required"
+    },
+    {
+     "level": "ERROR",
+     "message": "Metric point validation failed metric=host.cpu_usage subject_type=host subject_id=macmini: metric value must be finite, got inf"
+    },
+    {
+     "level": "WARNING",
+     "message": "metrics_write_rejected category=normalization rejected_points=3 written_points=0 total_points=3"
+    }
+   ]
+  },
+  {
+   "name": "validation log escapes newlines (D-10)",
+   "env": {
+    "INFLUX_URL": "{server}",
+    "INFLUX_TOKEN": "t0k",
+    "INFLUX_ORG": "graphyard"
+   },
+   "respond": {},
+   "points": [
+    {
+     "ts": "2026-10-21T08:15:30.123456+00:00",
+     "metric": "first\nforged",
+     "value": "0.5",
+     "subject_type": "bad\r",
+     "subject_id": "x\ny",
+     "source_system": "vector",
+     "collector_service": "vector",
+     "collector_host": "macmini",
+     "source_instance": "vector-macmini",
+     "source_entity_id": null,
+     "host": null,
+     "service": null,
+     "tags": null
+    },
+    {
+     "ts": "2026-10-21T08:15:30.123456+00:00",
+     "metric": "host.cpu_usage",
+     "value": "0.5",
+     "subject_type": "host",
+     "subject_id": "macmini",
+     "source_system": "vector",
+     "collector_service": "vector",
+     "collector_host": "macmini",
+     "source_instance": "vector-macmini",
+     "source_entity_id": null,
+     "host": null,
+     "service": null,
+     "tags": null
+    }
+   ],
+   "result": {
+    "written": 1
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "path": "/api/v2/write?org=graphyard&bucket=graphyard&precision=ns",
+     "headers": [
+      [
+       "Accept-Encoding",
+       "identity"
+      ],
+      [
+       "Content-Length",
+       "219"
+      ],
+      [
+       "Content-Type",
+       "text/plain"
+      ],
+      [
+       "Accept",
+       "application/json"
+      ],
+      [
+       "Authorization",
+       "Token t0k"
+      ],
+      [
+       "User-Agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "graphyard_metrics,collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,subject_id=macmini,subject_type=host value=0.5 1792570530123456000"
+    }
+   ],
+   "logs": [
+    {
+     "level": "ERROR",
+     "message": "Metric point validation failed metric=first\nforged subject_type=bad\r subject_id=x\ny: Unknown subject_type 'bad\\r'; expected one of ['environment_sensor', 'host', 'network_device', 'service']",
+     "d10_message": "Metric point validation failed metric=first\\nforged subject_type=bad\\r subject_id=x\\ny: Unknown subject_type 'bad\\r'; expected one of ['environment_sensor', 'host', 'network_device', 'service']"
+    },
+    {
+     "level": "WARNING",
+     "message": "metrics_write_rejected category=normalization rejected_points=1 written_points=1 total_points=2"
+    }
+   ]
+  },
+  {
+   "name": "several points in order",
+   "env": {
+    "INFLUX_URL": "{server}",
+    "INFLUX_TOKEN": "t0k",
+    "INFLUX_ORG": "graphyard"
+   },
+   "respond": {},
+   "points": [
+    {
+     "ts": "2026-10-21T08:15:30.123456+00:00",
+     "metric": "host.cpu_usage",
+     "value": "0.5",
+     "subject_type": "host",
+     "subject_id": "macmini",
+     "source_system": "vector",
+     "collector_service": "vector",
+     "collector_host": "macmini",
+     "source_instance": "vector-macmini",
+     "source_entity_id": null,
+     "host": null,
+     "service": null,
+     "tags": null
+    },
+    {
+     "ts": "2026-10-21T08:15:30.123456+00:00",
+     "metric": "ha.sensor.office_temperature",
+     "value": "22.4",
+     "subject_type": "environment_sensor",
+     "subject_id": "office_temperature",
+     "source_system": "homeassistant",
+     "collector_service": "graphyard-agent",
+     "collector_host": "macmini",
+     "source_instance": "ha-main",
+     "source_entity_id": "sensor.office_temperature",
+     "host": null,
+     "service": null,
+     "tags": [
+      [
+       "entity_id",
+       "sensor.office_temperature"
+      ],
+      [
+       "unit",
+       "\u00b0C"
+      ]
+     ]
+    },
+    {
+     "ts": "2026-10-21T08:15:30.123456+00:00",
+     "metric": "host.load",
+     "value": "1.0",
+     "subject_type": "host",
+     "subject_id": "macmini",
+     "source_system": "vector",
+     "collector_service": "vector",
+     "collector_host": "macmini",
+     "source_instance": "vector-macmini",
+     "source_entity_id": null,
+     "host": null,
+     "service": null,
+     "tags": null
+    }
+   ],
+   "result": {
+    "written": 3
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "path": "/api/v2/write?org=graphyard&bucket=graphyard&precision=ns",
+     "headers": [
+      [
+       "Accept-Encoding",
+       "identity"
+      ],
+      [
+       "Content-Length",
+       "776"
+      ],
+      [
+       "Content-Type",
+       "text/plain"
+      ],
+      [
+       "Accept",
+       "application/json"
+      ],
+      [
+       "Authorization",
+       "Token t0k"
+      ],
+      [
+       "User-Agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "graphyard_metrics,collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,subject_id=macmini,subject_type=host value=0.5 1792570530123456000\ngraphyard_metrics,collector_host=macmini,collector_service=graphyard-agent,entity_id=sensor.office_temperature,metric=ha.sensor.office_temperature,source_entity_id=sensor.office_temperature,source_instance=ha-main,source_system=homeassistant,subject_id=office_temperature,subject_type=environment_sensor,unit=\u00b0C value=22.4 1792570530123456000\ngraphyard_metrics,collector_host=macmini,collector_service=vector,host=macmini,metric=host.load,source_instance=vector-macmini,source_system=vector,subject_id=macmini,subject_type=host value=1 1792570530123456000"
+    }
+   ],
+   "logs": []
+  },
+  {
+   "name": "dimension tags",
+   "env": {
+    "INFLUX_URL": "{server}",
+    "INFLUX_TOKEN": "t0k",
+    "INFLUX_ORG": "graphyard"
+   },
+   "respond": {},
+   "points": [
+    {
+     "ts": "2026-10-21T08:15:30.123456+00:00",
+     "metric": "host.cpu_usage",
+     "value": "0.5",
+     "subject_type": "service",
+     "subject_id": "Page Probe",
+     "source_system": "vector",
+     "collector_service": "vector",
+     "collector_host": "macmini",
+     "source_instance": "vector-macmini",
+     "source_entity_id": " https://example.com/a b?x=1,y ",
+     "host": "ignored",
+     "service": " Web, App ",
+     "tags": null
+    },
+    {
+     "ts": "2026-10-21T08:15:30.123456+00:00",
+     "metric": "host.cpu_usage",
+     "value": "0.5",
+     "subject_type": "host",
+     "subject_id": "macmini",
+     "source_system": "vector",
+     "collector_service": "vector",
+     "collector_host": "macmini",
+     "source_instance": "vector-macmini",
+     "source_entity_id": "",
+     "host": "MacMini",
+     "service": "",
+     "tags": null
+    }
+   ],
+   "result": {
+    "written": 2
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "path": "/api/v2/write?org=graphyard&bucket=graphyard&precision=ns",
+     "headers": [
+      [
+       "Accept-Encoding",
+       "identity"
+      ],
+      [
+       "Content-Length",
+       "501"
+      ],
+      [
+       "Content-Type",
+       "text/plain"
+      ],
+      [
+       "Accept",
+       "application/json"
+      ],
+      [
+       "Authorization",
+       "Token t0k"
+      ],
+      [
+       "User-Agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "graphyard_metrics,collector_host=macmini,collector_service=vector,metric=host.cpu_usage,service=Web\\,\\ App,source_entity_id=https://example.com/a\\ b?x\\=1\\,y,source_instance=vector-macmini,source_system=vector,subject_id=page_probe,subject_type=service value=0.5 1792570530123456000\ngraphyard_metrics,collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,subject_id=macmini,subject_type=host value=0.5 1792570530123456000"
+    }
+   ],
+   "logs": []
+  },
+  {
+   "name": "custom tags: reserved keys ignored, escaping, empty dropped",
+   "env": {
+    "INFLUX_URL": "{server}",
+    "INFLUX_TOKEN": "t0k",
+    "INFLUX_ORG": "graphyard"
+   },
+   "respond": {},
+   "points": [
+    {
+     "ts": "2026-10-21T08:15:30.123456+00:00",
+     "metric": "host.cpu_usage",
+     "value": "0.5",
+     "subject_type": "host",
+     "subject_id": "macmini",
+     "source_system": "vector",
+     "collector_service": "vector",
+     "collector_host": "macmini",
+     "source_instance": "vector-macmini",
+     "source_entity_id": null,
+     "host": null,
+     "service": null,
+     "tags": [
+      [
+       "spec_name",
+       "My Spec, v=2"
+      ],
+      [
+       "host",
+       "other"
+      ],
+      [
+       "metric",
+       "x"
+      ],
+      [
+       "",
+       "empty key"
+      ],
+      [
+       "empty",
+       ""
+      ],
+      [
+       "trailing",
+       "dir\\"
+      ],
+      [
+       "Zebra",
+       "1"
+      ],
+      [
+       "tab\tkey",
+       "new\nline"
+      ],
+      [
+       "collector_host",
+       "x"
+      ],
+      [
+       "subject_id",
+       "y"
+      ]
+     ]
+    }
+   ],
+   "result": {
+    "written": 1
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "path": "/api/v2/write?org=graphyard&bucket=graphyard&precision=ns",
+     "headers": [
+      [
+       "Accept-Encoding",
+       "identity"
+      ],
+      [
+       "Content-Length",
+       "288"
+      ],
+      [
+       "Content-Type",
+       "text/plain"
+      ],
+      [
+       "Accept",
+       "application/json"
+      ],
+      [
+       "Authorization",
+       "Token t0k"
+      ],
+      [
+       "User-Agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "graphyard_metrics,Zebra=1,collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,spec_name=My\\ Spec\\,\\ v\\=2,subject_id=macmini,subject_type=host,tab\\tkey=new\\nline,trailing=dir\\  value=0.5 1792570530123456000"
+    }
+   ],
+   "logs": [
+    {
+     "level": "WARNING",
+     "message": "Ignoring custom tag override for reserved key host"
+    },
+    {
+     "level": "WARNING",
+     "message": "Ignoring custom tag override for reserved key metric"
+    },
+    {
+     "level": "WARNING",
+     "message": "Ignoring custom tag override for reserved key collector_host"
+    },
+    {
+     "level": "WARNING",
+     "message": "Ignoring custom tag override for reserved key subject_id"
+    }
+   ]
+  },
+  {
+   "name": "reserved key warnings follow point order",
+   "env": {
+    "INFLUX_URL": "{server}",
+    "INFLUX_TOKEN": "t0k",
+    "INFLUX_ORG": "graphyard"
+   },
+   "respond": {},
+   "points": [
+    {
+     "ts": "2026-10-21T08:15:30.123456+00:00",
+     "metric": "host.cpu_usage",
+     "value": "0.5",
+     "subject_type": "host",
+     "subject_id": "macmini",
+     "source_system": "vector",
+     "collector_service": "vector",
+     "collector_host": "macmini",
+     "source_instance": "vector-macmini",
+     "source_entity_id": null,
+     "host": null,
+     "service": null,
+     "tags": [
+      [
+       "service",
+       "a"
+      ]
+     ]
+    },
+    {
+     "ts": "2026-10-21T08:15:30.123456+00:00",
+     "metric": "host.cpu_usage",
+     "value": "0.5",
+     "subject_type": "not_a_subject_type",
+     "subject_id": "macmini",
+     "source_system": "vector",
+     "collector_service": "vector",
+     "collector_host": "macmini",
+     "source_instance": "vector-macmini",
+     "source_entity_id": null,
+     "host": null,
+     "service": null,
+     "tags": null
+    },
+    {
+     "ts": "2026-10-21T08:15:30.123456+00:00",
+     "metric": "host.cpu_usage",
+     "value": "0.5",
+     "subject_type": "host",
+     "subject_id": "macmini",
+     "source_system": "vector",
+     "collector_service": "vector",
+     "collector_host": "macmini",
+     "source_instance": "vector-macmini",
+     "source_entity_id": null,
+     "host": null,
+     "service": null,
+     "tags": [
+      [
+       "source_system",
+       "b"
+      ],
+      [
+       "service",
+       "c"
+      ]
+     ]
+    }
+   ],
+   "result": {
+    "written": 2
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "path": "/api/v2/write?org=graphyard&bucket=graphyard&precision=ns",
+     "headers": [
+      [
+       "Accept-Encoding",
+       "identity"
+      ],
+      [
+       "Content-Length",
+       "439"
+      ],
+      [
+       "Content-Type",
+       "text/plain"
+      ],
+      [
+       "Accept",
+       "application/json"
+      ],
+      [
+       "Authorization",
+       "Token t0k"
+      ],
+      [
+       "User-Agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "graphyard_metrics,collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,subject_id=macmini,subject_type=host value=0.5 1792570530123456000\ngraphyard_metrics,collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,subject_id=macmini,subject_type=host value=0.5 1792570530123456000"
+    }
+   ],
+   "logs": [
+    {
+     "level": "WARNING",
+     "message": "Ignoring custom tag override for reserved key service"
+    },
+    {
+     "level": "ERROR",
+     "message": "Metric point validation failed metric=host.cpu_usage subject_type=not_a_subject_type subject_id=macmini: Unknown subject_type 'not_a_subject_type'; expected one of ['environment_sensor', 'host', 'network_device', 'service']"
+    },
+    {
+     "level": "WARNING",
+     "message": "Ignoring custom tag override for reserved key source_system"
+    },
+    {
+     "level": "WARNING",
+     "message": "Ignoring custom tag override for reserved key service"
+    },
+    {
+     "level": "WARNING",
+     "message": "metrics_write_rejected category=normalization rejected_points=1 written_points=2 total_points=3"
+    }
+   ]
+  },
+  {
+   "name": "float rendering",
+   "env": {
+    "INFLUX_URL": "{server}",
+    "INFLUX_TOKEN": "t0k",
+    "INFLUX_ORG": "graphyard"
+   },
+   "respond": {},
+   "points": [
+    {
+     "ts": "2026-10-21T08:15:30.123456+00:00",
+     "metric": "host.cpu_usage",
+     "value": "21.0",
+     "subject_type": "host",
+     "subject_id": "macmini",
+     "source_system": "vector",
+     "collector_service": "vector",
+     "collector_host": "macmini",
+     "source_instance": "vector-macmini",
+     "source_entity_id": null,
+     "host": null,
+     "service": null,
+     "tags": null
+    },
+    {
+     "ts": "2026-10-21T08:15:30.123456+00:00",
+     "metric": "host.cpu_usage",
+     "value": "1e+16",
+     "subject_type": "host",
+     "subject_id": "macmini",
+     "source_system": "vector",
+     "collector_service": "vector",
+     "collector_host": "macmini",
+     "source_instance": "vector-macmini",
+     "source_entity_id": null,
+     "host": null,
+     "service": null,
+     "tags": null
+    },
+    {
+     "ts": "2026-10-21T08:15:30.123456+00:00",
+     "metric": "host.cpu_usage",
+     "value": "-0.0",
+     "subject_type": "host",
+     "subject_id": "macmini",
+     "source_system": "vector",
+     "collector_service": "vector",
+     "collector_host": "macmini",
+     "source_instance": "vector-macmini",
+     "source_entity_id": null,
+     "host": null,
+     "service": null,
+     "tags": null
+    },
+    {
+     "ts": "2026-10-21T08:15:30.123456+00:00",
+     "metric": "host.cpu_usage",
+     "value": "1.5e-07",
+     "subject_type": "host",
+     "subject_id": "macmini",
+     "source_system": "vector",
+     "collector_service": "vector",
+     "collector_host": "macmini",
+     "source_instance": "vector-macmini",
+     "source_entity_id": null,
+     "host": null,
+     "service": null,
+     "tags": null
+    },
+    {
+     "ts": "2026-10-21T08:15:30.123456+00:00",
+     "metric": "host.cpu_usage",
+     "value": "123456789.0",
+     "subject_type": "host",
+     "subject_id": "macmini",
+     "source_system": "vector",
+     "collector_service": "vector",
+     "collector_host": "macmini",
+     "source_instance": "vector-macmini",
+     "source_entity_id": null,
+     "host": null,
+     "service": null,
+     "tags": null
+    },
+    {
+     "ts": "2026-10-21T08:15:30.123456+00:00",
+     "metric": "host.cpu_usage",
+     "value": "5e-324",
+     "subject_type": "host",
+     "subject_id": "macmini",
+     "source_system": "vector",
+     "collector_service": "vector",
+     "collector_host": "macmini",
+     "source_instance": "vector-macmini",
+     "source_entity_id": null,
+     "host": null,
+     "service": null,
+     "tags": null
+    }
+   ],
+   "result": {
+    "written": 6
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "path": "/api/v2/write?org=graphyard&bucket=graphyard&precision=ns",
+     "headers": [
+      [
+       "Accept-Encoding",
+       "identity"
+      ],
+      [
+       "Content-Length",
+       "1332"
+      ],
+      [
+       "Content-Type",
+       "text/plain"
+      ],
+      [
+       "Accept",
+       "application/json"
+      ],
+      [
+       "Authorization",
+       "Token t0k"
+      ],
+      [
+       "User-Agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "graphyard_metrics,collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,subject_id=macmini,subject_type=host value=21 1792570530123456000\ngraphyard_metrics,collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,subject_id=macmini,subject_type=host value=1e+16 1792570530123456000\ngraphyard_metrics,collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,subject_id=macmini,subject_type=host value=-0 1792570530123456000\ngraphyard_metrics,collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,subject_id=macmini,subject_type=host value=1.5e-07 1792570530123456000\ngraphyard_metrics,collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,subject_id=macmini,subject_type=host value=123456789 1792570530123456000\ngraphyard_metrics,collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,subject_id=macmini,subject_type=host value=5e-324 1792570530123456000"
+    }
+   ],
+   "logs": []
+  },
+  {
+   "name": "timestamps",
+   "env": {
+    "INFLUX_URL": "{server}",
+    "INFLUX_TOKEN": "t0k",
+    "INFLUX_ORG": "graphyard"
+   },
+   "respond": {},
+   "points": [
+    {
+     "ts": "1969-12-31T23:59:59.999999+00:00",
+     "metric": "host.cpu_usage",
+     "value": "0.5",
+     "subject_type": "host",
+     "subject_id": "macmini",
+     "source_system": "vector",
+     "collector_service": "vector",
+     "collector_host": "macmini",
+     "source_instance": "vector-macmini",
+     "source_entity_id": null,
+     "host": null,
+     "service": null,
+     "tags": null
+    },
+    {
+     "ts": "9999-12-31T23:59:59.999999+00:00",
+     "metric": "host.cpu_usage",
+     "value": "0.5",
+     "subject_type": "host",
+     "subject_id": "macmini",
+     "source_system": "vector",
+     "collector_service": "vector",
+     "collector_host": "macmini",
+     "source_instance": "vector-macmini",
+     "source_entity_id": null,
+     "host": null,
+     "service": null,
+     "tags": null
+    },
+    {
+     "ts": "0001-01-01T00:00:00+00:00",
+     "metric": "host.cpu_usage",
+     "value": "0.5",
+     "subject_type": "host",
+     "subject_id": "macmini",
+     "source_system": "vector",
+     "collector_service": "vector",
+     "collector_host": "macmini",
+     "source_instance": "vector-macmini",
+     "source_entity_id": null,
+     "host": null,
+     "service": null,
+     "tags": null
+    }
+   ],
+   "result": {
+    "written": 3
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "path": "/api/v2/write?org=graphyard&bucket=graphyard&precision=ns",
+     "headers": [
+      [
+       "Accept-Encoding",
+       "identity"
+      ],
+      [
+       "Content-Length",
+       "649"
+      ],
+      [
+       "Content-Type",
+       "text/plain"
+      ],
+      [
+       "Accept",
+       "application/json"
+      ],
+      [
+       "Authorization",
+       "Token t0k"
+      ],
+      [
+       "User-Agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "graphyard_metrics,collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,subject_id=macmini,subject_type=host value=0.5 -1000\ngraphyard_metrics,collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,subject_id=macmini,subject_type=host value=0.5 253402300799999999000\ngraphyard_metrics,collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,subject_id=macmini,subject_type=host value=0.5 -62135596800000000000"
+    }
+   ],
+   "logs": []
+  },
+  {
+   "name": "measurement escaping",
+   "env": {
+    "INFLUX_URL": "{server}",
+    "INFLUX_TOKEN": "t0k",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_MEASUREMENT": "my metrics,x=1\tz"
+   },
+   "respond": {},
+   "points": [
+    {
+     "ts": "2026-10-21T08:15:30.123456+00:00",
+     "metric": "host.cpu_usage",
+     "value": "0.5",
+     "subject_type": "host",
+     "subject_id": "macmini",
+     "source_system": "vector",
+     "collector_service": "vector",
+     "collector_host": "macmini",
+     "source_instance": "vector-macmini",
+     "source_entity_id": null,
+     "host": null,
+     "service": null,
+     "tags": null
+    }
+   ],
+   "result": {
+    "written": 1
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "path": "/api/v2/write?org=graphyard&bucket=graphyard&precision=ns",
+     "headers": [
+      [
+       "Accept-Encoding",
+       "identity"
+      ],
+      [
+       "Content-Length",
+       "221"
+      ],
+      [
+       "Content-Type",
+       "text/plain"
+      ],
+      [
+       "Accept",
+       "application/json"
+      ],
+      [
+       "Authorization",
+       "Token t0k"
+      ],
+      [
+       "User-Agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "my\\ metrics\\,x=1\\tz,collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,subject_id=macmini,subject_type=host value=0.5 1792570530123456000"
+    }
+   ],
+   "logs": []
+  },
+  {
+   "name": "measurement starting with hash",
+   "env": {
+    "INFLUX_URL": "{server}",
+    "INFLUX_TOKEN": "t0k",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_MEASUREMENT": "#m"
+   },
+   "respond": {},
+   "points": [
+    {
+     "ts": "2026-10-21T08:15:30.123456+00:00",
+     "metric": "host.cpu_usage",
+     "value": "0.5",
+     "subject_type": "host",
+     "subject_id": "macmini",
+     "source_system": "vector",
+     "collector_service": "vector",
+     "collector_host": "macmini",
+     "source_instance": "vector-macmini",
+     "source_entity_id": null,
+     "host": null,
+     "service": null,
+     "tags": null
+    }
+   ],
+   "result": {
+    "written": 1
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "path": "/api/v2/write?org=graphyard&bucket=graphyard&precision=ns",
+     "headers": [
+      [
+       "Accept-Encoding",
+       "identity"
+      ],
+      [
+       "Content-Length",
+       "204"
+      ],
+      [
+       "Content-Type",
+       "text/plain"
+      ],
+      [
+       "Accept",
+       "application/json"
+      ],
+      [
+       "Authorization",
+       "Token t0k"
+      ],
+      [
+       "User-Agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "#m,collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,subject_id=macmini,subject_type=host value=0.5 1792570530123456000"
+    }
+   ],
+   "logs": []
+  },
+  {
+   "name": "empty measurement",
+   "env": {
+    "INFLUX_URL": "{server}",
+    "INFLUX_TOKEN": "t0k",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_MEASUREMENT": ""
+   },
+   "respond": {},
+   "points": [
+    {
+     "ts": "2026-10-21T08:15:30.123456+00:00",
+     "metric": "host.cpu_usage",
+     "value": "0.5",
+     "subject_type": "host",
+     "subject_id": "macmini",
+     "source_system": "vector",
+     "collector_service": "vector",
+     "collector_host": "macmini",
+     "source_instance": "vector-macmini",
+     "source_entity_id": null,
+     "host": null,
+     "service": null,
+     "tags": null
+    }
+   ],
+   "result": {
+    "written": 1
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "path": "/api/v2/write?org=graphyard&bucket=graphyard&precision=ns",
+     "headers": [
+      [
+       "Accept-Encoding",
+       "identity"
+      ],
+      [
+       "Content-Length",
+       "202"
+      ],
+      [
+       "Content-Type",
+       "text/plain"
+      ],
+      [
+       "Accept",
+       "application/json"
+      ],
+      [
+       "Authorization",
+       "Token t0k"
+      ],
+      [
+       "User-Agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": ",collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,subject_id=macmini,subject_type=host value=0.5 1792570530123456000"
+    }
+   ],
+   "logs": []
+  },
+  {
+   "name": "org and bucket query encoding",
+   "env": {
+    "INFLUX_URL": "{server}",
+    "INFLUX_TOKEN": "t0k",
+    "INFLUX_ORG": "my org~*/\u00fc+&",
+    "INFLUX_BUCKET": "b&c=d e%"
+   },
+   "respond": {},
+   "points": [
+    {
+     "ts": "2026-10-21T08:15:30.123456+00:00",
+     "metric": "host.cpu_usage",
+     "value": "0.5",
+     "subject_type": "host",
+     "subject_id": "macmini",
+     "source_system": "vector",
+     "collector_service": "vector",
+     "collector_host": "macmini",
+     "source_instance": "vector-macmini",
+     "source_entity_id": null,
+     "host": null,
+     "service": null,
+     "tags": null
+    }
+   ],
+   "result": {
+    "written": 1
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "path": "/api/v2/write?org=my+org~%2A%2F%C3%BC%2B%26&bucket=b%26c%3Dd+e%25&precision=ns",
+     "headers": [
+      [
+       "Accept-Encoding",
+       "identity"
+      ],
+      [
+       "Content-Length",
+       "219"
+      ],
+      [
+       "Content-Type",
+       "text/plain"
+      ],
+      [
+       "Accept",
+       "application/json"
+      ],
+      [
+       "Authorization",
+       "Token t0k"
+      ],
+      [
+       "User-Agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "graphyard_metrics,collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,subject_id=macmini,subject_type=host value=0.5 1792570530123456000"
+    }
+   ],
+   "logs": []
+  },
+  {
+   "name": "empty bucket",
+   "env": {
+    "INFLUX_URL": "{server}",
+    "INFLUX_TOKEN": "t0k",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": ""
+   },
+   "respond": {},
+   "points": [
+    {
+     "ts": "2026-10-21T08:15:30.123456+00:00",
+     "metric": "host.cpu_usage",
+     "value": "0.5",
+     "subject_type": "host",
+     "subject_id": "macmini",
+     "source_system": "vector",
+     "collector_service": "vector",
+     "collector_host": "macmini",
+     "source_instance": "vector-macmini",
+     "source_entity_id": null,
+     "host": null,
+     "service": null,
+     "tags": null
+    }
+   ],
+   "result": {
+    "written": 1
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "path": "/api/v2/write?org=graphyard&bucket=&precision=ns",
+     "headers": [
+      [
+       "Accept-Encoding",
+       "identity"
+      ],
+      [
+       "Content-Length",
+       "219"
+      ],
+      [
+       "Content-Type",
+       "text/plain"
+      ],
+      [
+       "Accept",
+       "application/json"
+      ],
+      [
+       "Authorization",
+       "Token t0k"
+      ],
+      [
+       "User-Agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "graphyard_metrics,collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,subject_id=macmini,subject_type=host value=0.5 1792570530123456000"
+    }
+   ],
+   "logs": []
+  },
+  {
+   "name": "url with trailing slash",
+   "env": {
+    "INFLUX_URL": "{server}/",
+    "INFLUX_TOKEN": "t0k",
+    "INFLUX_ORG": "graphyard"
+   },
+   "respond": {},
+   "points": [
+    {
+     "ts": "2026-10-21T08:15:30.123456+00:00",
+     "metric": "host.cpu_usage",
+     "value": "0.5",
+     "subject_type": "host",
+     "subject_id": "macmini",
+     "source_system": "vector",
+     "collector_service": "vector",
+     "collector_host": "macmini",
+     "source_instance": "vector-macmini",
+     "source_entity_id": null,
+     "host": null,
+     "service": null,
+     "tags": null
+    }
+   ],
+   "result": {
+    "written": 1
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "path": "/api/v2/write?org=graphyard&bucket=graphyard&precision=ns",
+     "headers": [
+      [
+       "Accept-Encoding",
+       "identity"
+      ],
+      [
+       "Content-Length",
+       "219"
+      ],
+      [
+       "Content-Type",
+       "text/plain"
+      ],
+      [
+       "Accept",
+       "application/json"
+      ],
+      [
+       "Authorization",
+       "Token t0k"
+      ],
+      [
+       "User-Agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "graphyard_metrics,collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,subject_id=macmini,subject_type=host value=0.5 1792570530123456000"
+    }
+   ],
+   "logs": []
+  },
+  {
+   "name": "url with path prefix",
+   "env": {
+    "INFLUX_URL": "{server}/influx/",
+    "INFLUX_TOKEN": "t0k",
+    "INFLUX_ORG": "graphyard"
+   },
+   "respond": {},
+   "points": [
+    {
+     "ts": "2026-10-21T08:15:30.123456+00:00",
+     "metric": "host.cpu_usage",
+     "value": "0.5",
+     "subject_type": "host",
+     "subject_id": "macmini",
+     "source_system": "vector",
+     "collector_service": "vector",
+     "collector_host": "macmini",
+     "source_instance": "vector-macmini",
+     "source_entity_id": null,
+     "host": null,
+     "service": null,
+     "tags": null
+    }
+   ],
+   "result": {
+    "written": 1
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "path": "/influx/api/v2/write?org=graphyard&bucket=graphyard&precision=ns",
+     "headers": [
+      [
+       "Accept-Encoding",
+       "identity"
+      ],
+      [
+       "Content-Length",
+       "219"
+      ],
+      [
+       "Content-Type",
+       "text/plain"
+      ],
+      [
+       "Accept",
+       "application/json"
+      ],
+      [
+       "Authorization",
+       "Token t0k"
+      ],
+      [
+       "User-Agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "graphyard_metrics,collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,subject_id=macmini,subject_type=host value=0.5 1792570530123456000"
+    }
+   ],
+   "logs": []
+  },
+  {
+   "name": "url without scheme",
+   "env": {
+    "INFLUX_URL": "{server_noscheme}",
+    "INFLUX_TOKEN": "t0k",
+    "INFLUX_ORG": "graphyard"
+   },
+   "respond": {},
+   "points": [
+    {
+     "ts": "2026-10-21T08:15:30.123456+00:00",
+     "metric": "host.cpu_usage",
+     "value": "0.5",
+     "subject_type": "host",
+     "subject_id": "macmini",
+     "source_system": "vector",
+     "collector_service": "vector",
+     "collector_host": "macmini",
+     "source_instance": "vector-macmini",
+     "source_entity_id": null,
+     "host": null,
+     "service": null,
+     "tags": null
+    }
+   ],
+   "result": {
+    "written": 1
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "path": "/api/v2/write?org=graphyard&bucket=graphyard&precision=ns",
+     "headers": [
+      [
+       "Accept-Encoding",
+       "identity"
+      ],
+      [
+       "Content-Length",
+       "219"
+      ],
+      [
+       "Content-Type",
+       "text/plain"
+      ],
+      [
+       "Accept",
+       "application/json"
+      ],
+      [
+       "Authorization",
+       "Token t0k"
+      ],
+      [
+       "User-Agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "graphyard_metrics,collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,subject_id=macmini,subject_type=host value=0.5 1792570530123456000"
+    }
+   ],
+   "logs": []
+  },
+  {
+   "name": "token kept verbatim",
+   "env": {
+    "INFLUX_URL": "{server}",
+    "INFLUX_TOKEN": "a b==",
+    "INFLUX_ORG": "graphyard"
+   },
+   "respond": {},
+   "points": [
+    {
+     "ts": "2026-10-21T08:15:30.123456+00:00",
+     "metric": "host.cpu_usage",
+     "value": "0.5",
+     "subject_type": "host",
+     "subject_id": "macmini",
+     "source_system": "vector",
+     "collector_service": "vector",
+     "collector_host": "macmini",
+     "source_instance": "vector-macmini",
+     "source_entity_id": null,
+     "host": null,
+     "service": null,
+     "tags": null
+    }
+   ],
+   "result": {
+    "written": 1
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "path": "/api/v2/write?org=graphyard&bucket=graphyard&precision=ns",
+     "headers": [
+      [
+       "Accept-Encoding",
+       "identity"
+      ],
+      [
+       "Content-Length",
+       "219"
+      ],
+      [
+       "Content-Type",
+       "text/plain"
+      ],
+      [
+       "Accept",
+       "application/json"
+      ],
+      [
+       "Authorization",
+       "Token a b=="
+      ],
+      [
+       "User-Agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "graphyard_metrics,collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,subject_id=macmini,subject_type=host value=0.5 1792570530123456000"
+    }
+   ],
+   "logs": []
+  },
+  {
+   "name": "mode v2 explicit",
+   "env": {
+    "INFLUX_URL": "{server}",
+    "INFLUX_TOKEN": "t0k",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_API_MODE": "v2"
+   },
+   "respond": {},
+   "points": [
+    {
+     "ts": "2026-10-21T08:15:30.123456+00:00",
+     "metric": "host.cpu_usage",
+     "value": "0.5",
+     "subject_type": "host",
+     "subject_id": "macmini",
+     "source_system": "vector",
+     "collector_service": "vector",
+     "collector_host": "macmini",
+     "source_instance": "vector-macmini",
+     "source_entity_id": null,
+     "host": null,
+     "service": null,
+     "tags": null
+    }
+   ],
+   "result": {
+    "written": 1
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "path": "/api/v2/write?org=graphyard&bucket=graphyard&precision=ns",
+     "headers": [
+      [
+       "Accept-Encoding",
+       "identity"
+      ],
+      [
+       "Content-Length",
+       "219"
+      ],
+      [
+       "Content-Type",
+       "text/plain"
+      ],
+      [
+       "Accept",
+       "application/json"
+      ],
+      [
+       "Authorization",
+       "Token t0k"
+      ],
+      [
+       "User-Agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "graphyard_metrics,collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,subject_id=macmini,subject_type=host value=0.5 1792570530123456000"
+    }
+   ],
+   "logs": []
+  },
+  {
+   "name": "unknown mode is v2",
+   "env": {
+    "INFLUX_URL": "{server}",
+    "INFLUX_TOKEN": "t0k",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_API_MODE": "v9"
+   },
+   "respond": {},
+   "points": [
+    {
+     "ts": "2026-10-21T08:15:30.123456+00:00",
+     "metric": "host.cpu_usage",
+     "value": "0.5",
+     "subject_type": "host",
+     "subject_id": "macmini",
+     "source_system": "vector",
+     "collector_service": "vector",
+     "collector_host": "macmini",
+     "source_instance": "vector-macmini",
+     "source_entity_id": null,
+     "host": null,
+     "service": null,
+     "tags": null
+    }
+   ],
+   "result": {
+    "written": 1
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "path": "/api/v2/write?org=graphyard&bucket=graphyard&precision=ns",
+     "headers": [
+      [
+       "Accept-Encoding",
+       "identity"
+      ],
+      [
+       "Content-Length",
+       "219"
+      ],
+      [
+       "Content-Type",
+       "text/plain"
+      ],
+      [
+       "Accept",
+       "application/json"
+      ],
+      [
+       "Authorization",
+       "Token t0k"
+      ],
+      [
+       "User-Agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "graphyard_metrics,collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,subject_id=macmini,subject_type=host value=0.5 1792570530123456000"
+    }
+   ],
+   "logs": []
+  },
+  {
+   "name": "v3 defaults token, writes the empty org",
+   "env": {
+    "INFLUX_URL": "{server}",
+    "INFLUX_API_MODE": "v3"
+   },
+   "respond": {},
+   "points": [
+    {
+     "ts": "2026-10-21T08:15:30.123456+00:00",
+     "metric": "host.cpu_usage",
+     "value": "0.5",
+     "subject_type": "host",
+     "subject_id": "macmini",
+     "source_system": "vector",
+     "collector_service": "vector",
+     "collector_host": "macmini",
+     "source_instance": "vector-macmini",
+     "source_entity_id": null,
+     "host": null,
+     "service": null,
+     "tags": null
+    }
+   ],
+   "result": {
+    "written": 1
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "path": "/api/v2/write?org=&bucket=graphyard&precision=ns",
+     "headers": [
+      [
+       "Accept-Encoding",
+       "identity"
+      ],
+      [
+       "Content-Length",
+       "219"
+      ],
+      [
+       "Content-Type",
+       "text/plain"
+      ],
+      [
+       "Accept",
+       "application/json"
+      ],
+      [
+       "Authorization",
+       "Token dev-influxdb3-token"
+      ],
+      [
+       "User-Agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "graphyard_metrics,collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,subject_id=macmini,subject_type=host value=0.5 1792570530123456000"
+    }
+   ],
+   "logs": []
+  },
+  {
+   "name": "v3 upper case mode, bucket set",
+   "env": {
+    "INFLUX_URL": "{server}",
+    "INFLUX_API_MODE": "V3",
+    "INFLUX_BUCKET": "b3"
+   },
+   "respond": {},
+   "points": [
+    {
+     "ts": "2026-10-21T08:15:30.123456+00:00",
+     "metric": "host.cpu_usage",
+     "value": "0.5",
+     "subject_type": "host",
+     "subject_id": "macmini",
+     "source_system": "vector",
+     "collector_service": "vector",
+     "collector_host": "macmini",
+     "source_instance": "vector-macmini",
+     "source_entity_id": null,
+     "host": null,
+     "service": null,
+     "tags": null
+    }
+   ],
+   "result": {
+    "written": 1
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "path": "/api/v2/write?org=&bucket=b3&precision=ns",
+     "headers": [
+      [
+       "Accept-Encoding",
+       "identity"
+      ],
+      [
+       "Content-Length",
+       "219"
+      ],
+      [
+       "Content-Type",
+       "text/plain"
+      ],
+      [
+       "Accept",
+       "application/json"
+      ],
+      [
+       "Authorization",
+       "Token dev-influxdb3-token"
+      ],
+      [
+       "User-Agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "graphyard_metrics,collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,subject_id=macmini,subject_type=host value=0.5 1792570530123456000"
+    }
+   ],
+   "logs": []
+  },
+  {
+   "name": "v3 keeps explicit token and org",
+   "env": {
+    "INFLUX_URL": "{server}",
+    "INFLUX_API_MODE": "v3",
+    "INFLUX_TOKEN": "tok3",
+    "INFLUX_ORG": "org3"
+   },
+   "respond": {},
+   "points": [
+    {
+     "ts": "2026-10-21T08:15:30.123456+00:00",
+     "metric": "host.cpu_usage",
+     "value": "0.5",
+     "subject_type": "host",
+     "subject_id": "macmini",
+     "source_system": "vector",
+     "collector_service": "vector",
+     "collector_host": "macmini",
+     "source_instance": "vector-macmini",
+     "source_entity_id": null,
+     "host": null,
+     "service": null,
+     "tags": null
+    }
+   ],
+   "result": {
+    "written": 1
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "path": "/api/v2/write?org=org3&bucket=graphyard&precision=ns",
+     "headers": [
+      [
+       "Accept-Encoding",
+       "identity"
+      ],
+      [
+       "Content-Length",
+       "219"
+      ],
+      [
+       "Content-Type",
+       "text/plain"
+      ],
+      [
+       "Accept",
+       "application/json"
+      ],
+      [
+       "Authorization",
+       "Token tok3"
+      ],
+      [
+       "User-Agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "graphyard_metrics,collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,subject_id=macmini,subject_type=host value=0.5 1792570530123456000"
+    }
+   ],
+   "logs": []
+  },
+  {
+   "name": "missing url",
+   "env": {
+    "INFLUX_TOKEN": "t",
+    "INFLUX_ORG": "o"
+   },
+   "respond": {},
+   "points": [
+    {
+     "ts": "2026-10-21T08:15:30.123456+00:00",
+     "metric": "host.cpu_usage",
+     "value": "0.5",
+     "subject_type": "host",
+     "subject_id": "macmini",
+     "source_system": "vector",
+     "collector_service": "vector",
+     "collector_host": "macmini",
+     "source_instance": "vector-macmini",
+     "source_entity_id": null,
+     "host": null,
+     "service": null,
+     "tags": null
+    }
+   ],
+   "result": {
+    "error": {
+     "class": "InfluxConfigurationError",
+     "message": "Influx setting missing: INFLUX_URL is required"
+    }
+   },
+   "requests": [],
+   "logs": []
+  },
+  {
+   "name": "missing url in v3",
+   "env": {
+    "INFLUX_API_MODE": "v3"
+   },
+   "respond": {},
+   "points": [
+    {
+     "ts": "2026-10-21T08:15:30.123456+00:00",
+     "metric": "host.cpu_usage",
+     "value": "0.5",
+     "subject_type": "host",
+     "subject_id": "macmini",
+     "source_system": "vector",
+     "collector_service": "vector",
+     "collector_host": "macmini",
+     "source_instance": "vector-macmini",
+     "source_entity_id": null,
+     "host": null,
+     "service": null,
+     "tags": null
+    }
+   ],
+   "result": {
+    "error": {
+     "class": "InfluxConfigurationError",
+     "message": "Influx setting missing: INFLUX_URL is required"
+    }
+   },
+   "requests": [],
+   "logs": []
+  },
+  {
+   "name": "v2 missing token",
+   "env": {
+    "INFLUX_URL": "{server}",
+    "INFLUX_ORG": "o"
+   },
+   "respond": {},
+   "points": [
+    {
+     "ts": "2026-10-21T08:15:30.123456+00:00",
+     "metric": "host.cpu_usage",
+     "value": "0.5",
+     "subject_type": "host",
+     "subject_id": "macmini",
+     "source_system": "vector",
+     "collector_service": "vector",
+     "collector_host": "macmini",
+     "source_instance": "vector-macmini",
+     "source_entity_id": null,
+     "host": null,
+     "service": null,
+     "tags": null
+    }
+   ],
+   "result": {
+    "error": {
+     "class": "InfluxConfigurationError",
+     "message": "Influx settings missing: INFLUX_URL, INFLUX_TOKEN, INFLUX_ORG are required"
+    }
+   },
+   "requests": [],
+   "logs": []
+  },
+  {
+   "name": "v2 missing org",
+   "env": {
+    "INFLUX_URL": "{server}",
+    "INFLUX_TOKEN": "t"
+   },
+   "respond": {},
+   "points": [
+    {
+     "ts": "2026-10-21T08:15:30.123456+00:00",
+     "metric": "host.cpu_usage",
+     "value": "0.5",
+     "subject_type": "host",
+     "subject_id": "macmini",
+     "source_system": "vector",
+     "collector_service": "vector",
+     "collector_host": "macmini",
+     "source_instance": "vector-macmini",
+     "source_entity_id": null,
+     "host": null,
+     "service": null,
+     "tags": null
+    }
+   ],
+   "result": {
+    "error": {
+     "class": "InfluxConfigurationError",
+     "message": "Influx settings missing: INFLUX_URL, INFLUX_TOKEN, INFLUX_ORG are required"
+    }
+   },
+   "requests": [],
+   "logs": []
+  },
+  {
+   "name": "auto missing token and org",
+   "env": {
+    "INFLUX_URL": "{server}",
+    "INFLUX_API_MODE": "auto"
+   },
+   "respond": {},
+   "points": [
+    {
+     "ts": "2026-10-21T08:15:30.123456+00:00",
+     "metric": "host.cpu_usage",
+     "value": "0.5",
+     "subject_type": "host",
+     "subject_id": "macmini",
+     "source_system": "vector",
+     "collector_service": "vector",
+     "collector_host": "macmini",
+     "source_instance": "vector-macmini",
+     "source_entity_id": null,
+     "host": null,
+     "service": null,
+     "tags": null
+    }
+   ],
+   "result": {
+    "error": {
+     "class": "InfluxConfigurationError",
+     "message": "Influx settings missing: INFLUX_URL, INFLUX_TOKEN, INFLUX_ORG are required"
+    }
+   },
+   "requests": [],
+   "logs": []
+  },
+  {
+   "name": "configuration error after validation logs",
+   "env": {
+    "INFLUX_URL": ""
+   },
+   "respond": {},
+   "points": [
+    {
+     "ts": "2026-10-21T08:15:30.123456+00:00",
+     "metric": "host.cpu_usage",
+     "value": "0.5",
+     "subject_type": "host",
+     "subject_id": "macmini",
+     "source_system": "vector",
+     "collector_service": "vector",
+     "collector_host": "macmini",
+     "source_instance": "vector-macmini",
+     "source_entity_id": null,
+     "host": null,
+     "service": null,
+     "tags": [
+      [
+       "host",
+       "x"
+      ]
+     ]
+    },
+    {
+     "ts": "2026-10-21T08:15:30.123456+00:00",
+     "metric": "host.cpu_usage",
+     "value": "0.5",
+     "subject_type": "not_a_subject_type",
+     "subject_id": "macmini",
+     "source_system": "vector",
+     "collector_service": "vector",
+     "collector_host": "macmini",
+     "source_instance": "vector-macmini",
+     "source_entity_id": null,
+     "host": null,
+     "service": null,
+     "tags": null
+    }
+   ],
+   "result": {
+    "error": {
+     "class": "InfluxConfigurationError",
+     "message": "Influx setting missing: INFLUX_URL is required"
+    }
+   },
+   "requests": [],
+   "logs": [
+    {
+     "level": "WARNING",
+     "message": "Ignoring custom tag override for reserved key host"
+    },
+    {
+     "level": "ERROR",
+     "message": "Metric point validation failed metric=host.cpu_usage subject_type=not_a_subject_type subject_id=macmini: Unknown subject_type 'not_a_subject_type'; expected one of ['environment_sensor', 'host', 'network_device', 'service']"
+    }
+   ]
+  },
+  {
+   "name": "status 200 is success",
+   "env": {
+    "INFLUX_URL": "{server}",
+    "INFLUX_TOKEN": "t0k",
+    "INFLUX_ORG": "graphyard"
+   },
+   "respond": {
+    "status": 200,
+    "body": "ok"
+   },
+   "points": [
+    {
+     "ts": "2026-10-21T08:15:30.123456+00:00",
+     "metric": "host.cpu_usage",
+     "value": "0.5",
+     "subject_type": "host",
+     "subject_id": "macmini",
+     "source_system": "vector",
+     "collector_service": "vector",
+     "collector_host": "macmini",
+     "source_instance": "vector-macmini",
+     "source_entity_id": null,
+     "host": null,
+     "service": null,
+     "tags": null
+    }
+   ],
+   "result": {
+    "written": 1
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "path": "/api/v2/write?org=graphyard&bucket=graphyard&precision=ns",
+     "headers": [
+      [
+       "Accept-Encoding",
+       "identity"
+      ],
+      [
+       "Content-Length",
+       "219"
+      ],
+      [
+       "Content-Type",
+       "text/plain"
+      ],
+      [
+       "Accept",
+       "application/json"
+      ],
+      [
+       "Authorization",
+       "Token t0k"
+      ],
+      [
+       "User-Agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "graphyard_metrics,collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,subject_id=macmini,subject_type=host value=0.5 1792570530123456000"
+    }
+   ],
+   "logs": []
+  },
+  {
+   "name": "status 400 raises, rejected count not logged",
+   "env": {
+    "INFLUX_URL": "{server}",
+    "INFLUX_TOKEN": "t0k",
+    "INFLUX_ORG": "graphyard"
+   },
+   "respond": {
+    "status": 400,
+    "headers": [
+     [
+      "Content-Type",
+      "application/json; charset=utf-8"
+     ]
+    ],
+    "body": "{\"code\":\"invalid\",\"message\":\"partial write: field type conflict\"}"
+   },
+   "points": [
+    {
+     "ts": "2026-10-21T08:15:30.123456+00:00",
+     "metric": "host.cpu_usage",
+     "value": "0.5",
+     "subject_type": "host",
+     "subject_id": "macmini",
+     "source_system": "vector",
+     "collector_service": "vector",
+     "collector_host": "macmini",
+     "source_instance": "vector-macmini",
+     "source_entity_id": null,
+     "host": null,
+     "service": null,
+     "tags": null
+    },
+    {
+     "ts": "2026-10-21T08:15:30.123456+00:00",
+     "metric": "host.cpu_usage",
+     "value": "0.5",
+     "subject_type": "not_a_subject_type",
+     "subject_id": "macmini",
+     "source_system": "vector",
+     "collector_service": "vector",
+     "collector_host": "macmini",
+     "source_instance": "vector-macmini",
+     "source_entity_id": null,
+     "host": null,
+     "service": null,
+     "tags": null
+    }
+   ],
+   "result": {
+    "error": {
+     "class": "ApiException",
+     "p2": true
+    }
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "path": "/api/v2/write?org=graphyard&bucket=graphyard&precision=ns",
+     "headers": [
+      [
+       "Accept-Encoding",
+       "identity"
+      ],
+      [
+       "Content-Length",
+       "219"
+      ],
+      [
+       "Content-Type",
+       "text/plain"
+      ],
+      [
+       "Accept",
+       "application/json"
+      ],
+      [
+       "Authorization",
+       "Token t0k"
+      ],
+      [
+       "User-Agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "graphyard_metrics,collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,subject_id=macmini,subject_type=host value=0.5 1792570530123456000"
+    }
+   ],
+   "logs": [
+    {
+     "level": "ERROR",
+     "message": "Metric point validation failed metric=host.cpu_usage subject_type=not_a_subject_type subject_id=macmini: Unknown subject_type 'not_a_subject_type'; expected one of ['environment_sensor', 'host', 'network_device', 'service']"
+    }
+   ]
+  },
+  {
+   "name": "status 401 raises",
+   "env": {
+    "INFLUX_URL": "{server}",
+    "INFLUX_TOKEN": "t0k",
+    "INFLUX_ORG": "graphyard"
+   },
+   "respond": {
+    "status": 401,
+    "body": ""
+   },
+   "points": [
+    {
+     "ts": "2026-10-21T08:15:30.123456+00:00",
+     "metric": "host.cpu_usage",
+     "value": "0.5",
+     "subject_type": "host",
+     "subject_id": "macmini",
+     "source_system": "vector",
+     "collector_service": "vector",
+     "collector_host": "macmini",
+     "source_instance": "vector-macmini",
+     "source_entity_id": null,
+     "host": null,
+     "service": null,
+     "tags": null
+    }
+   ],
+   "result": {
+    "error": {
+     "class": "ApiException",
+     "p2": true
+    }
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "path": "/api/v2/write?org=graphyard&bucket=graphyard&precision=ns",
+     "headers": [
+      [
+       "Accept-Encoding",
+       "identity"
+      ],
+      [
+       "Content-Length",
+       "219"
+      ],
+      [
+       "Content-Type",
+       "text/plain"
+      ],
+      [
+       "Accept",
+       "application/json"
+      ],
+      [
+       "Authorization",
+       "Token t0k"
+      ],
+      [
+       "User-Agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "graphyard_metrics,collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,subject_id=macmini,subject_type=host value=0.5 1792570530123456000"
+    }
+   ],
+   "logs": []
+  },
+  {
+   "name": "redirect is not followed",
+   "env": {
+    "INFLUX_URL": "{server}",
+    "INFLUX_TOKEN": "t0k",
+    "INFLUX_ORG": "graphyard"
+   },
+   "respond": {
+    "status": 307,
+    "headers": [
+     [
+      "Location",
+      "/elsewhere"
+     ]
+    ],
+    "body": ""
+   },
+   "points": [
+    {
+     "ts": "2026-10-21T08:15:30.123456+00:00",
+     "metric": "host.cpu_usage",
+     "value": "0.5",
+     "subject_type": "host",
+     "subject_id": "macmini",
+     "source_system": "vector",
+     "collector_service": "vector",
+     "collector_host": "macmini",
+     "source_instance": "vector-macmini",
+     "source_entity_id": null,
+     "host": null,
+     "service": null,
+     "tags": null
+    }
+   ],
+   "result": {
+    "error": {
+     "class": "ApiException",
+     "p2": true
+    }
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "path": "/api/v2/write?org=graphyard&bucket=graphyard&precision=ns",
+     "headers": [
+      [
+       "Accept-Encoding",
+       "identity"
+      ],
+      [
+       "Content-Length",
+       "219"
+      ],
+      [
+       "Content-Type",
+       "text/plain"
+      ],
+      [
+       "Accept",
+       "application/json"
+      ],
+      [
+       "Authorization",
+       "Token t0k"
+      ],
+      [
+       "User-Agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "graphyard_metrics,collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,subject_id=macmini,subject_type=host value=0.5 1792570530123456000"
+    }
+   ],
+   "logs": []
+  },
+  {
+   "name": "status 500 raises",
+   "env": {
+    "INFLUX_URL": "{server}",
+    "INFLUX_TOKEN": "t0k",
+    "INFLUX_ORG": "graphyard"
+   },
+   "respond": {
+    "status": 500,
+    "body": "boom"
+   },
+   "points": [
+    {
+     "ts": "2026-10-21T08:15:30.123456+00:00",
+     "metric": "host.cpu_usage",
+     "value": "0.5",
+     "subject_type": "host",
+     "subject_id": "macmini",
+     "source_system": "vector",
+     "collector_service": "vector",
+     "collector_host": "macmini",
+     "source_instance": "vector-macmini",
+     "source_entity_id": null,
+     "host": null,
+     "service": null,
+     "tags": null
+    }
+   ],
+   "result": {
+    "error": {
+     "class": "ApiException",
+     "p2": true
+    }
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "path": "/api/v2/write?org=graphyard&bucket=graphyard&precision=ns",
+     "headers": [
+      [
+       "Accept-Encoding",
+       "identity"
+      ],
+      [
+       "Content-Length",
+       "219"
+      ],
+      [
+       "Content-Type",
+       "text/plain"
+      ],
+      [
+       "Accept",
+       "application/json"
+      ],
+      [
+       "Authorization",
+       "Token t0k"
+      ],
+      [
+       "User-Agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "graphyard_metrics,collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,subject_id=macmini,subject_type=host value=0.5 1792570530123456000"
+    }
+   ],
+   "logs": []
+  },
+  {
+   "name": "timeout zero means none",
+   "env": {
+    "INFLUX_URL": "{server}",
+    "INFLUX_TOKEN": "t0k",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_TIMEOUT_MS": "0"
+   },
+   "respond": {},
+   "points": [
+    {
+     "ts": "2026-10-21T08:15:30.123456+00:00",
+     "metric": "host.cpu_usage",
+     "value": "0.5",
+     "subject_type": "host",
+     "subject_id": "macmini",
+     "source_system": "vector",
+     "collector_service": "vector",
+     "collector_host": "macmini",
+     "source_instance": "vector-macmini",
+     "source_entity_id": null,
+     "host": null,
+     "service": null,
+     "tags": null
+    }
+   ],
+   "result": {
+    "written": 1
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "path": "/api/v2/write?org=graphyard&bucket=graphyard&precision=ns",
+     "headers": [
+      [
+       "Accept-Encoding",
+       "identity"
+      ],
+      [
+       "Content-Length",
+       "219"
+      ],
+      [
+       "Content-Type",
+       "text/plain"
+      ],
+      [
+       "Accept",
+       "application/json"
+      ],
+      [
+       "Authorization",
+       "Token t0k"
+      ],
+      [
+       "User-Agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "graphyard_metrics,collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,subject_id=macmini,subject_type=host value=0.5 1792570530123456000"
+    }
+   ],
+   "logs": []
+  },
+  {
+   "name": "small timeout",
+   "env": {
+    "INFLUX_URL": "{server}",
+    "INFLUX_TOKEN": "t0k",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_TIMEOUT_MS": "1500"
+   },
+   "respond": {},
+   "points": [
+    {
+     "ts": "2026-10-21T08:15:30.123456+00:00",
+     "metric": "host.cpu_usage",
+     "value": "0.5",
+     "subject_type": "host",
+     "subject_id": "macmini",
+     "source_system": "vector",
+     "collector_service": "vector",
+     "collector_host": "macmini",
+     "source_instance": "vector-macmini",
+     "source_entity_id": null,
+     "host": null,
+     "service": null,
+     "tags": null
+    }
+   ],
+   "result": {
+    "written": 1
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "path": "/api/v2/write?org=graphyard&bucket=graphyard&precision=ns",
+     "headers": [
+      [
+       "Accept-Encoding",
+       "identity"
+      ],
+      [
+       "Content-Length",
+       "219"
+      ],
+      [
+       "Content-Type",
+       "text/plain"
+      ],
+      [
+       "Accept",
+       "application/json"
+      ],
+      [
+       "Authorization",
+       "Token t0k"
+      ],
+      [
+       "User-Agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "graphyard_metrics,collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,subject_id=macmini,subject_type=host value=0.5 1792570530123456000"
+    }
+   ],
+   "logs": []
+  },
+  {
+   "name": "negative timeout",
+   "env": {
+    "INFLUX_URL": "{server}",
+    "INFLUX_TOKEN": "t0k",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_TIMEOUT_MS": "-5"
+   },
+   "respond": {},
+   "points": [
+    {
+     "ts": "2026-10-21T08:15:30.123456+00:00",
+     "metric": "host.cpu_usage",
+     "value": "0.5",
+     "subject_type": "host",
+     "subject_id": "macmini",
+     "source_system": "vector",
+     "collector_service": "vector",
+     "collector_host": "macmini",
+     "source_instance": "vector-macmini",
+     "source_entity_id": null,
+     "host": null,
+     "service": null,
+     "tags": null
+    }
+   ],
+   "result": {
+    "error": {
+     "class": "ValueError",
+     "message": "Attempted to set total timeout to -0.005, but the timeout cannot be set to a value less than or equal to 0."
+    }
+   },
+   "requests": [],
+   "logs": []
+  },
+  {
+   "name": "huge timeout",
+   "env": {
+    "INFLUX_URL": "{server}",
+    "INFLUX_TOKEN": "t0k",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_TIMEOUT_MS": "10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+   },
+   "respond": {},
+   "points": [
+    {
+     "ts": "2026-10-21T08:15:30.123456+00:00",
+     "metric": "host.cpu_usage",
+     "value": "0.5",
+     "subject_type": "host",
+     "subject_id": "macmini",
+     "source_system": "vector",
+     "collector_service": "vector",
+     "collector_host": "macmini",
+     "source_instance": "vector-macmini",
+     "source_entity_id": null,
+     "host": null,
+     "service": null,
+     "tags": null
+    }
+   ],
+   "result": {
+    "error": {
+     "class": "OverflowError",
+     "message": "integer division result too large for a float"
+    }
+   },
+   "requests": [],
+   "logs": []
+  },
+  {
+   "name": "timeout beyond the nanosecond clock",
+   "env": {
+    "INFLUX_URL": "{server}",
+    "INFLUX_TOKEN": "t0k",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_TIMEOUT_MS": "100000000000000000"
+   },
+   "respond": {},
+   "points": [
+    {
+     "ts": "2026-10-21T08:15:30.123456+00:00",
+     "metric": "host.cpu_usage",
+     "value": "0.5",
+     "subject_type": "host",
+     "subject_id": "macmini",
+     "source_system": "vector",
+     "collector_service": "vector",
+     "collector_host": "macmini",
+     "source_instance": "vector-macmini",
+     "source_entity_id": null,
+     "host": null,
+     "service": null,
+     "tags": null
+    }
+   ],
+   "result": {
+    "error": {
+     "class": "OverflowError",
+     "message": "timestamp out of range for platform time_t"
+    }
+   },
+   "requests": [],
+   "logs": []
+  },
+  {
+   "name": "connection refused",
+   "env": {
+    "INFLUX_URL": "{closed}",
+    "INFLUX_TOKEN": "t0k",
+    "INFLUX_ORG": "graphyard"
+   },
+   "respond": {},
+   "points": [
+    {
+     "ts": "2026-10-21T08:15:30.123456+00:00",
+     "metric": "host.cpu_usage",
+     "value": "0.5",
+     "subject_type": "host",
+     "subject_id": "macmini",
+     "source_system": "vector",
+     "collector_service": "vector",
+     "collector_host": "macmini",
+     "source_instance": "vector-macmini",
+     "source_entity_id": null,
+     "host": null,
+     "service": null,
+     "tags": null
+    }
+   ],
+   "result": {
+    "error": {
+     "class": "NewConnectionError",
+     "p2": true
+    }
+   },
+   "requests": [],
+   "logs": []
+  },
+  {
+   "name": "read timeout",
+   "env": {
+    "INFLUX_URL": "{stall}",
+    "INFLUX_TOKEN": "t0k",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_TIMEOUT_MS": "200"
+   },
+   "respond": {},
+   "points": [
+    {
+     "ts": "2026-10-21T08:15:30.123456+00:00",
+     "metric": "host.cpu_usage",
+     "value": "0.5",
+     "subject_type": "host",
+     "subject_id": "macmini",
+     "source_system": "vector",
+     "collector_service": "vector",
+     "collector_host": "macmini",
+     "source_instance": "vector-macmini",
+     "source_entity_id": null,
+     "host": null,
+     "service": null,
+     "tags": null
+    }
+   ],
+   "result": {
+    "error": {
+     "class": "ReadTimeoutError",
+     "p2": true
+    }
+   },
+   "requests": [],
+   "logs": []
+  },
+  {
+   "name": "unsupported scheme",
+   "env": {
+    "INFLUX_URL": "ftp://127.0.0.1:9",
+    "INFLUX_TOKEN": "t0k",
+    "INFLUX_ORG": "graphyard"
+   },
+   "respond": {},
+   "points": [
+    {
+     "ts": "2026-10-21T08:15:30.123456+00:00",
+     "metric": "host.cpu_usage",
+     "value": "0.5",
+     "subject_type": "host",
+     "subject_id": "macmini",
+     "source_system": "vector",
+     "collector_service": "vector",
+     "collector_host": "macmini",
+     "source_instance": "vector-macmini",
+     "source_entity_id": null,
+     "host": null,
+     "service": null,
+     "tags": null
+    }
+   ],
+   "result": {
+    "error": {
+     "class": "URLSchemeUnknown",
+     "p2": true
+    }
+   },
+   "requests": [],
+   "logs": []
+  },
+  {
+   "name": "truncated 2xx body fails the write",
+   "env": {
+    "INFLUX_URL": "{raw}",
+    "INFLUX_TOKEN": "t0k",
+    "INFLUX_ORG": "graphyard"
+   },
+   "respond": {
+    "raw": "truncated"
+   },
+   "points": [
+    {
+     "ts": "2026-10-21T08:15:30.123456+00:00",
+     "metric": "host.cpu_usage",
+     "value": "0.5",
+     "subject_type": "host",
+     "subject_id": "macmini",
+     "source_system": "vector",
+     "collector_service": "vector",
+     "collector_host": "macmini",
+     "source_instance": "vector-macmini",
+     "source_entity_id": null,
+     "host": null,
+     "service": null,
+     "tags": null
+    },
+    {
+     "ts": "2026-10-21T08:15:30.123456+00:00",
+     "metric": "host.cpu_usage",
+     "value": "0.5",
+     "subject_type": "not_a_subject_type",
+     "subject_id": "macmini",
+     "source_system": "vector",
+     "collector_service": "vector",
+     "collector_host": "macmini",
+     "source_instance": "vector-macmini",
+     "source_entity_id": null,
+     "host": null,
+     "service": null,
+     "tags": null
+    }
+   ],
+   "result": {
+    "error": {
+     "class": "ProtocolError",
+     "p2": true
+    }
+   },
+   "requests": [],
+   "logs": [
+    {
+     "level": "ERROR",
+     "message": "Metric point validation failed metric=host.cpu_usage subject_type=not_a_subject_type subject_id=macmini: Unknown subject_type 'not_a_subject_type'; expected one of ['environment_sensor', 'host', 'network_device', 'service']"
+    }
+   ]
+  },
+  {
+   "name": "stalled 2xx body times out",
+   "env": {
+    "INFLUX_URL": "{raw}",
+    "INFLUX_TOKEN": "t0k",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_TIMEOUT_MS": "300"
+   },
+   "respond": {
+    "raw": "stall_body"
+   },
+   "points": [
+    {
+     "ts": "2026-10-21T08:15:30.123456+00:00",
+     "metric": "host.cpu_usage",
+     "value": "0.5",
+     "subject_type": "host",
+     "subject_id": "macmini",
+     "source_system": "vector",
+     "collector_service": "vector",
+     "collector_host": "macmini",
+     "source_instance": "vector-macmini",
+     "source_entity_id": null,
+     "host": null,
+     "service": null,
+     "tags": null
+    }
+   ],
+   "result": {
+    "error": {
+     "class": "ReadTimeoutError",
+     "p2": true
+    }
+   },
+   "requests": [],
+   "logs": []
+  },
+  {
+   "name": "slow body within the read timeout",
+   "env": {
+    "INFLUX_URL": "{raw}",
+    "INFLUX_TOKEN": "t0k",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_TIMEOUT_MS": "250"
+   },
+   "respond": {
+    "raw": "drip"
+   },
+   "points": [
+    {
+     "ts": "2026-10-21T08:15:30.123456+00:00",
+     "metric": "host.cpu_usage",
+     "value": "0.5",
+     "subject_type": "host",
+     "subject_id": "macmini",
+     "source_system": "vector",
+     "collector_service": "vector",
+     "collector_host": "macmini",
+     "source_instance": "vector-macmini",
+     "source_entity_id": null,
+     "host": null,
+     "service": null,
+     "tags": null
+    }
+   ],
+   "result": {
+    "error": {
+     "class": "ApiException",
+     "p2": true
+    }
+   },
+   "requests": [],
+   "logs": []
+  },
+  {
+   "name": "2xx body that is not UTF-8",
+   "env": {
+    "INFLUX_URL": "{raw}",
+    "INFLUX_TOKEN": "t0k",
+    "INFLUX_ORG": "graphyard"
+   },
+   "respond": {
+    "raw": "not_utf8"
+   },
+   "points": [
+    {
+     "ts": "2026-10-21T08:15:30.123456+00:00",
+     "metric": "host.cpu_usage",
+     "value": "0.5",
+     "subject_type": "host",
+     "subject_id": "macmini",
+     "source_system": "vector",
+     "collector_service": "vector",
+     "collector_host": "macmini",
+     "source_instance": "vector-macmini",
+     "source_entity_id": null,
+     "host": null,
+     "service": null,
+     "tags": null
+    }
+   ],
+   "result": {
+    "error": {
+     "class": "UnicodeDecodeError",
+     "p2": true
+    }
+   },
+   "requests": [],
+   "logs": []
+  }
+ ]
+}
