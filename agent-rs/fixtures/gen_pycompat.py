@@ -185,6 +185,15 @@ VALUES = [
     "[" + ", ".join(["1"] * 40) + "]",
     '{"url": "https://example.test/a/very/long/path/that/goes/on/and/on"}',
     "1" + "0" * 400,
+    # Objects that serde_json's arbitrary_precision would read as numbers.
+    '{"$serde_json::private::Number": "5"}',
+    '{"\\u0024serde_json::private::Number": "5"}',
+    '[{"$serde_json::private::Number": "1.5"}, 2]',
+    '{"$serde_json::private::Number": "5", "b": 1}',
+    '{"a": {"$serde_json::private::Number": "x"}}',
+    '{"$serde_json::private::RawValue": "5"}',
+    # A repeated key keeps its first position and its last value.
+    '{"a": 1, "b": 2, "a": 3}',
 ]
 
 STRIP_STRINGS = [

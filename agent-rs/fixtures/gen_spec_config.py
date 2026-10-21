@@ -98,6 +98,7 @@ RAW_VALUES = [
     "[1]",
     "{}",
     '{"seconds": 5}',
+    '{"$serde_json::private::Number": "5"}',
     "[" + ", ".join(str(n) for n in range(30)) + "]",
 ]
 
@@ -153,6 +154,9 @@ VALIDATE_CONFIGS = [
     '{"request_timeout_seconds": 100000, "total_timeout_seconds": 0, '
     '"verify_tls": 1, "follow_redirects": null, "max_body_bytes": 0}',
     '{"total_timeout_seconds": "nan", "max_body_bytes": "  42  "}',
+    '{"request_timeout_seconds": {"$serde_json::private::Number": "5"}, '
+    '"max_body_bytes": {"$serde_json::private::Number": "5"}}',
+    '{"$serde_json::private::Number": "5"}',
 ]
 
 

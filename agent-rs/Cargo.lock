@@ -94,6 +94,7 @@ dependencies = [
  "indexmap",
  "num-bigint",
  "num-traits",
+ "serde",
  "serde_json",
 ]
 

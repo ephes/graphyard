@@ -5,14 +5,14 @@ use serde_json::Value;
 
 use super::*;
 use crate::fixture::{Field, load, strings};
-use crate::pycompat::py_float;
+use crate::pycompat::{json_loads, py_float};
 
 fn fixture() -> Value {
     load(include_str!("../../../../fixtures/spec_config.json"))
 }
 
 fn config_of(case: &Value) -> Config {
-    match serde_json::from_str(case.str_field("config")).expect("config text parses") {
+    match json_loads(case.str_field("config")).expect("config text parses") {
         Value::Object(map) => map,
         other => panic!("config is not an object: {other}"),
     }
@@ -128,7 +128,7 @@ fn page_probe_total_timeout_config_matches_python() {
 fn validate_spec_config_matches_python() {
     let fixture = fixture();
     for case in fixture.list_field("validate_spec_config") {
-        let config: Value = serde_json::from_str(case.str_field("config")).unwrap();
+        let config = json_loads(case.str_field("config")).unwrap();
         let spec_type = case.str_field("spec_type");
         assert_eq!(
             validate_spec_config(spec_type, &config),
@@ -167,6 +167,16 @@ fn every_python_test_config_of_the_slice_is_in_the_corpus() {
     ] {
         assert!(validated.contains(&config), "{config}");
     }
+    let token_object =
+        json_loads(r#"{"request_timeout_seconds": {"$serde_json::private::Number": "5"}}"#)
+            .unwrap();
+    assert_eq!(
+        validate_spec_config("http_page_probe", &token_object),
+        [
+            "config.request_timeout_seconds must be a number greater than 0, got \
+             {'$serde_json::private::Number': '5'}"
+        ]
+    );
     let report_once = validate_spec_config(
         "http_json_metric",
         &serde_json::json!({"request_timeout_seconds": "5s", "total_timeout_seconds": "abc"}),

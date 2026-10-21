@@ -488,7 +488,15 @@ across bool/int/float). The nyxmon `pyjson` module implements several of
 these; S2 copies the relevant functions with their fixture cases rather than
 depending on another repository.
 
-As implemented in S2: a JSON number is read only through `py_number`, which
+As implemented in S2: every JSON document the agent decodes (stored
+`config`/`tags_filter`, HTTP bodies) goes through `pycompat::json_loads`,
+not `serde_json::from_str::<Value>`: with `arbitrary_precision` (and
+`raw_value`) `Value`'s deserializer reads an object whose first key is one
+of `serde_json`'s private tokens (`{"$serde_json::private::Number": "5"}`)
+as a number, or rejects it, where Python keeps the `dict`. `json_loads`
+accepts exactly what `serde_json` accepts and walks a document that may
+spell such a key through `RawValue` slices, keeping every object an object.
+A JSON number is read only through `py_number`, which
 decodes the `arbitrary_precision` token like `json.loads` (an `int` exactly
 when the token has no fraction and no exponent, exact at any size; float
 tokens as `float(token)`, `inf` on overflow); `py_float_of(&Value)` is

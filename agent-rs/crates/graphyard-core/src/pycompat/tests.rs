@@ -15,7 +15,7 @@ fn float_of_bits(hex: &str) -> f64 {
 }
 
 fn json(text: &str) -> Value {
-    serde_json::from_str(text).expect("fixture JSON text parses")
+    json_loads(text).expect("fixture JSON text parses")
 }
 
 /// Compare a float result with the fixture's `bits`/`repr` or `error`.
@@ -195,4 +195,61 @@ fn number_tokens_decode_like_json_loads() {
         bigint_to_i64_saturating(&py_int("-99999999999999999999").unwrap()),
         i64::MIN
     );
+}
+
+#[test]
+fn json_loads_keeps_objects_that_spell_the_serde_number_token() {
+    let text = r#"{"$serde_json::private::Number": "5"}"#;
+    // The plain serde_json decoding would turn the dict into the number 5.
+    let misread: Value = serde_json::from_str(text).unwrap();
+    assert!(misread.is_number());
+    let loaded = json_loads(text).unwrap();
+    assert!(loaded.is_object());
+    assert_eq!(py_type_name(&loaded), "dict");
+
+    let escaped = json_loads(r#"[{"\u0024serde_json::private::Number": "1.5"}, 2, 2.5]"#).unwrap();
+    assert_eq!(
+        py_repr(&escaped),
+        "[{'$serde_json::private::Number': '1.5'}, 2, 2.5]"
+    );
+}
+
+#[test]
+fn json_loads_accepts_and_rejects_like_serde_json() {
+    let deep = |levels: usize| format!("{}1{}", "[".repeat(levels), "]".repeat(levels));
+    let token_deep = |levels: usize| {
+        format!(
+            "{}{{\"$serde_json::private::Number\": 1}}{}",
+            "[".repeat(levels - 1),
+            "]".repeat(levels - 1)
+        )
+    };
+    for text in [
+        String::new(),
+        "{".to_owned(),
+        "[1,]".to_owned(),
+        "NaN".to_owned(),
+        r#""\ud800""#.to_owned(),
+        r#"{"\ud800": 1}"#.to_owned(),
+        deep(127),
+        deep(128),
+        r#"{"a": 1} x"#.to_owned(),
+    ] {
+        let expected = serde_json::from_str::<Value>(&text).map_err(|err| err.to_string());
+        let actual = json_loads(&text).map_err(|err| err.to_string());
+        assert_eq!(actual, expected, "{text}");
+    }
+    // The walk of a token document keeps serde_json's limits.
+    assert!(json_loads(&token_deep(127)).is_ok());
+    assert!(json_loads(&token_deep(128)).is_err());
+    for text in [
+        r#"{"$serde_json::private::Number": "\ud800"}"#,
+        r#"{"$serde_json::private::Number": 1,}"#,
+        r#"{"$serde_json::private::Number": 1} 2"#,
+        r#"{"$serde_json::private::Number": NaN}"#,
+    ] {
+        assert!(json_loads(text).is_err(), "{text}");
+    }
+    let unicode = json_loads(r#"{"k\u00e9y": "v\u00e4l", "n": -0}"#).unwrap();
+    assert_eq!(py_repr(&unicode), "{'k\u{e9}y': 'v\u{e4}l', 'n': 0}");
 }

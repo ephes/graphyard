@@ -415,6 +415,12 @@
    "error": "config.knob must be a number greater than 0, got {'seconds': 5}"
   },
   {
+   "config": "{\"other\": 1, \"knob\": {\"$serde_json::private::Number\": \"5\"}}",
+   "key": "knob",
+   "default": "10.0",
+   "error": "config.knob must be a number greater than 0, got {'$serde_json::private::Number': '5'}"
+  },
+  {
    "config": "{\"other\": 1, \"knob\": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29]}",
    "key": "knob",
    "default": "10.0",
@@ -787,6 +793,12 @@
    "key": "knob",
    "default": "1024",
    "error": "config.knob must be a positive integer, got {'seconds': 5}"
+  },
+  {
+   "config": "{\"other\": 1, \"knob\": {\"$serde_json::private::Number\": \"5\"}}",
+   "key": "knob",
+   "default": "1024",
+   "error": "config.knob must be a positive integer, got {'$serde_json::private::Number': '5'}"
   },
   {
    "config": "{\"other\": 1, \"knob\": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29]}",
@@ -1169,6 +1181,12 @@
    "error": "config.knob must be true or false, got {'seconds': 5}"
   },
   {
+   "config": "{\"other\": 1, \"knob\": {\"$serde_json::private::Number\": \"5\"}}",
+   "key": "knob",
+   "default": true,
+   "error": "config.knob must be true or false, got {'$serde_json::private::Number': '5'}"
+  },
+  {
    "config": "{\"other\": 1, \"knob\": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29]}",
    "key": "knob",
    "default": true,
@@ -1419,6 +1437,10 @@
   {
    "config": "{\"other\": 1, \"request_timeout_seconds\": {\"seconds\": 5}}",
    "error": "config.request_timeout_seconds must be a number greater than 0, got {'seconds': 5}"
+  },
+  {
+   "config": "{\"other\": 1, \"request_timeout_seconds\": {\"$serde_json::private::Number\": \"5\"}}",
+   "error": "config.request_timeout_seconds must be a number greater than 0, got {'$serde_json::private::Number': '5'}"
   },
   {
    "config": "{\"other\": 1, \"request_timeout_seconds\": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29]}",
@@ -2874,6 +2896,84 @@
    "errors": [
     "config.total_timeout_seconds must be a number greater than 0, got 'nan'"
    ]
+  },
+  {
+   "spec_type": "home_assistant_sensor",
+   "config": "{\"request_timeout_seconds\": {\"$serde_json::private::Number\": \"5\"}, \"max_body_bytes\": {\"$serde_json::private::Number\": \"5\"}}",
+   "errors": [
+    "config.request_timeout_seconds must be a number greater than 0, got {'$serde_json::private::Number': '5'}",
+    "config.max_body_bytes must be a positive integer, got {'$serde_json::private::Number': '5'}"
+   ]
+  },
+  {
+   "spec_type": "home_assistant_env_scan",
+   "config": "{\"request_timeout_seconds\": {\"$serde_json::private::Number\": \"5\"}, \"max_body_bytes\": {\"$serde_json::private::Number\": \"5\"}}",
+   "errors": [
+    "config.request_timeout_seconds must be a number greater than 0, got {'$serde_json::private::Number': '5'}",
+    "config.max_body_bytes must be a positive integer, got {'$serde_json::private::Number': '5'}"
+   ]
+  },
+  {
+   "spec_type": "http_json_metric",
+   "config": "{\"request_timeout_seconds\": {\"$serde_json::private::Number\": \"5\"}, \"max_body_bytes\": {\"$serde_json::private::Number\": \"5\"}}",
+   "errors": [
+    "config.request_timeout_seconds must be a number greater than 0, got {'$serde_json::private::Number': '5'}",
+    "config.max_body_bytes must be a positive integer, got {'$serde_json::private::Number': '5'}"
+   ]
+  },
+  {
+   "spec_type": "http_page_probe",
+   "config": "{\"request_timeout_seconds\": {\"$serde_json::private::Number\": \"5\"}, \"max_body_bytes\": {\"$serde_json::private::Number\": \"5\"}}",
+   "errors": [
+    "config.request_timeout_seconds must be a number greater than 0, got {'$serde_json::private::Number': '5'}",
+    "config.max_body_bytes must be a positive integer, got {'$serde_json::private::Number': '5'}"
+   ]
+  },
+  {
+   "spec_type": "unifi_device_traffic",
+   "config": "{\"request_timeout_seconds\": {\"$serde_json::private::Number\": \"5\"}, \"max_body_bytes\": {\"$serde_json::private::Number\": \"5\"}}",
+   "errors": [
+    "config.request_timeout_seconds must be a number greater than 0, got {'$serde_json::private::Number': '5'}",
+    "config.max_body_bytes must be a positive integer, got {'$serde_json::private::Number': '5'}"
+   ]
+  },
+  {
+   "spec_type": "unknown_type",
+   "config": "{\"request_timeout_seconds\": {\"$serde_json::private::Number\": \"5\"}, \"max_body_bytes\": {\"$serde_json::private::Number\": \"5\"}}",
+   "errors": [
+    "config.request_timeout_seconds must be a number greater than 0, got {'$serde_json::private::Number': '5'}",
+    "config.max_body_bytes must be a positive integer, got {'$serde_json::private::Number': '5'}"
+   ]
+  },
+  {
+   "spec_type": "home_assistant_sensor",
+   "config": "{\"$serde_json::private::Number\": \"5\"}",
+   "errors": []
+  },
+  {
+   "spec_type": "home_assistant_env_scan",
+   "config": "{\"$serde_json::private::Number\": \"5\"}",
+   "errors": []
+  },
+  {
+   "spec_type": "http_json_metric",
+   "config": "{\"$serde_json::private::Number\": \"5\"}",
+   "errors": []
+  },
+  {
+   "spec_type": "http_page_probe",
+   "config": "{\"$serde_json::private::Number\": \"5\"}",
+   "errors": []
+  },
+  {
+   "spec_type": "unifi_device_traffic",
+   "config": "{\"$serde_json::private::Number\": \"5\"}",
+   "errors": []
+  },
+  {
+   "spec_type": "unknown_type",
+   "config": "{\"$serde_json::private::Number\": \"5\"}",
+   "errors": []
   }
  ]
 }

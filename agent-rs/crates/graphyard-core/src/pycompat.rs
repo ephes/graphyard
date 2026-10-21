@@ -12,7 +12,11 @@
 //! `json.loads` makes it one (no fraction, no exponent), integers of any size
 //! stay exact and float tokens are converted like `float(token)` (overflow
 //! gives `inf`, as in `json.loads`). The functions here and in
-//! [`crate::spec_config`] read numbers only through [`py_number`].
+//! [`crate::spec_config`] read numbers only through [`py_number`]. Documents
+//! must be decoded with [`json_loads`], not `serde_json::from_str::<Value>`:
+//! with `arbitrary_precision` the latter turns an object whose only key is
+//! `serde_json`'s private number token into a number, where Python keeps the
+//! `dict`.
 //!
 //! Inputs are ASCII where the plan asks for it (D-6): non-ASCII digits are
 //! rejected by [`py_int`]/[`py_float`], and [`py_str_repr`] escapes only the
@@ -23,12 +27,14 @@
 //! (nyxmon `agent-rs/crates/nyxmon-core/src/pyjson`) with their fixture
 //! cases, as the plan asks, instead of depending on that repository.
 
+mod json;
 mod num;
 mod text;
 mod value;
 
 use std::fmt;
 
+pub use json::json_loads;
 pub use num::{
     PyNumber, bigint_to_i64_saturating, py_float, py_float_of, py_float_repr, py_format_g, py_int,
     py_number,
