@@ -1,0 +1,1831 @@
+{
+ "reserved_tag_keys": [
+  "collector_host",
+  "collector_service",
+  "host",
+  "metric",
+  "service",
+  "source_entity_id",
+  "source_instance",
+  "source_system",
+  "subject_id",
+  "subject_type"
+ ],
+ "subject_ids": [
+  {
+   "raw": "macmini",
+   "ok": "macmini"
+  },
+  {
+   "raw": "  MacMini  ",
+   "ok": "macmini"
+  },
+  {
+   "raw": "Mac Mini!!",
+   "ok": "mac_mini"
+  },
+  {
+   "raw": "__a__b__",
+   "ok": "a_b"
+  },
+  {
+   "raw": "a__b",
+   "ok": "a_b"
+  },
+  {
+   "raw": "a-b.c",
+   "ok": "a_b_c"
+  },
+  {
+   "raw": "123",
+   "ok": "123"
+  },
+  {
+   "raw": "a\tb",
+   "ok": "a_b"
+  },
+  {
+   "raw": "x\ny",
+   "ok": "x_y"
+  },
+  {
+   "raw": "\u001cabc\u001f",
+   "ok": "abc"
+  },
+  {
+   "raw": "\u00a0nbsp\u2003",
+   "ok": "nbsp"
+  },
+  {
+   "raw": "\u00c4\u00d6\u00dc host",
+   "ok": "host"
+  },
+  {
+   "raw": "\u212a",
+   "ok": "k"
+  },
+  {
+   "raw": "\u0130stanbul",
+   "ok": "i_stanbul"
+  },
+  {
+   "raw": "\u03a3\u0391\u03a3",
+   "error": {
+    "class": "ValueError",
+    "message": "Invalid subject_id '\u03a3\u0391\u03a3': expected lowercase snake_case identifier"
+   }
+  },
+  {
+   "raw": "caf\u00e9 \ud83c\udf89 host",
+   "ok": "caf_host"
+  },
+  {
+   "raw": "o'neil",
+   "ok": "o_neil"
+  },
+  {
+   "raw": "say \"hi\"",
+   "ok": "say_hi"
+  },
+  {
+   "raw": "back\\slash",
+   "ok": "back_slash"
+  },
+  {
+   "raw": "",
+   "error": {
+    "class": "ValueError",
+    "message": "Invalid subject_id '': expected lowercase snake_case identifier"
+   }
+  },
+  {
+   "raw": "   ",
+   "error": {
+    "class": "ValueError",
+    "message": "Invalid subject_id '   ': expected lowercase snake_case identifier"
+   }
+  },
+  {
+   "raw": "!!!",
+   "error": {
+    "class": "ValueError",
+    "message": "Invalid subject_id '!!!': expected lowercase snake_case identifier"
+   }
+  },
+  {
+   "raw": "_",
+   "error": {
+    "class": "ValueError",
+    "message": "Invalid subject_id '_': expected lowercase snake_case identifier"
+   }
+  },
+  {
+   "raw": "\u007f",
+   "error": {
+    "class": "ValueError",
+    "message": "Invalid subject_id '\\x7f': expected lowercase snake_case identifier"
+   }
+  }
+ ],
+ "dimension_values": [
+  {
+   "field_name": "source_system",
+   "fallback": null,
+   "raw": "Vector",
+   "ok": "vector"
+  },
+  {
+   "field_name": "source_system",
+   "fallback": null,
+   "raw": " home assistant ",
+   "ok": "home_assistant"
+  },
+  {
+   "field_name": "source_system",
+   "fallback": null,
+   "raw": "a  b",
+   "ok": "a_b"
+  },
+  {
+   "field_name": "source_system",
+   "fallback": null,
+   "raw": "a\tb\nc",
+   "ok": "a_b_c"
+  },
+  {
+   "field_name": "source_system",
+   "fallback": null,
+   "raw": "ok-1.2_3",
+   "ok": "ok-1.2_3"
+  },
+  {
+   "field_name": "source_system",
+   "fallback": null,
+   "raw": "UPPER",
+   "ok": "upper"
+  },
+  {
+   "field_name": "source_system",
+   "fallback": null,
+   "raw": "-leading",
+   "error": {
+    "class": "ValueError",
+    "message": "Invalid source_system '-leading': expected lowercase token with [a-z0-9_.-]"
+   }
+  },
+  {
+   "field_name": "source_system",
+   "fallback": null,
+   "raw": ".dot",
+   "error": {
+    "class": "ValueError",
+    "message": "Invalid source_system '.dot': expected lowercase token with [a-z0-9_.-]"
+   }
+  },
+  {
+   "field_name": "source_system",
+   "fallback": null,
+   "raw": "_under",
+   "error": {
+    "class": "ValueError",
+    "message": "Invalid source_system '_under': expected lowercase token with [a-z0-9_.-]"
+   }
+  },
+  {
+   "field_name": "source_system",
+   "fallback": null,
+   "raw": "9lives",
+   "ok": "9lives"
+  },
+  {
+   "field_name": "source_system",
+   "fallback": null,
+   "raw": "a/b",
+   "error": {
+    "class": "ValueError",
+    "message": "Invalid source_system 'a/b': expected lowercase token with [a-z0-9_.-]"
+   }
+  },
+  {
+   "field_name": "source_system",
+   "fallback": null,
+   "raw": "a\u00a0b",
+   "ok": "a_b"
+  },
+  {
+   "field_name": "source_system",
+   "fallback": null,
+   "raw": "\u2003x\u2003",
+   "ok": "x"
+  },
+  {
+   "field_name": "source_system",
+   "fallback": null,
+   "raw": "\u00fcn\u00efcode",
+   "error": {
+    "class": "ValueError",
+    "message": "Invalid source_system '\u00fcn\u00efcode': expected lowercase token with [a-z0-9_.-]"
+   }
+  },
+  {
+   "field_name": "source_system",
+   "fallback": null,
+   "raw": "\u212a",
+   "ok": "k"
+  },
+  {
+   "field_name": "source_system",
+   "fallback": null,
+   "raw": "\u001c",
+   "error": {
+    "class": "ValueError",
+    "message": "source_system is required"
+   }
+  },
+  {
+   "field_name": "source_system",
+   "fallback": null,
+   "raw": "",
+   "error": {
+    "class": "ValueError",
+    "message": "source_system is required"
+   }
+  },
+  {
+   "field_name": "source_system",
+   "fallback": null,
+   "raw": "   ",
+   "error": {
+    "class": "ValueError",
+    "message": "source_system is required"
+   }
+  },
+  {
+   "field_name": "source_system",
+   "fallback": null,
+   "raw": "o'neil",
+   "error": {
+    "class": "ValueError",
+    "message": "Invalid source_system \"o'neil\": expected lowercase token with [a-z0-9_.-]"
+   }
+  },
+  {
+   "field_name": "collector_service",
+   "fallback": null,
+   "raw": "graphyard-agent",
+   "ok": "graphyard-agent"
+  },
+  {
+   "field_name": "collector_service",
+   "fallback": null,
+   "raw": "",
+   "error": {
+    "class": "ValueError",
+    "message": "collector_service is required"
+   }
+  },
+  {
+   "field_name": "collector_host",
+   "fallback": null,
+   "raw": "macmini",
+   "ok": "macmini"
+  },
+  {
+   "field_name": "collector_host",
+   "fallback": null,
+   "raw": "Mac Mini",
+   "ok": "mac_mini"
+  },
+  {
+   "field_name": "source_instance",
+   "fallback": "default",
+   "raw": "",
+   "ok": "default"
+  },
+  {
+   "field_name": "source_instance",
+   "fallback": "default",
+   "raw": "   ",
+   "ok": "default"
+  },
+  {
+   "field_name": "source_instance",
+   "fallback": "default",
+   "raw": "ha-main",
+   "ok": "ha-main"
+  },
+  {
+   "field_name": "source_instance",
+   "fallback": "default",
+   "raw": "HA Main",
+   "ok": "ha_main"
+  },
+  {
+   "field_name": "source_instance",
+   "fallback": "default",
+   "raw": "bad/instance",
+   "error": {
+    "class": "ValueError",
+    "message": "Invalid source_instance 'bad/instance': expected lowercase token with [a-z0-9_.-]"
+   }
+  },
+  {
+   "field_name": "source_instance",
+   "fallback": "has space",
+   "raw": "",
+   "ok": "has_space"
+  },
+  {
+   "field_name": "source_instance",
+   "fallback": "Bad!",
+   "raw": "",
+   "error": {
+    "class": "ValueError",
+    "message": "Invalid source_instance '': expected lowercase token with [a-z0-9_.-]"
+   }
+  }
+ ],
+ "parse_finite_float": [
+  {
+   "json": "1.5",
+   "ok": "1.5"
+  },
+  {
+   "json": "3",
+   "ok": "3.0"
+  },
+  {
+   "json": "-0.0",
+   "ok": "-0.0"
+  },
+  {
+   "json": "0",
+   "ok": "0.0"
+  },
+  {
+   "json": "5e-324",
+   "ok": "5e-324"
+  },
+  {
+   "json": "1e308",
+   "ok": "1e+308"
+  },
+  {
+   "json": "1e999",
+   "error": {
+    "class": "ValueError",
+    "message": "metric value must be finite, got inf"
+   }
+  },
+  {
+   "json": "-1e999",
+   "error": {
+    "class": "ValueError",
+    "message": "metric value must be finite, got -inf"
+   }
+  },
+  {
+   "json": "12345678901234567890",
+   "ok": "1.2345678901234567e+19"
+  },
+  {
+   "json": "10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+   "error": {
+    "class": "ValueError",
+    "message": "metric value must be finite, got 10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+   }
+  },
+  {
+   "json": "\"1.5\"",
+   "ok": "1.5"
+  },
+  {
+   "json": "\" 42 \"",
+   "ok": "42.0"
+  },
+  {
+   "json": "\"1_000\"",
+   "ok": "1000.0"
+  },
+  {
+   "json": "\"1__0\"",
+   "error": {
+    "class": "ValueError",
+    "message": "could not convert string to float: '1__0'"
+   }
+  },
+  {
+   "json": "\"  -1.25e-3  \"",
+   "ok": "-0.00125"
+  },
+  {
+   "json": "\"\\u00a01.5\\u2003\"",
+   "ok": "1.5"
+  },
+  {
+   "json": "\"0x10\"",
+   "error": {
+    "class": "ValueError",
+    "message": "could not convert string to float: '0x10'"
+   }
+  },
+  {
+   "json": "\"1e309\"",
+   "error": {
+    "class": "ValueError",
+    "message": "metric value must be finite, got '1e309'"
+   }
+  },
+  {
+   "json": "\"nan\"",
+   "error": {
+    "class": "ValueError",
+    "message": "metric value must be finite, got 'nan'"
+   }
+  },
+  {
+   "json": "\"NaN\"",
+   "error": {
+    "class": "ValueError",
+    "message": "metric value must be finite, got 'NaN'"
+   }
+  },
+  {
+   "json": "\"inf\"",
+   "error": {
+    "class": "ValueError",
+    "message": "metric value must be finite, got 'inf'"
+   }
+  },
+  {
+   "json": "\"-Infinity\"",
+   "error": {
+    "class": "ValueError",
+    "message": "metric value must be finite, got '-Infinity'"
+   }
+  },
+  {
+   "json": "\"+inf\"",
+   "error": {
+    "class": "ValueError",
+    "message": "metric value must be finite, got '+inf'"
+   }
+  },
+  {
+   "json": "\"abc\"",
+   "error": {
+    "class": "ValueError",
+    "message": "could not convert string to float: 'abc'"
+   }
+  },
+  {
+   "json": "\"\"",
+   "error": {
+    "class": "ValueError",
+    "message": "could not convert string to float: ''"
+   }
+  },
+  {
+   "json": "\"None\"",
+   "error": {
+    "class": "ValueError",
+    "message": "could not convert string to float: 'None'"
+   }
+  },
+  {
+   "json": "true",
+   "error": {
+    "class": "ValueError",
+    "message": "could not convert string to float: 'True'"
+   }
+  },
+  {
+   "json": "false",
+   "error": {
+    "class": "ValueError",
+    "message": "could not convert string to float: 'False'"
+   }
+  },
+  {
+   "json": "null",
+   "error": {
+    "class": "ValueError",
+    "message": "could not convert string to float: 'None'"
+   }
+  },
+  {
+   "json": "[1]",
+   "error": {
+    "class": "ValueError",
+    "message": "could not convert string to float: '[1]'"
+   }
+  },
+  {
+   "json": "{\"a\": 1}",
+   "error": {
+    "class": "ValueError",
+    "message": "could not convert string to float: \"{'a': 1}\""
+   }
+  },
+  {
+   "json": "\"it's\"",
+   "error": {
+    "class": "ValueError",
+    "message": "could not convert string to float: \"it's\""
+   }
+  }
+ ],
+ "points": [
+  {
+   "name": "baseline host point",
+   "point": {
+    "ts": "2026-10-21T08:15:30.123456+00:00",
+    "metric": "host.cpu_usage",
+    "value": "0.3",
+    "subject_type": "host",
+    "subject_id": "macmini",
+    "source_system": "vector",
+    "collector_service": "vector",
+    "collector_host": "macmini",
+    "source_instance": "vector-macmini",
+    "source_entity_id": null,
+    "host": null,
+    "service": null,
+    "tags": null
+   },
+   "ok": {
+    "ts": "2026-10-21T08:15:30.123456+00:00",
+    "metric": "host.cpu_usage",
+    "value": "0.3",
+    "subject_type": "host",
+    "subject_id": "macmini",
+    "source_system": "vector",
+    "source_instance": "vector-macmini",
+    "source_entity_id": null,
+    "collector_service": "vector",
+    "collector_host": "macmini",
+    "host": "macmini",
+    "service": null,
+    "tags": []
+   }
+  },
+  {
+   "name": "host defaults to subject id",
+   "point": {
+    "ts": "2026-10-21T08:15:30.123456+00:00",
+    "metric": "host.cpu_usage",
+    "value": "0.3",
+    "subject_type": "host",
+    "subject_id": "macmini",
+    "source_system": "vector",
+    "collector_service": "vector",
+    "collector_host": "macmini",
+    "source_instance": "vector-macmini",
+    "source_entity_id": null,
+    "host": null,
+    "service": null,
+    "tags": null
+   },
+   "ok": {
+    "ts": "2026-10-21T08:15:30.123456+00:00",
+    "metric": "host.cpu_usage",
+    "value": "0.3",
+    "subject_type": "host",
+    "subject_id": "macmini",
+    "source_system": "vector",
+    "source_instance": "vector-macmini",
+    "source_entity_id": null,
+    "collector_service": "vector",
+    "collector_host": "macmini",
+    "host": "macmini",
+    "service": null,
+    "tags": []
+   }
+  },
+  {
+   "name": "blank host defaults to subject id",
+   "point": {
+    "ts": "2026-10-21T08:15:30.123456+00:00",
+    "metric": "host.cpu_usage",
+    "value": "0.3",
+    "subject_type": "host",
+    "subject_id": "macmini",
+    "source_system": "vector",
+    "collector_service": "vector",
+    "collector_host": "macmini",
+    "source_instance": "vector-macmini",
+    "source_entity_id": null,
+    "host": "   ",
+    "service": null,
+    "tags": null
+   },
+   "ok": {
+    "ts": "2026-10-21T08:15:30.123456+00:00",
+    "metric": "host.cpu_usage",
+    "value": "0.3",
+    "subject_type": "host",
+    "subject_id": "macmini",
+    "source_system": "vector",
+    "source_instance": "vector-macmini",
+    "source_entity_id": null,
+    "collector_service": "vector",
+    "collector_host": "macmini",
+    "host": "macmini",
+    "service": null,
+    "tags": []
+   }
+  },
+  {
+   "name": "host normalised and equal",
+   "point": {
+    "ts": "2026-10-21T08:15:30.123456+00:00",
+    "metric": "host.cpu_usage",
+    "value": "0.3",
+    "subject_type": "host",
+    "subject_id": "macmini",
+    "source_system": "vector",
+    "collector_service": "vector",
+    "collector_host": "macmini",
+    "source_instance": "vector-macmini",
+    "source_entity_id": null,
+    "host": " MacMini ",
+    "service": null,
+    "tags": null
+   },
+   "ok": {
+    "ts": "2026-10-21T08:15:30.123456+00:00",
+    "metric": "host.cpu_usage",
+    "value": "0.3",
+    "subject_type": "host",
+    "subject_id": "macmini",
+    "source_system": "vector",
+    "source_instance": "vector-macmini",
+    "source_entity_id": null,
+    "collector_service": "vector",
+    "collector_host": "macmini",
+    "host": "macmini",
+    "service": null,
+    "tags": []
+   }
+  },
+  {
+   "name": "host mismatch (test_normalize_metric_point_rejects_host_mismatch)",
+   "point": {
+    "ts": "2026-10-21T08:15:30.123456+00:00",
+    "metric": "host.cpu_usage",
+    "value": "0.3",
+    "subject_type": "host",
+    "subject_id": "macmini",
+    "source_system": "vector",
+    "collector_service": "vector",
+    "collector_host": "macmini",
+    "source_instance": "vector-macmini",
+    "source_entity_id": null,
+    "host": "other-host",
+    "service": null,
+    "tags": null
+   },
+   "error": {
+    "class": "ValueError",
+    "message": "host compatibility tag must equal subject_id when subject_type=host"
+   }
+  },
+  {
+   "name": "invalid host",
+   "point": {
+    "ts": "2026-10-21T08:15:30.123456+00:00",
+    "metric": "host.cpu_usage",
+    "value": "0.3",
+    "subject_type": "host",
+    "subject_id": "macmini",
+    "source_system": "vector",
+    "collector_service": "vector",
+    "collector_host": "macmini",
+    "source_instance": "vector-macmini",
+    "source_entity_id": null,
+    "host": "!!!",
+    "service": null,
+    "tags": null
+   },
+   "error": {
+    "class": "ValueError",
+    "message": "Invalid subject_id '!!!': expected lowercase snake_case identifier"
+   }
+  },
+  {
+   "name": "non-host drops host (test_normalize_metric_point_drops_host_for_non_host_subject)",
+   "point": {
+    "ts": "2026-10-21T08:15:30.123456+00:00",
+    "metric": "ha.sensor.office_temperature",
+    "value": "22.4",
+    "subject_type": "environment_sensor",
+    "subject_id": "office_temperature",
+    "source_system": "homeassistant",
+    "collector_service": "graphyard-agent",
+    "collector_host": "macmini",
+    "source_instance": "ha-main",
+    "source_entity_id": null,
+    "host": "legacy-host",
+    "service": null,
+    "tags": null
+   },
+   "ok": {
+    "ts": "2026-10-21T08:15:30.123456+00:00",
+    "metric": "ha.sensor.office_temperature",
+    "value": "22.4",
+    "subject_type": "environment_sensor",
+    "subject_id": "office_temperature",
+    "source_system": "homeassistant",
+    "source_instance": "ha-main",
+    "source_entity_id": null,
+    "collector_service": "graphyard-agent",
+    "collector_host": "macmini",
+    "host": null,
+    "service": null,
+    "tags": []
+   }
+  },
+  {
+   "name": "subject type stripped and lowered",
+   "point": {
+    "ts": "2026-10-21T08:15:30.123456+00:00",
+    "metric": "host.cpu_usage",
+    "value": "0.3",
+    "subject_type": " HOST ",
+    "subject_id": "macmini",
+    "source_system": "vector",
+    "collector_service": "vector",
+    "collector_host": "macmini",
+    "source_instance": "vector-macmini",
+    "source_entity_id": null,
+    "host": null,
+    "service": null,
+    "tags": null
+   },
+   "ok": {
+    "ts": "2026-10-21T08:15:30.123456+00:00",
+    "metric": "host.cpu_usage",
+    "value": "0.3",
+    "subject_type": "host",
+    "subject_id": "macmini",
+    "source_system": "vector",
+    "source_instance": "vector-macmini",
+    "source_entity_id": null,
+    "collector_service": "vector",
+    "collector_host": "macmini",
+    "host": "macmini",
+    "service": null,
+    "tags": []
+   }
+  },
+  {
+   "name": "subject type mixed case",
+   "point": {
+    "ts": "2026-10-21T08:15:30.123456+00:00",
+    "metric": "host.cpu_usage",
+    "value": "0.3",
+    "subject_type": "Network_Device",
+    "subject_id": "USG Gateway",
+    "source_system": "vector",
+    "collector_service": "vector",
+    "collector_host": "macmini",
+    "source_instance": "vector-macmini",
+    "source_entity_id": null,
+    "host": null,
+    "service": null,
+    "tags": null
+   },
+   "ok": {
+    "ts": "2026-10-21T08:15:30.123456+00:00",
+    "metric": "host.cpu_usage",
+    "value": "0.3",
+    "subject_type": "network_device",
+    "subject_id": "usg_gateway",
+    "source_system": "vector",
+    "source_instance": "vector-macmini",
+    "source_entity_id": null,
+    "collector_service": "vector",
+    "collector_host": "macmini",
+    "host": null,
+    "service": null,
+    "tags": []
+   }
+  },
+  {
+   "name": "service subject",
+   "point": {
+    "ts": "2026-10-21T08:15:30.123456+00:00",
+    "metric": "host.cpu_usage",
+    "value": "0.3",
+    "subject_type": "service",
+    "subject_id": "unifi",
+    "source_system": "vector",
+    "collector_service": "vector",
+    "collector_host": "macmini",
+    "source_instance": "vector-macmini",
+    "source_entity_id": null,
+    "host": null,
+    "service": null,
+    "tags": null
+   },
+   "ok": {
+    "ts": "2026-10-21T08:15:30.123456+00:00",
+    "metric": "host.cpu_usage",
+    "value": "0.3",
+    "subject_type": "service",
+    "subject_id": "unifi",
+    "source_system": "vector",
+    "source_instance": "vector-macmini",
+    "source_entity_id": null,
+    "collector_service": "vector",
+    "collector_host": "macmini",
+    "host": null,
+    "service": null,
+    "tags": []
+   }
+  },
+  {
+   "name": "unknown subject type",
+   "point": {
+    "ts": "2026-10-21T08:15:30.123456+00:00",
+    "metric": "host.cpu_usage",
+    "value": "0.3",
+    "subject_type": "not_a_subject_type",
+    "subject_id": "macmini",
+    "source_system": "vector",
+    "collector_service": "vector",
+    "collector_host": "macmini",
+    "source_instance": "vector-macmini",
+    "source_entity_id": null,
+    "host": null,
+    "service": null,
+    "tags": null
+   },
+   "error": {
+    "class": "ValueError",
+    "message": "Unknown subject_type 'not_a_subject_type'; expected one of ['environment_sensor', 'host', 'network_device', 'service']"
+   }
+  },
+  {
+   "name": "unknown subject type with quote",
+   "point": {
+    "ts": "2026-10-21T08:15:30.123456+00:00",
+    "metric": "host.cpu_usage",
+    "value": "0.3",
+    "subject_type": "it's\n",
+    "subject_id": "macmini",
+    "source_system": "vector",
+    "collector_service": "vector",
+    "collector_host": "macmini",
+    "source_instance": "vector-macmini",
+    "source_entity_id": null,
+    "host": null,
+    "service": null,
+    "tags": null
+   },
+   "error": {
+    "class": "ValueError",
+    "message": "Unknown subject_type \"it's\\n\"; expected one of ['environment_sensor', 'host', 'network_device', 'service']"
+   }
+  },
+  {
+   "name": "empty subject type",
+   "point": {
+    "ts": "2026-10-21T08:15:30.123456+00:00",
+    "metric": "host.cpu_usage",
+    "value": "0.3",
+    "subject_type": "",
+    "subject_id": "macmini",
+    "source_system": "vector",
+    "collector_service": "vector",
+    "collector_host": "macmini",
+    "source_instance": "vector-macmini",
+    "source_entity_id": null,
+    "host": null,
+    "service": null,
+    "tags": null
+   },
+   "error": {
+    "class": "ValueError",
+    "message": "Unknown subject_type ''; expected one of ['environment_sensor', 'host', 'network_device', 'service']"
+   }
+  },
+  {
+   "name": "metric stripped",
+   "point": {
+    "ts": "2026-10-21T08:15:30.123456+00:00",
+    "metric": "  host.cpu usage\t",
+    "value": "0.3",
+    "subject_type": "host",
+    "subject_id": "macmini",
+    "source_system": "vector",
+    "collector_service": "vector",
+    "collector_host": "macmini",
+    "source_instance": "vector-macmini",
+    "source_entity_id": null,
+    "host": null,
+    "service": null,
+    "tags": null
+   },
+   "ok": {
+    "ts": "2026-10-21T08:15:30.123456+00:00",
+    "metric": "host.cpu usage",
+    "value": "0.3",
+    "subject_type": "host",
+    "subject_id": "macmini",
+    "source_system": "vector",
+    "source_instance": "vector-macmini",
+    "source_entity_id": null,
+    "collector_service": "vector",
+    "collector_host": "macmini",
+    "host": "macmini",
+    "service": null,
+    "tags": []
+   }
+  },
+  {
+   "name": "blank metric",
+   "point": {
+    "ts": "2026-10-21T08:15:30.123456+00:00",
+    "metric": "   ",
+    "value": "0.3",
+    "subject_type": "host",
+    "subject_id": "macmini",
+    "source_system": "vector",
+    "collector_service": "vector",
+    "collector_host": "macmini",
+    "source_instance": "vector-macmini",
+    "source_entity_id": null,
+    "host": null,
+    "service": null,
+    "tags": null
+   },
+   "error": {
+    "class": "ValueError",
+    "message": "metric is required"
+   }
+  },
+  {
+   "name": "empty metric",
+   "point": {
+    "ts": "2026-10-21T08:15:30.123456+00:00",
+    "metric": "",
+    "value": "0.3",
+    "subject_type": "host",
+    "subject_id": "macmini",
+    "source_system": "vector",
+    "collector_service": "vector",
+    "collector_host": "macmini",
+    "source_instance": "vector-macmini",
+    "source_entity_id": null,
+    "host": null,
+    "service": null,
+    "tags": null
+   },
+   "error": {
+    "class": "ValueError",
+    "message": "metric is required"
+   }
+  },
+  {
+   "name": "metric with newline kept",
+   "point": {
+    "ts": "2026-10-21T08:15:30.123456+00:00",
+    "metric": "first\nforged",
+    "value": "0.3",
+    "subject_type": "host",
+    "subject_id": "macmini",
+    "source_system": "vector",
+    "collector_service": "vector",
+    "collector_host": "macmini",
+    "source_instance": "vector-macmini",
+    "source_entity_id": null,
+    "host": null,
+    "service": null,
+    "tags": null
+   },
+   "ok": {
+    "ts": "2026-10-21T08:15:30.123456+00:00",
+    "metric": "first\nforged",
+    "value": "0.3",
+    "subject_type": "host",
+    "subject_id": "macmini",
+    "source_system": "vector",
+    "source_instance": "vector-macmini",
+    "source_entity_id": null,
+    "collector_service": "vector",
+    "collector_host": "macmini",
+    "host": "macmini",
+    "service": null,
+    "tags": []
+   }
+  },
+  {
+   "name": "invalid subject id",
+   "point": {
+    "ts": "2026-10-21T08:15:30.123456+00:00",
+    "metric": "host.cpu_usage",
+    "value": "0.3",
+    "subject_type": "host",
+    "subject_id": "!!!",
+    "source_system": "vector",
+    "collector_service": "vector",
+    "collector_host": "macmini",
+    "source_instance": "vector-macmini",
+    "source_entity_id": null,
+    "host": null,
+    "service": null,
+    "tags": null
+   },
+   "error": {
+    "class": "ValueError",
+    "message": "Invalid subject_id '!!!': expected lowercase snake_case identifier"
+   }
+  },
+  {
+   "name": "subject id normalised",
+   "point": {
+    "ts": "2026-10-21T08:15:30.123456+00:00",
+    "metric": "host.cpu_usage",
+    "value": "0.3",
+    "subject_type": "host",
+    "subject_id": " Mac-Mini ",
+    "source_system": "vector",
+    "collector_service": "vector",
+    "collector_host": "macmini",
+    "source_instance": "vector-macmini",
+    "source_entity_id": null,
+    "host": "mac_mini",
+    "service": null,
+    "tags": null
+   },
+   "ok": {
+    "ts": "2026-10-21T08:15:30.123456+00:00",
+    "metric": "host.cpu_usage",
+    "value": "0.3",
+    "subject_type": "host",
+    "subject_id": "mac_mini",
+    "source_system": "vector",
+    "source_instance": "vector-macmini",
+    "source_entity_id": null,
+    "collector_service": "vector",
+    "collector_host": "macmini",
+    "host": "mac_mini",
+    "service": null,
+    "tags": []
+   }
+  },
+  {
+   "name": "source system required",
+   "point": {
+    "ts": "2026-10-21T08:15:30.123456+00:00",
+    "metric": "host.cpu_usage",
+    "value": "0.3",
+    "subject_type": "host",
+    "subject_id": "macmini",
+    "source_system": "",
+    "collector_service": "vector",
+    "collector_host": "macmini",
+    "source_instance": "vector-macmini",
+    "source_entity_id": null,
+    "host": null,
+    "service": null,
+    "tags": null
+   },
+   "error": {
+    "class": "ValueError",
+    "message": "source_system is required"
+   }
+  },
+  {
+   "name": "source system invalid",
+   "point": {
+    "ts": "2026-10-21T08:15:30.123456+00:00",
+    "metric": "host.cpu_usage",
+    "value": "0.3",
+    "subject_type": "host",
+    "subject_id": "macmini",
+    "source_system": "home/assistant",
+    "collector_service": "vector",
+    "collector_host": "macmini",
+    "source_instance": "vector-macmini",
+    "source_entity_id": null,
+    "host": null,
+    "service": null,
+    "tags": null
+   },
+   "error": {
+    "class": "ValueError",
+    "message": "Invalid source_system 'home/assistant': expected lowercase token with [a-z0-9_.-]"
+   }
+  },
+  {
+   "name": "source system normalised",
+   "point": {
+    "ts": "2026-10-21T08:15:30.123456+00:00",
+    "metric": "host.cpu_usage",
+    "value": "0.3",
+    "subject_type": "host",
+    "subject_id": "macmini",
+    "source_system": " Home Assistant ",
+    "collector_service": "vector",
+    "collector_host": "macmini",
+    "source_instance": "vector-macmini",
+    "source_entity_id": null,
+    "host": null,
+    "service": null,
+    "tags": null
+   },
+   "ok": {
+    "ts": "2026-10-21T08:15:30.123456+00:00",
+    "metric": "host.cpu_usage",
+    "value": "0.3",
+    "subject_type": "host",
+    "subject_id": "macmini",
+    "source_system": "home_assistant",
+    "source_instance": "vector-macmini",
+    "source_entity_id": null,
+    "collector_service": "vector",
+    "collector_host": "macmini",
+    "host": "macmini",
+    "service": null,
+    "tags": []
+   }
+  },
+  {
+   "name": "source instance defaults",
+   "point": {
+    "ts": "2026-10-21T08:15:30.123456+00:00",
+    "metric": "host.cpu_usage",
+    "value": "0.3",
+    "subject_type": "host",
+    "subject_id": "macmini",
+    "source_system": "vector",
+    "collector_service": "vector",
+    "collector_host": "macmini",
+    "source_instance": "",
+    "source_entity_id": null,
+    "host": null,
+    "service": null,
+    "tags": null
+   },
+   "ok": {
+    "ts": "2026-10-21T08:15:30.123456+00:00",
+    "metric": "host.cpu_usage",
+    "value": "0.3",
+    "subject_type": "host",
+    "subject_id": "macmini",
+    "source_system": "vector",
+    "source_instance": "default",
+    "source_entity_id": null,
+    "collector_service": "vector",
+    "collector_host": "macmini",
+    "host": "macmini",
+    "service": null,
+    "tags": []
+   }
+  },
+  {
+   "name": "blank source instance defaults",
+   "point": {
+    "ts": "2026-10-21T08:15:30.123456+00:00",
+    "metric": "host.cpu_usage",
+    "value": "0.3",
+    "subject_type": "host",
+    "subject_id": "macmini",
+    "source_system": "vector",
+    "collector_service": "vector",
+    "collector_host": "macmini",
+    "source_instance": " \t",
+    "source_entity_id": null,
+    "host": null,
+    "service": null,
+    "tags": null
+   },
+   "ok": {
+    "ts": "2026-10-21T08:15:30.123456+00:00",
+    "metric": "host.cpu_usage",
+    "value": "0.3",
+    "subject_type": "host",
+    "subject_id": "macmini",
+    "source_system": "vector",
+    "source_instance": "default",
+    "source_entity_id": null,
+    "collector_service": "vector",
+    "collector_host": "macmini",
+    "host": "macmini",
+    "service": null,
+    "tags": []
+   }
+  },
+  {
+   "name": "source instance invalid",
+   "point": {
+    "ts": "2026-10-21T08:15:30.123456+00:00",
+    "metric": "host.cpu_usage",
+    "value": "0.3",
+    "subject_type": "host",
+    "subject_id": "macmini",
+    "source_system": "vector",
+    "collector_service": "vector",
+    "collector_host": "macmini",
+    "source_instance": "a,b",
+    "source_entity_id": null,
+    "host": null,
+    "service": null,
+    "tags": null
+   },
+   "error": {
+    "class": "ValueError",
+    "message": "Invalid source_instance 'a,b': expected lowercase token with [a-z0-9_.-]"
+   }
+  },
+  {
+   "name": "collector service required",
+   "point": {
+    "ts": "2026-10-21T08:15:30.123456+00:00",
+    "metric": "host.cpu_usage",
+    "value": "0.3",
+    "subject_type": "host",
+    "subject_id": "macmini",
+    "source_system": "vector",
+    "collector_service": "  ",
+    "collector_host": "macmini",
+    "source_instance": "vector-macmini",
+    "source_entity_id": null,
+    "host": null,
+    "service": null,
+    "tags": null
+   },
+   "error": {
+    "class": "ValueError",
+    "message": "collector_service is required"
+   }
+  },
+  {
+   "name": "collector host invalid",
+   "point": {
+    "ts": "2026-10-21T08:15:30.123456+00:00",
+    "metric": "host.cpu_usage",
+    "value": "0.3",
+    "subject_type": "host",
+    "subject_id": "macmini",
+    "source_system": "vector",
+    "collector_service": "vector",
+    "collector_host": "mac mini!",
+    "source_instance": "vector-macmini",
+    "source_entity_id": null,
+    "host": null,
+    "service": null,
+    "tags": null
+   },
+   "error": {
+    "class": "ValueError",
+    "message": "Invalid collector_host 'mac mini!': expected lowercase token with [a-z0-9_.-]"
+   }
+  },
+  {
+   "name": "source entity id stripped",
+   "point": {
+    "ts": "2026-10-21T08:15:30.123456+00:00",
+    "metric": "host.cpu_usage",
+    "value": "0.3",
+    "subject_type": "host",
+    "subject_id": "macmini",
+    "source_system": "vector",
+    "collector_service": "vector",
+    "collector_host": "macmini",
+    "source_instance": "vector-macmini",
+    "source_entity_id": "  sensor.Office  ",
+    "host": null,
+    "service": null,
+    "tags": null
+   },
+   "ok": {
+    "ts": "2026-10-21T08:15:30.123456+00:00",
+    "metric": "host.cpu_usage",
+    "value": "0.3",
+    "subject_type": "host",
+    "subject_id": "macmini",
+    "source_system": "vector",
+    "source_instance": "vector-macmini",
+    "source_entity_id": "sensor.Office",
+    "collector_service": "vector",
+    "collector_host": "macmini",
+    "host": "macmini",
+    "service": null,
+    "tags": []
+   }
+  },
+  {
+   "name": "blank source entity id dropped",
+   "point": {
+    "ts": "2026-10-21T08:15:30.123456+00:00",
+    "metric": "host.cpu_usage",
+    "value": "0.3",
+    "subject_type": "host",
+    "subject_id": "macmini",
+    "source_system": "vector",
+    "collector_service": "vector",
+    "collector_host": "macmini",
+    "source_instance": "vector-macmini",
+    "source_entity_id": "   ",
+    "host": null,
+    "service": null,
+    "tags": null
+   },
+   "ok": {
+    "ts": "2026-10-21T08:15:30.123456+00:00",
+    "metric": "host.cpu_usage",
+    "value": "0.3",
+    "subject_type": "host",
+    "subject_id": "macmini",
+    "source_system": "vector",
+    "source_instance": "vector-macmini",
+    "source_entity_id": null,
+    "collector_service": "vector",
+    "collector_host": "macmini",
+    "host": "macmini",
+    "service": null,
+    "tags": []
+   }
+  },
+  {
+   "name": "empty source entity id dropped",
+   "point": {
+    "ts": "2026-10-21T08:15:30.123456+00:00",
+    "metric": "host.cpu_usage",
+    "value": "0.3",
+    "subject_type": "host",
+    "subject_id": "macmini",
+    "source_system": "vector",
+    "collector_service": "vector",
+    "collector_host": "macmini",
+    "source_instance": "vector-macmini",
+    "source_entity_id": "",
+    "host": null,
+    "service": null,
+    "tags": null
+   },
+   "ok": {
+    "ts": "2026-10-21T08:15:30.123456+00:00",
+    "metric": "host.cpu_usage",
+    "value": "0.3",
+    "subject_type": "host",
+    "subject_id": "macmini",
+    "source_system": "vector",
+    "source_instance": "vector-macmini",
+    "source_entity_id": null,
+    "collector_service": "vector",
+    "collector_host": "macmini",
+    "host": "macmini",
+    "service": null,
+    "tags": []
+   }
+  },
+  {
+   "name": "service stripped not lowered",
+   "point": {
+    "ts": "2026-10-21T08:15:30.123456+00:00",
+    "metric": "host.cpu_usage",
+    "value": "0.3",
+    "subject_type": "host",
+    "subject_id": "macmini",
+    "source_system": "vector",
+    "collector_service": "vector",
+    "collector_host": "macmini",
+    "source_instance": "vector-macmini",
+    "source_entity_id": null,
+    "host": null,
+    "service": "  Web App, Front  ",
+    "tags": null
+   },
+   "ok": {
+    "ts": "2026-10-21T08:15:30.123456+00:00",
+    "metric": "host.cpu_usage",
+    "value": "0.3",
+    "subject_type": "host",
+    "subject_id": "macmini",
+    "source_system": "vector",
+    "source_instance": "vector-macmini",
+    "source_entity_id": null,
+    "collector_service": "vector",
+    "collector_host": "macmini",
+    "host": "macmini",
+    "service": "Web App, Front",
+    "tags": []
+   }
+  },
+  {
+   "name": "blank service dropped",
+   "point": {
+    "ts": "2026-10-21T08:15:30.123456+00:00",
+    "metric": "host.cpu_usage",
+    "value": "0.3",
+    "subject_type": "host",
+    "subject_id": "macmini",
+    "source_system": "vector",
+    "collector_service": "vector",
+    "collector_host": "macmini",
+    "source_instance": "vector-macmini",
+    "source_entity_id": null,
+    "host": null,
+    "service": " ",
+    "tags": null
+   },
+   "ok": {
+    "ts": "2026-10-21T08:15:30.123456+00:00",
+    "metric": "host.cpu_usage",
+    "value": "0.3",
+    "subject_type": "host",
+    "subject_id": "macmini",
+    "source_system": "vector",
+    "source_instance": "vector-macmini",
+    "source_entity_id": null,
+    "collector_service": "vector",
+    "collector_host": "macmini",
+    "host": "macmini",
+    "service": null,
+    "tags": []
+   }
+  },
+  {
+   "name": "tags kept in order",
+   "point": {
+    "ts": "2026-10-21T08:15:30.123456+00:00",
+    "metric": "host.cpu_usage",
+    "value": "0.3",
+    "subject_type": "host",
+    "subject_id": "macmini",
+    "source_system": "vector",
+    "collector_service": "vector",
+    "collector_host": "macmini",
+    "source_instance": "vector-macmini",
+    "source_entity_id": null,
+    "host": null,
+    "service": null,
+    "tags": [
+     [
+      "z",
+      "1"
+     ],
+     [
+      "a",
+      "2"
+     ],
+     [
+      "spec_name",
+      "My Spec"
+     ]
+    ]
+   },
+   "ok": {
+    "ts": "2026-10-21T08:15:30.123456+00:00",
+    "metric": "host.cpu_usage",
+    "value": "0.3",
+    "subject_type": "host",
+    "subject_id": "macmini",
+    "source_system": "vector",
+    "source_instance": "vector-macmini",
+    "source_entity_id": null,
+    "collector_service": "vector",
+    "collector_host": "macmini",
+    "host": "macmini",
+    "service": null,
+    "tags": [
+     [
+      "z",
+      "1"
+     ],
+     [
+      "a",
+      "2"
+     ],
+     [
+      "spec_name",
+      "My Spec"
+     ]
+    ]
+   }
+  },
+  {
+   "name": "empty tags",
+   "point": {
+    "ts": "2026-10-21T08:15:30.123456+00:00",
+    "metric": "host.cpu_usage",
+    "value": "0.3",
+    "subject_type": "host",
+    "subject_id": "macmini",
+    "source_system": "vector",
+    "collector_service": "vector",
+    "collector_host": "macmini",
+    "source_instance": "vector-macmini",
+    "source_entity_id": null,
+    "host": null,
+    "service": null,
+    "tags": []
+   },
+   "ok": {
+    "ts": "2026-10-21T08:15:30.123456+00:00",
+    "metric": "host.cpu_usage",
+    "value": "0.3",
+    "subject_type": "host",
+    "subject_id": "macmini",
+    "source_system": "vector",
+    "source_instance": "vector-macmini",
+    "source_entity_id": null,
+    "collector_service": "vector",
+    "collector_host": "macmini",
+    "host": "macmini",
+    "service": null,
+    "tags": []
+   }
+  },
+  {
+   "name": "value nan (test_normalize_metric_point_rejects_non_finite_value)",
+   "point": {
+    "ts": "2026-10-21T08:15:30.123456+00:00",
+    "metric": "host.cpu_usage",
+    "value": "nan",
+    "subject_type": "host",
+    "subject_id": "macmini",
+    "source_system": "vector",
+    "collector_service": "vector",
+    "collector_host": "macmini",
+    "source_instance": "vector-macmini",
+    "source_entity_id": null,
+    "host": null,
+    "service": null,
+    "tags": null
+   },
+   "error": {
+    "class": "ValueError",
+    "message": "metric value must be finite, got nan"
+   }
+  },
+  {
+   "name": "value inf",
+   "point": {
+    "ts": "2026-10-21T08:15:30.123456+00:00",
+    "metric": "host.cpu_usage",
+    "value": "inf",
+    "subject_type": "host",
+    "subject_id": "macmini",
+    "source_system": "vector",
+    "collector_service": "vector",
+    "collector_host": "macmini",
+    "source_instance": "vector-macmini",
+    "source_entity_id": null,
+    "host": null,
+    "service": null,
+    "tags": null
+   },
+   "error": {
+    "class": "ValueError",
+    "message": "metric value must be finite, got inf"
+   }
+  },
+  {
+   "name": "value -inf",
+   "point": {
+    "ts": "2026-10-21T08:15:30.123456+00:00",
+    "metric": "host.cpu_usage",
+    "value": "-inf",
+    "subject_type": "host",
+    "subject_id": "macmini",
+    "source_system": "vector",
+    "collector_service": "vector",
+    "collector_host": "macmini",
+    "source_instance": "vector-macmini",
+    "source_entity_id": null,
+    "host": null,
+    "service": null,
+    "tags": null
+   },
+   "error": {
+    "class": "ValueError",
+    "message": "metric value must be finite, got -inf"
+   }
+  },
+  {
+   "name": "value negative zero",
+   "point": {
+    "ts": "2026-10-21T08:15:30.123456+00:00",
+    "metric": "host.cpu_usage",
+    "value": "-0.0",
+    "subject_type": "host",
+    "subject_id": "macmini",
+    "source_system": "vector",
+    "collector_service": "vector",
+    "collector_host": "macmini",
+    "source_instance": "vector-macmini",
+    "source_entity_id": null,
+    "host": null,
+    "service": null,
+    "tags": null
+   },
+   "ok": {
+    "ts": "2026-10-21T08:15:30.123456+00:00",
+    "metric": "host.cpu_usage",
+    "value": "-0.0",
+    "subject_type": "host",
+    "subject_id": "macmini",
+    "source_system": "vector",
+    "source_instance": "vector-macmini",
+    "source_entity_id": null,
+    "collector_service": "vector",
+    "collector_host": "macmini",
+    "host": "macmini",
+    "service": null,
+    "tags": []
+   }
+  },
+  {
+   "name": "value tiny",
+   "point": {
+    "ts": "2026-10-21T08:15:30.123456+00:00",
+    "metric": "host.cpu_usage",
+    "value": "5e-324",
+    "subject_type": "host",
+    "subject_id": "macmini",
+    "source_system": "vector",
+    "collector_service": "vector",
+    "collector_host": "macmini",
+    "source_instance": "vector-macmini",
+    "source_entity_id": null,
+    "host": null,
+    "service": null,
+    "tags": null
+   },
+   "ok": {
+    "ts": "2026-10-21T08:15:30.123456+00:00",
+    "metric": "host.cpu_usage",
+    "value": "5e-324",
+    "subject_type": "host",
+    "subject_id": "macmini",
+    "source_system": "vector",
+    "source_instance": "vector-macmini",
+    "source_entity_id": null,
+    "collector_service": "vector",
+    "collector_host": "macmini",
+    "host": "macmini",
+    "service": null,
+    "tags": []
+   }
+  },
+  {
+   "name": "value huge",
+   "point": {
+    "ts": "2026-10-21T08:15:30.123456+00:00",
+    "metric": "host.cpu_usage",
+    "value": "1.7976931348623157e+308",
+    "subject_type": "host",
+    "subject_id": "macmini",
+    "source_system": "vector",
+    "collector_service": "vector",
+    "collector_host": "macmini",
+    "source_instance": "vector-macmini",
+    "source_entity_id": null,
+    "host": null,
+    "service": null,
+    "tags": null
+   },
+   "ok": {
+    "ts": "2026-10-21T08:15:30.123456+00:00",
+    "metric": "host.cpu_usage",
+    "value": "1.7976931348623157e+308",
+    "subject_type": "host",
+    "subject_id": "macmini",
+    "source_system": "vector",
+    "source_instance": "vector-macmini",
+    "source_entity_id": null,
+    "collector_service": "vector",
+    "collector_host": "macmini",
+    "host": "macmini",
+    "service": null,
+    "tags": []
+   }
+  },
+  {
+   "name": "first error wins: metric",
+   "point": {
+    "ts": "2026-10-21T08:15:30.123456+00:00",
+    "metric": "",
+    "value": "nan",
+    "subject_type": "bad",
+    "subject_id": "macmini",
+    "source_system": "vector",
+    "collector_service": "vector",
+    "collector_host": "macmini",
+    "source_instance": "vector-macmini",
+    "source_entity_id": null,
+    "host": null,
+    "service": null,
+    "tags": null
+   },
+   "error": {
+    "class": "ValueError",
+    "message": "metric is required"
+   }
+  },
+  {
+   "name": "first error wins: subject type",
+   "point": {
+    "ts": "2026-10-21T08:15:30.123456+00:00",
+    "metric": "host.cpu_usage",
+    "value": "0.3",
+    "subject_type": "bad",
+    "subject_id": "!!!",
+    "source_system": "vector",
+    "collector_service": "vector",
+    "collector_host": "macmini",
+    "source_instance": "vector-macmini",
+    "source_entity_id": null,
+    "host": null,
+    "service": null,
+    "tags": null
+   },
+   "error": {
+    "class": "ValueError",
+    "message": "Unknown subject_type 'bad'; expected one of ['environment_sensor', 'host', 'network_device', 'service']"
+   }
+  },
+  {
+   "name": "first error wins: subject id",
+   "point": {
+    "ts": "2026-10-21T08:15:30.123456+00:00",
+    "metric": "host.cpu_usage",
+    "value": "0.3",
+    "subject_type": "host",
+    "subject_id": "",
+    "source_system": "",
+    "collector_service": "vector",
+    "collector_host": "macmini",
+    "source_instance": "vector-macmini",
+    "source_entity_id": null,
+    "host": null,
+    "service": null,
+    "tags": null
+   },
+   "error": {
+    "class": "ValueError",
+    "message": "Invalid subject_id '': expected lowercase snake_case identifier"
+   }
+  },
+  {
+   "name": "first error wins: host before value",
+   "point": {
+    "ts": "2026-10-21T08:15:30.123456+00:00",
+    "metric": "host.cpu_usage",
+    "value": "nan",
+    "subject_type": "host",
+    "subject_id": "macmini",
+    "source_system": "vector",
+    "collector_service": "vector",
+    "collector_host": "macmini",
+    "source_instance": "vector-macmini",
+    "source_entity_id": null,
+    "host": "other",
+    "service": null,
+    "tags": null
+   },
+   "error": {
+    "class": "ValueError",
+    "message": "host compatibility tag must equal subject_id when subject_type=host"
+   }
+  },
+  {
+   "name": "pre-epoch timestamp",
+   "point": {
+    "ts": "1969-12-31T23:59:59.999999+00:00",
+    "metric": "host.cpu_usage",
+    "value": "0.3",
+    "subject_type": "host",
+    "subject_id": "macmini",
+    "source_system": "vector",
+    "collector_service": "vector",
+    "collector_host": "macmini",
+    "source_instance": "vector-macmini",
+    "source_entity_id": null,
+    "host": null,
+    "service": null,
+    "tags": null
+   },
+   "ok": {
+    "ts": "1969-12-31T23:59:59.999999+00:00",
+    "metric": "host.cpu_usage",
+    "value": "0.3",
+    "subject_type": "host",
+    "subject_id": "macmini",
+    "source_system": "vector",
+    "source_instance": "vector-macmini",
+    "source_entity_id": null,
+    "collector_service": "vector",
+    "collector_host": "macmini",
+    "host": "macmini",
+    "service": null,
+    "tags": []
+   }
+  }
+ ]
+}

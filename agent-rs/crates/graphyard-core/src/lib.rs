@@ -7,7 +7,10 @@
 pub mod conditions;
 #[cfg(test)]
 mod fixture;
+pub mod line_protocol;
+pub mod logline;
 pub mod model;
+pub mod normalize;
 pub mod pycompat;
 pub mod settings;
 pub mod spec_config;
