@@ -188,13 +188,23 @@ that differs is a bug.
   values flow through the Python conversions exactly (`float(int)` →
   `OverflowError` → config error message; `float(str(…))` → `inf` → "not a
   finite number"), pinned by `spec_config.json`/`normalize.json` cases.
-  The only stored documents Python cannot load are integer tokens longer than
-  CPython's 4300-digit `int` string limit (not writable through Django:
-  `json.dumps` raises the same limit; only raw SQL can store them). Python
-  then fails the whole run while iterating the queryset; Rust marks only that
-  spec `critical` (condition: evaluation error) with the CPython message
-  `Exceeds the limit (4300 digits) for integer string conversion`. Boundary
-  fixtures at 4300/4301 digits.
+  Documents on which the two parsers disagree, each marking only the
+  affected spec `critical` (condition: evaluation error) in Rust, pinned by
+  fixtures:
+  - integer tokens longer than CPython's 4300-digit `int` string limit (not
+    writable through Django, `json.dumps` raises the same limit; only raw SQL
+    stores them): Python fails the whole run while iterating the queryset;
+    Rust uses the CPython message `Exceeds the limit (4300 digits) for
+    integer string conversion` (fixtures at 4300/4301 digits);
+  - lone UTF-16 surrogate escapes in strings (`{"unused": "\ud800"}`) and
+    nesting deeper than `serde_json`'s 128-level limit: Django can write both
+    (`json.dumps`/`json.loads` round-trip them, `JSON_VALID` accepts them)
+    and Python runs the spec when the value is unused; Rust cannot represent
+    a lone surrogate in a `String` and keeps the default recursion limit
+    (no `unbounded_depth`), so it reports `config is not valid JSON: <serde
+    error>`. Production configs have neither (depth ≤ 5, ASCII escapes only;
+    re-checked by `shadow_prepare.py`, which scans the copied rows and lists
+    any spec or condition that would hit one of these cases).
 - **D-12 TLS trust anchors** (Q1). Python verifies against certifi; Rust
   verifies against the system CA store (Ubuntu `ca-certificates`), so a CA
   incident is fixed by the ops trust rollout plus a restart instead of a new
