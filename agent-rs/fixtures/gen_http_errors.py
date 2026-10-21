@@ -467,10 +467,15 @@ def _reply(status: int, body: bytes = b"", **headers: str) -> Reply:
 
 
 def _gzip_reply(status: int, body: bytes) -> Reply:
+    # zlib writes the platform into the header's OS byte (3 on Linux, 19 on
+    # macOS); decoders ignore it, so it is pinned to Unix to keep the fixture
+    # the same on every platform.
+    compressed = bytearray(gzip.compress(body, mtime=0))
+    compressed[9] = 3
     return {
         "status": status,
         "headers": {"Content-Encoding": "gzip"},
-        "body": gzip.compress(body, mtime=0),
+        "body": bytes(compressed),
     }
 
 
