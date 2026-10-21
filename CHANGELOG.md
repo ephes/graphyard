@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- Add the release pipeline of the Rust agent: `.github/workflows/agent-rs-release.yml`
+  builds `graphyard-agent` on ubuntu-22.04 for a tag `agent-rs-v<version>` (the
+  tag must equal the crate version), runs the Rust tests and the fixture drift
+  test, checks the glibc 2.35 floor and the linked libraries, smoke-tests
+  `--version` against the workflow's commit and publishes a deterministic
+  `graphyard-agent-<version>-x86_64-unknown-linux-gnu.tar.gz` with its
+  `.sha256` as a GitHub release. A manual run (`workflow_dispatch`) is a dry
+  build that uploads the archive as a workflow artifact only. The binary now
+  answers `--version` with the version and the git commit it was built from;
+  it is still a placeholder otherwise and nothing is deployed.
+
 - Start the Rust port of the agent in `agent-rs/` (plan: `agent-rs/PLAN.md`):
   a Cargo workspace with a pinned toolchain and `cargo deny` policy, the shared
   model types, a fixture generator that derives the Rust test data from the

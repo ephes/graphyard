@@ -845,7 +845,8 @@ glibc/libgcc `NEEDED` entries.
 `.github/workflows/agent-rs-release.yml`, adapted from nyxmon's: tag
 `agent-rs-v<semver>` (must equal `crates/graphyard-agent/Cargo.toml`), plus
 `workflow_dispatch` for a dry build without release; full Rust tests, the
-fixture drift test, `cargo build --release --locked --target
+fixture drift test (own job `fixtures` with the locked Python environment,
+which the release job also needs), `cargo build --release --locked --target
 x86_64-unknown-linux-gnu`, glibc floor check, `--version` smoke test against
 the workflow's commit, deterministic archive
 `graphyard-agent-<ver>-x86_64-unknown-linux-gnu.tar.gz` (binary + `LICENSE`)
@@ -1307,7 +1308,7 @@ excluding generated fixtures.
 | S8 | Agent runtime | CLI (3.1), scheduler (3.2), metrics and conditions runs (3.4, 3.5), executor isolation, heartbeats, stdout/stderr/logging (3.6), signals, `--run-once`, `--check-schema`, `--version`, `--influx-write-file` | S3a, S3b, S4b, S5, S7a, S7b | — | no | 4 |
 | S9a | Parity harness | `parity/run_parity.py`, `fakes.py`, `settings_parity.py`, CI `parity` job | S8 | with S9b | no | 4 |
 | S9b | e2e, shadow tooling, docs | process e2e (9.3), `shadow_prepare/record/compare.py`, `docs/agent-rs.md`, README, CHANGELOG | S8 | with S9a | no | 3.5 |
-| S10a | Release workflow | `agent-rs-release.yml`, `scripts/release_checks.py` + `tests/test_agent_rs_release_checks.py`, `build.rs` commit stamp, `workflow_dispatch` dry build | S1 | with S2–S9 | no | 2.5 |
+| S10a | Release workflow | `agent-rs-release.yml`, `scripts/release_checks.py` + `tests/test_agent_rs_release_checks.py`, `build.rs` commit stamp, `--version` in the placeholder binary (S8 moves it into the CLI), `workflow_dispatch` dry build | S1 | with S2–S9 | no | 2.5 |
 | S10b | First release | tag `agent-rs-v0.1.0`, verify archive + sha256 | S9a, S9b, S10a | — | no | 0.5 |
 | S11a | ops-library role | impl selector (8.3), drop-in template, verify, prune, rsync exclude, README, CHANGELOG "Unreleased", tests with a stub archive | — (contract in 8.3) | with S1–S10 | no | 3.5 |
 | S11b | ops-deploy port | `GraphyardConfig` fields, agent module, wiring in `core_steps`, parity template copy, `SOURCE_EXCLUDES`, tests | S11a | with S2–S10 | no | 3.5 |

@@ -693,7 +693,8 @@ just manage start_agent --disable-conditions
 A Rust port of the agent is in progress in `agent-rs/` (contract:
 [`agent-rs/PLAN.md`](agent-rs/PLAN.md), build and test:
 [`agent-rs/README.md`](agent-rs/README.md)). It is not deployed; the Python
-command above remains the agent.
+command above remains the agent. Release archives of the Rust binary are built
+by `.github/workflows/agent-rs-release.yml` from `agent-rs-v<version>` tags.
 
 ## Nyxmon Integration Contract
 

@@ -1,0 +1,178 @@
+name: Rust agent release
+
+# Release pipeline of the Rust agent (agent-rs/PLAN.md section 8.2), adapted
+# from the nyxmon agent's.
+#
+# - Tag `agent-rs-v<semver>`: the tag must equal the graphyard-agent crate
+#   version; Rust tests, the fixture drift test (Python is the oracle), a glibc
+#   build on ubuntu-22.04 (glibc 2.35), the GLIBC floor check, a `--version`
+#   smoke test against this workflow's commit and the archive + sha256 file,
+#   then a GitHub release with both files.
+# - workflow_dispatch: the same build and checks, uploaded as a workflow
+#   artifact only (dry build: no release, no tag check).
+#
+# No cargo or uv cache: release builds start from a clean state. Only the
+# release job gets `contents: write`.
+
+on:
+  push:
+    tags:
+      - "agent-rs-v*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: agent-rs-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  fixtures:
+    name: Fixture drift and release check tests (Python 3.12)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PYTHONUNBUFFERED: "1"
+      UV_FROZEN: "1"
+      UV_NO_PROGRESS: "1"
+      UV_PYTHON: "3.12"
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - name: Set up uv
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          version: "0.12.23"
+          enable-cache: false
+      - name: Sync locked dependencies
+        run: uv sync
+      - name: Fixture drift test and release check tests
+        run: uv run pytest -q tests/test_agent_rs_fixtures.py tests/test_agent_rs_release_checks.py
+
+  build:
+    name: Build and check (x86_64-unknown-linux-gnu, glibc 2.35)
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: agent-rs
+    env:
+      CARGO_TERM_COLOR: always
+      TARGET: x86_64-unknown-linux-gnu
+      GLIBC_FLOOR: "2.35"
+      # Embedded into `graphyard-agent --version` by crates/graphyard-agent/build.rs.
+      GRAPHYARD_AGENT_GIT_COMMIT: ${{ github.sha }}
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      archive: ${{ steps.pack.outputs.archive }}
+      sha256: ${{ steps.pack.outputs.sha256 }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install the pinned toolchain (agent-rs/rust-toolchain.toml)
+        run: |
+          rustup toolchain install
+          rustc --version
+          python3 --version
+          objdump --version | head -n 1
+      - name: Check the version (tag must equal the crate version)
+        id: version
+        run: |
+          cargo metadata --format-version 1 --no-deps --locked > "$RUNNER_TEMP/metadata.json"
+          if [ "$GITHUB_EVENT_NAME" = push ]; then
+            version=$(python3 -I scripts/release_checks.py version --metadata "$RUNNER_TEMP/metadata.json" --tag "$GITHUB_REF_NAME")
+          else
+            version=$(python3 -I scripts/release_checks.py version --metadata "$RUNNER_TEMP/metadata.json")
+          fi
+          echo "graphyard-agent version: ${version}"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+      - name: Format (cargo fmt)
+        run: cargo fmt --all --check
+      - name: Lint (cargo clippy)
+        run: cargo clippy --workspace --all-targets --locked -- -D warnings
+      - name: Tests (cargo test)
+        run: cargo test --workspace --locked
+      - name: Release build
+        run: cargo build --release --locked --target "$TARGET"
+      - name: GLIBC floor and linked libraries
+        run: python3 -I scripts/release_checks.py glibc-floor --max "$GLIBC_FLOOR" "target/$TARGET/release/graphyard-agent"
+      - name: Smoke test (--version names version and commit)
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: python3 -I scripts/release_checks.py smoke --binary "target/$TARGET/release/graphyard-agent" --version "$VERSION" --commit "$GITHUB_SHA"
+      - name: Pack archive and checksum
+        id: pack
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          dist="$RUNNER_TEMP/dist"
+          archive=$(python3 -I scripts/release_checks.py pack \
+            --binary "target/$TARGET/release/graphyard-agent" --license ../LICENSE \
+            --version "$VERSION" --target "$TARGET" \
+            --mtime "$(git log -1 --format=%ct)" --out-dir "$dist")
+          (cd "$dist" && sha256sum --check "${archive}.sha256")
+          sha256=$(cut -d ' ' -f 1 "$dist/${archive}.sha256")
+          size=$(stat -c %s "target/$TARGET/release/graphyard-agent")
+          echo "archive=${archive}" >> "$GITHUB_OUTPUT"
+          echo "sha256=${sha256}" >> "$GITHUB_OUTPUT"
+          {
+            echo "### graphyard-agent ${VERSION}"
+            echo
+            echo "- commit: \`${GITHUB_SHA}\`"
+            echo "- archive: \`${archive}\`"
+            echo "- sha256: \`${sha256}\`"
+            echo "- binary size: ${size} bytes"
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload archive and checksum
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: graphyard-agent-${{ steps.version.outputs.version }}-x86_64-unknown-linux-gnu
+          path: |
+            ${{ runner.temp }}/dist/${{ steps.pack.outputs.archive }}
+            ${{ runner.temp }}/dist/${{ steps.pack.outputs.archive }}.sha256
+          if-no-files-found: error
+
+  release:
+    name: GitHub release
+    needs: [build, fixtures]
+    if: github.event_name == 'push' && github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Download archive and checksum
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: graphyard-agent-${{ needs.build.outputs.version }}-x86_64-unknown-linux-gnu
+          path: dist
+      - name: Verify the checksum
+        env:
+          ARCHIVE: ${{ needs.build.outputs.archive }}
+        run: cd dist && sha256sum --check "${ARCHIVE}.sha256"
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.build.outputs.version }}
+          ARCHIVE: ${{ needs.build.outputs.archive }}
+          SHA256: ${{ needs.build.outputs.sha256 }}
+        run: |
+          notes="graphyard-agent ${VERSION} (Rust agent), built from ${GITHUB_SHA} for x86_64-unknown-linux-gnu (glibc >= 2.35).
+
+          sha256 of ${ARCHIVE}: ${SHA256}"
+          # A semver pre-release version (0.2.0-rc.1) becomes a GitHub pre-release.
+          prerelease=()
+          case "$VERSION" in *-*) prerelease=(--prerelease) ;; esac
+          gh release create "$GITHUB_REF_NAME" \
+            "dist/${ARCHIVE}" "dist/${ARCHIVE}.sha256" \
+            --repo "$GITHUB_REPOSITORY" --verify-tag "${prerelease[@]}" \
+            --title "graphyard-agent ${VERSION}" --notes "$notes"
