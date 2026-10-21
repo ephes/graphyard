@@ -7,7 +7,7 @@ target. Nothing runs this code in production yet: the deployment selects it
 only through a systemd drop-in that later slices add (PLAN.md 8.3), and
 deploys ship `agent-rs/` only as a release archive.
 
-Status: slices S1 (scaffold), S2, S3a, S3b, S4a, S5, S6, S7b and S10a. S1: the workspace, the toolchain pin,
+Status: slices S1 (scaffold), S2, S3a, S3b, S4a, S5, S6, S7a, S7b and S10a. S1: the workspace, the toolchain pin,
 the cargo-deny policy, the CI `rust` job, the `just rs-*` recipes, the shared
 model types (`graphyard_core::model`) and the fixture pipeline with its drift
 test. S2: the CPython compatibility helpers (`graphyard_core::pycompat`), the
@@ -67,6 +67,17 @@ S8) and return the Python `(status, ingested, skipped, message)` tuple as a
 executors with the real httpx client on `MockTransport` and are replayed on
 fake servers with a recording sink.
 
+Slice S7a adds the Home Assistant and HTTP JSON executors
+(`graphyard-collect::executors`, PLAN.md 6.3): `home_assistant_sensor`,
+`home_assistant_env_scan` and `http_json_metric` on the same interface; the
+HA executors also take the metrics run's `RunState` (warn-once keys,
+compiled regexes). The pure parts are `graphyard_core::home_assistant` (HA
+state normalisation, subject and metric mappings on `fancy-regex`) and
+`graphyard_core::json_path`. Pinned by `ha_mapping.json`, `json_path.json`
+and `ha_json_executors.json`, whose scenarios ran the Python executors on a
+scripted transport and are replayed here against a fake server; deadline,
+TLS and per-run tests use real sockets.
+
 Slice S3a adds the store core in `graphyard-store` (PLAN.md 5): the DB thread
 owning the connection, Django's connection setup and the graphyard pragmas,
 the schema contract and `check_schema`, Django's datetime column conversion,
@@ -95,8 +106,8 @@ agent-rs/
   crates/
     graphyard-core/     pure logic, no I/O: model types (S1); pycompat,
                         settings, spec_config (S2); normalize, line_protocol,
-                        logline (S4a); conditions (S5); JSON path, mappings
-                        (S7a, S7b)
+                        logline (S4a); conditions (S5); json_path,
+                        home_assistant (S7a); UniFi helpers (S7b)
     graphyard-store/    rusqlite store: DB thread, schema contract, datetime
                         codec, specs, conditions, heartbeats (S3a); registry
                         (S3b)

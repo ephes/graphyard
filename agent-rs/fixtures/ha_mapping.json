@@ -1,0 +1,3610 @@
+{
+ "now": "2026-10-21T09:30:15.654321+00:00",
+ "cases": [
+  {
+   "name": "Home Assistant Environment Scan",
+   "spec_name": "Home Assistant Environment Scan",
+   "config": "{\"base_url\": \"http://macmini.local:10020\", \"access_token\": \"redacted\", \"host_id\": \"homeassistant\", \"service_id\": \"homeassistant\", \"source_instance\": \"ha-main\", \"collector_service\": \"graphyard-agent\", \"collector_host\": \"macmini\", \"subject_mapping\": {\"default\": {\"subject_type\": \"environment_sensor\", \"subject_id_from\": \"entity_name_slug\"}, \"rules\": [{\"match_entity_id_regex\": \"^sensor\\\\.fritz_box_7590_ax_(cpu_temperature|upload_throughput|download_throughput)$\", \"subject_type\": \"network_device\", \"subject_id_template\": \"fritz_box_7590_ax\"}, {\"match_entity_id_regex\": \"^sensor\\\\.usw_pro_xg_8_poe_temperature$\", \"subject_type\": \"network_device\", \"subject_id_template\": \"usw_pro_xg_8_poe\"}]}, \"metric_mapping\": {\"rules\": [{\"match_entity_id_regex\": \"^sensor\\\\.fritz_box_7590_ax_download_throughput$\", \"metric_name\": \"network_device.network_receive_bytes_per_second\", \"value_multiplier\": 1000, \"extra_tags\": {\"traffic_direction\": \"receive\", \"traffic_scope\": \"wan\"}}, {\"match_entity_id_regex\": \"^sensor\\\\.fritz_box_7590_ax_upload_throughput$\", \"metric_name\": \"network_device.network_transmit_bytes_per_second\", \"value_multiplier\": 1000, \"extra_tags\": {\"traffic_direction\": \"transmit\", \"traffic_scope\": \"wan\"}}]}, \"metric_prefix\": \"ha.\", \"include_device_classes\": [\"temperature\", \"humidity\"], \"entity_id_regex\": \"(^sensor\\\\.fritz_box_7590_ax_(upload_throughput|download_throughput)$|temperature|humidity)\", \"request_timeout_seconds\": 10, \"verify_tls\": true}",
+   "calls": [
+    {
+     "fn": "normalize",
+     "payload": "{\"entity_id\": \"sensor.fritz_box_7590_ax_download_throughput\", \"state\": \"1234.56\", \"attributes\": {\"unit_of_measurement\": \"kB/s\", \"device_class\": \"data_rate\", \"friendly_name\": \"FRITZ!Box 7590 AX Download Throughput\"}, \"last_changed\": \"2026-10-21T09:29:58.123456+00:00\", \"last_updated\": \"2026-10-21T09:29:58.123456+00:00\"}",
+     "metric_name_override": "ha.sensor.fritz_box_7590_ax_download_throughput",
+     "extra_tags": [
+      [
+       "spec_name",
+       "Home Assistant Environment Scan"
+      ]
+     ],
+     "point": {
+      "ts": "2026-10-21T09:29:58.123456+00:00",
+      "metric": "network_device.network_receive_bytes_per_second",
+      "value": "1234560.0",
+      "subject_type": "network_device",
+      "subject_id": "fritz_box_7590_ax",
+      "source_system": "homeassistant",
+      "collector_service": "graphyard-agent",
+      "collector_host": "macmini",
+      "source_instance": "ha-main",
+      "source_entity_id": "sensor.fritz_box_7590_ax_download_throughput",
+      "host": null,
+      "service": "homeassistant",
+      "tags": [
+       [
+        "entity_id",
+        "sensor.fritz_box_7590_ax_download_throughput"
+       ],
+       [
+        "spec_name",
+        "Home Assistant Environment Scan"
+       ],
+       [
+        "traffic_direction",
+        "receive"
+       ],
+       [
+        "traffic_scope",
+        "wan"
+       ],
+       [
+        "unit",
+        "kB/s"
+       ],
+       [
+        "device_class",
+        "data_rate"
+       ]
+      ]
+     },
+     "logs": []
+    },
+    {
+     "fn": "normalize",
+     "payload": "{\"entity_id\": \"sensor.fritz_box_7590_ax_upload_throughput\", \"state\": \"98.7\", \"attributes\": {\"unit_of_measurement\": \"kB/s\", \"device_class\": \"data_rate\"}, \"last_changed\": \"2026-10-21T09:29:58.123456+00:00\", \"last_updated\": \"2026-10-21T09:29:58.123456+00:00\"}",
+     "metric_name_override": "ha.sensor.fritz_box_7590_ax_upload_throughput",
+     "extra_tags": [
+      [
+       "spec_name",
+       "Home Assistant Environment Scan"
+      ]
+     ],
+     "point": {
+      "ts": "2026-10-21T09:29:58.123456+00:00",
+      "metric": "network_device.network_transmit_bytes_per_second",
+      "value": "98700.0",
+      "subject_type": "network_device",
+      "subject_id": "fritz_box_7590_ax",
+      "source_system": "homeassistant",
+      "collector_service": "graphyard-agent",
+      "collector_host": "macmini",
+      "source_instance": "ha-main",
+      "source_entity_id": "sensor.fritz_box_7590_ax_upload_throughput",
+      "host": null,
+      "service": "homeassistant",
+      "tags": [
+       [
+        "entity_id",
+        "sensor.fritz_box_7590_ax_upload_throughput"
+       ],
+       [
+        "spec_name",
+        "Home Assistant Environment Scan"
+       ],
+       [
+        "traffic_direction",
+        "transmit"
+       ],
+       [
+        "traffic_scope",
+        "wan"
+       ],
+       [
+        "unit",
+        "kB/s"
+       ],
+       [
+        "device_class",
+        "data_rate"
+       ]
+      ]
+     },
+     "logs": []
+    },
+    {
+     "fn": "normalize",
+     "payload": "{\"entity_id\": \"sensor.fritz_box_7590_ax_cpu_temperature\", \"state\": \"61\", \"attributes\": {\"unit_of_measurement\": \"\\u00b0C\", \"device_class\": \"temperature\"}, \"last_changed\": \"2026-10-21T09:29:58.123456+00:00\", \"last_updated\": \"2026-10-21T09:29:58.123456+00:00\"}",
+     "metric_name_override": "ha.sensor.fritz_box_7590_ax_cpu_temperature",
+     "extra_tags": [
+      [
+       "spec_name",
+       "Home Assistant Environment Scan"
+      ]
+     ],
+     "point": {
+      "ts": "2026-10-21T09:29:58.123456+00:00",
+      "metric": "ha.sensor.fritz_box_7590_ax_cpu_temperature",
+      "value": "61.0",
+      "subject_type": "network_device",
+      "subject_id": "fritz_box_7590_ax",
+      "source_system": "homeassistant",
+      "collector_service": "graphyard-agent",
+      "collector_host": "macmini",
+      "source_instance": "ha-main",
+      "source_entity_id": "sensor.fritz_box_7590_ax_cpu_temperature",
+      "host": null,
+      "service": "homeassistant",
+      "tags": [
+       [
+        "entity_id",
+        "sensor.fritz_box_7590_ax_cpu_temperature"
+       ],
+       [
+        "spec_name",
+        "Home Assistant Environment Scan"
+       ],
+       [
+        "unit",
+        "\u00b0C"
+       ],
+       [
+        "device_class",
+        "temperature"
+       ]
+      ]
+     },
+     "logs": []
+    },
+    {
+     "fn": "normalize",
+     "payload": "{\"entity_id\": \"sensor.usw_pro_xg_8_poe_temperature\", \"state\": \"48.5\", \"attributes\": {\"unit_of_measurement\": \"\\u00b0C\", \"device_class\": \"temperature\"}, \"last_changed\": \"2026-10-21T09:29:58.123456+00:00\", \"last_updated\": \"2026-10-21T09:29:58.123456+00:00\"}",
+     "metric_name_override": "ha.sensor.usw_pro_xg_8_poe_temperature",
+     "extra_tags": [
+      [
+       "spec_name",
+       "Home Assistant Environment Scan"
+      ]
+     ],
+     "point": {
+      "ts": "2026-10-21T09:29:58.123456+00:00",
+      "metric": "ha.sensor.usw_pro_xg_8_poe_temperature",
+      "value": "48.5",
+      "subject_type": "network_device",
+      "subject_id": "usw_pro_xg_8_poe",
+      "source_system": "homeassistant",
+      "collector_service": "graphyard-agent",
+      "collector_host": "macmini",
+      "source_instance": "ha-main",
+      "source_entity_id": "sensor.usw_pro_xg_8_poe_temperature",
+      "host": null,
+      "service": "homeassistant",
+      "tags": [
+       [
+        "entity_id",
+        "sensor.usw_pro_xg_8_poe_temperature"
+       ],
+       [
+        "spec_name",
+        "Home Assistant Environment Scan"
+       ],
+       [
+        "unit",
+        "\u00b0C"
+       ],
+       [
+        "device_class",
+        "temperature"
+       ]
+      ]
+     },
+     "logs": []
+    },
+    {
+     "fn": "normalize",
+     "payload": "{\"entity_id\": \"sensor.wohnzimmer_temperatur\", \"state\": \"21.4\", \"attributes\": {\"unit_of_measurement\": \"\\u00b0C\", \"device_class\": \"temperature\"}, \"last_changed\": \"2026-10-21T09:29:58.123456+00:00\", \"last_updated\": \"2026-10-21T09:29:58.123456+00:00\"}",
+     "metric_name_override": "ha.sensor.wohnzimmer_temperatur",
+     "extra_tags": [
+      [
+       "spec_name",
+       "Home Assistant Environment Scan"
+      ]
+     ],
+     "point": {
+      "ts": "2026-10-21T09:29:58.123456+00:00",
+      "metric": "ha.sensor.wohnzimmer_temperatur",
+      "value": "21.4",
+      "subject_type": "environment_sensor",
+      "subject_id": "wohnzimmer_temperatur",
+      "source_system": "homeassistant",
+      "collector_service": "graphyard-agent",
+      "collector_host": "macmini",
+      "source_instance": "ha-main",
+      "source_entity_id": "sensor.wohnzimmer_temperatur",
+      "host": null,
+      "service": "homeassistant",
+      "tags": [
+       [
+        "entity_id",
+        "sensor.wohnzimmer_temperatur"
+       ],
+       [
+        "spec_name",
+        "Home Assistant Environment Scan"
+       ],
+       [
+        "unit",
+        "\u00b0C"
+       ],
+       [
+        "device_class",
+        "temperature"
+       ]
+      ]
+     },
+     "logs": []
+    },
+    {
+     "fn": "normalize",
+     "payload": "{\"entity_id\": \"sensor.bad_luftfeuchtigkeit\", \"state\": \"unavailable\", \"attributes\": {\"unit_of_measurement\": \"%\", \"device_class\": \"humidity\"}, \"last_changed\": \"2026-10-21T09:29:58.123456+00:00\", \"last_updated\": \"2026-10-21T09:29:58.123456+00:00\"}",
+     "metric_name_override": "ha.sensor.bad_luftfeuchtigkeit",
+     "extra_tags": [
+      [
+       "spec_name",
+       "Home Assistant Environment Scan"
+      ]
+     ],
+     "point": null,
+     "logs": []
+    },
+    {
+     "fn": "normalize",
+     "payload": "{\"entity_id\": \"sensor.keller_humidity\", \"state\": \"67.0\", \"attributes\": {\"unit_of_measurement\": \"%\", \"device_class\": \"humidity\"}, \"last_changed\": \"2026-10-21T09:29:58.123456+00:00\", \"last_updated\": \"2026-10-21T09:29:58.123456+00:00\"}",
+     "metric_name_override": "ha.sensor.keller_humidity",
+     "extra_tags": [
+      [
+       "spec_name",
+       "Home Assistant Environment Scan"
+      ]
+     ],
+     "point": {
+      "ts": "2026-10-21T09:29:58.123456+00:00",
+      "metric": "ha.sensor.keller_humidity",
+      "value": "67.0",
+      "subject_type": "environment_sensor",
+      "subject_id": "keller_humidity",
+      "source_system": "homeassistant",
+      "collector_service": "graphyard-agent",
+      "collector_host": "macmini",
+      "source_instance": "ha-main",
+      "source_entity_id": "sensor.keller_humidity",
+      "host": null,
+      "service": "homeassistant",
+      "tags": [
+       [
+        "entity_id",
+        "sensor.keller_humidity"
+       ],
+       [
+        "spec_name",
+        "Home Assistant Environment Scan"
+       ],
+       [
+        "unit",
+        "%"
+       ],
+       [
+        "device_class",
+        "humidity"
+       ]
+      ]
+     },
+     "logs": []
+    }
+   ],
+   "warned_keys": []
+  },
+  {
+   "name": "single sensor (test_home_assistant_sensor_spec_ingests_single_entity)",
+   "spec_name": "ha single sensor",
+   "config": "{\"base_url\": \"https://ha.local\", \"access_token\": \"token\", \"entity_id\": \"sensor.office_temperature\", \"metric_name\": \"ha.sensor.office_temperature\", \"host_id\": \"homeassistant\", \"service_id\": \"homeassistant\"}",
+   "calls": [
+    {
+     "fn": "normalize",
+     "payload": "{\"entity_id\": \"sensor.office_temperature\", \"state\": \"21.2\", \"last_updated\": \"2026-03-04T12:00:00Z\", \"attributes\": {\"device_class\": \"temperature\", \"unit_of_measurement\": \"\\u00b0C\"}}",
+     "metric_name_override": "ha.sensor.office_temperature",
+     "extra_tags": [
+      [
+       "spec_name",
+       "ha single sensor"
+      ]
+     ],
+     "point": {
+      "ts": "2026-03-04T12:00:00+00:00",
+      "metric": "ha.sensor.office_temperature",
+      "value": "21.2",
+      "subject_type": "environment_sensor",
+      "subject_id": "office_temperature",
+      "source_system": "homeassistant",
+      "collector_service": "graphyard-agent",
+      "collector_host": "homeassistant",
+      "source_instance": "default",
+      "source_entity_id": "sensor.office_temperature",
+      "host": null,
+      "service": "homeassistant",
+      "tags": [
+       [
+        "entity_id",
+        "sensor.office_temperature"
+       ],
+       [
+        "spec_name",
+        "ha single sensor"
+       ],
+       [
+        "unit",
+        "\u00b0C"
+       ],
+       [
+        "device_class",
+        "temperature"
+       ]
+      ]
+     },
+     "logs": [
+      {
+       "level": "WARNING",
+       "message": "Spec ha single sensor missing config.subject_mapping; using default entity_name_slug mapping"
+      }
+     ]
+    },
+    {
+     "fn": "normalize",
+     "payload": "{\"entity_id\": \"sensor.office_temperature\", \"state\": \"21.2\", \"last_updated\": \"2026-03-04T12:00:00Z\", \"attributes\": {\"device_class\": \"temperature\", \"unit_of_measurement\": \"\\u00b0C\"}}",
+     "metric_name_override": "",
+     "extra_tags": [
+      [
+       "spec_name",
+       "ha single sensor"
+      ]
+     ],
+     "point": {
+      "ts": "2026-03-04T12:00:00+00:00",
+      "metric": "ha.sensor.office_temperature",
+      "value": "21.2",
+      "subject_type": "environment_sensor",
+      "subject_id": "office_temperature",
+      "source_system": "homeassistant",
+      "collector_service": "graphyard-agent",
+      "collector_host": "homeassistant",
+      "source_instance": "default",
+      "source_entity_id": "sensor.office_temperature",
+      "host": null,
+      "service": "homeassistant",
+      "tags": [
+       [
+        "entity_id",
+        "sensor.office_temperature"
+       ],
+       [
+        "spec_name",
+        "ha single sensor"
+       ],
+       [
+        "unit",
+        "\u00b0C"
+       ],
+       [
+        "device_class",
+        "temperature"
+       ]
+      ]
+     },
+     "logs": []
+    }
+   ],
+   "warned_keys": [
+    "ha single sensor:missing"
+   ]
+  },
+  {
+   "name": "missing mapping warns once per run",
+   "spec_name": "missing mapping warns once per run",
+   "config": "{\"base_url\": \"https://ha.local\", \"access_token\": \"token\"}",
+   "calls": [
+    {
+     "fn": "normalize",
+     "payload": "{\"entity_id\": \"sensor.Wohnzimmer Sensor Temperature\", \"state\": \"21.2\", \"last_updated\": \"2026-03-04T12:00:00Z\", \"attributes\": {\"device_class\": \"temperature\", \"unit_of_measurement\": \"\\u00b0C\"}}",
+     "metric_name_override": "",
+     "extra_tags": [],
+     "point": {
+      "ts": "2026-03-04T12:00:00+00:00",
+      "metric": "ha.sensor.Wohnzimmer_Sensor_Temperature",
+      "value": "21.2",
+      "subject_type": "environment_sensor",
+      "subject_id": "wohnzimmer_sensor_temperature",
+      "source_system": "homeassistant",
+      "collector_service": "graphyard-agent",
+      "collector_host": "homeassistant",
+      "source_instance": "default",
+      "source_entity_id": "sensor.Wohnzimmer Sensor Temperature",
+      "host": null,
+      "service": "homeassistant",
+      "tags": [
+       [
+        "entity_id",
+        "sensor.Wohnzimmer Sensor Temperature"
+       ],
+       [
+        "unit",
+        "\u00b0C"
+       ],
+       [
+        "device_class",
+        "temperature"
+       ]
+      ]
+     },
+     "logs": [
+      {
+       "level": "WARNING",
+       "message": "Spec missing mapping warns once per run missing config.subject_mapping; using default entity_name_slug mapping"
+      }
+     ]
+    },
+    {
+     "fn": "normalize",
+     "payload": "{\"entity_id\": \"sensor.office_temperature\", \"state\": \"21.2\", \"last_updated\": \"2026-03-04T12:00:00Z\", \"attributes\": {\"device_class\": \"temperature\", \"unit_of_measurement\": \"\\u00b0C\"}}",
+     "metric_name_override": "",
+     "extra_tags": [],
+     "point": {
+      "ts": "2026-03-04T12:00:00+00:00",
+      "metric": "ha.sensor.office_temperature",
+      "value": "21.2",
+      "subject_type": "environment_sensor",
+      "subject_id": "office_temperature",
+      "source_system": "homeassistant",
+      "collector_service": "graphyard-agent",
+      "collector_host": "homeassistant",
+      "source_instance": "default",
+      "source_entity_id": "sensor.office_temperature",
+      "host": null,
+      "service": "homeassistant",
+      "tags": [
+       [
+        "entity_id",
+        "sensor.office_temperature"
+       ],
+       [
+        "unit",
+        "\u00b0C"
+       ],
+       [
+        "device_class",
+        "temperature"
+       ]
+      ]
+     },
+     "logs": []
+    },
+    {
+     "fn": "subject",
+     "entity_id": "binary_sensor.door",
+     "subject": [
+      "environment_sensor",
+      "door"
+     ],
+     "logs": []
+    }
+   ],
+   "warned_keys": [
+    "missing mapping warns once per run:missing"
+   ]
+  },
+  {
+   "name": "null mapping is missing",
+   "spec_name": "null mapping is missing",
+   "config": "{\"base_url\": \"https://ha.local\", \"access_token\": \"token\", \"subject_mapping\": null}",
+   "calls": [
+    {
+     "fn": "subject",
+     "entity_id": "sensor.a",
+     "subject": [
+      "environment_sensor",
+      "a"
+     ],
+     "logs": [
+      {
+       "level": "WARNING",
+       "message": "Spec null mapping is missing missing config.subject_mapping; using default entity_name_slug mapping"
+      }
+     ]
+    }
+   ],
+   "warned_keys": [
+    "null mapping is missing:missing"
+   ]
+  },
+  {
+   "name": "invalid mapping types",
+   "spec_name": "invalid mapping types",
+   "config": "{\"base_url\": \"https://ha.local\", \"access_token\": \"token\", \"subject_mapping\": [\"rules\"]}",
+   "calls": [
+    {
+     "fn": "subject",
+     "entity_id": "sensor.a",
+     "subject": [
+      "environment_sensor",
+      "a"
+     ],
+     "logs": [
+      {
+       "level": "WARNING",
+       "message": "Spec invalid mapping types has invalid config.subject_mapping type=list; using default mapping"
+      }
+     ]
+    },
+    {
+     "fn": "subject",
+     "entity_id": "sensor.b",
+     "subject": [
+      "environment_sensor",
+      "b"
+     ],
+     "logs": []
+    }
+   ],
+   "warned_keys": [
+    "invalid mapping types:invalid_type"
+   ]
+  },
+  {
+   "name": "string mapping type",
+   "spec_name": "string mapping type",
+   "config": "{\"base_url\": \"https://ha.local\", \"access_token\": \"token\", \"subject_mapping\": \"x\"}",
+   "calls": [
+    {
+     "fn": "subject",
+     "entity_id": "sensor.a",
+     "subject": [
+      "environment_sensor",
+      "a"
+     ],
+     "logs": [
+      {
+       "level": "WARNING",
+       "message": "Spec string mapping type has invalid config.subject_mapping type=str; using default mapping"
+      }
+     ]
+    }
+   ],
+   "warned_keys": [
+    "string mapping type:invalid_type"
+   ]
+  },
+  {
+   "name": "rules: fullmatch, unknown type, missing template, bad template, bad regex",
+   "spec_name": "rules: fullmatch, unknown type, missing template, bad template, bad regex",
+   "config": "{\"base_url\": \"https://ha.local\", \"access_token\": \"token\", \"subject_mapping\": {\"default\": {\"subject_type\": \"environment_sensor\"}, \"rules\": [\"not an object\", {\"subject_type\": \"host\"}, {\"match_entity_id_regex\": \"   \"}, {\"match_entity_id_regex\": \"(unclosed\", \"subject_type\": \"host\"}, {\"match_entity_id_regex\": \"sensor\\\\.unknown_.*\", \"subject_type\": \"Not_A_Type\", \"subject_id_template\": \"x\"}, {\"match_entity_id_regex\": \" sensor\\\\.host_.* \", \"subject_type\": \" HOST \", \"subject_id_template\": \" Mac Mini \"}, {\"match_entity_id_regex\": \"sensor\\\\.notemplate_.*\", \"subject_type\": \"service\"}, {\"match_entity_id_regex\": \"sensor\\\\.blanktemplate_.*\", \"subject_type\": \"service\", \"subject_id_template\": \"   \"}, {\"match_entity_id_regex\": \"sensor\\\\.numtemplate_.*\", \"subject_type\": \"service\", \"subject_id_template\": 5}, {\"match_entity_id_regex\": \"sensor\\\\.badtemplate_.*\", \"subject_type\": \"service\", \"subject_id_template\": \"!!!\"}, {\"match_entity_id_regex\": \"sensor\\\\.partial\", \"subject_type\": \"service\", \"subject_id_template\": \"partial\"}, {\"match_entity_id_regex\": \"a|ab\", \"subject_type\": \"network_device\", \"subject_id_template\": \"alternation\"}, {\"match_entity_id_regex\": \"(?x) sensor \\\\. verbose_.*  # comment\", \"subject_type\": \"network_device\", \"subject_id_template\": \"verbose\"}, {\"match_entity_id_regex\": \"(?i)(?x) sensor \\\\. multiflag_.*  # comment\", \"subject_type\": \"network_device\", \"subject_id_template\": \"multiflag\"}, {\"match_entity_id_regex\": \"sensor\\\\.(?=look)lookahead\", \"subject_type\": \"network_device\", \"subject_id_template\": \"lookaround\"}, {\"match_entity_id_regex\": \"sensor\\\\.(\\\\w)\\\\1x\", \"subject_type\": \"network_device\", \"subject_id_template\": \"backref\"}]}}",
+   "calls": [
+    {
+     "fn": "subject",
+     "entity_id": "sensor.unknown_one",
+     "subject": [
+      "environment_sensor",
+      "unknown_one"
+     ],
+     "logs": [
+      {
+       "level": "WARNING",
+       "message": "Spec rules: fullmatch, unknown type, missing template, bad template, bad regex subject_mapping.rules[0] is not an object; skipping"
+      },
+      {
+       "level": "WARNING",
+       "prefix": "Spec rules: fullmatch, unknown type, missing template, bad template, bad regex has invalid subject mapping regex at rules[3]: ",
+       "p2": true
+      },
+      {
+       "level": "WARNING",
+       "message": "Spec rules: fullmatch, unknown type, missing template, bad template, bad regex subject mapping rules[4] has unknown subject_type=not_a_type"
+      }
+     ]
+    },
+    {
+     "fn": "subject",
+     "entity_id": "sensor.unknown_two",
+     "subject": [
+      "environment_sensor",
+      "unknown_two"
+     ],
+     "logs": [
+      {
+       "level": "WARNING",
+       "message": "Spec rules: fullmatch, unknown type, missing template, bad template, bad regex subject_mapping.rules[0] is not an object; skipping"
+      },
+      {
+       "level": "WARNING",
+       "prefix": "Spec rules: fullmatch, unknown type, missing template, bad template, bad regex has invalid subject mapping regex at rules[3]: ",
+       "p2": true
+      }
+     ]
+    },
+    {
+     "fn": "subject",
+     "entity_id": "sensor.host_macmini",
+     "subject": [
+      "host",
+      "mac_mini"
+     ],
+     "logs": [
+      {
+       "level": "WARNING",
+       "message": "Spec rules: fullmatch, unknown type, missing template, bad template, bad regex subject_mapping.rules[0] is not an object; skipping"
+      },
+      {
+       "level": "WARNING",
+       "prefix": "Spec rules: fullmatch, unknown type, missing template, bad template, bad regex has invalid subject mapping regex at rules[3]: ",
+       "p2": true
+      }
+     ]
+    },
+    {
+     "fn": "subject",
+     "entity_id": "sensor.notemplate_a",
+     "subject": null,
+     "logs": [
+      {
+       "level": "WARNING",
+       "message": "Spec rules: fullmatch, unknown type, missing template, bad template, bad regex subject_mapping.rules[0] is not an object; skipping"
+      },
+      {
+       "level": "WARNING",
+       "prefix": "Spec rules: fullmatch, unknown type, missing template, bad template, bad regex has invalid subject mapping regex at rules[3]: ",
+       "p2": true
+      },
+      {
+       "level": "WARNING",
+       "message": "Spec rules: fullmatch, unknown type, missing template, bad template, bad regex subject mapping rules[6] matched sensor.notemplate_a but has no static subject_id_template"
+      }
+     ]
+    },
+    {
+     "fn": "subject",
+     "entity_id": "sensor.blanktemplate_a",
+     "subject": null,
+     "logs": [
+      {
+       "level": "WARNING",
+       "message": "Spec rules: fullmatch, unknown type, missing template, bad template, bad regex subject_mapping.rules[0] is not an object; skipping"
+      },
+      {
+       "level": "WARNING",
+       "prefix": "Spec rules: fullmatch, unknown type, missing template, bad template, bad regex has invalid subject mapping regex at rules[3]: ",
+       "p2": true
+      },
+      {
+       "level": "WARNING",
+       "message": "Spec rules: fullmatch, unknown type, missing template, bad template, bad regex subject mapping rules[7] matched sensor.blanktemplate_a but has no static subject_id_template"
+      }
+     ]
+    },
+    {
+     "fn": "subject",
+     "entity_id": "sensor.numtemplate_a",
+     "subject": null,
+     "logs": [
+      {
+       "level": "WARNING",
+       "message": "Spec rules: fullmatch, unknown type, missing template, bad template, bad regex subject_mapping.rules[0] is not an object; skipping"
+      },
+      {
+       "level": "WARNING",
+       "prefix": "Spec rules: fullmatch, unknown type, missing template, bad template, bad regex has invalid subject mapping regex at rules[3]: ",
+       "p2": true
+      },
+      {
+       "level": "WARNING",
+       "message": "Spec rules: fullmatch, unknown type, missing template, bad template, bad regex subject mapping rules[8] matched sensor.numtemplate_a but has no static subject_id_template"
+      }
+     ]
+    },
+    {
+     "fn": "subject",
+     "entity_id": "sensor.badtemplate_a",
+     "subject": null,
+     "logs": [
+      {
+       "level": "WARNING",
+       "message": "Spec rules: fullmatch, unknown type, missing template, bad template, bad regex subject_mapping.rules[0] is not an object; skipping"
+      },
+      {
+       "level": "WARNING",
+       "prefix": "Spec rules: fullmatch, unknown type, missing template, bad template, bad regex has invalid subject mapping regex at rules[3]: ",
+       "p2": true
+      },
+      {
+       "level": "WARNING",
+       "message": "Spec rules: fullmatch, unknown type, missing template, bad template, bad regex subject mapping rules[9] produced invalid subject_id for sensor.badtemplate_a: Invalid subject_id '!!!': expected lowercase snake_case identifier"
+      }
+     ]
+    },
+    {
+     "fn": "subject",
+     "entity_id": "sensor.partial_more",
+     "subject": [
+      "environment_sensor",
+      "partial_more"
+     ],
+     "logs": [
+      {
+       "level": "WARNING",
+       "message": "Spec rules: fullmatch, unknown type, missing template, bad template, bad regex subject_mapping.rules[0] is not an object; skipping"
+      },
+      {
+       "level": "WARNING",
+       "prefix": "Spec rules: fullmatch, unknown type, missing template, bad template, bad regex has invalid subject mapping regex at rules[3]: ",
+       "p2": true
+      }
+     ]
+    },
+    {
+     "fn": "subject",
+     "entity_id": "sensor.partial",
+     "subject": [
+      "service",
+      "partial"
+     ],
+     "logs": [
+      {
+       "level": "WARNING",
+       "message": "Spec rules: fullmatch, unknown type, missing template, bad template, bad regex subject_mapping.rules[0] is not an object; skipping"
+      },
+      {
+       "level": "WARNING",
+       "prefix": "Spec rules: fullmatch, unknown type, missing template, bad template, bad regex has invalid subject mapping regex at rules[3]: ",
+       "p2": true
+      }
+     ]
+    },
+    {
+     "fn": "subject",
+     "entity_id": "ab",
+     "subject": [
+      "network_device",
+      "alternation"
+     ],
+     "logs": [
+      {
+       "level": "WARNING",
+       "message": "Spec rules: fullmatch, unknown type, missing template, bad template, bad regex subject_mapping.rules[0] is not an object; skipping"
+      },
+      {
+       "level": "WARNING",
+       "prefix": "Spec rules: fullmatch, unknown type, missing template, bad template, bad regex has invalid subject mapping regex at rules[3]: ",
+       "p2": true
+      }
+     ]
+    },
+    {
+     "fn": "subject",
+     "entity_id": "sensor.verbose_x",
+     "subject": [
+      "network_device",
+      "verbose"
+     ],
+     "logs": [
+      {
+       "level": "WARNING",
+       "message": "Spec rules: fullmatch, unknown type, missing template, bad template, bad regex subject_mapping.rules[0] is not an object; skipping"
+      },
+      {
+       "level": "WARNING",
+       "prefix": "Spec rules: fullmatch, unknown type, missing template, bad template, bad regex has invalid subject mapping regex at rules[3]: ",
+       "p2": true
+      }
+     ]
+    },
+    {
+     "fn": "subject",
+     "entity_id": "SENSOR.MultiFlag_x",
+     "subject": [
+      "network_device",
+      "multiflag"
+     ],
+     "logs": [
+      {
+       "level": "WARNING",
+       "message": "Spec rules: fullmatch, unknown type, missing template, bad template, bad regex subject_mapping.rules[0] is not an object; skipping"
+      },
+      {
+       "level": "WARNING",
+       "prefix": "Spec rules: fullmatch, unknown type, missing template, bad template, bad regex has invalid subject mapping regex at rules[3]: ",
+       "p2": true
+      }
+     ]
+    },
+    {
+     "fn": "subject",
+     "entity_id": "sensor.lookahead",
+     "subject": [
+      "network_device",
+      "lookaround"
+     ],
+     "logs": [
+      {
+       "level": "WARNING",
+       "message": "Spec rules: fullmatch, unknown type, missing template, bad template, bad regex subject_mapping.rules[0] is not an object; skipping"
+      },
+      {
+       "level": "WARNING",
+       "prefix": "Spec rules: fullmatch, unknown type, missing template, bad template, bad regex has invalid subject mapping regex at rules[3]: ",
+       "p2": true
+      }
+     ]
+    },
+    {
+     "fn": "subject",
+     "entity_id": "sensor.aax",
+     "subject": [
+      "network_device",
+      "backref"
+     ],
+     "logs": [
+      {
+       "level": "WARNING",
+       "message": "Spec rules: fullmatch, unknown type, missing template, bad template, bad regex subject_mapping.rules[0] is not an object; skipping"
+      },
+      {
+       "level": "WARNING",
+       "prefix": "Spec rules: fullmatch, unknown type, missing template, bad template, bad regex has invalid subject mapping regex at rules[3]: ",
+       "p2": true
+      }
+     ]
+    },
+    {
+     "fn": "subject",
+     "entity_id": "sensor.abx",
+     "subject": [
+      "environment_sensor",
+      "abx"
+     ],
+     "logs": [
+      {
+       "level": "WARNING",
+       "message": "Spec rules: fullmatch, unknown type, missing template, bad template, bad regex subject_mapping.rules[0] is not an object; skipping"
+      },
+      {
+       "level": "WARNING",
+       "prefix": "Spec rules: fullmatch, unknown type, missing template, bad template, bad regex has invalid subject mapping regex at rules[3]: ",
+       "p2": true
+      }
+     ]
+    },
+    {
+     "fn": "normalize",
+     "payload": "{\"entity_id\": \"sensor.host_homeassistant\", \"state\": \"21.2\", \"last_updated\": \"2026-03-04T12:00:00Z\", \"attributes\": {\"device_class\": \"temperature\", \"unit_of_measurement\": \"\\u00b0C\"}}",
+     "metric_name_override": "",
+     "extra_tags": [],
+     "point": {
+      "ts": "2026-03-04T12:00:00+00:00",
+      "metric": "ha.sensor.host_homeassistant",
+      "value": "21.2",
+      "subject_type": "host",
+      "subject_id": "mac_mini",
+      "source_system": "homeassistant",
+      "collector_service": "graphyard-agent",
+      "collector_host": "homeassistant",
+      "source_instance": "default",
+      "source_entity_id": "sensor.host_homeassistant",
+      "host": null,
+      "service": "homeassistant",
+      "tags": [
+       [
+        "entity_id",
+        "sensor.host_homeassistant"
+       ],
+       [
+        "unit",
+        "\u00b0C"
+       ],
+       [
+        "device_class",
+        "temperature"
+       ]
+      ]
+     },
+     "logs": [
+      {
+       "level": "WARNING",
+       "message": "Spec rules: fullmatch, unknown type, missing template, bad template, bad regex subject_mapping.rules[0] is not an object; skipping"
+      },
+      {
+       "level": "WARNING",
+       "prefix": "Spec rules: fullmatch, unknown type, missing template, bad template, bad regex has invalid subject mapping regex at rules[3]: ",
+       "p2": true
+      }
+     ]
+    },
+    {
+     "fn": "normalize",
+     "payload": "{\"entity_id\": \"sensor.notemplate_b\", \"state\": \"21.2\", \"last_updated\": \"2026-03-04T12:00:00Z\", \"attributes\": {\"device_class\": \"temperature\", \"unit_of_measurement\": \"\\u00b0C\"}}",
+     "metric_name_override": "",
+     "extra_tags": [],
+     "point": null,
+     "logs": [
+      {
+       "level": "WARNING",
+       "message": "Spec rules: fullmatch, unknown type, missing template, bad template, bad regex subject_mapping.rules[0] is not an object; skipping"
+      },
+      {
+       "level": "WARNING",
+       "prefix": "Spec rules: fullmatch, unknown type, missing template, bad template, bad regex has invalid subject mapping regex at rules[3]: ",
+       "p2": true
+      },
+      {
+       "level": "WARNING",
+       "message": "Spec rules: fullmatch, unknown type, missing template, bad template, bad regex subject mapping rules[6] matched sensor.notemplate_b but has no static subject_id_template"
+      },
+      {
+       "level": "WARNING",
+       "message": "Spec rules: fullmatch, unknown type, missing template, bad template, bad regex failed subject resolution for entity_id=sensor.notemplate_b"
+      }
+     ]
+    }
+   ],
+   "warned_keys": [
+    "rules: fullmatch, unknown type, missing template, bad template, bad regex:rule:4:unknown_subject_type:not_a_type"
+   ]
+  },
+  {
+   "name": "rules not a list are ignored",
+   "spec_name": "rules not a list are ignored",
+   "config": "{\"base_url\": \"https://ha.local\", \"access_token\": \"token\", \"subject_mapping\": {\"rules\": {\"a\": 1}, \"default\": {}}}",
+   "calls": [
+    {
+     "fn": "subject",
+     "entity_id": "sensor.a",
+     "subject": [
+      "environment_sensor",
+      "a"
+     ],
+     "logs": []
+    }
+   ],
+   "warned_keys": []
+  },
+  {
+   "name": "default mapping variants",
+   "spec_name": "default mapping variants",
+   "config": "{\"base_url\": \"https://ha.local\", \"access_token\": \"token\", \"subject_mapping\": {\"default\": {\"subject_type\": \" Network_Device \", \"subject_id_from\": \"friendly_name\"}}}",
+   "calls": [
+    {
+     "fn": "subject",
+     "entity_id": "sensor.Router CPU",
+     "subject": [
+      "network_device",
+      "router_cpu"
+     ],
+     "logs": [
+      {
+       "level": "WARNING",
+       "message": "Spec default mapping variants has unsupported subject_id_from=friendly_name; using entity_name_slug"
+      }
+     ]
+    },
+    {
+     "fn": "subject",
+     "entity_id": "binary_sensor.Router",
+     "subject": [
+      "network_device",
+      "router"
+     ],
+     "logs": []
+    },
+    {
+     "fn": "subject",
+     "entity_id": "Sensor.Upper",
+     "subject": [
+      "network_device",
+      "upper"
+     ],
+     "logs": []
+    }
+   ],
+   "warned_keys": [
+    "default mapping variants:unsupported_subject_id_from:friendly_name"
+   ]
+  },
+  {
+   "name": "default mapping null",
+   "spec_name": "default mapping null",
+   "config": "{\"base_url\": \"https://ha.local\", \"access_token\": \"token\", \"subject_mapping\": {\"default\": null}}",
+   "calls": [
+    {
+     "fn": "subject",
+     "entity_id": "sensor.a",
+     "subject": [
+      "environment_sensor",
+      "a"
+     ],
+     "logs": [
+      {
+       "level": "WARNING",
+       "message": "Spec default mapping null has invalid subject_mapping.default; using fallback"
+      }
+     ]
+    }
+   ],
+   "warned_keys": [
+    "default mapping null:invalid_default"
+   ]
+  },
+  {
+   "name": "default mapping unknown type",
+   "spec_name": "default mapping unknown type",
+   "config": "{\"base_url\": \"https://ha.local\", \"access_token\": \"token\", \"subject_mapping\": {\"default\": {\"subject_type\": \"gadget\"}}}",
+   "calls": [
+    {
+     "fn": "subject",
+     "entity_id": "sensor.a",
+     "subject": [
+      "environment_sensor",
+      "a"
+     ],
+     "logs": [
+      {
+       "level": "WARNING",
+       "message": "Spec default mapping unknown type has unknown default subject_type=gadget; using environment_sensor"
+      }
+     ]
+    },
+    {
+     "fn": "subject",
+     "entity_id": "sensor.b",
+     "subject": [
+      "environment_sensor",
+      "b"
+     ],
+     "logs": []
+    }
+   ],
+   "warned_keys": [
+    "default mapping unknown type:unknown_default_subject_type:gadget"
+   ]
+  },
+  {
+   "name": "default mapping subject_id_from null",
+   "spec_name": "default mapping subject_id_from null",
+   "config": "{\"base_url\": \"https://ha.local\", \"access_token\": \"token\", \"subject_mapping\": {\"default\": {\"subject_id_from\": null}}}",
+   "calls": [
+    {
+     "fn": "subject",
+     "entity_id": "sensor.a",
+     "subject": [
+      "environment_sensor",
+      "a"
+     ],
+     "logs": [
+      {
+       "level": "WARNING",
+       "message": "Spec default mapping subject_id_from null has unsupported subject_id_from=None; using entity_name_slug"
+      }
+     ]
+    }
+   ],
+   "warned_keys": [
+    "default mapping subject_id_from null:unsupported_subject_id_from:None"
+   ]
+  },
+  {
+   "name": "slug failures raise",
+   "spec_name": "slug failures raise",
+   "config": "{\"base_url\": \"https://ha.local\", \"access_token\": \"token\", \"subject_mapping\": {\"default\": {\"subject_type\": \"environment_sensor\", \"subject_id_from\": \"entity_name_slug\"}}}",
+   "calls": [
+    {
+     "fn": "subject",
+     "entity_id": "sensor.",
+     "error": {
+      "class": "ValueError",
+      "message": "Invalid subject_id '': expected lowercase snake_case identifier"
+     },
+     "logs": []
+    },
+    {
+     "fn": "subject",
+     "entity_id": "binary_sensor.!!",
+     "error": {
+      "class": "ValueError",
+      "message": "Invalid subject_id '!!': expected lowercase snake_case identifier"
+     },
+     "logs": []
+    },
+    {
+     "fn": "normalize",
+     "payload": "{\"entity_id\": \"sensor.___\", \"state\": \"21.2\", \"last_updated\": \"2026-03-04T12:00:00Z\", \"attributes\": {\"device_class\": \"temperature\", \"unit_of_measurement\": \"\\u00b0C\"}}",
+     "metric_name_override": "",
+     "extra_tags": [],
+     "error": {
+      "class": "ValueError",
+      "message": "Invalid subject_id '___': expected lowercase snake_case identifier"
+     },
+     "logs": []
+    }
+   ],
+   "warned_keys": []
+  },
+  {
+   "name": "metric mapping (test_home_assistant_env_scan_metric_mapping_rewrites_metric_and_value)",
+   "spec_name": "metric mapping (test_home_assistant_env_scan_metric_mapping_rewrites_metric_and_value)",
+   "config": "{\"base_url\": \"https://ha.local\", \"access_token\": \"token\", \"subject_mapping\": {\"default\": {\"subject_type\": \"environment_sensor\"}, \"rules\": [{\"match_entity_id_regex\": \"^sensor\\\\.fritz_box_.*_upload_throughput$\", \"subject_type\": \"network_device\", \"subject_id_template\": \"fritz_box_7590_ax\"}]}, \"metric_mapping\": {\"rules\": [{\"match_entity_id_regex\": \"^sensor\\\\.fritz_box_.*_upload_throughput$\", \"metric_name\": \"network_device.network_transmit_bytes_per_second\", \"value_multiplier\": 1000, \"extra_tags\": {\"traffic_direction\": \"transmit\", \"traffic_scope\": \"wan\"}}]}}",
+   "calls": [
+    {
+     "fn": "normalize",
+     "payload": "{\"entity_id\": \"sensor.fritz_box_7590_ax_upload_throughput\", \"state\": \"6.1\", \"last_updated\": \"2026-03-04T12:00:00Z\", \"attributes\": {\"device_class\": \"data_rate\", \"unit_of_measurement\": \"kB/s\"}}",
+     "metric_name_override": "ha.sensor.fritz_box_7590_ax_upload_throughput",
+     "extra_tags": [
+      [
+       "spec_name",
+       "ha traffic env scan"
+      ]
+     ],
+     "point": {
+      "ts": "2026-03-04T12:00:00+00:00",
+      "metric": "network_device.network_transmit_bytes_per_second",
+      "value": "6100.0",
+      "subject_type": "network_device",
+      "subject_id": "fritz_box_7590_ax",
+      "source_system": "homeassistant",
+      "collector_service": "graphyard-agent",
+      "collector_host": "homeassistant",
+      "source_instance": "default",
+      "source_entity_id": "sensor.fritz_box_7590_ax_upload_throughput",
+      "host": null,
+      "service": "homeassistant",
+      "tags": [
+       [
+        "entity_id",
+        "sensor.fritz_box_7590_ax_upload_throughput"
+       ],
+       [
+        "spec_name",
+        "ha traffic env scan"
+       ],
+       [
+        "traffic_direction",
+        "transmit"
+       ],
+       [
+        "traffic_scope",
+        "wan"
+       ],
+       [
+        "unit",
+        "kB/s"
+       ],
+       [
+        "device_class",
+        "data_rate"
+       ]
+      ]
+     },
+     "logs": []
+    }
+   ],
+   "warned_keys": []
+  },
+  {
+   "name": "metric mapping rules and multipliers",
+   "spec_name": "metric mapping rules and multipliers",
+   "config": "{\"base_url\": \"https://ha.local\", \"access_token\": \"token\", \"subject_mapping\": {\"default\": {\"subject_type\": \"environment_sensor\", \"subject_id_from\": \"entity_name_slug\"}}, \"metric_mapping\": {\"rules\": [7, {\"metric_name\": \"no regex\"}, {\"match_entity_id_regex\": \"[bad\"}, {\"match_entity_id_regex\": \"^sensor\\\\.bool$\", \"value_multiplier\": true}, {\"match_entity_id_regex\": \"^sensor\\\\.none$\", \"value_multiplier\": null}, {\"match_entity_id_regex\": \"^sensor\\\\.list$\", \"value_multiplier\": [2]}, {\"match_entity_id_regex\": \"^sensor\\\\.text$\", \"value_multiplier\": \" 2.5 \"}, {\"match_entity_id_regex\": \"^sensor\\\\.badtext$\", \"value_multiplier\": \"two\"}, {\"match_entity_id_regex\": \"^sensor\\\\.float$\", \"value_multiplier\": 0.001}, {\"match_entity_id_regex\": \"^sensor\\\\.huge$\", \"value_multiplier\": 10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000}, {\"match_entity_id_regex\": \"^sensor\\\\.bigfloat$\", \"value_multiplier\": \"1e999\"}, {\"match_entity_id_regex\": \"^sensor\\\\.zero$\", \"value_multiplier\": 0}, {\"match_entity_id_regex\": \"^sensor\\\\.tags$\", \"extra_tags\": {\"n\": 1, \"b\": true, \"x\": null, \"entity_id\": \"override\"}}, {\"match_entity_id_regex\": \"^sensor\\\\.badtags$\", \"extra_tags\": [\"a\"]}, {\"match_entity_id_regex\": \"^sensor\\\\.nulltags$\", \"extra_tags\": null}, {\"match_entity_id_regex\": \"^sensor\\\\.rename$\", \"metric_name\": \"  \"}, {\"match_entity_id_regex\": \"^sensor\\\\.nullname$\", \"metric_name\": null}, {\"match_entity_id_regex\": \"^sensor\\\\.spaced$\", \"metric_name\": \"  new.name  \"}, {\"match_entity_id_regex\": \"UPPER\"}, {\"match_entity_id_regex\": \"^sensor\\\\.default$\"}]}}",
+   "calls": [
+    {
+     "fn": "metric",
+     "entity_id": "sensor.bool",
+     "metric_name": "m",
+     "value": "2.0",
+     "metric": [
+      "m",
+      "2.0",
+      []
+     ],
+     "logs": [
+      {
+       "level": "WARNING",
+       "message": "Spec metric mapping rules and multipliers metric_mapping.rules[0] is not an object; skipping"
+      },
+      {
+       "level": "WARNING",
+       "message": "Spec metric mapping rules and multipliers metric_mapping.rules[1] missing match_entity_id_regex; skipping"
+      },
+      {
+       "level": "WARNING",
+       "prefix": "Spec metric mapping rules and multipliers metric_mapping.rules[2] invalid regex [bad: ",
+       "p2": true
+      },
+      {
+       "level": "WARNING",
+       "message": "Spec metric mapping rules and multipliers metric_mapping.rules[3] has invalid value_multiplier=True; using 1"
+      }
+     ]
+    },
+    {
+     "fn": "metric",
+     "entity_id": "sensor.bool",
+     "metric_name": "m",
+     "value": "3.0",
+     "metric": [
+      "m",
+      "3.0",
+      []
+     ],
+     "logs": []
+    },
+    {
+     "fn": "metric",
+     "entity_id": "sensor.none",
+     "metric_name": "m",
+     "value": "2.0",
+     "metric": [
+      "m",
+      "2.0",
+      []
+     ],
+     "logs": [
+      {
+       "level": "WARNING",
+       "message": "Spec metric mapping rules and multipliers metric_mapping.rules[4] has invalid value_multiplier=None; using 1"
+      }
+     ]
+    },
+    {
+     "fn": "metric",
+     "entity_id": "sensor.list",
+     "metric_name": "m",
+     "value": "2.0",
+     "metric": [
+      "m",
+      "2.0",
+      []
+     ],
+     "logs": [
+      {
+       "level": "WARNING",
+       "message": "Spec metric mapping rules and multipliers metric_mapping.rules[5] has invalid value_multiplier=[2]; using 1"
+      }
+     ]
+    },
+    {
+     "fn": "metric",
+     "entity_id": "sensor.text",
+     "metric_name": "m",
+     "value": "2.0",
+     "metric": [
+      "m",
+      "5.0",
+      []
+     ],
+     "logs": []
+    },
+    {
+     "fn": "metric",
+     "entity_id": "sensor.badtext",
+     "metric_name": "m",
+     "value": "2.0",
+     "metric": [
+      "m",
+      "2.0",
+      []
+     ],
+     "logs": [
+      {
+       "level": "WARNING",
+       "message": "Spec metric mapping rules and multipliers metric_mapping.rules[7] has invalid value_multiplier='two'; using 1"
+      }
+     ]
+    },
+    {
+     "fn": "metric",
+     "entity_id": "sensor.float",
+     "metric_name": "m",
+     "value": "1234.5",
+     "metric": [
+      "m",
+      "1.2345",
+      []
+     ],
+     "logs": []
+    },
+    {
+     "fn": "metric",
+     "entity_id": "sensor.huge",
+     "metric_name": "m",
+     "value": "2.0",
+     "error": {
+      "class": "OverflowError",
+      "message": "int too large to convert to float"
+     },
+     "logs": []
+    },
+    {
+     "fn": "metric",
+     "entity_id": "sensor.bigfloat",
+     "metric_name": "m",
+     "value": "2.0",
+     "metric": [
+      "m",
+      "inf",
+      []
+     ],
+     "logs": []
+    },
+    {
+     "fn": "metric",
+     "entity_id": "sensor.zero",
+     "metric_name": "m",
+     "value": "2.0",
+     "metric": [
+      "m",
+      "0.0",
+      []
+     ],
+     "logs": []
+    },
+    {
+     "fn": "metric",
+     "entity_id": "sensor.tags",
+     "metric_name": "m",
+     "value": "2.0",
+     "metric": [
+      "m",
+      "2.0",
+      [
+       [
+        "n",
+        "1"
+       ],
+       [
+        "b",
+        "True"
+       ],
+       [
+        "x",
+        "None"
+       ],
+       [
+        "entity_id",
+        "override"
+       ]
+      ]
+     ],
+     "logs": []
+    },
+    {
+     "fn": "metric",
+     "entity_id": "sensor.badtags",
+     "metric_name": "m",
+     "value": "2.0",
+     "metric": [
+      "m",
+      "2.0",
+      []
+     ],
+     "logs": [
+      {
+       "level": "WARNING",
+       "message": "Spec metric mapping rules and multipliers metric_mapping.rules[13] has invalid extra_tags type=list; ignoring"
+      }
+     ]
+    },
+    {
+     "fn": "metric",
+     "entity_id": "sensor.nulltags",
+     "metric_name": "m",
+     "value": "2.0",
+     "metric": [
+      "m",
+      "2.0",
+      []
+     ],
+     "logs": [
+      {
+       "level": "WARNING",
+       "message": "Spec metric mapping rules and multipliers metric_mapping.rules[14] has invalid extra_tags type=NoneType; ignoring"
+      }
+     ]
+    },
+    {
+     "fn": "metric",
+     "entity_id": "sensor.rename",
+     "metric_name": "m",
+     "value": "2.0",
+     "metric": [
+      "m",
+      "2.0",
+      []
+     ],
+     "logs": []
+    },
+    {
+     "fn": "metric",
+     "entity_id": "sensor.nullname",
+     "metric_name": "m",
+     "value": "2.0",
+     "metric": [
+      "None",
+      "2.0",
+      []
+     ],
+     "logs": []
+    },
+    {
+     "fn": "metric",
+     "entity_id": "sensor.spaced",
+     "metric_name": "m",
+     "value": "2.0",
+     "metric": [
+      "new.name",
+      "2.0",
+      []
+     ],
+     "logs": []
+    },
+    {
+     "fn": "metric",
+     "entity_id": "sensor.upper",
+     "metric_name": "  m  ",
+     "value": "2.0",
+     "metric": [
+      "  m  ",
+      "2.0",
+      []
+     ],
+     "logs": []
+    },
+    {
+     "fn": "metric",
+     "entity_id": "sensor.UPPER",
+     "metric_name": "  m  ",
+     "value": "2.0",
+     "metric": [
+      "m",
+      "2.0",
+      []
+     ],
+     "logs": []
+    },
+    {
+     "fn": "metric",
+     "entity_id": "sensor.default",
+     "metric_name": "m",
+     "value": "2.0",
+     "metric": [
+      "m",
+      "2.0",
+      []
+     ],
+     "logs": []
+    },
+    {
+     "fn": "metric",
+     "entity_id": "sensor.unmatched",
+     "metric_name": "m",
+     "value": "2.0",
+     "metric": [
+      "m",
+      "2.0",
+      []
+     ],
+     "logs": []
+    },
+    {
+     "fn": "normalize",
+     "payload": "{\"entity_id\": \"sensor.zero\", \"state\": \"5\", \"last_updated\": \"2026-03-04T12:00:00Z\", \"attributes\": {\"device_class\": \"temperature\", \"unit_of_measurement\": \"\\u00b0C\"}}",
+     "metric_name_override": "",
+     "extra_tags": [],
+     "point": {
+      "ts": "2026-03-04T12:00:00+00:00",
+      "metric": "ha.sensor.zero",
+      "value": "0.0",
+      "subject_type": "environment_sensor",
+      "subject_id": "zero",
+      "source_system": "homeassistant",
+      "collector_service": "graphyard-agent",
+      "collector_host": "homeassistant",
+      "source_instance": "default",
+      "source_entity_id": "sensor.zero",
+      "host": null,
+      "service": "homeassistant",
+      "tags": [
+       [
+        "entity_id",
+        "sensor.zero"
+       ],
+       [
+        "unit",
+        "\u00b0C"
+       ],
+       [
+        "device_class",
+        "temperature"
+       ]
+      ]
+     },
+     "logs": []
+    },
+    {
+     "fn": "normalize",
+     "payload": "{\"entity_id\": \"sensor.bigfloat\", \"state\": \"5\", \"last_updated\": \"2026-03-04T12:00:00Z\", \"attributes\": {\"device_class\": \"temperature\", \"unit_of_measurement\": \"\\u00b0C\"}}",
+     "metric_name_override": "",
+     "extra_tags": [],
+     "point": null,
+     "logs": []
+    },
+    {
+     "fn": "normalize",
+     "payload": "{\"entity_id\": \"sensor.huge\", \"state\": \"5\", \"last_updated\": \"2026-03-04T12:00:00Z\", \"attributes\": {\"device_class\": \"temperature\", \"unit_of_measurement\": \"\\u00b0C\"}}",
+     "metric_name_override": "",
+     "extra_tags": [],
+     "error": {
+      "class": "OverflowError",
+      "message": "int too large to convert to float"
+     },
+     "logs": []
+    },
+    {
+     "fn": "normalize",
+     "payload": "{\"entity_id\": \"sensor.tags\", \"state\": \"5\", \"last_updated\": \"2026-03-04T12:00:00Z\", \"attributes\": {\"device_class\": \"temperature\", \"unit_of_measurement\": \"\\u00b0C\"}}",
+     "metric_name_override": "",
+     "extra_tags": [],
+     "point": {
+      "ts": "2026-03-04T12:00:00+00:00",
+      "metric": "ha.sensor.tags",
+      "value": "5.0",
+      "subject_type": "environment_sensor",
+      "subject_id": "tags",
+      "source_system": "homeassistant",
+      "collector_service": "graphyard-agent",
+      "collector_host": "homeassistant",
+      "source_instance": "default",
+      "source_entity_id": "sensor.tags",
+      "host": null,
+      "service": "homeassistant",
+      "tags": [
+       [
+        "entity_id",
+        "override"
+       ],
+       [
+        "n",
+        "1"
+       ],
+       [
+        "b",
+        "True"
+       ],
+       [
+        "x",
+        "None"
+       ],
+       [
+        "unit",
+        "\u00b0C"
+       ],
+       [
+        "device_class",
+        "temperature"
+       ]
+      ]
+     },
+     "logs": []
+    }
+   ],
+   "warned_keys": [
+    "metric mapping rules and multipliers:invalid_metric_mapping_multiplier:3",
+    "metric mapping rules and multipliers:invalid_metric_mapping_multiplier:4",
+    "metric mapping rules and multipliers:invalid_metric_mapping_multiplier:5",
+    "metric mapping rules and multipliers:invalid_metric_mapping_multiplier:7",
+    "metric mapping rules and multipliers:invalid_metric_mapping_regex:2",
+    "metric mapping rules and multipliers:invalid_metric_mapping_rule:0",
+    "metric mapping rules and multipliers:invalid_metric_mapping_tags:13",
+    "metric mapping rules and multipliers:invalid_metric_mapping_tags:14",
+    "metric mapping rules and multipliers:missing_metric_mapping_regex:1"
+   ]
+  },
+  {
+   "name": "metric mapping rules not a list",
+   "spec_name": "metric mapping rules not a list",
+   "config": "{\"base_url\": \"https://ha.local\", \"access_token\": \"token\", \"subject_mapping\": {\"default\": {\"subject_type\": \"environment_sensor\", \"subject_id_from\": \"entity_name_slug\"}}, \"metric_mapping\": {\"rules\": \"x\"}}",
+   "calls": [
+    {
+     "fn": "metric",
+     "entity_id": "sensor.a",
+     "metric_name": "m",
+     "value": "1.0",
+     "metric": [
+      "m",
+      "1.0",
+      []
+     ],
+     "logs": [
+      {
+       "level": "WARNING",
+       "message": "Spec metric mapping rules not a list has invalid config.metric_mapping.rules type=str; ignoring metric mapping"
+      }
+     ]
+    },
+    {
+     "fn": "metric",
+     "entity_id": "sensor.b",
+     "metric_name": "m",
+     "value": "1.0",
+     "metric": [
+      "m",
+      "1.0",
+      []
+     ],
+     "logs": []
+    }
+   ],
+   "warned_keys": [
+    "metric mapping rules not a list:invalid_metric_mapping_rules"
+   ]
+  },
+  {
+   "name": "metric mapping rules null",
+   "spec_name": "metric mapping rules null",
+   "config": "{\"base_url\": \"https://ha.local\", \"access_token\": \"token\", \"subject_mapping\": {\"default\": {\"subject_type\": \"environment_sensor\", \"subject_id_from\": \"entity_name_slug\"}}, \"metric_mapping\": {\"rules\": null}}",
+   "calls": [
+    {
+     "fn": "metric",
+     "entity_id": "sensor.a",
+     "metric_name": "m",
+     "value": "1.0",
+     "metric": [
+      "m",
+      "1.0",
+      []
+     ],
+     "logs": [
+      {
+       "level": "WARNING",
+       "message": "Spec metric mapping rules null has invalid config.metric_mapping.rules type=NoneType; ignoring metric mapping"
+      }
+     ]
+    }
+   ],
+   "warned_keys": [
+    "metric mapping rules null:invalid_metric_mapping_rules"
+   ]
+  },
+  {
+   "name": "metric mapping not an object",
+   "spec_name": "metric mapping not an object",
+   "config": "{\"base_url\": \"https://ha.local\", \"access_token\": \"token\", \"subject_mapping\": {\"default\": {\"subject_type\": \"environment_sensor\", \"subject_id_from\": \"entity_name_slug\"}}, \"metric_mapping\": [\"rules\"]}",
+   "calls": [
+    {
+     "fn": "metric",
+     "entity_id": "sensor.a",
+     "metric_name": "m",
+     "value": "1.0",
+     "metric": [
+      "m",
+      "1.0",
+      []
+     ],
+     "logs": []
+    }
+   ],
+   "warned_keys": []
+  },
+  {
+   "name": "overflowing mapped value (test_home_assistant_env_scan_skips_overflowing_mapped_value)",
+   "spec_name": "overflowing mapped value (test_home_assistant_env_scan_skips_overflowing_mapped_value)",
+   "config": "{\"base_url\": \"https://ha.local\", \"access_token\": \"token\", \"subject_mapping\": {\"default\": {\"subject_type\": \"environment_sensor\", \"subject_id_from\": \"entity_name_slug\"}}, \"metric_mapping\": {\"rules\": [{\"match_entity_id_regex\": \"_upload_throughput$\", \"value_multiplier\": 1000}]}}",
+   "calls": [
+    {
+     "fn": "normalize",
+     "payload": "{\"entity_id\": \"sensor.overflow_upload_throughput\", \"state\": \"1e308\", \"last_updated\": \"2026-03-04T12:00:00Z\", \"attributes\": {\"device_class\": \"temperature\", \"unit_of_measurement\": \"\\u00b0C\"}}",
+     "metric_name_override": "",
+     "extra_tags": [],
+     "point": null,
+     "logs": []
+    },
+    {
+     "fn": "normalize",
+     "payload": "{\"entity_id\": \"sensor.normal_upload_throughput\", \"state\": \"6.1\", \"last_updated\": \"2026-03-04T12:00:00Z\", \"attributes\": {\"device_class\": \"temperature\", \"unit_of_measurement\": \"\\u00b0C\"}}",
+     "metric_name_override": "",
+     "extra_tags": [],
+     "point": {
+      "ts": "2026-03-04T12:00:00+00:00",
+      "metric": "ha.sensor.normal_upload_throughput",
+      "value": "6100.0",
+      "subject_type": "environment_sensor",
+      "subject_id": "normal_upload_throughput",
+      "source_system": "homeassistant",
+      "collector_service": "graphyard-agent",
+      "collector_host": "homeassistant",
+      "source_instance": "default",
+      "source_entity_id": "sensor.normal_upload_throughput",
+      "host": null,
+      "service": "homeassistant",
+      "tags": [
+       [
+        "entity_id",
+        "sensor.normal_upload_throughput"
+       ],
+       [
+        "unit",
+        "\u00b0C"
+       ],
+       [
+        "device_class",
+        "temperature"
+       ]
+      ]
+     },
+     "logs": []
+    }
+   ],
+   "warned_keys": []
+  },
+  {
+   "name": "state values",
+   "spec_name": "state values",
+   "config": "{\"base_url\": \"https://ha.local\", \"access_token\": \"token\", \"subject_mapping\": {\"default\": {\"subject_type\": \"environment_sensor\", \"subject_id_from\": \"entity_name_slug\"}}}",
+   "calls": [
+    {
+     "fn": "normalize",
+     "payload": "{\"entity_id\": \"sensor.office_temperature\", \"state\": \"22.5\", \"last_updated\": \"2026-03-04T12:00:00Z\", \"attributes\": {\"device_class\": \"temperature\", \"unit_of_measurement\": \"\\u00b0C\"}}",
+     "metric_name_override": "",
+     "extra_tags": [],
+     "point": {
+      "ts": "2026-03-04T12:00:00+00:00",
+      "metric": "ha.sensor.office_temperature",
+      "value": "22.5",
+      "subject_type": "environment_sensor",
+      "subject_id": "office_temperature",
+      "source_system": "homeassistant",
+      "collector_service": "graphyard-agent",
+      "collector_host": "homeassistant",
+      "source_instance": "default",
+      "source_entity_id": "sensor.office_temperature",
+      "host": null,
+      "service": "homeassistant",
+      "tags": [
+       [
+        "entity_id",
+        "sensor.office_temperature"
+       ],
+       [
+        "unit",
+        "\u00b0C"
+       ],
+       [
+        "device_class",
+        "temperature"
+       ]
+      ]
+     },
+     "logs": []
+    },
+    {
+     "fn": "normalize",
+     "payload": "{\"entity_id\": \"sensor.office_temperature\", \"state\": \" 22.5 \", \"last_updated\": \"2026-03-04T12:00:00Z\", \"attributes\": {\"device_class\": \"temperature\", \"unit_of_measurement\": \"\\u00b0C\"}}",
+     "metric_name_override": "",
+     "extra_tags": [],
+     "point": {
+      "ts": "2026-03-04T12:00:00+00:00",
+      "metric": "ha.sensor.office_temperature",
+      "value": "22.5",
+      "subject_type": "environment_sensor",
+      "subject_id": "office_temperature",
+      "source_system": "homeassistant",
+      "collector_service": "graphyard-agent",
+      "collector_host": "homeassistant",
+      "source_instance": "default",
+      "source_entity_id": "sensor.office_temperature",
+      "host": null,
+      "service": "homeassistant",
+      "tags": [
+       [
+        "entity_id",
+        "sensor.office_temperature"
+       ],
+       [
+        "unit",
+        "\u00b0C"
+       ],
+       [
+        "device_class",
+        "temperature"
+       ]
+      ]
+     },
+     "logs": []
+    },
+    {
+     "fn": "normalize",
+     "payload": "{\"entity_id\": \"sensor.office_temperature\", \"state\": 7, \"last_updated\": \"2026-03-04T12:00:00Z\", \"attributes\": {\"device_class\": \"temperature\", \"unit_of_measurement\": \"\\u00b0C\"}}",
+     "metric_name_override": "",
+     "extra_tags": [],
+     "point": {
+      "ts": "2026-03-04T12:00:00+00:00",
+      "metric": "ha.sensor.office_temperature",
+      "value": "7.0",
+      "subject_type": "environment_sensor",
+      "subject_id": "office_temperature",
+      "source_system": "homeassistant",
+      "collector_service": "graphyard-agent",
+      "collector_host": "homeassistant",
+      "source_instance": "default",
+      "source_entity_id": "sensor.office_temperature",
+      "host": null,
+      "service": "homeassistant",
+      "tags": [
+       [
+        "entity_id",
+        "sensor.office_temperature"
+       ],
+       [
+        "unit",
+        "\u00b0C"
+       ],
+       [
+        "device_class",
+        "temperature"
+       ]
+      ]
+     },
+     "logs": []
+    },
+    {
+     "fn": "normalize",
+     "payload": "{\"entity_id\": \"sensor.office_temperature\", \"state\": 7.25, \"last_updated\": \"2026-03-04T12:00:00Z\", \"attributes\": {\"device_class\": \"temperature\", \"unit_of_measurement\": \"\\u00b0C\"}}",
+     "metric_name_override": "",
+     "extra_tags": [],
+     "point": {
+      "ts": "2026-03-04T12:00:00+00:00",
+      "metric": "ha.sensor.office_temperature",
+      "value": "7.25",
+      "subject_type": "environment_sensor",
+      "subject_id": "office_temperature",
+      "source_system": "homeassistant",
+      "collector_service": "graphyard-agent",
+      "collector_host": "homeassistant",
+      "source_instance": "default",
+      "source_entity_id": "sensor.office_temperature",
+      "host": null,
+      "service": "homeassistant",
+      "tags": [
+       [
+        "entity_id",
+        "sensor.office_temperature"
+       ],
+       [
+        "unit",
+        "\u00b0C"
+       ],
+       [
+        "device_class",
+        "temperature"
+       ]
+      ]
+     },
+     "logs": []
+    },
+    {
+     "fn": "normalize",
+     "payload": "{\"entity_id\": \"sensor.office_temperature\", \"state\": true, \"last_updated\": \"2026-03-04T12:00:00Z\", \"attributes\": {\"device_class\": \"temperature\", \"unit_of_measurement\": \"\\u00b0C\"}}",
+     "metric_name_override": "",
+     "extra_tags": [],
+     "point": null,
+     "logs": []
+    },
+    {
+     "fn": "normalize",
+     "payload": "{\"entity_id\": \"sensor.office_temperature\", \"state\": null, \"last_updated\": \"2026-03-04T12:00:00Z\", \"attributes\": {\"device_class\": \"temperature\", \"unit_of_measurement\": \"\\u00b0C\"}}",
+     "metric_name_override": "",
+     "extra_tags": [],
+     "point": null,
+     "logs": []
+    },
+    {
+     "fn": "normalize",
+     "payload": "{\"entity_id\": \"sensor.office_temperature\", \"last_updated\": \"2026-03-04T12:00:00Z\", \"attributes\": {\"device_class\": \"temperature\", \"unit_of_measurement\": \"\\u00b0C\"}}",
+     "metric_name_override": "",
+     "extra_tags": [],
+     "point": null,
+     "logs": []
+    },
+    {
+     "fn": "normalize",
+     "payload": "{\"entity_id\": \"sensor.office_temperature\", \"state\": \"unknown\", \"last_updated\": \"2026-03-04T12:00:00Z\", \"attributes\": {\"device_class\": \"temperature\", \"unit_of_measurement\": \"\\u00b0C\"}}",
+     "metric_name_override": "",
+     "extra_tags": [],
+     "point": null,
+     "logs": []
+    },
+    {
+     "fn": "normalize",
+     "payload": "{\"entity_id\": \"sensor.office_temperature\", \"state\": \"unavailable\", \"last_updated\": \"2026-03-04T12:00:00Z\", \"attributes\": {\"device_class\": \"temperature\", \"unit_of_measurement\": \"\\u00b0C\"}}",
+     "metric_name_override": "",
+     "extra_tags": [],
+     "point": null,
+     "logs": []
+    },
+    {
+     "fn": "normalize",
+     "payload": "{\"entity_id\": \"sensor.office_temperature\", \"state\": \"nan\", \"last_updated\": \"2026-03-04T12:00:00Z\", \"attributes\": {\"device_class\": \"temperature\", \"unit_of_measurement\": \"\\u00b0C\"}}",
+     "metric_name_override": "",
+     "extra_tags": [],
+     "point": null,
+     "logs": []
+    },
+    {
+     "fn": "normalize",
+     "payload": "{\"entity_id\": \"sensor.office_temperature\", \"state\": \"inf\", \"last_updated\": \"2026-03-04T12:00:00Z\", \"attributes\": {\"device_class\": \"temperature\", \"unit_of_measurement\": \"\\u00b0C\"}}",
+     "metric_name_override": "",
+     "extra_tags": [],
+     "point": null,
+     "logs": []
+    },
+    {
+     "fn": "normalize",
+     "payload": "{\"entity_id\": \"sensor.office_temperature\", \"state\": \"1e999\", \"last_updated\": \"2026-03-04T12:00:00Z\", \"attributes\": {\"device_class\": \"temperature\", \"unit_of_measurement\": \"\\u00b0C\"}}",
+     "metric_name_override": "",
+     "extra_tags": [],
+     "point": null,
+     "logs": []
+    },
+    {
+     "fn": "normalize",
+     "payload": "{\"entity_id\": \"sensor.office_temperature\", \"state\": \"1_000\", \"last_updated\": \"2026-03-04T12:00:00Z\", \"attributes\": {\"device_class\": \"temperature\", \"unit_of_measurement\": \"\\u00b0C\"}}",
+     "metric_name_override": "",
+     "extra_tags": [],
+     "point": {
+      "ts": "2026-03-04T12:00:00+00:00",
+      "metric": "ha.sensor.office_temperature",
+      "value": "1000.0",
+      "subject_type": "environment_sensor",
+      "subject_id": "office_temperature",
+      "source_system": "homeassistant",
+      "collector_service": "graphyard-agent",
+      "collector_host": "homeassistant",
+      "source_instance": "default",
+      "source_entity_id": "sensor.office_temperature",
+      "host": null,
+      "service": "homeassistant",
+      "tags": [
+       [
+        "entity_id",
+        "sensor.office_temperature"
+       ],
+       [
+        "unit",
+        "\u00b0C"
+       ],
+       [
+        "device_class",
+        "temperature"
+       ]
+      ]
+     },
+     "logs": []
+    },
+    {
+     "fn": "normalize",
+     "payload": "{\"entity_id\": \"sensor.office_temperature\", \"state\": [1], \"last_updated\": \"2026-03-04T12:00:00Z\", \"attributes\": {\"device_class\": \"temperature\", \"unit_of_measurement\": \"\\u00b0C\"}}",
+     "metric_name_override": "",
+     "extra_tags": [],
+     "point": null,
+     "logs": []
+    },
+    {
+     "fn": "normalize",
+     "payload": "{\"entity_id\": \"sensor.office_temperature\", \"state\": {\"v\": 1}, \"last_updated\": \"2026-03-04T12:00:00Z\", \"attributes\": {\"device_class\": \"temperature\", \"unit_of_measurement\": \"\\u00b0C\"}}",
+     "metric_name_override": "",
+     "extra_tags": [],
+     "point": null,
+     "logs": []
+    },
+    {
+     "fn": "normalize",
+     "payload": "{\"entity_id\": \"sensor.big\", \"state\": 9999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999}",
+     "metric_name_override": "",
+     "extra_tags": [],
+     "point": null,
+     "logs": []
+    },
+    {
+     "fn": "normalize",
+     "payload": "{\"entity_id\": \"sensor.office_temperature\", \"state\": \"-0.0\", \"last_updated\": \"2026-03-04T12:00:00Z\", \"attributes\": {\"device_class\": \"temperature\", \"unit_of_measurement\": \"\\u00b0C\"}}",
+     "metric_name_override": "",
+     "extra_tags": [],
+     "point": {
+      "ts": "2026-03-04T12:00:00+00:00",
+      "metric": "ha.sensor.office_temperature",
+      "value": "-0.0",
+      "subject_type": "environment_sensor",
+      "subject_id": "office_temperature",
+      "source_system": "homeassistant",
+      "collector_service": "graphyard-agent",
+      "collector_host": "homeassistant",
+      "source_instance": "default",
+      "source_entity_id": "sensor.office_temperature",
+      "host": null,
+      "service": "homeassistant",
+      "tags": [
+       [
+        "entity_id",
+        "sensor.office_temperature"
+       ],
+       [
+        "unit",
+        "\u00b0C"
+       ],
+       [
+        "device_class",
+        "temperature"
+       ]
+      ]
+     },
+     "logs": []
+    }
+   ],
+   "warned_keys": []
+  },
+  {
+   "name": "entity ids",
+   "spec_name": "entity ids",
+   "config": "{\"base_url\": \"https://ha.local\", \"access_token\": \"token\", \"subject_mapping\": {\"default\": {\"subject_type\": \"environment_sensor\", \"subject_id_from\": \"entity_name_slug\"}}}",
+   "calls": [
+    {
+     "fn": "normalize",
+     "payload": "{\"entity_id\": \"  sensor.Office Temp  \", \"state\": \"21.2\", \"last_updated\": \"2026-03-04T12:00:00Z\", \"attributes\": {\"device_class\": \"temperature\", \"unit_of_measurement\": \"\\u00b0C\"}}",
+     "metric_name_override": "",
+     "extra_tags": [],
+     "point": {
+      "ts": "2026-03-04T12:00:00+00:00",
+      "metric": "ha.sensor.Office_Temp",
+      "value": "21.2",
+      "subject_type": "environment_sensor",
+      "subject_id": "office_temp",
+      "source_system": "homeassistant",
+      "collector_service": "graphyard-agent",
+      "collector_host": "homeassistant",
+      "source_instance": "default",
+      "source_entity_id": "sensor.Office Temp",
+      "host": null,
+      "service": "homeassistant",
+      "tags": [
+       [
+        "entity_id",
+        "sensor.Office Temp"
+       ],
+       [
+        "unit",
+        "\u00b0C"
+       ],
+       [
+        "device_class",
+        "temperature"
+       ]
+      ]
+     },
+     "logs": []
+    },
+    {
+     "fn": "normalize",
+     "payload": "{\"entity_id\": \"\", \"state\": \"21.2\", \"last_updated\": \"2026-03-04T12:00:00Z\", \"attributes\": {\"device_class\": \"temperature\", \"unit_of_measurement\": \"\\u00b0C\"}}",
+     "metric_name_override": "",
+     "extra_tags": [],
+     "point": null,
+     "logs": []
+    },
+    {
+     "fn": "normalize",
+     "payload": "{\"entity_id\": \"   \", \"state\": \"21.2\", \"last_updated\": \"2026-03-04T12:00:00Z\", \"attributes\": {\"device_class\": \"temperature\", \"unit_of_measurement\": \"\\u00b0C\"}}",
+     "metric_name_override": "",
+     "extra_tags": [],
+     "point": null,
+     "logs": []
+    },
+    {
+     "fn": "normalize",
+     "payload": "{\"state\": \"21.2\", \"last_updated\": \"2026-03-04T12:00:00Z\", \"attributes\": {\"device_class\": \"temperature\", \"unit_of_measurement\": \"\\u00b0C\"}}",
+     "metric_name_override": "",
+     "extra_tags": [],
+     "point": null,
+     "logs": []
+    },
+    {
+     "fn": "normalize",
+     "payload": "{\"entity_id\": null, \"state\": \"21.2\", \"last_updated\": \"2026-03-04T12:00:00Z\", \"attributes\": {\"device_class\": \"temperature\", \"unit_of_measurement\": \"\\u00b0C\"}}",
+     "metric_name_override": "",
+     "extra_tags": [],
+     "point": {
+      "ts": "2026-03-04T12:00:00+00:00",
+      "metric": "ha.None",
+      "value": "21.2",
+      "subject_type": "environment_sensor",
+      "subject_id": "none",
+      "source_system": "homeassistant",
+      "collector_service": "graphyard-agent",
+      "collector_host": "homeassistant",
+      "source_instance": "default",
+      "source_entity_id": "None",
+      "host": null,
+      "service": "homeassistant",
+      "tags": [
+       [
+        "entity_id",
+        "None"
+       ],
+       [
+        "unit",
+        "\u00b0C"
+       ],
+       [
+        "device_class",
+        "temperature"
+       ]
+      ]
+     },
+     "logs": []
+    },
+    {
+     "fn": "normalize",
+     "payload": "{\"entity_id\": 42, \"state\": \"21.2\", \"last_updated\": \"2026-03-04T12:00:00Z\", \"attributes\": {\"device_class\": \"temperature\", \"unit_of_measurement\": \"\\u00b0C\"}}",
+     "metric_name_override": "",
+     "extra_tags": [],
+     "point": {
+      "ts": "2026-03-04T12:00:00+00:00",
+      "metric": "ha.42",
+      "value": "21.2",
+      "subject_type": "environment_sensor",
+      "subject_id": "42",
+      "source_system": "homeassistant",
+      "collector_service": "graphyard-agent",
+      "collector_host": "homeassistant",
+      "source_instance": "default",
+      "source_entity_id": "42",
+      "host": null,
+      "service": "homeassistant",
+      "tags": [
+       [
+        "entity_id",
+        "42"
+       ],
+       [
+        "unit",
+        "\u00b0C"
+       ],
+       [
+        "device_class",
+        "temperature"
+       ]
+      ]
+     },
+     "logs": []
+    },
+    {
+     "fn": "normalize",
+     "payload": "{\"entity_id\": \"light.kitchen\", \"state\": \"21.2\", \"last_updated\": \"2026-03-04T12:00:00Z\", \"attributes\": {\"device_class\": \"temperature\", \"unit_of_measurement\": \"\\u00b0C\"}}",
+     "metric_name_override": "",
+     "extra_tags": [],
+     "point": {
+      "ts": "2026-03-04T12:00:00+00:00",
+      "metric": "ha.light.kitchen",
+      "value": "21.2",
+      "subject_type": "environment_sensor",
+      "subject_id": "light_kitchen",
+      "source_system": "homeassistant",
+      "collector_service": "graphyard-agent",
+      "collector_host": "homeassistant",
+      "source_instance": "default",
+      "source_entity_id": "light.kitchen",
+      "host": null,
+      "service": "homeassistant",
+      "tags": [
+       [
+        "entity_id",
+        "light.kitchen"
+       ],
+       [
+        "unit",
+        "\u00b0C"
+       ],
+       [
+        "device_class",
+        "temperature"
+       ]
+      ]
+     },
+     "logs": []
+    }
+   ],
+   "warned_keys": []
+  },
+  {
+   "name": "timestamps",
+   "spec_name": "timestamps",
+   "config": "{\"base_url\": \"https://ha.local\", \"access_token\": \"token\", \"subject_mapping\": {\"default\": {\"subject_type\": \"environment_sensor\", \"subject_id_from\": \"entity_name_slug\"}}}",
+   "calls": [
+    {
+     "fn": "normalize",
+     "payload": "{\"entity_id\": \"sensor.office_temperature\", \"state\": \"21.2\", \"last_updated\": \"2026-03-04T12:00:00Z\", \"attributes\": {\"device_class\": \"temperature\", \"unit_of_measurement\": \"\\u00b0C\"}}",
+     "metric_name_override": "",
+     "extra_tags": [],
+     "point": {
+      "ts": "2026-03-04T12:00:00+00:00",
+      "metric": "ha.sensor.office_temperature",
+      "value": "21.2",
+      "subject_type": "environment_sensor",
+      "subject_id": "office_temperature",
+      "source_system": "homeassistant",
+      "collector_service": "graphyard-agent",
+      "collector_host": "homeassistant",
+      "source_instance": "default",
+      "source_entity_id": "sensor.office_temperature",
+      "host": null,
+      "service": "homeassistant",
+      "tags": [
+       [
+        "entity_id",
+        "sensor.office_temperature"
+       ],
+       [
+        "unit",
+        "\u00b0C"
+       ],
+       [
+        "device_class",
+        "temperature"
+       ]
+      ]
+     },
+     "logs": []
+    },
+    {
+     "fn": "normalize",
+     "payload": "{\"entity_id\": \"sensor.office_temperature\", \"state\": \"21.2\", \"last_updated\": \"2026-03-04T12:00:00.123456+02:00\", \"attributes\": {\"device_class\": \"temperature\", \"unit_of_measurement\": \"\\u00b0C\"}}",
+     "metric_name_override": "",
+     "extra_tags": [],
+     "point": {
+      "ts": "2026-03-04T10:00:00.123456+00:00",
+      "metric": "ha.sensor.office_temperature",
+      "value": "21.2",
+      "subject_type": "environment_sensor",
+      "subject_id": "office_temperature",
+      "source_system": "homeassistant",
+      "collector_service": "graphyard-agent",
+      "collector_host": "homeassistant",
+      "source_instance": "default",
+      "source_entity_id": "sensor.office_temperature",
+      "host": null,
+      "service": "homeassistant",
+      "tags": [
+       [
+        "entity_id",
+        "sensor.office_temperature"
+       ],
+       [
+        "unit",
+        "\u00b0C"
+       ],
+       [
+        "device_class",
+        "temperature"
+       ]
+      ]
+     },
+     "logs": []
+    },
+    {
+     "fn": "normalize",
+     "payload": "{\"entity_id\": \"sensor.office_temperature\", \"state\": \"21.2\", \"last_updated\": \"2026-03-04T12:00:00\", \"attributes\": {\"device_class\": \"temperature\", \"unit_of_measurement\": \"\\u00b0C\"}}",
+     "metric_name_override": "",
+     "extra_tags": [],
+     "point": {
+      "ts": "2026-03-04T12:00:00+00:00",
+      "metric": "ha.sensor.office_temperature",
+      "value": "21.2",
+      "subject_type": "environment_sensor",
+      "subject_id": "office_temperature",
+      "source_system": "homeassistant",
+      "collector_service": "graphyard-agent",
+      "collector_host": "homeassistant",
+      "source_instance": "default",
+      "source_entity_id": "sensor.office_temperature",
+      "host": null,
+      "service": "homeassistant",
+      "tags": [
+       [
+        "entity_id",
+        "sensor.office_temperature"
+       ],
+       [
+        "unit",
+        "\u00b0C"
+       ],
+       [
+        "device_class",
+        "temperature"
+       ]
+      ]
+     },
+     "logs": []
+    },
+    {
+     "fn": "normalize",
+     "payload": "{\"entity_id\": \"sensor.office_temperature\", \"state\": \"21.2\", \"last_updated\": \"2026-03-04 12:00:00.5-05:30\", \"attributes\": {\"device_class\": \"temperature\", \"unit_of_measurement\": \"\\u00b0C\"}}",
+     "metric_name_override": "",
+     "extra_tags": [],
+     "point": {
+      "ts": "2026-03-04T17:30:00.500000+00:00",
+      "metric": "ha.sensor.office_temperature",
+      "value": "21.2",
+      "subject_type": "environment_sensor",
+      "subject_id": "office_temperature",
+      "source_system": "homeassistant",
+      "collector_service": "graphyard-agent",
+      "collector_host": "homeassistant",
+      "source_instance": "default",
+      "source_entity_id": "sensor.office_temperature",
+      "host": null,
+      "service": "homeassistant",
+      "tags": [
+       [
+        "entity_id",
+        "sensor.office_temperature"
+       ],
+       [
+        "unit",
+        "\u00b0C"
+       ],
+       [
+        "device_class",
+        "temperature"
+       ]
+      ]
+     },
+     "logs": []
+    },
+    {
+     "fn": "normalize",
+     "payload": "{\"entity_id\": \"sensor.office_temperature\", \"state\": \"21.2\", \"last_updated\": \"2026-03-04\", \"attributes\": {\"device_class\": \"temperature\", \"unit_of_measurement\": \"\\u00b0C\"}}",
+     "metric_name_override": "",
+     "extra_tags": [],
+     "point": {
+      "ts": "2026-03-04T00:00:00+00:00",
+      "metric": "ha.sensor.office_temperature",
+      "value": "21.2",
+      "subject_type": "environment_sensor",
+      "subject_id": "office_temperature",
+      "source_system": "homeassistant",
+      "collector_service": "graphyard-agent",
+      "collector_host": "homeassistant",
+      "source_instance": "default",
+      "source_entity_id": "sensor.office_temperature",
+      "host": null,
+      "service": "homeassistant",
+      "tags": [
+       [
+        "entity_id",
+        "sensor.office_temperature"
+       ],
+       [
+        "unit",
+        "\u00b0C"
+       ],
+       [
+        "device_class",
+        "temperature"
+       ]
+      ]
+     },
+     "logs": []
+    },
+    {
+     "fn": "normalize",
+     "payload": "{\"entity_id\": \"sensor.office_temperature\", \"state\": \"21.2\", \"last_updated\": \"20260304T120000Z\", \"attributes\": {\"device_class\": \"temperature\", \"unit_of_measurement\": \"\\u00b0C\"}}",
+     "metric_name_override": "",
+     "extra_tags": [],
+     "point": {
+      "ts": "2026-03-04T12:00:00+00:00",
+      "metric": "ha.sensor.office_temperature",
+      "value": "21.2",
+      "subject_type": "environment_sensor",
+      "subject_id": "office_temperature",
+      "source_system": "homeassistant",
+      "collector_service": "graphyard-agent",
+      "collector_host": "homeassistant",
+      "source_instance": "default",
+      "source_entity_id": "sensor.office_temperature",
+      "host": null,
+      "service": "homeassistant",
+      "tags": [
+       [
+        "entity_id",
+        "sensor.office_temperature"
+       ],
+       [
+        "unit",
+        "\u00b0C"
+       ],
+       [
+        "device_class",
+        "temperature"
+       ]
+      ]
+     },
+     "logs": []
+    },
+    {
+     "fn": "normalize",
+     "payload": "{\"entity_id\": \"sensor.office_temperature\", \"state\": \"21.2\", \"last_updated\": \"2026-03-04T12:00:00ZZ\", \"attributes\": {\"device_class\": \"temperature\", \"unit_of_measurement\": \"\\u00b0C\"}}",
+     "metric_name_override": "",
+     "extra_tags": [],
+     "point": {
+      "ts": "2026-10-21T09:30:15.654321+00:00",
+      "metric": "ha.sensor.office_temperature",
+      "value": "21.2",
+      "subject_type": "environment_sensor",
+      "subject_id": "office_temperature",
+      "source_system": "homeassistant",
+      "collector_service": "graphyard-agent",
+      "collector_host": "homeassistant",
+      "source_instance": "default",
+      "source_entity_id": "sensor.office_temperature",
+      "host": null,
+      "service": "homeassistant",
+      "tags": [
+       [
+        "entity_id",
+        "sensor.office_temperature"
+       ],
+       [
+        "unit",
+        "\u00b0C"
+       ],
+       [
+        "device_class",
+        "temperature"
+       ]
+      ]
+     },
+     "logs": []
+    },
+    {
+     "fn": "normalize",
+     "payload": "{\"entity_id\": \"sensor.office_temperature\", \"state\": \"21.2\", \"last_updated\": \"2026-03-04T12:00:00+00:00Z\", \"attributes\": {\"device_class\": \"temperature\", \"unit_of_measurement\": \"\\u00b0C\"}}",
+     "metric_name_override": "",
+     "extra_tags": [],
+     "point": {
+      "ts": "2026-10-21T09:30:15.654321+00:00",
+      "metric": "ha.sensor.office_temperature",
+      "value": "21.2",
+      "subject_type": "environment_sensor",
+      "subject_id": "office_temperature",
+      "source_system": "homeassistant",
+      "collector_service": "graphyard-agent",
+      "collector_host": "homeassistant",
+      "source_instance": "default",
+      "source_entity_id": "sensor.office_temperature",
+      "host": null,
+      "service": "homeassistant",
+      "tags": [
+       [
+        "entity_id",
+        "sensor.office_temperature"
+       ],
+       [
+        "unit",
+        "\u00b0C"
+       ],
+       [
+        "device_class",
+        "temperature"
+       ]
+      ]
+     },
+     "logs": []
+    },
+    {
+     "fn": "normalize",
+     "payload": "{\"entity_id\": \"sensor.office_temperature\", \"state\": \"21.2\", \"last_updated\": \"not a date\", \"attributes\": {\"device_class\": \"temperature\", \"unit_of_measurement\": \"\\u00b0C\"}}",
+     "metric_name_override": "",
+     "extra_tags": [],
+     "point": {
+      "ts": "2026-10-21T09:30:15.654321+00:00",
+      "metric": "ha.sensor.office_temperature",
+      "value": "21.2",
+      "subject_type": "environment_sensor",
+      "subject_id": "office_temperature",
+      "source_system": "homeassistant",
+      "collector_service": "graphyard-agent",
+      "collector_host": "homeassistant",
+      "source_instance": "default",
+      "source_entity_id": "sensor.office_temperature",
+      "host": null,
+      "service": "homeassistant",
+      "tags": [
+       [
+        "entity_id",
+        "sensor.office_temperature"
+       ],
+       [
+        "unit",
+        "\u00b0C"
+       ],
+       [
+        "device_class",
+        "temperature"
+       ]
+      ]
+     },
+     "logs": []
+    },
+    {
+     "fn": "normalize",
+     "payload": "{\"entity_id\": \"sensor.office_temperature\", \"state\": \"21.2\", \"last_updated\": \"\", \"attributes\": {\"device_class\": \"temperature\", \"unit_of_measurement\": \"\\u00b0C\"}}",
+     "metric_name_override": "",
+     "extra_tags": [],
+     "point": {
+      "ts": "2026-10-21T09:30:15.654321+00:00",
+      "metric": "ha.sensor.office_temperature",
+      "value": "21.2",
+      "subject_type": "environment_sensor",
+      "subject_id": "office_temperature",
+      "source_system": "homeassistant",
+      "collector_service": "graphyard-agent",
+      "collector_host": "homeassistant",
+      "source_instance": "default",
+      "source_entity_id": "sensor.office_temperature",
+      "host": null,
+      "service": "homeassistant",
+      "tags": [
+       [
+        "entity_id",
+        "sensor.office_temperature"
+       ],
+       [
+        "unit",
+        "\u00b0C"
+       ],
+       [
+        "device_class",
+        "temperature"
+       ]
+      ]
+     },
+     "logs": []
+    },
+    {
+     "fn": "normalize",
+     "payload": "{\"entity_id\": \"sensor.office_temperature\", \"state\": \"21.2\", \"last_updated\": null, \"attributes\": {\"device_class\": \"temperature\", \"unit_of_measurement\": \"\\u00b0C\"}}",
+     "metric_name_override": "",
+     "extra_tags": [],
+     "point": {
+      "ts": "2026-10-21T09:30:15.654321+00:00",
+      "metric": "ha.sensor.office_temperature",
+      "value": "21.2",
+      "subject_type": "environment_sensor",
+      "subject_id": "office_temperature",
+      "source_system": "homeassistant",
+      "collector_service": "graphyard-agent",
+      "collector_host": "homeassistant",
+      "source_instance": "default",
+      "source_entity_id": "sensor.office_temperature",
+      "host": null,
+      "service": "homeassistant",
+      "tags": [
+       [
+        "entity_id",
+        "sensor.office_temperature"
+       ],
+       [
+        "unit",
+        "\u00b0C"
+       ],
+       [
+        "device_class",
+        "temperature"
+       ]
+      ]
+     },
+     "logs": []
+    },
+    {
+     "fn": "normalize",
+     "payload": "{\"entity_id\": \"sensor.office_temperature\", \"state\": \"21.2\", \"attributes\": {\"device_class\": \"temperature\", \"unit_of_measurement\": \"\\u00b0C\"}}",
+     "metric_name_override": "",
+     "extra_tags": [],
+     "point": {
+      "ts": "2026-10-21T09:30:15.654321+00:00",
+      "metric": "ha.sensor.office_temperature",
+      "value": "21.2",
+      "subject_type": "environment_sensor",
+      "subject_id": "office_temperature",
+      "source_system": "homeassistant",
+      "collector_service": "graphyard-agent",
+      "collector_host": "homeassistant",
+      "source_instance": "default",
+      "source_entity_id": "sensor.office_temperature",
+      "host": null,
+      "service": "homeassistant",
+      "tags": [
+       [
+        "entity_id",
+        "sensor.office_temperature"
+       ],
+       [
+        "unit",
+        "\u00b0C"
+       ],
+       [
+        "device_class",
+        "temperature"
+       ]
+      ]
+     },
+     "logs": []
+    },
+    {
+     "fn": "normalize",
+     "payload": "{\"entity_id\": \"sensor.office_temperature\", \"state\": \"21.2\", \"last_updated\": 0, \"attributes\": {\"device_class\": \"temperature\", \"unit_of_measurement\": \"\\u00b0C\"}}",
+     "metric_name_override": "",
+     "extra_tags": [],
+     "point": {
+      "ts": "2026-10-21T09:30:15.654321+00:00",
+      "metric": "ha.sensor.office_temperature",
+      "value": "21.2",
+      "subject_type": "environment_sensor",
+      "subject_id": "office_temperature",
+      "source_system": "homeassistant",
+      "collector_service": "graphyard-agent",
+      "collector_host": "homeassistant",
+      "source_instance": "default",
+      "source_entity_id": "sensor.office_temperature",
+      "host": null,
+      "service": "homeassistant",
+      "tags": [
+       [
+        "entity_id",
+        "sensor.office_temperature"
+       ],
+       [
+        "unit",
+        "\u00b0C"
+       ],
+       [
+        "device_class",
+        "temperature"
+       ]
+      ]
+     },
+     "logs": []
+    },
+    {
+     "fn": "normalize",
+     "payload": "{\"entity_id\": \"sensor.office_temperature\", \"state\": \"21.2\", \"last_updated\": 0.0, \"attributes\": {\"device_class\": \"temperature\", \"unit_of_measurement\": \"\\u00b0C\"}}",
+     "metric_name_override": "",
+     "extra_tags": [],
+     "point": {
+      "ts": "2026-10-21T09:30:15.654321+00:00",
+      "metric": "ha.sensor.office_temperature",
+      "value": "21.2",
+      "subject_type": "environment_sensor",
+      "subject_id": "office_temperature",
+      "source_system": "homeassistant",
+      "collector_service": "graphyard-agent",
+      "collector_host": "homeassistant",
+      "source_instance": "default",
+      "source_entity_id": "sensor.office_temperature",
+      "host": null,
+      "service": "homeassistant",
+      "tags": [
+       [
+        "entity_id",
+        "sensor.office_temperature"
+       ],
+       [
+        "unit",
+        "\u00b0C"
+       ],
+       [
+        "device_class",
+        "temperature"
+       ]
+      ]
+     },
+     "logs": []
+    },
+    {
+     "fn": "normalize",
+     "payload": "{\"entity_id\": \"sensor.office_temperature\", \"state\": \"21.2\", \"last_updated\": false, \"attributes\": {\"device_class\": \"temperature\", \"unit_of_measurement\": \"\\u00b0C\"}}",
+     "metric_name_override": "",
+     "extra_tags": [],
+     "point": {
+      "ts": "2026-10-21T09:30:15.654321+00:00",
+      "metric": "ha.sensor.office_temperature",
+      "value": "21.2",
+      "subject_type": "environment_sensor",
+      "subject_id": "office_temperature",
+      "source_system": "homeassistant",
+      "collector_service": "graphyard-agent",
+      "collector_host": "homeassistant",
+      "source_instance": "default",
+      "source_entity_id": "sensor.office_temperature",
+      "host": null,
+      "service": "homeassistant",
+      "tags": [
+       [
+        "entity_id",
+        "sensor.office_temperature"
+       ],
+       [
+        "unit",
+        "\u00b0C"
+       ],
+       [
+        "device_class",
+        "temperature"
+       ]
+      ]
+     },
+     "logs": []
+    },
+    {
+     "fn": "normalize",
+     "payload": "{\"entity_id\": \"sensor.office_temperature\", \"state\": \"21.2\", \"last_updated\": [], \"attributes\": {\"device_class\": \"temperature\", \"unit_of_measurement\": \"\\u00b0C\"}}",
+     "metric_name_override": "",
+     "extra_tags": [],
+     "point": {
+      "ts": "2026-10-21T09:30:15.654321+00:00",
+      "metric": "ha.sensor.office_temperature",
+      "value": "21.2",
+      "subject_type": "environment_sensor",
+      "subject_id": "office_temperature",
+      "source_system": "homeassistant",
+      "collector_service": "graphyard-agent",
+      "collector_host": "homeassistant",
+      "source_instance": "default",
+      "source_entity_id": "sensor.office_temperature",
+      "host": null,
+      "service": "homeassistant",
+      "tags": [
+       [
+        "entity_id",
+        "sensor.office_temperature"
+       ],
+       [
+        "unit",
+        "\u00b0C"
+       ],
+       [
+        "device_class",
+        "temperature"
+       ]
+      ]
+     },
+     "logs": []
+    },
+    {
+     "fn": "normalize",
+     "payload": "{\"entity_id\": \"sensor.office_temperature\", \"state\": \"21.2\", \"last_updated\": 5, \"attributes\": {\"device_class\": \"temperature\", \"unit_of_measurement\": \"\\u00b0C\"}}",
+     "metric_name_override": "",
+     "extra_tags": [],
+     "point": {
+      "ts": "2026-10-21T09:30:15.654321+00:00",
+      "metric": "ha.sensor.office_temperature",
+      "value": "21.2",
+      "subject_type": "environment_sensor",
+      "subject_id": "office_temperature",
+      "source_system": "homeassistant",
+      "collector_service": "graphyard-agent",
+      "collector_host": "homeassistant",
+      "source_instance": "default",
+      "source_entity_id": "sensor.office_temperature",
+      "host": null,
+      "service": "homeassistant",
+      "tags": [
+       [
+        "entity_id",
+        "sensor.office_temperature"
+       ],
+       [
+        "unit",
+        "\u00b0C"
+       ],
+       [
+        "device_class",
+        "temperature"
+       ]
+      ]
+     },
+     "logs": []
+    },
+    {
+     "fn": "normalize",
+     "payload": "{\"entity_id\": \"sensor.office_temperature\", \"state\": \"21.2\", \"last_updated\": true, \"attributes\": {\"device_class\": \"temperature\", \"unit_of_measurement\": \"\\u00b0C\"}}",
+     "metric_name_override": "",
+     "extra_tags": [],
+     "point": {
+      "ts": "2026-10-21T09:30:15.654321+00:00",
+      "metric": "ha.sensor.office_temperature",
+      "value": "21.2",
+      "subject_type": "environment_sensor",
+      "subject_id": "office_temperature",
+      "source_system": "homeassistant",
+      "collector_service": "graphyard-agent",
+      "collector_host": "homeassistant",
+      "source_instance": "default",
+      "source_entity_id": "sensor.office_temperature",
+      "host": null,
+      "service": "homeassistant",
+      "tags": [
+       [
+        "entity_id",
+        "sensor.office_temperature"
+       ],
+       [
+        "unit",
+        "\u00b0C"
+       ],
+       [
+        "device_class",
+        "temperature"
+       ]
+      ]
+     },
+     "logs": []
+    },
+    {
+     "fn": "normalize",
+     "payload": "{\"entity_id\": \"sensor.office_temperature\", \"state\": \"21.2\", \"last_updated\": [\"2026\"], \"attributes\": {\"device_class\": \"temperature\", \"unit_of_measurement\": \"\\u00b0C\"}}",
+     "metric_name_override": "",
+     "extra_tags": [],
+     "point": {
+      "ts": "2026-10-21T09:30:15.654321+00:00",
+      "metric": "ha.sensor.office_temperature",
+      "value": "21.2",
+      "subject_type": "environment_sensor",
+      "subject_id": "office_temperature",
+      "source_system": "homeassistant",
+      "collector_service": "graphyard-agent",
+      "collector_host": "homeassistant",
+      "source_instance": "default",
+      "source_entity_id": "sensor.office_temperature",
+      "host": null,
+      "service": "homeassistant",
+      "tags": [
+       [
+        "entity_id",
+        "sensor.office_temperature"
+       ],
+       [
+        "unit",
+        "\u00b0C"
+       ],
+       [
+        "device_class",
+        "temperature"
+       ]
+      ]
+     },
+     "logs": []
+    },
+    {
+     "fn": "normalize",
+     "payload": "{\"entity_id\": \"sensor.office_temperature\", \"state\": \"21.2\", \"last_updated\": \"0001-01-01T00:30:00+01:00\", \"attributes\": {\"device_class\": \"temperature\", \"unit_of_measurement\": \"\\u00b0C\"}}",
+     "metric_name_override": "",
+     "extra_tags": [],
+     "error": {
+      "class": "OverflowError",
+      "message": "date value out of range"
+     },
+     "logs": []
+    },
+    {
+     "fn": "normalize",
+     "payload": "{\"entity_id\": \"sensor.office_temperature\", \"state\": \"21.2\", \"last_updated\": \"9999-12-31T23:30:00-01:00\", \"attributes\": {\"device_class\": \"temperature\", \"unit_of_measurement\": \"\\u00b0C\"}}",
+     "metric_name_override": "",
+     "extra_tags": [],
+     "error": {
+      "class": "OverflowError",
+      "message": "date value out of range"
+     },
+     "logs": []
+    },
+    {
+     "fn": "normalize",
+     "payload": "{\"entity_id\": \"sensor.office_temperature\", \"state\": \"21.2\", \"last_updated\": \"0001-01-01T00:30:00\", \"attributes\": {\"device_class\": \"temperature\", \"unit_of_measurement\": \"\\u00b0C\"}}",
+     "metric_name_override": "",
+     "extra_tags": [],
+     "point": {
+      "ts": "0001-01-01T00:30:00+00:00",
+      "metric": "ha.sensor.office_temperature",
+      "value": "21.2",
+      "subject_type": "environment_sensor",
+      "subject_id": "office_temperature",
+      "source_system": "homeassistant",
+      "collector_service": "graphyard-agent",
+      "collector_host": "homeassistant",
+      "source_instance": "default",
+      "source_entity_id": "sensor.office_temperature",
+      "host": null,
+      "service": "homeassistant",
+      "tags": [
+       [
+        "entity_id",
+        "sensor.office_temperature"
+       ],
+       [
+        "unit",
+        "\u00b0C"
+       ],
+       [
+        "device_class",
+        "temperature"
+       ]
+      ]
+     },
+     "logs": []
+    },
+    {
+     "fn": "normalize",
+     "payload": "{\"entity_id\": \"sensor.office_temperature\", \"state\": \"21.2\", \"last_updated\": \"2026-02-30T00:00:00\", \"attributes\": {\"device_class\": \"temperature\", \"unit_of_measurement\": \"\\u00b0C\"}}",
+     "metric_name_override": "",
+     "extra_tags": [],
+     "point": {
+      "ts": "2026-10-21T09:30:15.654321+00:00",
+      "metric": "ha.sensor.office_temperature",
+      "value": "21.2",
+      "subject_type": "environment_sensor",
+      "subject_id": "office_temperature",
+      "source_system": "homeassistant",
+      "collector_service": "graphyard-agent",
+      "collector_host": "homeassistant",
+      "source_instance": "default",
+      "source_entity_id": "sensor.office_temperature",
+      "host": null,
+      "service": "homeassistant",
+      "tags": [
+       [
+        "entity_id",
+        "sensor.office_temperature"
+       ],
+       [
+        "unit",
+        "\u00b0C"
+       ],
+       [
+        "device_class",
+        "temperature"
+       ]
+      ]
+     },
+     "logs": []
+    }
+   ],
+   "warned_keys": []
+  },
+  {
+   "name": "attributes and tags",
+   "spec_name": "attributes and tags",
+   "config": "{\"base_url\": \"https://ha.local\", \"access_token\": \"token\", \"subject_mapping\": {\"default\": {\"subject_type\": \"environment_sensor\", \"subject_id_from\": \"entity_name_slug\"}}}",
+   "calls": [
+    {
+     "fn": "normalize",
+     "payload": "{\"entity_id\": \"sensor.office_temperature\", \"state\": \"21.2\", \"last_updated\": \"2026-03-04T12:00:00Z\", \"attributes\": null}",
+     "metric_name_override": "",
+     "extra_tags": [
+      [
+       "spec_name",
+       "s"
+      ]
+     ],
+     "point": {
+      "ts": "2026-03-04T12:00:00+00:00",
+      "metric": "ha.sensor.office_temperature",
+      "value": "21.2",
+      "subject_type": "environment_sensor",
+      "subject_id": "office_temperature",
+      "source_system": "homeassistant",
+      "collector_service": "graphyard-agent",
+      "collector_host": "homeassistant",
+      "source_instance": "default",
+      "source_entity_id": "sensor.office_temperature",
+      "host": null,
+      "service": "homeassistant",
+      "tags": [
+       [
+        "entity_id",
+        "sensor.office_temperature"
+       ],
+       [
+        "spec_name",
+        "s"
+       ]
+      ]
+     },
+     "logs": []
+    },
+    {
+     "fn": "normalize",
+     "payload": "{\"entity_id\": \"sensor.office_temperature\", \"state\": \"21.2\", \"last_updated\": \"2026-03-04T12:00:00Z\", \"attributes\": [1]}",
+     "metric_name_override": "",
+     "extra_tags": [
+      [
+       "spec_name",
+       "s"
+      ]
+     ],
+     "point": {
+      "ts": "2026-03-04T12:00:00+00:00",
+      "metric": "ha.sensor.office_temperature",
+      "value": "21.2",
+      "subject_type": "environment_sensor",
+      "subject_id": "office_temperature",
+      "source_system": "homeassistant",
+      "collector_service": "graphyard-agent",
+      "collector_host": "homeassistant",
+      "source_instance": "default",
+      "source_entity_id": "sensor.office_temperature",
+      "host": null,
+      "service": "homeassistant",
+      "tags": [
+       [
+        "entity_id",
+        "sensor.office_temperature"
+       ],
+       [
+        "spec_name",
+        "s"
+       ]
+      ]
+     },
+     "logs": []
+    },
+    {
+     "fn": "normalize",
+     "payload": "{\"entity_id\": \"sensor.office_temperature\", \"state\": \"21.2\", \"last_updated\": \"2026-03-04T12:00:00Z\", \"attributes\": {}}",
+     "metric_name_override": "",
+     "extra_tags": [
+      [
+       "spec_name",
+       "s"
+      ]
+     ],
+     "point": {
+      "ts": "2026-03-04T12:00:00+00:00",
+      "metric": "ha.sensor.office_temperature",
+      "value": "21.2",
+      "subject_type": "environment_sensor",
+      "subject_id": "office_temperature",
+      "source_system": "homeassistant",
+      "collector_service": "graphyard-agent",
+      "collector_host": "homeassistant",
+      "source_instance": "default",
+      "source_entity_id": "sensor.office_temperature",
+      "host": null,
+      "service": "homeassistant",
+      "tags": [
+       [
+        "entity_id",
+        "sensor.office_temperature"
+       ],
+       [
+        "spec_name",
+        "s"
+       ]
+      ]
+     },
+     "logs": []
+    },
+    {
+     "fn": "normalize",
+     "payload": "{\"entity_id\": \"sensor.office_temperature\", \"state\": \"21.2\", \"last_updated\": \"2026-03-04T12:00:00Z\", \"attributes\": {\"unit_of_measurement\": null, \"device_class\": null}}",
+     "metric_name_override": "",
+     "extra_tags": [],
+     "point": {
+      "ts": "2026-03-04T12:00:00+00:00",
+      "metric": "ha.sensor.office_temperature",
+      "value": "21.2",
+      "subject_type": "environment_sensor",
+      "subject_id": "office_temperature",
+      "source_system": "homeassistant",
+      "collector_service": "graphyard-agent",
+      "collector_host": "homeassistant",
+      "source_instance": "default",
+      "source_entity_id": "sensor.office_temperature",
+      "host": null,
+      "service": "homeassistant",
+      "tags": [
+       [
+        "entity_id",
+        "sensor.office_temperature"
+       ]
+      ]
+     },
+     "logs": []
+    },
+    {
+     "fn": "normalize",
+     "payload": "{\"entity_id\": \"sensor.office_temperature\", \"state\": \"21.2\", \"last_updated\": \"2026-03-04T12:00:00Z\", \"attributes\": {\"unit_of_measurement\": 5, \"device_class\": false}}",
+     "metric_name_override": "",
+     "extra_tags": [],
+     "point": {
+      "ts": "2026-03-04T12:00:00+00:00",
+      "metric": "ha.sensor.office_temperature",
+      "value": "21.2",
+      "subject_type": "environment_sensor",
+      "subject_id": "office_temperature",
+      "source_system": "homeassistant",
+      "collector_service": "graphyard-agent",
+      "collector_host": "homeassistant",
+      "source_instance": "default",
+      "source_entity_id": "sensor.office_temperature",
+      "host": null,
+      "service": "homeassistant",
+      "tags": [
+       [
+        "entity_id",
+        "sensor.office_temperature"
+       ],
+       [
+        "unit",
+        "5"
+       ],
+       [
+        "device_class",
+        "False"
+       ]
+      ]
+     },
+     "logs": []
+    },
+    {
+     "fn": "normalize",
+     "payload": "{\"entity_id\": \"sensor.office_temperature\", \"state\": \"21.2\", \"last_updated\": \"2026-03-04T12:00:00Z\", \"attributes\": {\"device_class\": \"temperature\", \"unit_of_measurement\": \"\\u00b0C\"}}",
+     "metric_name_override": "",
+     "extra_tags": [
+      [
+       "spec_name",
+       "s"
+      ],
+      [
+       "entity_id",
+       "replaced"
+      ],
+      [
+       "unit",
+       "pre"
+      ]
+     ],
+     "point": {
+      "ts": "2026-03-04T12:00:00+00:00",
+      "metric": "ha.sensor.office_temperature",
+      "value": "21.2",
+      "subject_type": "environment_sensor",
+      "subject_id": "office_temperature",
+      "source_system": "homeassistant",
+      "collector_service": "graphyard-agent",
+      "collector_host": "homeassistant",
+      "source_instance": "default",
+      "source_entity_id": "sensor.office_temperature",
+      "host": null,
+      "service": "homeassistant",
+      "tags": [
+       [
+        "entity_id",
+        "replaced"
+       ],
+       [
+        "spec_name",
+        "s"
+       ],
+       [
+        "unit",
+        "\u00b0C"
+       ],
+       [
+        "device_class",
+        "temperature"
+       ]
+      ]
+     },
+     "logs": []
+    }
+   ],
+   "warned_keys": []
+  },
+  {
+   "name": "collector fields",
+   "spec_name": "collector fields",
+   "config": "{\"base_url\": \"https://ha.local\", \"access_token\": \"token\", \"subject_mapping\": {\"default\": {\"subject_type\": \"environment_sensor\", \"subject_id_from\": \"entity_name_slug\"}}, \"source_system\": \" Home Assistant \", \"source_instance\": \"   \", \"host_id\": \"  \", \"service_id\": \" \", \"collector_service\": \"\", \"collector_host\": \"   \"}",
+   "calls": [
+    {
+     "fn": "normalize",
+     "payload": "{\"entity_id\": \"sensor.office_temperature\", \"state\": \"21.2\", \"last_updated\": \"2026-03-04T12:00:00Z\", \"attributes\": {\"device_class\": \"temperature\", \"unit_of_measurement\": \"\\u00b0C\"}}",
+     "metric_name_override": "",
+     "extra_tags": [],
+     "point": {
+      "ts": "2026-03-04T12:00:00+00:00",
+      "metric": "ha.sensor.office_temperature",
+      "value": "21.2",
+      "subject_type": "environment_sensor",
+      "subject_id": "office_temperature",
+      "source_system": "home assistant",
+      "collector_service": "graphyard-agent",
+      "collector_host": "homeassistant",
+      "source_instance": "default",
+      "source_entity_id": "sensor.office_temperature",
+      "host": null,
+      "service": "homeassistant",
+      "tags": [
+       [
+        "entity_id",
+        "sensor.office_temperature"
+       ],
+       [
+        "unit",
+        "\u00b0C"
+       ],
+       [
+        "device_class",
+        "temperature"
+       ]
+      ]
+     },
+     "logs": []
+    }
+   ],
+   "warned_keys": []
+  },
+  {
+   "name": "collector fields null",
+   "spec_name": "collector fields null",
+   "config": "{\"base_url\": \"https://ha.local\", \"access_token\": \"token\", \"subject_mapping\": {\"default\": {\"subject_type\": \"environment_sensor\", \"subject_id_from\": \"entity_name_slug\"}}, \"source_system\": null, \"source_instance\": null, \"host_id\": null, \"service_id\": null, \"collector_service\": null, \"collector_host\": null}",
+   "calls": [
+    {
+     "fn": "normalize",
+     "payload": "{\"entity_id\": \"sensor.office_temperature\", \"state\": \"21.2\", \"last_updated\": \"2026-03-04T12:00:00Z\", \"attributes\": {\"device_class\": \"temperature\", \"unit_of_measurement\": \"\\u00b0C\"}}",
+     "metric_name_override": "",
+     "extra_tags": [],
+     "point": {
+      "ts": "2026-03-04T12:00:00+00:00",
+      "metric": "ha.sensor.office_temperature",
+      "value": "21.2",
+      "subject_type": "environment_sensor",
+      "subject_id": "office_temperature",
+      "source_system": "none",
+      "collector_service": "None",
+      "collector_host": "None",
+      "source_instance": "None",
+      "source_entity_id": "sensor.office_temperature",
+      "host": null,
+      "service": "None",
+      "tags": [
+       [
+        "entity_id",
+        "sensor.office_temperature"
+       ],
+       [
+        "unit",
+        "\u00b0C"
+       ],
+       [
+        "device_class",
+        "temperature"
+       ]
+      ]
+     },
+     "logs": []
+    }
+   ],
+   "warned_keys": []
+  },
+  {
+   "name": "collector host defaults to host id",
+   "spec_name": "collector host defaults to host id",
+   "config": "{\"base_url\": \"https://ha.local\", \"access_token\": \"token\", \"subject_mapping\": {\"default\": {\"subject_type\": \"environment_sensor\", \"subject_id_from\": \"entity_name_slug\"}}, \"host_id\": \" Edge Host \", \"service_id\": \"svc\"}",
+   "calls": [
+    {
+     "fn": "normalize",
+     "payload": "{\"entity_id\": \"sensor.office_temperature\", \"state\": \"21.2\", \"last_updated\": \"2026-03-04T12:00:00Z\", \"attributes\": {\"device_class\": \"temperature\", \"unit_of_measurement\": \"\\u00b0C\"}}",
+     "metric_name_override": "",
+     "extra_tags": [],
+     "point": {
+      "ts": "2026-03-04T12:00:00+00:00",
+      "metric": "ha.sensor.office_temperature",
+      "value": "21.2",
+      "subject_type": "environment_sensor",
+      "subject_id": "office_temperature",
+      "source_system": "homeassistant",
+      "collector_service": "graphyard-agent",
+      "collector_host": "Edge Host",
+      "source_instance": "default",
+      "source_entity_id": "sensor.office_temperature",
+      "host": null,
+      "service": "svc",
+      "tags": [
+       [
+        "entity_id",
+        "sensor.office_temperature"
+       ],
+       [
+        "unit",
+        "\u00b0C"
+       ],
+       [
+        "device_class",
+        "temperature"
+       ]
+      ]
+     },
+     "logs": []
+    }
+   ],
+   "warned_keys": []
+  },
+  {
+   "name": "host compatibility tag",
+   "spec_name": "host compatibility tag",
+   "config": "{\"base_url\": \"https://ha.local\", \"access_token\": \"token\", \"host_id\": \"Mac Mini\", \"subject_mapping\": {\"default\": {\"subject_type\": \"host\"}, \"rules\": [{\"match_entity_id_regex\": \"sensor\\\\.other\", \"subject_type\": \"host\", \"subject_id_template\": \"fractal\"}]}}",
+   "calls": [
+    {
+     "fn": "normalize",
+     "payload": "{\"entity_id\": \"sensor.mac_mini\", \"state\": \"21.2\", \"last_updated\": \"2026-03-04T12:00:00Z\", \"attributes\": {\"device_class\": \"temperature\", \"unit_of_measurement\": \"\\u00b0C\"}}",
+     "metric_name_override": "",
+     "extra_tags": [],
+     "point": {
+      "ts": "2026-03-04T12:00:00+00:00",
+      "metric": "ha.sensor.mac_mini",
+      "value": "21.2",
+      "subject_type": "host",
+      "subject_id": "mac_mini",
+      "source_system": "homeassistant",
+      "collector_service": "graphyard-agent",
+      "collector_host": "Mac Mini",
+      "source_instance": "default",
+      "source_entity_id": "sensor.mac_mini",
+      "host": "mac_mini",
+      "service": "homeassistant",
+      "tags": [
+       [
+        "entity_id",
+        "sensor.mac_mini"
+       ],
+       [
+        "unit",
+        "\u00b0C"
+       ],
+       [
+        "device_class",
+        "temperature"
+       ]
+      ]
+     },
+     "logs": []
+    },
+    {
+     "fn": "normalize",
+     "payload": "{\"entity_id\": \"sensor.other\", \"state\": \"21.2\", \"last_updated\": \"2026-03-04T12:00:00Z\", \"attributes\": {\"device_class\": \"temperature\", \"unit_of_measurement\": \"\\u00b0C\"}}",
+     "metric_name_override": "",
+     "extra_tags": [],
+     "point": {
+      "ts": "2026-03-04T12:00:00+00:00",
+      "metric": "ha.sensor.other",
+      "value": "21.2",
+      "subject_type": "host",
+      "subject_id": "fractal",
+      "source_system": "homeassistant",
+      "collector_service": "graphyard-agent",
+      "collector_host": "Mac Mini",
+      "source_instance": "default",
+      "source_entity_id": "sensor.other",
+      "host": null,
+      "service": "homeassistant",
+      "tags": [
+       [
+        "entity_id",
+        "sensor.other"
+       ],
+       [
+        "unit",
+        "\u00b0C"
+       ],
+       [
+        "device_class",
+        "temperature"
+       ]
+      ]
+     },
+     "logs": []
+    },
+    {
+     "fn": "normalize",
+     "payload": "{\"entity_id\": \"sensor.mac-mini\", \"state\": \"21.2\", \"last_updated\": \"2026-03-04T12:00:00Z\", \"attributes\": {\"device_class\": \"temperature\", \"unit_of_measurement\": \"\\u00b0C\"}}",
+     "metric_name_override": "",
+     "extra_tags": [],
+     "point": {
+      "ts": "2026-03-04T12:00:00+00:00",
+      "metric": "ha.sensor.mac-mini",
+      "value": "21.2",
+      "subject_type": "host",
+      "subject_id": "mac_mini",
+      "source_system": "homeassistant",
+      "collector_service": "graphyard-agent",
+      "collector_host": "Mac Mini",
+      "source_instance": "default",
+      "source_entity_id": "sensor.mac-mini",
+      "host": "mac_mini",
+      "service": "homeassistant",
+      "tags": [
+       [
+        "entity_id",
+        "sensor.mac-mini"
+       ],
+       [
+        "unit",
+        "\u00b0C"
+       ],
+       [
+        "device_class",
+        "temperature"
+       ]
+      ]
+     },
+     "logs": []
+    }
+   ],
+   "warned_keys": []
+  },
+  {
+   "name": "host compatibility with invalid host id",
+   "spec_name": "host compatibility with invalid host id",
+   "config": "{\"base_url\": \"https://ha.local\", \"access_token\": \"token\", \"host_id\": \"!!!\", \"subject_mapping\": {\"default\": {\"subject_type\": \"host\"}}}",
+   "calls": [
+    {
+     "fn": "normalize",
+     "payload": "{\"entity_id\": \"sensor.x\", \"state\": \"21.2\", \"last_updated\": \"2026-03-04T12:00:00Z\", \"attributes\": {\"device_class\": \"temperature\", \"unit_of_measurement\": \"\\u00b0C\"}}",
+     "metric_name_override": "",
+     "extra_tags": [],
+     "point": {
+      "ts": "2026-03-04T12:00:00+00:00",
+      "metric": "ha.sensor.x",
+      "value": "21.2",
+      "subject_type": "host",
+      "subject_id": "x",
+      "source_system": "homeassistant",
+      "collector_service": "graphyard-agent",
+      "collector_host": "!!!",
+      "source_instance": "default",
+      "source_entity_id": "sensor.x",
+      "host": null,
+      "service": "homeassistant",
+      "tags": [
+       [
+        "entity_id",
+        "sensor.x"
+       ],
+       [
+        "unit",
+        "\u00b0C"
+       ],
+       [
+        "device_class",
+        "temperature"
+       ]
+      ]
+     },
+     "logs": []
+    }
+   ],
+   "warned_keys": []
+  },
+  {
+   "name": "metric names",
+   "spec_name": "metric names",
+   "config": "{\"base_url\": \"https://ha.local\", \"access_token\": \"token\", \"subject_mapping\": {\"default\": {\"subject_type\": \"environment_sensor\", \"subject_id_from\": \"entity_name_slug\"}}}",
+   "calls": [
+    {
+     "fn": "normalize",
+     "payload": "{\"entity_id\": \"sensor.a b  c\", \"state\": \"21.2\", \"last_updated\": \"2026-03-04T12:00:00Z\", \"attributes\": {\"device_class\": \"temperature\", \"unit_of_measurement\": \"\\u00b0C\"}}",
+     "metric_name_override": "",
+     "extra_tags": [],
+     "point": {
+      "ts": "2026-03-04T12:00:00+00:00",
+      "metric": "ha.sensor.a_b__c",
+      "value": "21.2",
+      "subject_type": "environment_sensor",
+      "subject_id": "a_b_c",
+      "source_system": "homeassistant",
+      "collector_service": "graphyard-agent",
+      "collector_host": "homeassistant",
+      "source_instance": "default",
+      "source_entity_id": "sensor.a b  c",
+      "host": null,
+      "service": "homeassistant",
+      "tags": [
+       [
+        "entity_id",
+        "sensor.a b  c"
+       ],
+       [
+        "unit",
+        "\u00b0C"
+       ],
+       [
+        "device_class",
+        "temperature"
+       ]
+      ]
+     },
+     "logs": []
+    },
+    {
+     "fn": "normalize",
+     "payload": "{\"entity_id\": \"sensor.office_temperature\", \"state\": \"21.2\", \"last_updated\": \"2026-03-04T12:00:00Z\", \"attributes\": {\"device_class\": \"temperature\", \"unit_of_measurement\": \"\\u00b0C\"}}",
+     "metric_name_override": "  custom  ",
+     "extra_tags": [],
+     "point": {
+      "ts": "2026-03-04T12:00:00+00:00",
+      "metric": "  custom  ",
+      "value": "21.2",
+      "subject_type": "environment_sensor",
+      "subject_id": "office_temperature",
+      "source_system": "homeassistant",
+      "collector_service": "graphyard-agent",
+      "collector_host": "homeassistant",
+      "source_instance": "default",
+      "source_entity_id": "sensor.office_temperature",
+      "host": null,
+      "service": "homeassistant",
+      "tags": [
+       [
+        "entity_id",
+        "sensor.office_temperature"
+       ],
+       [
+        "unit",
+        "\u00b0C"
+       ],
+       [
+        "device_class",
+        "temperature"
+       ]
+      ]
+     },
+     "logs": []
+    }
+   ],
+   "warned_keys": []
+  },
+  {
+   "name": "log values with line breaks (D-10)",
+   "spec_name": "evil\nspec",
+   "config": "{\"base_url\": \"https://ha.local\", \"access_token\": \"token\", \"subject_mapping\": {\"default\": {\"subject_type\": \"a\\nb\"}}}",
+   "calls": [
+    {
+     "fn": "subject",
+     "entity_id": "sensor.x",
+     "subject": [
+      "environment_sensor",
+      "x"
+     ],
+     "logs": [
+      {
+       "level": "WARNING",
+       "message": "Spec evil\nspec has unknown default subject_type=a\nb; using environment_sensor"
+      }
+     ]
+    }
+   ],
+   "warned_keys": [
+    "evil\nspec:unknown_default_subject_type:a\nb"
+   ]
+  }
+ ]
+}

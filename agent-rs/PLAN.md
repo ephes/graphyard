@@ -166,6 +166,11 @@ that differs is a bug.
   Such a body is a JSON decode error in Rust (spec `critical`), where Python
   parsed it and then usually rejected the non-finite value (`warning`). None
   of the 32 production endpoints emits them (checked again in the shadow run).
+  An integer token of more than 4300 digits in a collector's JSON body is
+  CPython's `ValueError` (`Exceeds the limit (4300 digits) …`, P1) in both
+  (`graphyard-collect::http::decode_json`, S7a); Python raises it while
+  parsing, so a body that is also invalid JSON after such a token is a
+  `JSONDecodeError` in Rust (P2 text, both `critical`).
   The same holds for the v3 SQL response (S4b): a `NaN` token or a UTF-16/32
   body is `InfluxDB SQL query failed: invalid JSON` in Rust where Python
   reports `InfluxDB query sample must be a finite number` (both a condition
@@ -177,14 +182,23 @@ that differs is a bug.
   success in Rust and a failed attempt in Python.
 - **D-5 Regex dialect.** User regexes in spec configs run on `fancy-regex`
   (backtracking features like Python `re`), not CPython `re`. Patterns valid
-  in one and not the other, and Unicode case-folding corner cases, differ.
-  All production patterns are in the fixtures.
+  in one and not the other, and Unicode case-folding corner cases, differ
+  (also `$`, which in Python matches before a trailing newline, and `\Z`).
+  All production patterns are in the fixtures. `fullmatch` is the pattern
+  anchored as `\A(?:…)\z` (S7a; a pattern whose leading global flag
+  groups, such as `(?i)(?x)`, set verbose mode gets a line break before the
+  closing parenthesis, which ends a trailing comment). A pattern that exhausts `fancy-regex`'s backtracking
+  limit while matching fails with `regex match failed: <error>`, which the
+  HA executors report as `critical` with that message; Python keeps
+  backtracking (the agent hangs on such a pattern).
 - **D-6 Unicode digits and spaces.** Python `str.isdigit()` in
   `_resolve_json_path`, `float()` on Unicode digit strings, and `str.strip()`
   of non-`White_Space` separators (`\x1c`–`\x1f`) accept more than ASCII.
   Rust accepts ASCII digits only and strips Unicode `White_Space` plus
   `\x1c`–`\x1f` (matching `str.isspace`). A Unicode-digit path segment is
-  "metric_path not found" in Rust (Python: `int()` raises → `critical`).
+  "metric_path not found" in Rust (Python: indexes the list for a decimal
+  digit such as `٣`, and `int()` raises → `critical` for other digits such
+  as `²`; both pinned by `json_path.json`).
   The same holds for Django's `datetime_re` fallback when reading a stored
   datetime (5.3): its `\d` matches Unicode digits, Rust's ASCII only, so
   such text loads as NULL in Rust (`fromisoformat` is ASCII-only in both).
@@ -961,10 +975,31 @@ warning-path sink failure, which the runner turns into `collector raised
 carries httpx's compact `json.dumps(ensure_ascii=False)` body with
 `Content-Type` and `Content-Length`; `client.post`/`client.get` read the
 whole body before the status is looked at). UniFi bodies are decoded like
-`resp.json()`, including `json.loads`' 4300-digit integer limit
-(`int_digit_limit_error`); `resp.text` for the summaries is UTF-8 with
+`resp.json()`, including `json.loads`' 4300-digit integer limit (which
+the HTTP layer's `decode_json` applies since S7a); `resp.text` for the summaries is UTF-8 with
 replacement characters (P2 for other declared charsets, 2.3). Points carry
 `datetime.now(UTC)` at microsecond precision, one instant per execution.
+
+As implemented in S7a (`graphyard-collect::executors::home_assistant`,
+`::http_json`; pure parts in `graphyard_core::home_assistant` and
+`graphyard_core::json_path`), on the executor interface above: the HA
+executors also take the metrics run's `RunState` (the warn-once keys of
+`_subject_mapping_warning_keys` and the compiled regexes; S8 creates one per
+run), and read `datetime.now(UTC)` through `MetricSink::now` (default: the
+wall clock), so the fixture scenarios pin it. `ExecutorError::Config` is
+returned exactly where Python's `SpecConfigError` leaves the executor (the
+typed knobs, read before the `try`: in `http_json_metric` before the
+required-field checks, in the HA executors after them). Everything else is an
+outcome, as the executor's `except Exception` makes it: HTTP errors, the
+deadline, the body cap, the JSON path's `int()` error, normalisation errors
+that Python lets escape the mapping (`ValueError` of the default subject
+slug, `OverflowError` of a huge `value_multiplier` or of the timestamp's UTC
+conversion) and sink failures (a registry failure after a successful write
+keeps the points written) are `critical, 0, 0, str(err)`. Mapping warnings
+are logged after each normalised state, so they follow the request's `HTTP
+Request:` line as in Python. Pinned by `ha_mapping.json`, `json_path.json`
+and the end-to-end scenarios of `ha_json_executors.json`, replayed against a
+fake server.
 
 ### 6.4 InfluxDB writes (`influx.py:write_points`, P1)
 
@@ -1365,8 +1400,9 @@ a string produces a text file written verbatim (`schema/schema.sql`).
 | `spec_config.json` | `spec_config.py` (all helpers, `validate_spec_config`) | config corpus → value or message |
 | `normalize.json` | `normalize_subject_id`, `_normalize_dimension_value`, `parse_finite_float`, `normalize_metric_point` | point corpus → normalised point or message |
 | `line_protocol.json` | `write_points` with a capturing client, `Point.to_line_protocol` | points → lines, logs, counts (escape and float corner cases) |
-| `json_path.json` | `_resolve_json_path` | payload × path |
-| `ha_mapping.json` | `_resolve_subject_mapping`, `_resolve_home_assistant_metric_mapping`, `_normalize_home_assistant_sensor_state` (incl. the production spec config of section 1) | state payloads → point or `None` + warnings |
+| `json_path.json` | `_resolve_json_path` (incl. the 24 production metric paths) | payload × path → `repr` of the value, not found, or the `int()` error; D-6 cases with the Rust result |
+| `ha_mapping.json` | `_resolve_subject_mapping`, `_resolve_home_assistant_metric_mapping`, `_normalize_home_assistant_sensor_state` (incl. the production spec config of section 1) | per case a sequence of calls on one spec sharing the warn-once set → point, subject or metric mapping, `None` or the escaping exception, the warning records, the warn-once keys |
+| `ha_json_executors.json` (S7a) | `_execute_home_assistant_sensor_spec`, `_execute_home_assistant_env_scan_spec`, `_execute_http_json_metric_spec` on a scripted `MockTransport` with recording (optionally failing) `write_points`/`touch_registry_from_points` | spec + replies → outcome or escaping `SpecConfigError`, requests (target, `Authorization`, `Accept`), points written and touched, log lines |
 | `unifi.json` (S7b, `gen_page_probe_unifi.py`) | `_find_unifi_device`, `_resolve_unifi_interface_stats`, `_unifi_response_summary`, `_unifi_response_error`, `_unifi_login_response_ok`, `_execute_unifi_device_traffic_spec` on `httpx.MockTransport` with a recording sink | device/selector/response corpus; executor scenarios: config × scripted replies → requests (method, target, selected headers, body), sink calls with their points, outcome or raised exception, `HTTP Request:` lines |
 | `page_probe.json` (S7b, same builder) | `_execute_http_page_probe_spec` on `httpx.MockTransport` with a recording sink | executor scenarios as for UniFi (timing values masked) |
 | `http_errors.json` | httpx `raise_for_status`, exception classes for the page probe | responses/URLs → message and class |
@@ -1433,7 +1469,7 @@ rows.
 | `test_condition_evaluation.py::test_evaluate_conditions_once_updates_condition_and_heartbeat` | run aggregation test + `store_ops.json` | S8, S3a |
 | `test_condition_evaluation.py::test_query_condition_window_*`, `test_metric_dimensions.py::test_query_condition_window_*` | `flux.json` | S4b |
 | `test_condition_evaluation.py::test_stale_allowance_must_be_positive`, `test_condition_clean_*`, `test_condition_admin_form_*` | n/a (model/admin validation, web only) | — |
-| `test_metric_collection_specs.py` HTTP JSON tests | `graphyard-collect` fake-server tests | S7a |
+| `test_metric_collection_specs.py` HTTP JSON tests | `graphyard-collect` fake-server tests (`ha_json_executors.json`) | S7a |
 | `test_metric_collection_specs.py` page probe tests | fake-server tests | S7b |
 | `test_metric_collection_specs.py` HA sensor/env scan tests | fake-server tests + `ha_mapping.json` | S7a |
 | `test_metric_collection_specs.py` UniFi tests (incl. redaction) | fake-server tests + `unifi.json` | S7b |
@@ -1442,7 +1478,7 @@ rows.
 | `test_metric_collection_spec_isolation.py` cap/redirect/timeout tests | `spec_config.json` + fake-server tests | S2, S6 |
 | `test_metric_collection_spec_isolation.py::test_full_clean_*`, `::test_validate_spec_config_rejects_non_object`, `::test_model_validates_derived_wait_limit` | `spec_config.json` (`validate_spec_config` is web-side but shares helpers) | S2 |
 | `test_page_probe_deadline.py` (all, incl. `caps_abandoned_workers`) | deadline/abandoned-lookup tests | S6 |
-| `test_http_json_budget.py`, `test_home_assistant_budget.py` | budget/deadline tests | S6, S7a |
+| `test_http_json_budget.py`, `test_home_assistant_budget.py` | budget/deadline tests (the next spec after a failing one: run isolation, S8) | S6, S7a, S8 |
 | `test_influx_modes.py` normalisation/write tests | `normalize.json`, `line_protocol.json` | S4a |
 | `test_influx_modes.py` query mode tests | fake InfluxDB tests | S4b |
 | `test_influx_query_safety.py` (all) | v3 SQL fake tests, `flux.json` NaN case | S4b |

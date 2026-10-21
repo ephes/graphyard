@@ -35,11 +35,14 @@ pub enum ErrorKind {
     DeadlineExceeded,
     JsonDecodeError,
     UnicodeDecodeError,
+    /// The `ValueError` of `json.loads` for an integer token beyond
+    /// CPython's 4300-digit limit.
+    ValueError,
 }
 
 impl ErrorKind {
     /// Every kind, for tests against the fixture's class table.
-    pub const ALL: [Self; 17] = [
+    pub const ALL: [Self; 18] = [
         Self::ConnectError,
         Self::ConnectTimeout,
         Self::ReadTimeout,
@@ -57,6 +60,7 @@ impl ErrorKind {
         Self::DeadlineExceeded,
         Self::JsonDecodeError,
         Self::UnicodeDecodeError,
+        Self::ValueError,
     ];
 
     /// The Python class name (`type(err).__name__`).
@@ -79,6 +83,7 @@ impl ErrorKind {
             Self::DeadlineExceeded => "_PageProbeDeadlineExceeded",
             Self::JsonDecodeError => "JSONDecodeError",
             Self::UnicodeDecodeError => "UnicodeDecodeError",
+            Self::ValueError => "ValueError",
         }
     }
 
@@ -91,6 +96,7 @@ impl ErrorKind {
                 | Self::DeadlineExceeded
                 | Self::JsonDecodeError
                 | Self::UnicodeDecodeError
+                | Self::ValueError
         )
     }
 

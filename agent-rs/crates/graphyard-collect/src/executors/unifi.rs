@@ -20,8 +20,8 @@ use serde_json::{Map, Value};
 use graphyard_core::model::{MetricPoint, SpecOutcome, StatusLevel, SubjectType, Tags};
 use graphyard_core::normalize::parse_finite_float;
 use graphyard_core::pycompat::{
-    PyError, PyNumber, int_digit_limit_error, json_loads, py_eq, py_int, py_number,
-    py_split_whitespace, py_str, py_str_repr, py_strip,
+    PyError, PyNumber, json_loads, py_eq, py_int, py_number, py_split_whitespace, py_str,
+    py_str_repr, py_strip,
 };
 use graphyard_core::spec_config::{Config, bool_config, request_timeout_config};
 
@@ -340,16 +340,10 @@ pub fn login_body(username: &str, password: &str) -> Vec<u8> {
     serde_json::to_vec(&Value::Object(payload)).unwrap_or_default()
 }
 
-/// `resp.json()`: [`decode_json`] plus the integer digit limit of
-/// `json.loads` (D-11). Error texts are P2 except the digit limit.
+/// `resp.json()`: [`decode_json`], which applies `json.loads`' integer
+/// digit limit too (D-11). Error texts are P2 except the digit limit.
 fn response_json(body: &[u8]) -> Result<Value, Failure> {
-    let value = decode_json(body)?;
-    let text = std::str::from_utf8(body.strip_prefix(b"\xef\xbb\xbf").unwrap_or(body))
-        .map_err(|err| Failure(err.to_string()))?;
-    match int_digit_limit_error(text) {
-        Some(err) => Err(err.into()),
-        None => Ok(value),
-    }
+    Ok(decode_json(body)?)
 }
 
 /// `_unifi_login_response_ok(resp)`: a 2xx status whose body, if it is a

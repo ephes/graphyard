@@ -7,6 +7,8 @@
 pub mod conditions;
 #[cfg(test)]
 mod fixture;
+pub mod home_assistant;
+pub mod json_path;
 pub mod line_protocol;
 pub mod logline;
 pub mod model;
