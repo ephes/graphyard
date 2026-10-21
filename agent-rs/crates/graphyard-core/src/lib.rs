@@ -4,6 +4,7 @@
 //! generated from the Python implementation (`agent-rs/fixtures`, PLAN.md
 //! section 9.2).
 
+pub mod conditions;
 #[cfg(test)]
 mod fixture;
 pub mod model;
@@ -11,6 +12,9 @@ pub mod pycompat;
 pub mod settings;
 pub mod spec_config;
 
+pub use conditions::{
+    ConditionRule, EvaluationError, SampleSource, evaluate_condition, evaluate_samples,
+};
 pub use model::{
     ComparisonOperator, ConditionEvaluation, ConditionEvaluationRun, MetricCollectionSpecRun,
     MetricPoint, MetricSample, SpecOutcome, SpecType, StatusLevel, SubjectType, Tags,

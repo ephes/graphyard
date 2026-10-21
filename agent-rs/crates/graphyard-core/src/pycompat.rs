@@ -5,7 +5,9 @@
 //! `float()` and `int()` of strings, `str()`/`repr()` of decoded JSON values,
 //! `spec_config.py:_describe`, `str.strip()`/`str.split()` and Python `==`
 //! across `bool`/`int`/`float`. Pinned by `fixtures/pycompat.json`
-//! (`fixtures/gen_pycompat.py`).
+//! (`fixtures/gen_pycompat.py`). The `datetime`/`timedelta` arithmetic of
+//! the condition evaluation (range errors, `total_seconds()` rounding) is
+//! pinned by `fixtures/conditions.json` (`fixtures/gen_conditions.py`).
 //!
 //! JSON values are `serde_json::Value` parsed with `arbitrary_precision`: a
 //! number keeps its token text, so it is an `int` exactly when Python's
@@ -27,6 +29,7 @@
 //! (nyxmon `agent-rs/crates/nyxmon-core/src/pyjson`) with their fixture
 //! cases, as the plan asks, instead of depending on that repository.
 
+mod datetime;
 mod json;
 mod num;
 mod text;
@@ -34,6 +37,10 @@ mod value;
 
 use std::fmt;
 
+pub use datetime::{
+    PY_DATETIME_MAX_MICROS, PY_DATETIME_MIN_MICROS, py_datetime_add, py_timedelta_minutes,
+    py_total_seconds,
+};
 pub use json::json_loads;
 pub use num::{
     PyNumber, bigint_to_i64_saturating, py_float, py_float_of, py_float_repr, py_format_g, py_int,
@@ -52,6 +59,7 @@ pub enum PyErrorKind {
     TypeError,
     OverflowError,
     RecursionError,
+    KeyError,
 }
 
 impl PyErrorKind {
@@ -62,6 +70,7 @@ impl PyErrorKind {
             Self::TypeError => "TypeError",
             Self::OverflowError => "OverflowError",
             Self::RecursionError => "RecursionError",
+            Self::KeyError => "KeyError",
         }
     }
 }
@@ -91,6 +100,11 @@ impl PyError {
 
     pub fn overflow_error(message: impl Into<String>) -> Self {
         Self::new(PyErrorKind::OverflowError, message)
+    }
+
+    /// `KeyError(key)` of a dictionary lookup: `str()` is the key's `repr`.
+    pub fn key_error(key: &str) -> Self {
+        Self::new(PyErrorKind::KeyError, py_str_repr(key))
     }
 
     /// The Python class name.

@@ -923,6 +923,26 @@ Thresholds in messages use `py_float_repr`. Pinned by `conditions.json`
 (generated from `evaluate_condition` with the query stubbed and the clock
 injected), covering every test of `tests/test_condition_evaluation.py`.
 
+As implemented in S5 (`graphyard-core::conditions`): `ConditionRule` holds
+the fields the evaluation reads (metric name, stored operator text,
+thresholds, `breach_minutes`, `stale_after_seconds`, `alert_when_stale`);
+the query filters stay with the `SampleSource` the caller builds per
+condition (S4b/S8; a closure `FnMut(now) -> Future<Result<Vec<MetricSample>,
+E>>` is one). `evaluate_condition(rule, stale_warning_seconds, now, source)`
+truncates `now` to microseconds, queries, then runs `evaluate_samples`;
+`EvaluationError` (`Query(E)` or the Python exception) displays as `str(err)`
+for the `evaluation error: …` message of 3.5. Time runs on Python's
+microsecond timeline (`timestamp_micros`); `pycompat::py_timedelta_minutes`
+and `py_datetime_add` raise CPython's `OverflowError` texts (P2) for a
+`breach_minutes` beyond `timedelta`'s range or a window outside
+`datetime`'s, and `py_total_seconds` rounds like `timedelta.total_seconds()`
+(correctly rounded beyond 2**53 µs; `conditions.json` pins it). An unknown
+operator is the `KeyError` (`'<op>'`) of `_operator_fn`, raised only when a
+threshold is compared. The anchor carry uses the global setting
+(`max_carry_seconds=settings.CONDITION_DATA_STALE_WARNING_SECONDS`) even when
+the condition has its own allowance, and `stale_after_seconds = 0` means the
+global setting, both as in Python.
+
 ---
 
 ## 8. Build, release, deployment
@@ -1146,7 +1166,7 @@ a string produces a text file written verbatim (`schema/schema.sql`).
 | `http_errors.json` | httpx `raise_for_status`, exception classes for the page probe | responses/URLs → message and class |
 | `flux.json` | `_query_range_v2_flux` (query text), `FluxCsvParser` on canned CSV, `query_condition_window` | condition × now → query text; CSV → samples |
 | `sql_v3.json` | `_query_range_v3_sql` (SQL text, row decoding) | |
-| `conditions.json` | `evaluate_condition` with stubbed samples | condition × samples × now → evaluation |
+| `conditions.json` | `evaluate_condition` with stubbed samples, `timedelta.total_seconds()` | condition × samples × now → evaluation or exception; microseconds → `total_seconds()` |
 | `store_ops.json` | spec/condition loads and updates, `record_heartbeat` (S3a), `touch_registry_from_points` (S3b) on a temp DB | rows before → loaded values or exception, rows after |
 | `datetime_codec.json` | `parse_datetime` through the `sqlite3` converter, `convert_datetimefield_value`, `adapt_datetimefield_value` | stored text → loaded instant or exception, text written back |
 | `schema/` (`gen_schema.py`) | `manage.py migrate`, the migration operations | section 5.1 |

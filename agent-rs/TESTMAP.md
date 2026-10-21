@@ -28,6 +28,14 @@ fixture no longer matches the Python code.
 | `spec_config.py`: `positive_float_config`, `positive_int_config`, `bool_config`, `request_timeout_config`, `page_probe_total_timeout_config`, `_supported_timeout`, `_describe`, `validate_spec_config` (all spec types) | `graphyard-core/src/spec_config/tests.rs` against `fixtures/spec_config.json` (`gen_spec_config.py`) | done |
 | `test_metric_collection_spec_isolation.py::test_full_clean_rejects_malformed_config` (all parameters), `::test_full_clean_accepts_valid_config`, `::test_validate_spec_config_rejects_non_object`, `::test_model_validates_derived_wait_limit`, `::test_derived_timeout_defaults_are_validated`, `::test_invalid_timeouts_report_each_key_once`, the config-validation part of `::test_impractical_timeout_rejected_before_collection` and `::test_explicit_oversized_total_rejected_before_transport` | `spec_config.json` cases; `spec_config/tests.rs::every_python_test_config_of_the_slice_is_in_the_corpus` | done |
 
+## S5 — condition evaluation
+
+| Python behaviour / test | Rust counterpart | Status |
+| --- | --- | --- |
+| `test_condition_evaluation.py`: every `evaluate_condition` test (no samples, staleness, critical/warning paths, grace window, multi-series worst status/label/newest value, collector split, five-minute phase offsets, anchor carry and its staleness bound, window-start sample, breach shorter than the sampling interval, per-condition allowance, intermittent conditions, default staleness), parametrised cases and the three sample orders each | `graphyard-core/src/conditions/tests.rs::every_fixture_case_matches` against `fixtures/conditions.json` (`gen_conditions.py`, one case per scenario named after the test); `::every_python_test_of_the_slice_is_in_the_corpus` | done |
+| `services.py` branches the tests leave open: all four operators at the threshold and with NaN, the lazy `KeyError` of an unknown operator, threshold `repr` in messages, critical before warning, staleness boundaries (truncation, future samples, allowance 0, huge and negative settings), the anchor carry bound by the global setting, grace and window-start boundaries, `breach_minutes = 0`, stable order of equal timestamps, `timedelta`/`datetime` overflow, series keys (empty dimensions, tags never overriding a dimension), label selection, tie-breaking and equal labels, query errors | `conditions.json` cases; `conditions/tests.rs::overflow_errors_carry_the_cpython_texts`, `::unknown_operator_is_a_key_error_with_the_repr`, `::query_errors_display_as_the_source_error`, `::now_is_truncated_to_microseconds_for_query_and_result` | done |
+| `timedelta.total_seconds()` (correct rounding beyond 2**53 microseconds) | `conditions/tests.rs::total_seconds_rounds_like_cpython` against `conditions.json` `total_seconds` | done |
+
 ## S10a — release workflow
 
 Not Python agent behaviour: the release pipeline of PLAN.md 8.2 has no Python
@@ -58,7 +66,7 @@ counterpart. Its tests:
 | Python tests | Rust counterpart | Slice | Status |
 | --- | --- | --- | --- |
 | `test_agent_command.py` (both) | CLI/run-once tests in `graphyard-agent`, e2e | S8 | pending |
-| `test_condition_evaluation.py`: all `evaluate_condition`/series/anchor/staleness/intermittent tests | `conditions.json` cases (`graphyard-core::conditions`) | S5 | pending |
+| `test_condition_evaluation.py`: all `evaluate_condition`/series/anchor/staleness/intermittent tests | `conditions.json` cases (`graphyard-core::conditions`) | S5 | done |
 | `test_condition_evaluation.py::test_evaluate_conditions_once_updates_condition_and_heartbeat` | run aggregation test (S8) + `store_ops.json` (S3a, done) | S8, S3a | pending (S8) |
 | `test_condition_evaluation.py::test_query_condition_window_*`, `test_metric_dimensions.py::test_query_condition_window_*` | `flux.json` | S4b | pending |
 | `test_condition_evaluation.py::test_stale_allowance_must_be_positive`, `test_condition_clean_*`, `test_condition_admin_form_*` | — (model/admin validation, web only) | — | n/a |
