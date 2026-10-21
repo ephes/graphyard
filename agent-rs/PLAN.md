@@ -181,11 +181,20 @@ that differs is a bug.
 - **D-10 Log injection.** Rust escapes `\n`/`\r` in values it interpolates
   into log lines (spec names, entity ids, metric names), like the web ingest
   path already does (`views.py`, `test_metric_log_escapes_newline`).
-- **D-11 Invalid stored JSON.** A `config`/`tags_filter` text that
-  `serde_json` rejects but CPython accepts (numbers beyond `f64` range) cannot
-  be written by Django (`CHECK (JSON_VALID(...))` plus `json.dumps`); Rust
-  marks such a spec `critical` with `config is not valid JSON` instead of
-  failing the whole run.
+- **D-11 Stored JSON that CPython cannot load.** Rust parses `config` and
+  `tags_filter` with `serde_json` (`arbitrary_precision`), which accepts every
+  RFC 8259 document `JSON_VALID` accepts, including numbers beyond `f64`
+  range: Django can store `10**400` (`json.dumps` writes the digits) and such
+  values flow through the Python conversions exactly (`float(int)` →
+  `OverflowError` → config error message; `float(str(…))` → `inf` → "not a
+  finite number"), pinned by `spec_config.json`/`normalize.json` cases.
+  The only stored documents Python cannot load are integer tokens longer than
+  CPython's 4300-digit `int` string limit (not writable through Django:
+  `json.dumps` raises the same limit; only raw SQL can store them). Python
+  then fails the whole run while iterating the queryset; Rust marks only that
+  spec `critical` (condition: evaluation error) with the CPython message
+  `Exceeds the limit (4300 digits) for integer string conversion`. Boundary
+  fixtures at 4300/4301 digits.
 - **D-12 TLS trust anchors** (Q1). Python verifies against certifi; Rust
   verifies against the system CA store (Ubuntu `ca-certificates`), so a CA
   incident is fixed by the ops trust rollout plus a restart instead of a new
@@ -362,7 +371,8 @@ policy; the Rust binary is selected by a drop-in (section 8.3). The agent
 never forks, opens no listening socket, needs no capabilities and writes only
 the database file (plus WAL/SHM) and, in shadow mode, the write file. Stop:
 exits within 1 s of SIGTERM unless an SQLite statement is waiting on a lock
-(bounded by `busy_timeout`, 30 s < `TimeoutStopSec` 90 s).
+(bounded by `busy_timeout`, 30 s < `TimeoutStopSec` 90 s); a blocked
+`getaddrinfo` never delays the exit (section 4.1).
 
 ---
 
@@ -371,11 +381,23 @@ exits within 1 s of SIGTERM unless an SQLite statement is waiting on a lock
 ### 4.1 Runtime shape
 
 One tokio runtime, `current_thread`, plus tokio's blocking pool for
-`getaddrinfo` and SQLite calls. The two loops stay sequential in one task,
+`getaddrinfo` and one dedicated thread for SQLite (below). The two loops stay sequential in one task,
 exactly like Python; nothing in the agent needs concurrency, and sequential
 execution is what keeps the P1 ordering (single `now` per run, spec order,
 heartbeat after the last spec). A second task handles SIGTERM/SIGINT and
 cancels the main task.
+
+Shutdown must not wait for blocking work that cannot be cancelled: a
+`getaddrinfo` stuck in tokio's blocking pool would otherwise hold
+`Runtime::drop` until systemd's SIGKILL. SQLite therefore does not run on
+the blocking pool but on one dedicated DB thread owning the connection
+(callers send a closure and await the reply, as in nyxmon `nyxmon-store`).
+On a signal the main task is cancelled, `main` waits for the DB thread to
+finish its current statement (bounded by `busy_timeout`), drops the
+connection, prints the SIGINT line if applicable, and ends the runtime with
+`Runtime::shutdown_timeout(Duration::from_millis(500))`, abandoning resolver
+threads; the process then exits 0. S8 tests SIGTERM with a resolver stub that
+never returns and with a DB thread that holds a statement for a few seconds.
 
 ### 4.2 Workspace
 
@@ -469,8 +491,9 @@ database from `schema.sql`.
 
 ### 5.2 Connection
 
-One `rusqlite` connection for the process lifetime (Django keeps one
-connection in a management command). Opened `SQLITE_OPEN_READ_WRITE` (no
+One `rusqlite` connection for the process lifetime, owned by the dedicated
+DB thread of section 4.1 (Django keeps one connection in a management
+command). Opened `SQLITE_OPEN_READ_WRITE` (no
 create), `PRAGMA foreign_keys = ON` (Django's SQLite backend sets it), then
 the three graphyard pragmas of 3.3. Single statements run in autocommit, as
 Django's `save(update_fields=…)` does; multi-statement operations run in
@@ -971,7 +994,8 @@ regenerated fixtures. Rust loads fixtures with `include_str!`.
 
 Against a temp database from `schema.sql` and fake servers: `--run-once`
 writes the expected rows and lines; SIGINT prints the interrupted line and
-exits 0; SIGTERM during a slow spec exits 0 promptly without a partial row;
+exits 0; SIGTERM during a slow spec exits 0 promptly without a partial row,
+also while a `getaddrinfo` lookup is blocked (4.1);
 old schema or missing database exits 1; `--check-schema` reports precisely;
 `--influx-write-file` produces zero requests to the fake InfluxDB write
 endpoint while queries still reach it; CLI validation messages and exit codes.
@@ -992,9 +1016,13 @@ outside `src/`) pointing `DATABASES` at its copy; Rust as `graphyard-agent
 endpoint, so N rounds are deterministic. Compared per round: spec rows,
 condition rows, heartbeat rows, registry rows (timestamps masked to
 null/non-null), written lines (parsed; values of `now()`-based timing points
-and timestamps masked), Flux query texts (exact), stdout lines, request logs
-of the fakes (method, path, query, selected headers, body). Gate: zero
-unmasked differences.
+and timestamps masked), Flux query and v3 SQL texts with the `range`/`time`
+bounds masked (both processes take `now` from their own wall clock, so the
+bounds differ between runs; the harness compares the window length
+`stop - start` exactly instead), stdout lines, request logs of the fakes
+(method, path, query, selected headers, body). The exact query text
+including bounds is pinned by the `flux.json`/`sql_v3.json` fixtures with an
+injected clock, not by the harness. Gate: zero unmasked differences.
 
 ### 9.5 TESTMAP (Python test → Rust counterpart)
 
@@ -1145,7 +1173,7 @@ excluding generated fixtures.
 | --- | --- | --- | --- | --- | --- | --- |
 | S1 | Scaffold | workspace, toolchain pin, deny.toml, CI `rust` job, just recipes, shared model types (`MetricPoint`, `MetricSample`, statuses, subject/spec types), fixture generator skeleton (Django test settings bootstrap) + drift test, TESTMAP.md, README | — | with S11a | no | 2.5 |
 | S2 | Python compat + settings | `pycompat` (4.4), env readers (3.3), `spec_config` helpers; fixtures `pycompat`, `settings`, `spec_config` | S1 | with S3a, S10a, S11a, S11b | no | 3.5 |
-| S3a | Store core | rusqlite connection + pragmas, schema contract + Python contract test, `--check-schema` core, datetime codec, spec/condition reads and updates (0-row rule), heartbeat upsert + retry; `store_ops.json` (non-registry part); `ingest_token` grep test | S1 | with S2, S10a, S11a, S11b | no | 4 |
+| S3a | Store core | DB thread owning the rusqlite connection + pragmas, schema contract + Python contract test, `--check-schema` core, datetime codec, spec/condition reads and updates (0-row rule), heartbeat upsert + retry; `store_ops.json` (non-registry part); `ingest_token` grep test | S1 | with S2, S10a, S11a, S11b | no | 4 |
 | S4a | Normalisation + writes | `normalize_*`, `parse_finite_float`, line protocol formatter, write client (6.4), lazy config errors; `normalize.json`, `line_protocol.json` | S2 | with S4b, S5, S6, S3a | no | 3.5 |
 | S4b | Queries | window computation, Flux text + annotated CSV, v3 SQL with caps/deadline/errors, auto fallback; `flux.json`, `sql_v3.json`; fake InfluxDB | S2 | with S4a, S5, S6 | no | 4 |
 | S5 | Condition evaluation | section 7, pure, sample source trait; `conditions.json` | S2 | with S4a, S4b, S6 | no | 3 |
