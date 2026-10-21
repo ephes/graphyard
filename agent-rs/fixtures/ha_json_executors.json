@@ -1,0 +1,4312 @@
+{
+ "origin": "http://fixture.test",
+ "now": "2026-10-21T09:45:00.250000+00:00",
+ "scenarios": [
+  {
+   "name": "sensor ingests one entity (test_home_assistant_sensor_spec_ingests_single_entity)",
+   "spec_name": "ha single sensor",
+   "spec_type": "home_assistant_sensor",
+   "config": "{\"base_url\": \"http://fixture.test\", \"access_token\": \"token\", \"entity_id\": \"sensor.office_temperature\", \"metric_name\": \"ha.sensor.office_temperature\", \"host_id\": \"homeassistant\", \"service_id\": \"homeassistant\"}",
+   "routes": {
+    "/api/states/sensor.office_temperature": {
+     "status": 200,
+     "headers": [],
+     "body_hex": "7b22656e746974795f6964223a202273656e736f722e6f66666963655f74656d7065726174757265222c20227374617465223a202232312e32222c20226c6173745f75706461746564223a2022323032362d30332d30345431323a30303a30305a222c202261747472696275746573223a207b226465766963655f636c617373223a202274656d7065726174757265227d7d"
+    }
+   },
+   "write_error": null,
+   "touch_error": null,
+   "outcome": [
+    "ok",
+    1,
+    0,
+    ""
+   ],
+   "requests": [
+    {
+     "method": "GET",
+     "target": "/api/states/sensor.office_temperature",
+     "authorization": "Bearer token",
+     "accept": "application/json"
+    }
+   ],
+   "written": [
+    {
+     "ts": "2026-03-04T12:00:00+00:00",
+     "metric": "ha.sensor.office_temperature",
+     "value": "21.2",
+     "subject_type": "environment_sensor",
+     "subject_id": "office_temperature",
+     "source_system": "homeassistant",
+     "collector_service": "graphyard-agent",
+     "collector_host": "homeassistant",
+     "source_instance": "default",
+     "source_entity_id": "sensor.office_temperature",
+     "host": null,
+     "service": "homeassistant",
+     "tags": [
+      [
+       "entity_id",
+       "sensor.office_temperature"
+      ],
+      [
+       "spec_name",
+       "ha single sensor"
+      ],
+      [
+       "device_class",
+       "temperature"
+      ]
+     ]
+    }
+   ],
+   "touched": [
+    {
+     "ts": "2026-03-04T12:00:00+00:00",
+     "metric": "ha.sensor.office_temperature",
+     "value": "21.2",
+     "subject_type": "environment_sensor",
+     "subject_id": "office_temperature",
+     "source_system": "homeassistant",
+     "collector_service": "graphyard-agent",
+     "collector_host": "homeassistant",
+     "source_instance": "default",
+     "source_entity_id": "sensor.office_temperature",
+     "host": null,
+     "service": "homeassistant",
+     "tags": [
+      [
+       "entity_id",
+       "sensor.office_temperature"
+      ],
+      [
+       "spec_name",
+       "ha single sensor"
+      ],
+      [
+       "device_class",
+       "temperature"
+      ]
+     ]
+    }
+   ],
+   "log": [
+    "HTTP Request: GET http://fixture.test/api/states/sensor.office_temperature \"HTTP/1.1 200 OK\"",
+    "Spec ha single sensor missing config.subject_mapping; using default entity_name_slug mapping"
+   ]
+  },
+  {
+   "name": "sensor default metric name and trailing slashes",
+   "spec_name": "sensor default metric name and trailing slashes",
+   "spec_type": "home_assistant_sensor",
+   "config": "{\"base_url\": \"http://fixture.test///\", \"access_token\": \"token\", \"entity_id\": \"  sensor.office_temperature \"}",
+   "routes": {
+    "/api/states/sensor.office_temperature": {
+     "status": 200,
+     "headers": [],
+     "body_hex": "7b22656e746974795f6964223a202273656e736f722e6f66666963655f74656d7065726174757265222c20227374617465223a202232312e32222c20226c6173745f75706461746564223a2022323032362d30332d30345431323a30303a30305a222c202261747472696275746573223a207b226465766963655f636c617373223a202274656d7065726174757265227d7d"
+    }
+   },
+   "write_error": null,
+   "touch_error": null,
+   "outcome": [
+    "ok",
+    1,
+    0,
+    ""
+   ],
+   "requests": [
+    {
+     "method": "GET",
+     "target": "/api/states/sensor.office_temperature",
+     "authorization": "Bearer token",
+     "accept": "application/json"
+    }
+   ],
+   "written": [
+    {
+     "ts": "2026-03-04T12:00:00+00:00",
+     "metric": "ha.sensor.office_temperature",
+     "value": "21.2",
+     "subject_type": "environment_sensor",
+     "subject_id": "office_temperature",
+     "source_system": "homeassistant",
+     "collector_service": "graphyard-agent",
+     "collector_host": "homeassistant",
+     "source_instance": "default",
+     "source_entity_id": "sensor.office_temperature",
+     "host": null,
+     "service": "homeassistant",
+     "tags": [
+      [
+       "entity_id",
+       "sensor.office_temperature"
+      ],
+      [
+       "spec_name",
+       "sensor default metric name and trailing slashes"
+      ],
+      [
+       "device_class",
+       "temperature"
+      ]
+     ]
+    }
+   ],
+   "touched": [
+    {
+     "ts": "2026-03-04T12:00:00+00:00",
+     "metric": "ha.sensor.office_temperature",
+     "value": "21.2",
+     "subject_type": "environment_sensor",
+     "subject_id": "office_temperature",
+     "source_system": "homeassistant",
+     "collector_service": "graphyard-agent",
+     "collector_host": "homeassistant",
+     "source_instance": "default",
+     "source_entity_id": "sensor.office_temperature",
+     "host": null,
+     "service": "homeassistant",
+     "tags": [
+      [
+       "entity_id",
+       "sensor.office_temperature"
+      ],
+      [
+       "spec_name",
+       "sensor default metric name and trailing slashes"
+      ],
+      [
+       "device_class",
+       "temperature"
+      ]
+     ]
+    }
+   ],
+   "log": [
+    "HTTP Request: GET http://fixture.test/api/states/sensor.office_temperature \"HTTP/1.1 200 OK\"",
+    "Spec sensor default metric name and trailing slashes missing config.subject_mapping; using default entity_name_slug mapping"
+   ]
+  },
+  {
+   "name": "sensor config not an object",
+   "spec_name": "sensor config not an object",
+   "spec_type": "home_assistant_sensor",
+   "config": "[1, 2]",
+   "routes": {},
+   "write_error": null,
+   "touch_error": null,
+   "outcome": [
+    "critical",
+    0,
+    0,
+    "config must be an object"
+   ],
+   "requests": [],
+   "written": null,
+   "touched": null,
+   "log": []
+  },
+  {
+   "name": "sensor config null",
+   "spec_name": "sensor config null",
+   "spec_type": "home_assistant_sensor",
+   "config": "null",
+   "routes": {},
+   "write_error": null,
+   "touch_error": null,
+   "outcome": [
+    "critical",
+    0,
+    0,
+    "config must be an object"
+   ],
+   "requests": [],
+   "written": null,
+   "touched": null,
+   "log": []
+  },
+  {
+   "name": "sensor base_url required",
+   "spec_name": "sensor base_url required",
+   "spec_type": "home_assistant_sensor",
+   "config": "{\"base_url\": \"///\"}",
+   "routes": {},
+   "write_error": null,
+   "touch_error": null,
+   "outcome": [
+    "critical",
+    0,
+    0,
+    "config.base_url is required"
+   ],
+   "requests": [],
+   "written": null,
+   "touched": null,
+   "log": []
+  },
+  {
+   "name": "sensor access_token required",
+   "spec_name": "sensor access_token required",
+   "spec_type": "home_assistant_sensor",
+   "config": "{\"base_url\": \"http://fixture.test\", \"access_token\": \"\"}",
+   "routes": {},
+   "write_error": null,
+   "touch_error": null,
+   "outcome": [
+    "critical",
+    0,
+    0,
+    "config.access_token is required"
+   ],
+   "requests": [],
+   "written": null,
+   "touched": null,
+   "log": []
+  },
+  {
+   "name": "sensor entity_id required",
+   "spec_name": "sensor entity_id required",
+   "spec_type": "home_assistant_sensor",
+   "config": "{\"base_url\": \"http://fixture.test\", \"access_token\": \"token\", \"entity_id\": \"  \"}",
+   "routes": {},
+   "write_error": null,
+   "touch_error": null,
+   "outcome": [
+    "critical",
+    0,
+    0,
+    "config.entity_id is required"
+   ],
+   "requests": [],
+   "written": null,
+   "touched": null,
+   "log": []
+  },
+  {
+   "name": "sensor required fields before knobs",
+   "spec_name": "sensor required fields before knobs",
+   "spec_type": "home_assistant_sensor",
+   "config": "{\"verify_tls\": \"no\"}",
+   "routes": {},
+   "write_error": null,
+   "touch_error": null,
+   "outcome": [
+    "critical",
+    0,
+    0,
+    "config.base_url is required"
+   ],
+   "requests": [],
+   "written": null,
+   "touched": null,
+   "log": []
+  },
+  {
+   "name": "sensor knob error escapes",
+   "spec_name": "sensor knob error escapes",
+   "spec_type": "home_assistant_sensor",
+   "config": "{\"base_url\": \"http://fixture.test\", \"access_token\": \"token\", \"entity_id\": \"sensor.office_temperature\", \"metric_name\": \"ha.sensor.office_temperature\", \"host_id\": \"homeassistant\", \"service_id\": \"homeassistant\", \"verify_tls\": \"no\"}",
+   "routes": {},
+   "write_error": null,
+   "touch_error": null,
+   "error": {
+    "class": "SpecConfigError",
+    "message": "config.verify_tls must be true or false, got 'no'"
+   },
+   "requests": [],
+   "written": null,
+   "touched": null,
+   "log": []
+  },
+  {
+   "name": "sensor total timeout knob error escapes",
+   "spec_name": "sensor total timeout knob error escapes",
+   "spec_type": "home_assistant_sensor",
+   "config": "{\"base_url\": \"http://fixture.test\", \"access_token\": \"token\", \"entity_id\": \"sensor.office_temperature\", \"metric_name\": \"ha.sensor.office_temperature\", \"host_id\": \"homeassistant\", \"service_id\": \"homeassistant\", \"request_timeout_seconds\": 30000}",
+   "routes": {},
+   "write_error": null,
+   "touch_error": null,
+   "error": {
+    "class": "SpecConfigError",
+    "message": "config.total_timeout_seconds must be <= 86400.0 seconds"
+   },
+   "requests": [],
+   "written": null,
+   "touched": null,
+   "log": []
+  },
+  {
+   "name": "sensor payload not an object",
+   "spec_name": "sensor payload not an object",
+   "spec_type": "home_assistant_sensor",
+   "config": "{\"base_url\": \"http://fixture.test\", \"access_token\": \"token\", \"entity_id\": \"sensor.office_temperature\", \"metric_name\": \"ha.sensor.office_temperature\", \"host_id\": \"homeassistant\", \"service_id\": \"homeassistant\"}",
+   "routes": {
+    "/api/states/sensor.office_temperature": {
+     "status": 200,
+     "headers": [],
+     "body_hex": "5b7b22656e746974795f6964223a202273656e736f722e6f66666963655f74656d7065726174757265222c20227374617465223a202232312e32222c20226c6173745f75706461746564223a2022323032362d30332d30345431323a30303a30305a222c202261747472696275746573223a207b226465766963655f636c617373223a202274656d7065726174757265227d7d5d"
+    }
+   },
+   "write_error": null,
+   "touch_error": null,
+   "outcome": [
+    "warning",
+    0,
+    1,
+    "invalid JSON payload"
+   ],
+   "requests": [
+    {
+     "method": "GET",
+     "target": "/api/states/sensor.office_temperature",
+     "authorization": "Bearer token",
+     "accept": "application/json"
+    }
+   ],
+   "written": null,
+   "touched": null,
+   "log": [
+    "HTTP Request: GET http://fixture.test/api/states/sensor.office_temperature \"HTTP/1.1 200 OK\""
+   ]
+  },
+  {
+   "name": "sensor state not numeric",
+   "spec_name": "sensor state not numeric",
+   "spec_type": "home_assistant_sensor",
+   "config": "{\"base_url\": \"http://fixture.test\", \"access_token\": \"token\", \"entity_id\": \"sensor.office_temperature\", \"metric_name\": \"ha.sensor.office_temperature\", \"host_id\": \"homeassistant\", \"service_id\": \"homeassistant\"}",
+   "routes": {
+    "/api/states/sensor.office_temperature": {
+     "status": 200,
+     "headers": [],
+     "body_hex": "7b22656e746974795f6964223a202273656e736f722e6f66666963655f74656d7065726174757265222c20227374617465223a2022756e617661696c61626c65222c20226c6173745f75706461746564223a2022323032362d30332d30345431323a30303a30305a222c202261747472696275746573223a207b226465766963655f636c617373223a202274656d7065726174757265227d7d"
+    }
+   },
+   "write_error": null,
+   "touch_error": null,
+   "outcome": [
+    "warning",
+    0,
+    1,
+    "state payload not numeric or mapping failed"
+   ],
+   "requests": [
+    {
+     "method": "GET",
+     "target": "/api/states/sensor.office_temperature",
+     "authorization": "Bearer token",
+     "accept": "application/json"
+    }
+   ],
+   "written": null,
+   "touched": null,
+   "log": [
+    "HTTP Request: GET http://fixture.test/api/states/sensor.office_temperature \"HTTP/1.1 200 OK\""
+   ]
+  },
+  {
+   "name": "sensor entity not found",
+   "spec_name": "sensor entity not found",
+   "spec_type": "home_assistant_sensor",
+   "config": "{\"base_url\": \"http://fixture.test\", \"access_token\": \"token\", \"entity_id\": \"sensor.office_temperature\", \"metric_name\": \"ha.sensor.office_temperature\", \"host_id\": \"homeassistant\", \"service_id\": \"homeassistant\"}",
+   "routes": {
+    "/api/states/sensor.office_temperature": {
+     "status": 404,
+     "headers": [],
+     "body_hex": "7b226d657373616765223a2022456e74697479206e6f7420666f756e642e227d"
+    }
+   },
+   "write_error": null,
+   "touch_error": null,
+   "outcome": [
+    "critical",
+    0,
+    0,
+    "Client error '404 Not Found' for url 'http://fixture.test/api/states/sensor.office_temperature'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+   ],
+   "requests": [
+    {
+     "method": "GET",
+     "target": "/api/states/sensor.office_temperature",
+     "authorization": "Bearer token",
+     "accept": "application/json"
+    }
+   ],
+   "written": null,
+   "touched": null,
+   "log": [
+    "HTTP Request: GET http://fixture.test/api/states/sensor.office_temperature \"HTTP/1.1 404 Not Found\""
+   ]
+  },
+  {
+   "name": "sensor redirect is not followed",
+   "spec_name": "sensor redirect is not followed",
+   "spec_type": "home_assistant_sensor",
+   "config": "{\"base_url\": \"http://fixture.test\", \"access_token\": \"token\", \"entity_id\": \"sensor.office_temperature\", \"metric_name\": \"ha.sensor.office_temperature\", \"host_id\": \"homeassistant\", \"service_id\": \"homeassistant\"}",
+   "routes": {
+    "/api/states/sensor.office_temperature": {
+     "status": 302,
+     "headers": [
+      [
+       "Location",
+       "/elsewhere"
+      ]
+     ],
+     "body_hex": ""
+    }
+   },
+   "write_error": null,
+   "touch_error": null,
+   "outcome": [
+    "critical",
+    0,
+    0,
+    "Redirect response '302 Found' for url 'http://fixture.test/api/states/sensor.office_temperature'\nRedirect location: '/elsewhere'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/302"
+   ],
+   "requests": [
+    {
+     "method": "GET",
+     "target": "/api/states/sensor.office_temperature",
+     "authorization": "Bearer token",
+     "accept": "application/json"
+    }
+   ],
+   "written": null,
+   "touched": null,
+   "log": [
+    "HTTP Request: GET http://fixture.test/api/states/sensor.office_temperature \"HTTP/1.1 302 Found\""
+   ]
+  },
+  {
+   "name": "sensor invalid JSON",
+   "spec_name": "sensor invalid JSON",
+   "spec_type": "home_assistant_sensor",
+   "config": "{\"base_url\": \"http://fixture.test\", \"access_token\": \"token\", \"entity_id\": \"sensor.office_temperature\", \"metric_name\": \"ha.sensor.office_temperature\", \"host_id\": \"homeassistant\", \"service_id\": \"homeassistant\"}",
+   "routes": {
+    "/api/states/sensor.office_temperature": {
+     "status": 200,
+     "headers": [],
+     "body_hex": "7b227374617465223a20"
+    }
+   },
+   "write_error": null,
+   "touch_error": null,
+   "outcome": [
+    "critical",
+    0,
+    0,
+    "Expecting value: line 1 column 11 (char 10)"
+   ],
+   "outcome_p2_prefix": "",
+   "requests": [
+    {
+     "method": "GET",
+     "target": "/api/states/sensor.office_temperature",
+     "authorization": "Bearer token",
+     "accept": "application/json"
+    }
+   ],
+   "written": null,
+   "touched": null,
+   "log": [
+    "HTTP Request: GET http://fixture.test/api/states/sensor.office_temperature \"HTTP/1.1 200 OK\""
+   ]
+  },
+  {
+   "name": "sensor body over cap",
+   "spec_name": "sensor body over cap",
+   "spec_type": "home_assistant_sensor",
+   "config": "{\"base_url\": \"http://fixture.test\", \"access_token\": \"token\", \"entity_id\": \"sensor.office_temperature\", \"metric_name\": \"ha.sensor.office_temperature\", \"host_id\": \"homeassistant\", \"service_id\": \"homeassistant\", \"max_body_bytes\": 146}",
+   "routes": {
+    "/api/states/sensor.office_temperature": {
+     "status": 200,
+     "headers": [],
+     "body_hex": "7b22656e746974795f6964223a202273656e736f722e6f66666963655f74656d7065726174757265222c20227374617465223a202232312e32222c20226c6173745f75706461746564223a2022323032362d30332d30345431323a30303a30305a222c202261747472696275746573223a207b226465766963655f636c617373223a202274656d7065726174757265227d7d20202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020"
+    }
+   },
+   "write_error": null,
+   "touch_error": null,
+   "outcome": [
+    "critical",
+    0,
+    0,
+    "response body exceeded max_body_bytes=146"
+   ],
+   "requests": [
+    {
+     "method": "GET",
+     "target": "/api/states/sensor.office_temperature",
+     "authorization": "Bearer token",
+     "accept": "application/json"
+    }
+   ],
+   "written": null,
+   "touched": null,
+   "log": [
+    "HTTP Request: GET http://fixture.test/api/states/sensor.office_temperature \"HTTP/1.1 200 OK\""
+   ]
+  },
+  {
+   "name": "sensor body exactly at cap",
+   "spec_name": "sensor body exactly at cap",
+   "spec_type": "home_assistant_sensor",
+   "config": "{\"base_url\": \"http://fixture.test\", \"access_token\": \"token\", \"entity_id\": \"sensor.office_temperature\", \"metric_name\": \"ha.sensor.office_temperature\", \"host_id\": \"homeassistant\", \"service_id\": \"homeassistant\", \"max_body_bytes\": 146}",
+   "routes": {
+    "/api/states/sensor.office_temperature": {
+     "status": 200,
+     "headers": [],
+     "body_hex": "7b22656e746974795f6964223a202273656e736f722e6f66666963655f74656d7065726174757265222c20227374617465223a202232312e32222c20226c6173745f75706461746564223a2022323032362d30332d30345431323a30303a30305a222c202261747472696275746573223a207b226465766963655f636c617373223a202274656d7065726174757265227d7d"
+    }
+   },
+   "write_error": null,
+   "touch_error": null,
+   "outcome": [
+    "ok",
+    1,
+    0,
+    ""
+   ],
+   "requests": [
+    {
+     "method": "GET",
+     "target": "/api/states/sensor.office_temperature",
+     "authorization": "Bearer token",
+     "accept": "application/json"
+    }
+   ],
+   "written": [
+    {
+     "ts": "2026-03-04T12:00:00+00:00",
+     "metric": "ha.sensor.office_temperature",
+     "value": "21.2",
+     "subject_type": "environment_sensor",
+     "subject_id": "office_temperature",
+     "source_system": "homeassistant",
+     "collector_service": "graphyard-agent",
+     "collector_host": "homeassistant",
+     "source_instance": "default",
+     "source_entity_id": "sensor.office_temperature",
+     "host": null,
+     "service": "homeassistant",
+     "tags": [
+      [
+       "entity_id",
+       "sensor.office_temperature"
+      ],
+      [
+       "spec_name",
+       "sensor body exactly at cap"
+      ],
+      [
+       "device_class",
+       "temperature"
+      ]
+     ]
+    }
+   ],
+   "touched": [
+    {
+     "ts": "2026-03-04T12:00:00+00:00",
+     "metric": "ha.sensor.office_temperature",
+     "value": "21.2",
+     "subject_type": "environment_sensor",
+     "subject_id": "office_temperature",
+     "source_system": "homeassistant",
+     "collector_service": "graphyard-agent",
+     "collector_host": "homeassistant",
+     "source_instance": "default",
+     "source_entity_id": "sensor.office_temperature",
+     "host": null,
+     "service": "homeassistant",
+     "tags": [
+      [
+       "entity_id",
+       "sensor.office_temperature"
+      ],
+      [
+       "spec_name",
+       "sensor body exactly at cap"
+      ],
+      [
+       "device_class",
+       "temperature"
+      ]
+     ]
+    }
+   ],
+   "log": [
+    "HTTP Request: GET http://fixture.test/api/states/sensor.office_temperature \"HTTP/1.1 200 OK\"",
+    "Spec sensor body exactly at cap missing config.subject_mapping; using default entity_name_slug mapping"
+   ]
+  },
+  {
+   "name": "sensor gzip body counted decoded",
+   "spec_name": "sensor gzip body counted decoded",
+   "spec_type": "home_assistant_sensor",
+   "config": "{\"base_url\": \"http://fixture.test\", \"access_token\": \"token\", \"entity_id\": \"sensor.office_temperature\", \"metric_name\": \"ha.sensor.office_temperature\", \"host_id\": \"homeassistant\", \"service_id\": \"homeassistant\", \"max_body_bytes\": 146}",
+   "routes": {
+    "/api/states/sensor.office_temperature": {
+     "status": 200,
+     "headers": [
+      [
+       "Content-Encoding",
+       "gzip"
+      ]
+     ],
+     "body_hex": "1f8b0800000000000203edcd410ac2301005d0ab9459db328de2a2e770e526c4660a016d4b322948e9dd4d5c7906f98fac7efeccec24b3067ddbe0696828c99c96d82dd31446b12aaf55a2d31c854ee5539d4a6d99be333578baa436afbec4df69c3e6daf2b9e5cbad37037379f7da73aa313cb24a2aad9dbc6c75fb58c66b40bf678ea30100000000000080bff7014bda485692100000"
+    }
+   },
+   "write_error": null,
+   "touch_error": null,
+   "outcome": [
+    "critical",
+    0,
+    0,
+    "response body exceeded max_body_bytes=146"
+   ],
+   "requests": [
+    {
+     "method": "GET",
+     "target": "/api/states/sensor.office_temperature",
+     "authorization": "Bearer token",
+     "accept": "application/json"
+    }
+   ],
+   "written": null,
+   "touched": null,
+   "log": [
+    "HTTP Request: GET http://fixture.test/api/states/sensor.office_temperature \"HTTP/1.1 200 OK\""
+   ]
+  },
+  {
+   "name": "sensor write failure",
+   "spec_name": "sensor write failure",
+   "spec_type": "home_assistant_sensor",
+   "config": "{\"base_url\": \"http://fixture.test\", \"access_token\": \"token\", \"entity_id\": \"sensor.office_temperature\", \"metric_name\": \"ha.sensor.office_temperature\", \"host_id\": \"homeassistant\", \"service_id\": \"homeassistant\"}",
+   "routes": {
+    "/api/states/sensor.office_temperature": {
+     "status": 200,
+     "headers": [],
+     "body_hex": "7b22656e746974795f6964223a202273656e736f722e6f66666963655f74656d7065726174757265222c20227374617465223a202232312e32222c20226c6173745f75706461746564223a2022323032362d30332d30345431323a30303a30305a222c202261747472696275746573223a207b226465766963655f636c617373223a202274656d7065726174757265227d7d"
+    }
+   },
+   "write_error": "influx write failed",
+   "touch_error": null,
+   "outcome": [
+    "critical",
+    0,
+    0,
+    "influx write failed"
+   ],
+   "requests": [
+    {
+     "method": "GET",
+     "target": "/api/states/sensor.office_temperature",
+     "authorization": "Bearer token",
+     "accept": "application/json"
+    }
+   ],
+   "written": [
+    {
+     "ts": "2026-03-04T12:00:00+00:00",
+     "metric": "ha.sensor.office_temperature",
+     "value": "21.2",
+     "subject_type": "environment_sensor",
+     "subject_id": "office_temperature",
+     "source_system": "homeassistant",
+     "collector_service": "graphyard-agent",
+     "collector_host": "homeassistant",
+     "source_instance": "default",
+     "source_entity_id": "sensor.office_temperature",
+     "host": null,
+     "service": "homeassistant",
+     "tags": [
+      [
+       "entity_id",
+       "sensor.office_temperature"
+      ],
+      [
+       "spec_name",
+       "sensor write failure"
+      ],
+      [
+       "device_class",
+       "temperature"
+      ]
+     ]
+    }
+   ],
+   "touched": null,
+   "log": [
+    "HTTP Request: GET http://fixture.test/api/states/sensor.office_temperature \"HTTP/1.1 200 OK\"",
+    "Spec sensor write failure missing config.subject_mapping; using default entity_name_slug mapping"
+   ]
+  },
+  {
+   "name": "sensor registry failure after the write",
+   "spec_name": "sensor registry failure after the write",
+   "spec_type": "home_assistant_sensor",
+   "config": "{\"base_url\": \"http://fixture.test\", \"access_token\": \"token\", \"entity_id\": \"sensor.office_temperature\", \"metric_name\": \"ha.sensor.office_temperature\", \"host_id\": \"homeassistant\", \"service_id\": \"homeassistant\"}",
+   "routes": {
+    "/api/states/sensor.office_temperature": {
+     "status": 200,
+     "headers": [],
+     "body_hex": "7b22656e746974795f6964223a202273656e736f722e6f66666963655f74656d7065726174757265222c20227374617465223a202232312e32222c20226c6173745f75706461746564223a2022323032362d30332d30345431323a30303a30305a222c202261747472696275746573223a207b226465766963655f636c617373223a202274656d7065726174757265227d7d"
+    }
+   },
+   "write_error": null,
+   "touch_error": "database is locked",
+   "outcome": [
+    "critical",
+    0,
+    0,
+    "database is locked"
+   ],
+   "requests": [
+    {
+     "method": "GET",
+     "target": "/api/states/sensor.office_temperature",
+     "authorization": "Bearer token",
+     "accept": "application/json"
+    }
+   ],
+   "written": [
+    {
+     "ts": "2026-03-04T12:00:00+00:00",
+     "metric": "ha.sensor.office_temperature",
+     "value": "21.2",
+     "subject_type": "environment_sensor",
+     "subject_id": "office_temperature",
+     "source_system": "homeassistant",
+     "collector_service": "graphyard-agent",
+     "collector_host": "homeassistant",
+     "source_instance": "default",
+     "source_entity_id": "sensor.office_temperature",
+     "host": null,
+     "service": "homeassistant",
+     "tags": [
+      [
+       "entity_id",
+       "sensor.office_temperature"
+      ],
+      [
+       "spec_name",
+       "sensor registry failure after the write"
+      ],
+      [
+       "device_class",
+       "temperature"
+      ]
+     ]
+    }
+   ],
+   "touched": [
+    {
+     "ts": "2026-03-04T12:00:00+00:00",
+     "metric": "ha.sensor.office_temperature",
+     "value": "21.2",
+     "subject_type": "environment_sensor",
+     "subject_id": "office_temperature",
+     "source_system": "homeassistant",
+     "collector_service": "graphyard-agent",
+     "collector_host": "homeassistant",
+     "source_instance": "default",
+     "source_entity_id": "sensor.office_temperature",
+     "host": null,
+     "service": "homeassistant",
+     "tags": [
+      [
+       "entity_id",
+       "sensor.office_temperature"
+      ],
+      [
+       "spec_name",
+       "sensor registry failure after the write"
+      ],
+      [
+       "device_class",
+       "temperature"
+      ]
+     ]
+    }
+   ],
+   "log": [
+    "HTTP Request: GET http://fixture.test/api/states/sensor.office_temperature \"HTTP/1.1 200 OK\"",
+    "Spec sensor registry failure after the write missing config.subject_mapping; using default entity_name_slug mapping"
+   ]
+  },
+  {
+   "name": "sensor slug failure is critical",
+   "spec_name": "sensor slug failure is critical",
+   "spec_type": "home_assistant_sensor",
+   "config": "{\"base_url\": \"http://fixture.test\", \"access_token\": \"token\", \"entity_id\": \"sensor.\"}",
+   "routes": {
+    "/api/states/sensor.": {
+     "status": 200,
+     "headers": [],
+     "body_hex": "7b22656e746974795f6964223a202273656e736f722e222c20227374617465223a202232312e32222c20226c6173745f75706461746564223a2022323032362d30332d30345431323a30303a30305a222c202261747472696275746573223a207b226465766963655f636c617373223a202274656d7065726174757265227d7d"
+    }
+   },
+   "write_error": null,
+   "touch_error": null,
+   "outcome": [
+    "critical",
+    0,
+    0,
+    "Invalid subject_id '': expected lowercase snake_case identifier"
+   ],
+   "requests": [
+    {
+     "method": "GET",
+     "target": "/api/states/sensor.",
+     "authorization": "Bearer token",
+     "accept": "application/json"
+    }
+   ],
+   "written": null,
+   "touched": null,
+   "log": [
+    "HTTP Request: GET http://fixture.test/api/states/sensor. \"HTTP/1.1 200 OK\"",
+    "Spec sensor slug failure is critical missing config.subject_mapping; using default entity_name_slug mapping"
+   ]
+  },
+  {
+   "name": "sensor subject rule without template",
+   "spec_name": "sensor subject rule without template",
+   "spec_type": "home_assistant_sensor",
+   "config": "{\"base_url\": \"http://fixture.test\", \"access_token\": \"token\", \"entity_id\": \"sensor.office_temperature\", \"metric_name\": \"ha.sensor.office_temperature\", \"host_id\": \"homeassistant\", \"service_id\": \"homeassistant\", \"subject_mapping\": {\"rules\": [{\"match_entity_id_regex\": \"sensor\\\\..*\", \"subject_type\": \"service\"}]}}",
+   "routes": {
+    "/api/states/sensor.office_temperature": {
+     "status": 200,
+     "headers": [],
+     "body_hex": "7b22656e746974795f6964223a202273656e736f722e6f66666963655f74656d7065726174757265222c20227374617465223a202232312e32222c20226c6173745f75706461746564223a2022323032362d30332d30345431323a30303a30305a222c202261747472696275746573223a207b226465766963655f636c617373223a202274656d7065726174757265227d7d"
+    }
+   },
+   "write_error": null,
+   "touch_error": null,
+   "outcome": [
+    "warning",
+    0,
+    1,
+    "state payload not numeric or mapping failed"
+   ],
+   "requests": [
+    {
+     "method": "GET",
+     "target": "/api/states/sensor.office_temperature",
+     "authorization": "Bearer token",
+     "accept": "application/json"
+    }
+   ],
+   "written": null,
+   "touched": null,
+   "log": [
+    "HTTP Request: GET http://fixture.test/api/states/sensor.office_temperature \"HTTP/1.1 200 OK\"",
+    "Spec sensor subject rule without template subject mapping rules[0] matched sensor.office_temperature but has no static subject_id_template",
+    "Spec sensor subject rule without template failed subject resolution for entity_id=sensor.office_temperature"
+   ]
+  },
+  {
+   "name": "sensor invalid URL",
+   "spec_name": "sensor invalid URL",
+   "spec_type": "home_assistant_sensor",
+   "config": "{\"base_url\": \"http://[::1\", \"access_token\": \"token\", \"entity_id\": \"sensor.x\"}",
+   "routes": {},
+   "write_error": null,
+   "touch_error": null,
+   "outcome": [
+    "critical",
+    0,
+    0,
+    "Invalid port: ':1'"
+   ],
+   "requests": [],
+   "written": null,
+   "touched": null,
+   "log": []
+  },
+  {
+   "name": "env scan collects temperature and humidity (test_home_assistant_env_scan_collects_temp_and_humidity)",
+   "spec_name": "ha env scan",
+   "spec_type": "home_assistant_env_scan",
+   "config": "{\"base_url\": \"http://fixture.test\", \"access_token\": \"token\", \"host_id\": \"homeassistant\", \"service_id\": \"homeassistant\"}",
+   "routes": {
+    "/api/states": {
+     "status": 200,
+     "headers": [],
+     "body_hex": "5b7b22656e746974795f6964223a202273656e736f722e6c6976696e675f726f6f6d5f74656d7065726174757265222c20227374617465223a202232322e35222c20226c6173745f75706461746564223a2022323032362d30332d30345431323a30303a30305a222c202261747472696275746573223a207b226465766963655f636c617373223a202274656d7065726174757265227d7d2c207b22656e746974795f6964223a202273656e736f722e6c6976696e675f726f6f6d5f68756d6964697479222c20227374617465223a202235322e34222c20226c6173745f75706461746564223a2022323032362d30332d30345431323a30303a30305a222c202261747472696275746573223a207b226465766963655f636c617373223a202268756d6964697479227d7d2c207b22656e746974795f6964223a202273656e736f722e6b69746368656e5f68756d6964697479222c20227374617465223a2022756e6b6e6f776e222c20226c6173745f75706461746564223a2022323032362d30332d30345431323a30303a30305a222c202261747472696275746573223a207b226465766963655f636c617373223a202268756d6964697479227d7d2c207b22656e746974795f6964223a202262696e6172795f73656e736f722e646f6f72222c20227374617465223a20226f6e222c202261747472696275746573223a207b7d7d5d"
+    }
+   },
+   "write_error": null,
+   "touch_error": null,
+   "outcome": [
+    "ok",
+    2,
+    1,
+    ""
+   ],
+   "requests": [
+    {
+     "method": "GET",
+     "target": "/api/states",
+     "authorization": "Bearer token",
+     "accept": "application/json"
+    }
+   ],
+   "written": [
+    {
+     "ts": "2026-03-04T12:00:00+00:00",
+     "metric": "ha.sensor.living_room_temperature",
+     "value": "22.5",
+     "subject_type": "environment_sensor",
+     "subject_id": "living_room_temperature",
+     "source_system": "homeassistant",
+     "collector_service": "graphyard-agent",
+     "collector_host": "homeassistant",
+     "source_instance": "default",
+     "source_entity_id": "sensor.living_room_temperature",
+     "host": null,
+     "service": "homeassistant",
+     "tags": [
+      [
+       "entity_id",
+       "sensor.living_room_temperature"
+      ],
+      [
+       "spec_name",
+       "ha env scan"
+      ],
+      [
+       "device_class",
+       "temperature"
+      ]
+     ]
+    },
+    {
+     "ts": "2026-03-04T12:00:00+00:00",
+     "metric": "ha.sensor.living_room_humidity",
+     "value": "52.4",
+     "subject_type": "environment_sensor",
+     "subject_id": "living_room_humidity",
+     "source_system": "homeassistant",
+     "collector_service": "graphyard-agent",
+     "collector_host": "homeassistant",
+     "source_instance": "default",
+     "source_entity_id": "sensor.living_room_humidity",
+     "host": null,
+     "service": "homeassistant",
+     "tags": [
+      [
+       "entity_id",
+       "sensor.living_room_humidity"
+      ],
+      [
+       "spec_name",
+       "ha env scan"
+      ],
+      [
+       "device_class",
+       "humidity"
+      ]
+     ]
+    }
+   ],
+   "touched": [
+    {
+     "ts": "2026-03-04T12:00:00+00:00",
+     "metric": "ha.sensor.living_room_temperature",
+     "value": "22.5",
+     "subject_type": "environment_sensor",
+     "subject_id": "living_room_temperature",
+     "source_system": "homeassistant",
+     "collector_service": "graphyard-agent",
+     "collector_host": "homeassistant",
+     "source_instance": "default",
+     "source_entity_id": "sensor.living_room_temperature",
+     "host": null,
+     "service": "homeassistant",
+     "tags": [
+      [
+       "entity_id",
+       "sensor.living_room_temperature"
+      ],
+      [
+       "spec_name",
+       "ha env scan"
+      ],
+      [
+       "device_class",
+       "temperature"
+      ]
+     ]
+    },
+    {
+     "ts": "2026-03-04T12:00:00+00:00",
+     "metric": "ha.sensor.living_room_humidity",
+     "value": "52.4",
+     "subject_type": "environment_sensor",
+     "subject_id": "living_room_humidity",
+     "source_system": "homeassistant",
+     "collector_service": "graphyard-agent",
+     "collector_host": "homeassistant",
+     "source_instance": "default",
+     "source_entity_id": "sensor.living_room_humidity",
+     "host": null,
+     "service": "homeassistant",
+     "tags": [
+      [
+       "entity_id",
+       "sensor.living_room_humidity"
+      ],
+      [
+       "spec_name",
+       "ha env scan"
+      ],
+      [
+       "device_class",
+       "humidity"
+      ]
+     ]
+    }
+   ],
+   "log": [
+    "HTTP Request: GET http://fixture.test/api/states \"HTTP/1.1 200 OK\"",
+    "Spec ha env scan missing config.subject_mapping; using default entity_name_slug mapping"
+   ]
+  },
+  {
+   "name": "env scan production config",
+   "spec_name": "Home Assistant Environment Scan",
+   "spec_type": "home_assistant_env_scan",
+   "config": "{\"base_url\": \"http://fixture.test\", \"access_token\": \"redacted\", \"host_id\": \"homeassistant\", \"service_id\": \"homeassistant\", \"source_instance\": \"ha-main\", \"collector_service\": \"graphyard-agent\", \"collector_host\": \"macmini\", \"subject_mapping\": {\"default\": {\"subject_type\": \"environment_sensor\", \"subject_id_from\": \"entity_name_slug\"}, \"rules\": [{\"match_entity_id_regex\": \"^sensor\\\\.fritz_box_7590_ax_(cpu_temperature|upload_throughput|download_throughput)$\", \"subject_type\": \"network_device\", \"subject_id_template\": \"fritz_box_7590_ax\"}, {\"match_entity_id_regex\": \"^sensor\\\\.usw_pro_xg_8_poe_temperature$\", \"subject_type\": \"network_device\", \"subject_id_template\": \"usw_pro_xg_8_poe\"}]}, \"metric_mapping\": {\"rules\": [{\"match_entity_id_regex\": \"^sensor\\\\.fritz_box_7590_ax_download_throughput$\", \"metric_name\": \"network_device.network_receive_bytes_per_second\", \"value_multiplier\": 1000, \"extra_tags\": {\"traffic_direction\": \"receive\", \"traffic_scope\": \"wan\"}}, {\"match_entity_id_regex\": \"^sensor\\\\.fritz_box_7590_ax_upload_throughput$\", \"metric_name\": \"network_device.network_transmit_bytes_per_second\", \"value_multiplier\": 1000, \"extra_tags\": {\"traffic_direction\": \"transmit\", \"traffic_scope\": \"wan\"}}]}, \"metric_prefix\": \"ha.\", \"include_device_classes\": [\"temperature\", \"humidity\"], \"entity_id_regex\": \"(^sensor\\\\.fritz_box_7590_ax_(upload_throughput|download_throughput)$|temperature|humidity)\", \"request_timeout_seconds\": 10, \"verify_tls\": true}",
+   "routes": {
+    "/api/states": {
+     "status": 200,
+     "headers": [],
+     "body_hex": "5b7b22656e746974795f6964223a202273656e736f722e667269747a5f626f785f373539305f61785f646f776e6c6f61645f7468726f756768707574222c20227374617465223a2022313233342e3536222c202261747472696275746573223a207b22756e69745f6f665f6d6561737572656d656e74223a20226b422f73222c20226465766963655f636c617373223a2022646174615f72617465227d2c20226c6173745f75706461746564223a2022323032362d31302d32315430393a34343a35382e352b30303a3030227d2c207b22656e746974795f6964223a202273656e736f722e667269747a5f626f785f373539305f61785f75706c6f61645f7468726f756768707574222c20227374617465223a202239382e37222c202261747472696275746573223a207b22756e69745f6f665f6d6561737572656d656e74223a20226b422f73222c20226465766963655f636c617373223a2022646174615f72617465227d2c20226c6173745f75706461746564223a2022323032362d31302d32315430393a34343a35382e352b30303a3030227d2c207b22656e746974795f6964223a202273656e736f722e667269747a5f626f785f373539305f61785f6370755f74656d7065726174757265222c20227374617465223a20223631222c202261747472696275746573223a207b22756e69745f6f665f6d6561737572656d656e74223a20225c753030623043222c20226465766963655f636c617373223a202274656d7065726174757265227d2c20226c6173745f75706461746564223a2022323032362d31302d32315430393a34303a30302b30303a3030227d2c207b22656e746974795f6964223a202273656e736f722e7573775f70726f5f78675f385f706f655f74656d7065726174757265222c20227374617465223a202234382e35222c202261747472696275746573223a207b22756e69745f6f665f6d6561737572656d656e74223a20225c753030623043222c20226465766963655f636c617373223a202274656d7065726174757265227d2c20226c6173745f75706461746564223a2022323032362d31302d32315430393a34313a30302b30303a3030227d2c207b22656e746974795f6964223a202273656e736f722e667269747a5f626f785f373539305f61785f6c696e6b5f757074696d65222c20227374617465223a2022313233343536222c202261747472696275746573223a207b226465766963655f636c617373223a20226475726174696f6e227d7d2c207b22656e746974795f6964223a202273656e736f722e776f686e7a696d6d65725f6c75667466657563687469676b656974222c20227374617465223a2022756e617661696c61626c65222c202261747472696275746573223a207b22756e69745f6f665f6d6561737572656d656e74223a202225222c20226465766963655f636c617373223a202268756d6964697479227d7d2c207b22656e746974795f6964223a202262696e6172795f73656e736f722e6261645f68756d69646974795f616c61726d222c20227374617465223a20226f6666222c202261747472696275746573223a207b226465766963655f636c617373223a20226d6f697374757265227d7d2c207b22656e746974795f6964223a20226c696768742e6b69746368656e222c20227374617465223a20226f6e222c202261747472696275746573223a207b7d7d2c207b22656e746974795f6964223a202273656e736f722e73756e5f6e6578745f6461776e222c20227374617465223a2022323032362d31302d32325430353a33303a30302b30303a3030227d5d"
+    }
+   },
+   "write_error": null,
+   "touch_error": null,
+   "outcome": [
+    "ok",
+    4,
+    2,
+    ""
+   ],
+   "requests": [
+    {
+     "method": "GET",
+     "target": "/api/states",
+     "authorization": "Bearer redacted",
+     "accept": "application/json"
+    }
+   ],
+   "written": [
+    {
+     "ts": "2026-10-21T09:44:58.500000+00:00",
+     "metric": "network_device.network_receive_bytes_per_second",
+     "value": "1234560.0",
+     "subject_type": "network_device",
+     "subject_id": "fritz_box_7590_ax",
+     "source_system": "homeassistant",
+     "collector_service": "graphyard-agent",
+     "collector_host": "macmini",
+     "source_instance": "ha-main",
+     "source_entity_id": "sensor.fritz_box_7590_ax_download_throughput",
+     "host": null,
+     "service": "homeassistant",
+     "tags": [
+      [
+       "entity_id",
+       "sensor.fritz_box_7590_ax_download_throughput"
+      ],
+      [
+       "spec_name",
+       "Home Assistant Environment Scan"
+      ],
+      [
+       "traffic_direction",
+       "receive"
+      ],
+      [
+       "traffic_scope",
+       "wan"
+      ],
+      [
+       "unit",
+       "kB/s"
+      ],
+      [
+       "device_class",
+       "data_rate"
+      ]
+     ]
+    },
+    {
+     "ts": "2026-10-21T09:44:58.500000+00:00",
+     "metric": "network_device.network_transmit_bytes_per_second",
+     "value": "98700.0",
+     "subject_type": "network_device",
+     "subject_id": "fritz_box_7590_ax",
+     "source_system": "homeassistant",
+     "collector_service": "graphyard-agent",
+     "collector_host": "macmini",
+     "source_instance": "ha-main",
+     "source_entity_id": "sensor.fritz_box_7590_ax_upload_throughput",
+     "host": null,
+     "service": "homeassistant",
+     "tags": [
+      [
+       "entity_id",
+       "sensor.fritz_box_7590_ax_upload_throughput"
+      ],
+      [
+       "spec_name",
+       "Home Assistant Environment Scan"
+      ],
+      [
+       "traffic_direction",
+       "transmit"
+      ],
+      [
+       "traffic_scope",
+       "wan"
+      ],
+      [
+       "unit",
+       "kB/s"
+      ],
+      [
+       "device_class",
+       "data_rate"
+      ]
+     ]
+    },
+    {
+     "ts": "2026-10-21T09:40:00+00:00",
+     "metric": "ha.sensor.fritz_box_7590_ax_cpu_temperature",
+     "value": "61.0",
+     "subject_type": "network_device",
+     "subject_id": "fritz_box_7590_ax",
+     "source_system": "homeassistant",
+     "collector_service": "graphyard-agent",
+     "collector_host": "macmini",
+     "source_instance": "ha-main",
+     "source_entity_id": "sensor.fritz_box_7590_ax_cpu_temperature",
+     "host": null,
+     "service": "homeassistant",
+     "tags": [
+      [
+       "entity_id",
+       "sensor.fritz_box_7590_ax_cpu_temperature"
+      ],
+      [
+       "spec_name",
+       "Home Assistant Environment Scan"
+      ],
+      [
+       "unit",
+       "\u00b0C"
+      ],
+      [
+       "device_class",
+       "temperature"
+      ]
+     ]
+    },
+    {
+     "ts": "2026-10-21T09:41:00+00:00",
+     "metric": "ha.sensor.usw_pro_xg_8_poe_temperature",
+     "value": "48.5",
+     "subject_type": "network_device",
+     "subject_id": "usw_pro_xg_8_poe",
+     "source_system": "homeassistant",
+     "collector_service": "graphyard-agent",
+     "collector_host": "macmini",
+     "source_instance": "ha-main",
+     "source_entity_id": "sensor.usw_pro_xg_8_poe_temperature",
+     "host": null,
+     "service": "homeassistant",
+     "tags": [
+      [
+       "entity_id",
+       "sensor.usw_pro_xg_8_poe_temperature"
+      ],
+      [
+       "spec_name",
+       "Home Assistant Environment Scan"
+      ],
+      [
+       "unit",
+       "\u00b0C"
+      ],
+      [
+       "device_class",
+       "temperature"
+      ]
+     ]
+    }
+   ],
+   "touched": [
+    {
+     "ts": "2026-10-21T09:44:58.500000+00:00",
+     "metric": "network_device.network_receive_bytes_per_second",
+     "value": "1234560.0",
+     "subject_type": "network_device",
+     "subject_id": "fritz_box_7590_ax",
+     "source_system": "homeassistant",
+     "collector_service": "graphyard-agent",
+     "collector_host": "macmini",
+     "source_instance": "ha-main",
+     "source_entity_id": "sensor.fritz_box_7590_ax_download_throughput",
+     "host": null,
+     "service": "homeassistant",
+     "tags": [
+      [
+       "entity_id",
+       "sensor.fritz_box_7590_ax_download_throughput"
+      ],
+      [
+       "spec_name",
+       "Home Assistant Environment Scan"
+      ],
+      [
+       "traffic_direction",
+       "receive"
+      ],
+      [
+       "traffic_scope",
+       "wan"
+      ],
+      [
+       "unit",
+       "kB/s"
+      ],
+      [
+       "device_class",
+       "data_rate"
+      ]
+     ]
+    },
+    {
+     "ts": "2026-10-21T09:44:58.500000+00:00",
+     "metric": "network_device.network_transmit_bytes_per_second",
+     "value": "98700.0",
+     "subject_type": "network_device",
+     "subject_id": "fritz_box_7590_ax",
+     "source_system": "homeassistant",
+     "collector_service": "graphyard-agent",
+     "collector_host": "macmini",
+     "source_instance": "ha-main",
+     "source_entity_id": "sensor.fritz_box_7590_ax_upload_throughput",
+     "host": null,
+     "service": "homeassistant",
+     "tags": [
+      [
+       "entity_id",
+       "sensor.fritz_box_7590_ax_upload_throughput"
+      ],
+      [
+       "spec_name",
+       "Home Assistant Environment Scan"
+      ],
+      [
+       "traffic_direction",
+       "transmit"
+      ],
+      [
+       "traffic_scope",
+       "wan"
+      ],
+      [
+       "unit",
+       "kB/s"
+      ],
+      [
+       "device_class",
+       "data_rate"
+      ]
+     ]
+    },
+    {
+     "ts": "2026-10-21T09:40:00+00:00",
+     "metric": "ha.sensor.fritz_box_7590_ax_cpu_temperature",
+     "value": "61.0",
+     "subject_type": "network_device",
+     "subject_id": "fritz_box_7590_ax",
+     "source_system": "homeassistant",
+     "collector_service": "graphyard-agent",
+     "collector_host": "macmini",
+     "source_instance": "ha-main",
+     "source_entity_id": "sensor.fritz_box_7590_ax_cpu_temperature",
+     "host": null,
+     "service": "homeassistant",
+     "tags": [
+      [
+       "entity_id",
+       "sensor.fritz_box_7590_ax_cpu_temperature"
+      ],
+      [
+       "spec_name",
+       "Home Assistant Environment Scan"
+      ],
+      [
+       "unit",
+       "\u00b0C"
+      ],
+      [
+       "device_class",
+       "temperature"
+      ]
+     ]
+    },
+    {
+     "ts": "2026-10-21T09:41:00+00:00",
+     "metric": "ha.sensor.usw_pro_xg_8_poe_temperature",
+     "value": "48.5",
+     "subject_type": "network_device",
+     "subject_id": "usw_pro_xg_8_poe",
+     "source_system": "homeassistant",
+     "collector_service": "graphyard-agent",
+     "collector_host": "macmini",
+     "source_instance": "ha-main",
+     "source_entity_id": "sensor.usw_pro_xg_8_poe_temperature",
+     "host": null,
+     "service": "homeassistant",
+     "tags": [
+      [
+       "entity_id",
+       "sensor.usw_pro_xg_8_poe_temperature"
+      ],
+      [
+       "spec_name",
+       "Home Assistant Environment Scan"
+      ],
+      [
+       "unit",
+       "\u00b0C"
+      ],
+      [
+       "device_class",
+       "temperature"
+      ]
+     ]
+    }
+   ],
+   "log": [
+    "HTTP Request: GET http://fixture.test/api/states \"HTTP/1.1 200 OK\""
+   ]
+  },
+  {
+   "name": "env scan states not a list",
+   "spec_name": "env scan states not a list",
+   "spec_type": "home_assistant_env_scan",
+   "config": "{\"base_url\": \"http://fixture.test\", \"access_token\": \"token\"}",
+   "routes": {
+    "/api/states": {
+     "status": 200,
+     "headers": [],
+     "body_hex": "7b22737461746573223a205b5d7d"
+    }
+   },
+   "write_error": null,
+   "touch_error": null,
+   "outcome": [
+    "critical",
+    0,
+    0,
+    "states response is not a list"
+   ],
+   "requests": [
+    {
+     "method": "GET",
+     "target": "/api/states",
+     "authorization": "Bearer token",
+     "accept": "application/json"
+    }
+   ],
+   "written": null,
+   "touched": null,
+   "log": [
+    "HTTP Request: GET http://fixture.test/api/states \"HTTP/1.1 200 OK\""
+   ]
+  },
+  {
+   "name": "env scan invalid entity_id_regex",
+   "spec_name": "env scan invalid entity_id_regex",
+   "spec_type": "home_assistant_env_scan",
+   "config": "{\"base_url\": \"http://fixture.test\", \"access_token\": \"token\", \"entity_id_regex\": \"(unclosed\"}",
+   "routes": {},
+   "write_error": null,
+   "touch_error": null,
+   "outcome": [
+    "critical",
+    0,
+    0,
+    "invalid entity_id_regex: missing ), unterminated subpattern at position 0"
+   ],
+   "outcome_p2_prefix": "invalid entity_id_regex: ",
+   "requests": [],
+   "written": null,
+   "touched": null,
+   "log": []
+  },
+  {
+   "name": "env scan knob error before the regex",
+   "spec_name": "env scan knob error before the regex",
+   "spec_type": "home_assistant_env_scan",
+   "config": "{\"base_url\": \"http://fixture.test\", \"access_token\": \"token\", \"entity_id_regex\": \"(unclosed\", \"max_body_bytes\": 0}",
+   "routes": {},
+   "write_error": null,
+   "touch_error": null,
+   "error": {
+    "class": "SpecConfigError",
+    "message": "config.max_body_bytes must be a positive integer, got 0"
+   },
+   "requests": [],
+   "written": null,
+   "touched": null,
+   "log": []
+  },
+  {
+   "name": "env scan base_url required",
+   "spec_name": "env scan base_url required",
+   "spec_type": "home_assistant_env_scan",
+   "config": "{\"access_token\": \"t\"}",
+   "routes": {},
+   "write_error": null,
+   "touch_error": null,
+   "outcome": [
+    "critical",
+    0,
+    0,
+    "config.base_url is required"
+   ],
+   "requests": [],
+   "written": null,
+   "touched": null,
+   "log": []
+  },
+  {
+   "name": "env scan access_token required",
+   "spec_name": "env scan access_token required",
+   "spec_type": "home_assistant_env_scan",
+   "config": "{\"base_url\": \"http://fixture.test\"}",
+   "routes": {},
+   "write_error": null,
+   "touch_error": null,
+   "outcome": [
+    "critical",
+    0,
+    0,
+    "config.access_token is required"
+   ],
+   "requests": [],
+   "written": null,
+   "touched": null,
+   "log": []
+  },
+  {
+   "name": "env scan nothing matches",
+   "spec_name": "env scan nothing matches",
+   "spec_type": "home_assistant_env_scan",
+   "config": "{\"base_url\": \"http://fixture.test\", \"access_token\": \"token\"}",
+   "routes": {
+    "/api/states": {
+     "status": 200,
+     "headers": [],
+     "body_hex": "5b7b22656e746974795f6964223a202273656e736f722e706f776572222c20227374617465223a202235222c202261747472696275746573223a207b226465766963655f636c617373223a2022706f776572227d7d2c207b22656e746974795f6964223a202273656e736f722e6f7574646f6f725f74656d7065726174757265222c20227374617465223a2022756e6b6e6f776e227d5d"
+    }
+   },
+   "write_error": null,
+   "touch_error": null,
+   "outcome": [
+    "warning",
+    0,
+    1,
+    "no matching numeric states"
+   ],
+   "requests": [
+    {
+     "method": "GET",
+     "target": "/api/states",
+     "authorization": "Bearer token",
+     "accept": "application/json"
+    }
+   ],
+   "written": null,
+   "touched": null,
+   "log": [
+    "HTTP Request: GET http://fixture.test/api/states \"HTTP/1.1 200 OK\""
+   ]
+  },
+  {
+   "name": "env scan item shapes",
+   "spec_name": "env scan item shapes",
+   "spec_type": "home_assistant_env_scan",
+   "config": "{\"base_url\": \"http://fixture.test\", \"access_token\": \"token\", \"entity_id_regex\": \"TEMP\"}",
+   "routes": {
+    "/api/states": {
+     "status": 200,
+     "headers": [],
+     "body_hex": "5b226e6f7420616e206f626a656374222c20372c207b22656e746974795f6964223a20352c20227374617465223a202231227d2c207b22656e746974795f6964223a206e756c6c2c20227374617465223a202231227d2c207b227374617465223a202231227d2c207b22656e746974795f6964223a202253656e736f722e75707065725f74656d70222c20227374617465223a202231227d2c207b22656e746974795f6964223a202273656e736f722e4f7574646f6f725f54454d50222c20227374617465223a2022332e35222c202261747472696275746573223a202278227d2c207b22656e746974795f6964223a202262696e6172795f73656e736f722e77696e646f775f74656d70222c20227374617465223a202231227d2c207b22656e746974795f6964223a202273656e736f722e68756d222c20227374617465223a20223430222c202261747472696275746573223a207b226465766963655f636c617373223a202248756d6964697479227d7d2c207b22656e746974795f6964223a202273656e736f722e68756d32222c20227374617465223a20223430222c202261747472696275746573223a207b226465766963655f636c617373223a202268756d6964697479227d7d5d"
+    }
+   },
+   "write_error": null,
+   "touch_error": null,
+   "outcome": [
+    "ok",
+    4,
+    0,
+    ""
+   ],
+   "requests": [
+    {
+     "method": "GET",
+     "target": "/api/states",
+     "authorization": "Bearer token",
+     "accept": "application/json"
+    }
+   ],
+   "written": [
+    {
+     "ts": "2026-10-21T09:45:00.250000+00:00",
+     "metric": "ha.sensor.Outdoor_TEMP",
+     "value": "3.5",
+     "subject_type": "environment_sensor",
+     "subject_id": "outdoor_temp",
+     "source_system": "homeassistant",
+     "collector_service": "graphyard-agent",
+     "collector_host": "homeassistant",
+     "source_instance": "default",
+     "source_entity_id": "sensor.Outdoor_TEMP",
+     "host": null,
+     "service": "homeassistant",
+     "tags": [
+      [
+       "entity_id",
+       "sensor.Outdoor_TEMP"
+      ],
+      [
+       "spec_name",
+       "env scan item shapes"
+      ]
+     ]
+    },
+    {
+     "ts": "2026-10-21T09:45:00.250000+00:00",
+     "metric": "ha.binary_sensor.window_temp",
+     "value": "1.0",
+     "subject_type": "environment_sensor",
+     "subject_id": "window_temp",
+     "source_system": "homeassistant",
+     "collector_service": "graphyard-agent",
+     "collector_host": "homeassistant",
+     "source_instance": "default",
+     "source_entity_id": "binary_sensor.window_temp",
+     "host": null,
+     "service": "homeassistant",
+     "tags": [
+      [
+       "entity_id",
+       "binary_sensor.window_temp"
+      ],
+      [
+       "spec_name",
+       "env scan item shapes"
+      ]
+     ]
+    },
+    {
+     "ts": "2026-10-21T09:45:00.250000+00:00",
+     "metric": "ha.sensor.hum",
+     "value": "40.0",
+     "subject_type": "environment_sensor",
+     "subject_id": "hum",
+     "source_system": "homeassistant",
+     "collector_service": "graphyard-agent",
+     "collector_host": "homeassistant",
+     "source_instance": "default",
+     "source_entity_id": "sensor.hum",
+     "host": null,
+     "service": "homeassistant",
+     "tags": [
+      [
+       "entity_id",
+       "sensor.hum"
+      ],
+      [
+       "spec_name",
+       "env scan item shapes"
+      ],
+      [
+       "device_class",
+       "Humidity"
+      ]
+     ]
+    },
+    {
+     "ts": "2026-10-21T09:45:00.250000+00:00",
+     "metric": "ha.sensor.hum2",
+     "value": "40.0",
+     "subject_type": "environment_sensor",
+     "subject_id": "hum2",
+     "source_system": "homeassistant",
+     "collector_service": "graphyard-agent",
+     "collector_host": "homeassistant",
+     "source_instance": "default",
+     "source_entity_id": "sensor.hum2",
+     "host": null,
+     "service": "homeassistant",
+     "tags": [
+      [
+       "entity_id",
+       "sensor.hum2"
+      ],
+      [
+       "spec_name",
+       "env scan item shapes"
+      ],
+      [
+       "device_class",
+       "humidity"
+      ]
+     ]
+    }
+   ],
+   "touched": [
+    {
+     "ts": "2026-10-21T09:45:00.250000+00:00",
+     "metric": "ha.sensor.Outdoor_TEMP",
+     "value": "3.5",
+     "subject_type": "environment_sensor",
+     "subject_id": "outdoor_temp",
+     "source_system": "homeassistant",
+     "collector_service": "graphyard-agent",
+     "collector_host": "homeassistant",
+     "source_instance": "default",
+     "source_entity_id": "sensor.Outdoor_TEMP",
+     "host": null,
+     "service": "homeassistant",
+     "tags": [
+      [
+       "entity_id",
+       "sensor.Outdoor_TEMP"
+      ],
+      [
+       "spec_name",
+       "env scan item shapes"
+      ]
+     ]
+    },
+    {
+     "ts": "2026-10-21T09:45:00.250000+00:00",
+     "metric": "ha.binary_sensor.window_temp",
+     "value": "1.0",
+     "subject_type": "environment_sensor",
+     "subject_id": "window_temp",
+     "source_system": "homeassistant",
+     "collector_service": "graphyard-agent",
+     "collector_host": "homeassistant",
+     "source_instance": "default",
+     "source_entity_id": "binary_sensor.window_temp",
+     "host": null,
+     "service": "homeassistant",
+     "tags": [
+      [
+       "entity_id",
+       "binary_sensor.window_temp"
+      ],
+      [
+       "spec_name",
+       "env scan item shapes"
+      ]
+     ]
+    },
+    {
+     "ts": "2026-10-21T09:45:00.250000+00:00",
+     "metric": "ha.sensor.hum",
+     "value": "40.0",
+     "subject_type": "environment_sensor",
+     "subject_id": "hum",
+     "source_system": "homeassistant",
+     "collector_service": "graphyard-agent",
+     "collector_host": "homeassistant",
+     "source_instance": "default",
+     "source_entity_id": "sensor.hum",
+     "host": null,
+     "service": "homeassistant",
+     "tags": [
+      [
+       "entity_id",
+       "sensor.hum"
+      ],
+      [
+       "spec_name",
+       "env scan item shapes"
+      ],
+      [
+       "device_class",
+       "Humidity"
+      ]
+     ]
+    },
+    {
+     "ts": "2026-10-21T09:45:00.250000+00:00",
+     "metric": "ha.sensor.hum2",
+     "value": "40.0",
+     "subject_type": "environment_sensor",
+     "subject_id": "hum2",
+     "source_system": "homeassistant",
+     "collector_service": "graphyard-agent",
+     "collector_host": "homeassistant",
+     "source_instance": "default",
+     "source_entity_id": "sensor.hum2",
+     "host": null,
+     "service": "homeassistant",
+     "tags": [
+      [
+       "entity_id",
+       "sensor.hum2"
+      ],
+      [
+       "spec_name",
+       "env scan item shapes"
+      ],
+      [
+       "device_class",
+       "humidity"
+      ]
+     ]
+    }
+   ],
+   "log": [
+    "HTTP Request: GET http://fixture.test/api/states \"HTTP/1.1 200 OK\"",
+    "Spec env scan item shapes missing config.subject_mapping; using default entity_name_slug mapping"
+   ]
+  },
+  {
+   "name": "env scan device classes and null device class",
+   "spec_name": "env scan device classes and null device class",
+   "spec_type": "home_assistant_env_scan",
+   "config": "{\"base_url\": \"http://fixture.test\", \"access_token\": \"token\", \"include_device_classes\": [\" Power \", null, 5], \"entity_id_regex\": \"^$\", \"metric_prefix\": \"home.\"}",
+   "routes": {
+    "/api/states": {
+     "status": 200,
+     "headers": [],
+     "body_hex": "5b7b22656e746974795f6964223a202273656e736f722e706f776572222c20227374617465223a202235222c202261747472696275746573223a207b226465766963655f636c617373223a2022504f574552227d7d2c207b22656e746974795f6964223a202273656e736f722e756e636c6173736966696564222c20227374617465223a202236222c202261747472696275746573223a207b226465766963655f636c617373223a206e756c6c7d7d2c207b22656e746974795f6964223a202273656e736f722e66697665222c20227374617465223a202237222c202261747472696275746573223a207b226465766963655f636c617373223a20357d7d2c207b22656e746974795f6964223a202273656e736f722e74656d7065726174757265222c20227374617465223a202238222c202261747472696275746573223a207b7d7d5d"
+    }
+   },
+   "write_error": null,
+   "touch_error": null,
+   "outcome": [
+    "ok",
+    3,
+    0,
+    ""
+   ],
+   "requests": [
+    {
+     "method": "GET",
+     "target": "/api/states",
+     "authorization": "Bearer token",
+     "accept": "application/json"
+    }
+   ],
+   "written": [
+    {
+     "ts": "2026-10-21T09:45:00.250000+00:00",
+     "metric": "home.sensor.power",
+     "value": "5.0",
+     "subject_type": "environment_sensor",
+     "subject_id": "power",
+     "source_system": "homeassistant",
+     "collector_service": "graphyard-agent",
+     "collector_host": "homeassistant",
+     "source_instance": "default",
+     "source_entity_id": "sensor.power",
+     "host": null,
+     "service": "homeassistant",
+     "tags": [
+      [
+       "entity_id",
+       "sensor.power"
+      ],
+      [
+       "spec_name",
+       "env scan device classes and null device class"
+      ],
+      [
+       "device_class",
+       "POWER"
+      ]
+     ]
+    },
+    {
+     "ts": "2026-10-21T09:45:00.250000+00:00",
+     "metric": "home.sensor.unclassified",
+     "value": "6.0",
+     "subject_type": "environment_sensor",
+     "subject_id": "unclassified",
+     "source_system": "homeassistant",
+     "collector_service": "graphyard-agent",
+     "collector_host": "homeassistant",
+     "source_instance": "default",
+     "source_entity_id": "sensor.unclassified",
+     "host": null,
+     "service": "homeassistant",
+     "tags": [
+      [
+       "entity_id",
+       "sensor.unclassified"
+      ],
+      [
+       "spec_name",
+       "env scan device classes and null device class"
+      ]
+     ]
+    },
+    {
+     "ts": "2026-10-21T09:45:00.250000+00:00",
+     "metric": "home.sensor.five",
+     "value": "7.0",
+     "subject_type": "environment_sensor",
+     "subject_id": "five",
+     "source_system": "homeassistant",
+     "collector_service": "graphyard-agent",
+     "collector_host": "homeassistant",
+     "source_instance": "default",
+     "source_entity_id": "sensor.five",
+     "host": null,
+     "service": "homeassistant",
+     "tags": [
+      [
+       "entity_id",
+       "sensor.five"
+      ],
+      [
+       "spec_name",
+       "env scan device classes and null device class"
+      ],
+      [
+       "device_class",
+       "5"
+      ]
+     ]
+    }
+   ],
+   "touched": [
+    {
+     "ts": "2026-10-21T09:45:00.250000+00:00",
+     "metric": "home.sensor.power",
+     "value": "5.0",
+     "subject_type": "environment_sensor",
+     "subject_id": "power",
+     "source_system": "homeassistant",
+     "collector_service": "graphyard-agent",
+     "collector_host": "homeassistant",
+     "source_instance": "default",
+     "source_entity_id": "sensor.power",
+     "host": null,
+     "service": "homeassistant",
+     "tags": [
+      [
+       "entity_id",
+       "sensor.power"
+      ],
+      [
+       "spec_name",
+       "env scan device classes and null device class"
+      ],
+      [
+       "device_class",
+       "POWER"
+      ]
+     ]
+    },
+    {
+     "ts": "2026-10-21T09:45:00.250000+00:00",
+     "metric": "home.sensor.unclassified",
+     "value": "6.0",
+     "subject_type": "environment_sensor",
+     "subject_id": "unclassified",
+     "source_system": "homeassistant",
+     "collector_service": "graphyard-agent",
+     "collector_host": "homeassistant",
+     "source_instance": "default",
+     "source_entity_id": "sensor.unclassified",
+     "host": null,
+     "service": "homeassistant",
+     "tags": [
+      [
+       "entity_id",
+       "sensor.unclassified"
+      ],
+      [
+       "spec_name",
+       "env scan device classes and null device class"
+      ]
+     ]
+    },
+    {
+     "ts": "2026-10-21T09:45:00.250000+00:00",
+     "metric": "home.sensor.five",
+     "value": "7.0",
+     "subject_type": "environment_sensor",
+     "subject_id": "five",
+     "source_system": "homeassistant",
+     "collector_service": "graphyard-agent",
+     "collector_host": "homeassistant",
+     "source_instance": "default",
+     "source_entity_id": "sensor.five",
+     "host": null,
+     "service": "homeassistant",
+     "tags": [
+      [
+       "entity_id",
+       "sensor.five"
+      ],
+      [
+       "spec_name",
+       "env scan device classes and null device class"
+      ],
+      [
+       "device_class",
+       "5"
+      ]
+     ]
+    }
+   ],
+   "log": [
+    "HTTP Request: GET http://fixture.test/api/states \"HTTP/1.1 200 OK\"",
+    "Spec env scan device classes and null device class missing config.subject_mapping; using default entity_name_slug mapping"
+   ]
+  },
+  {
+   "name": "env scan include_device_classes not a list",
+   "spec_name": "env scan include_device_classes not a list",
+   "spec_type": "home_assistant_env_scan",
+   "config": "{\"base_url\": \"http://fixture.test\", \"access_token\": \"token\", \"include_device_classes\": \"power\", \"entity_id_regex\": \"^$\"}",
+   "routes": {
+    "/api/states": {
+     "status": 200,
+     "headers": [],
+     "body_hex": "5b7b22656e746974795f6964223a202273656e736f722e6c6976696e675f726f6f6d5f74656d7065726174757265222c20227374617465223a202232322e35222c20226c6173745f75706461746564223a2022323032362d30332d30345431323a30303a30305a222c202261747472696275746573223a207b226465766963655f636c617373223a202274656d7065726174757265227d7d2c207b22656e746974795f6964223a202273656e736f722e6c6976696e675f726f6f6d5f68756d6964697479222c20227374617465223a202235322e34222c20226c6173745f75706461746564223a2022323032362d30332d30345431323a30303a30305a222c202261747472696275746573223a207b226465766963655f636c617373223a202268756d6964697479227d7d2c207b22656e746974795f6964223a202273656e736f722e6b69746368656e5f68756d6964697479222c20227374617465223a2022756e6b6e6f776e222c20226c6173745f75706461746564223a2022323032362d30332d30345431323a30303a30305a222c202261747472696275746573223a207b226465766963655f636c617373223a202268756d6964697479227d7d2c207b22656e746974795f6964223a202262696e6172795f73656e736f722e646f6f72222c20227374617465223a20226f6e222c202261747472696275746573223a207b7d7d5d"
+    }
+   },
+   "write_error": null,
+   "touch_error": null,
+   "outcome": [
+    "ok",
+    2,
+    1,
+    ""
+   ],
+   "requests": [
+    {
+     "method": "GET",
+     "target": "/api/states",
+     "authorization": "Bearer token",
+     "accept": "application/json"
+    }
+   ],
+   "written": [
+    {
+     "ts": "2026-03-04T12:00:00+00:00",
+     "metric": "ha.sensor.living_room_temperature",
+     "value": "22.5",
+     "subject_type": "environment_sensor",
+     "subject_id": "living_room_temperature",
+     "source_system": "homeassistant",
+     "collector_service": "graphyard-agent",
+     "collector_host": "homeassistant",
+     "source_instance": "default",
+     "source_entity_id": "sensor.living_room_temperature",
+     "host": null,
+     "service": "homeassistant",
+     "tags": [
+      [
+       "entity_id",
+       "sensor.living_room_temperature"
+      ],
+      [
+       "spec_name",
+       "env scan include_device_classes not a list"
+      ],
+      [
+       "device_class",
+       "temperature"
+      ]
+     ]
+    },
+    {
+     "ts": "2026-03-04T12:00:00+00:00",
+     "metric": "ha.sensor.living_room_humidity",
+     "value": "52.4",
+     "subject_type": "environment_sensor",
+     "subject_id": "living_room_humidity",
+     "source_system": "homeassistant",
+     "collector_service": "graphyard-agent",
+     "collector_host": "homeassistant",
+     "source_instance": "default",
+     "source_entity_id": "sensor.living_room_humidity",
+     "host": null,
+     "service": "homeassistant",
+     "tags": [
+      [
+       "entity_id",
+       "sensor.living_room_humidity"
+      ],
+      [
+       "spec_name",
+       "env scan include_device_classes not a list"
+      ],
+      [
+       "device_class",
+       "humidity"
+      ]
+     ]
+    }
+   ],
+   "touched": [
+    {
+     "ts": "2026-03-04T12:00:00+00:00",
+     "metric": "ha.sensor.living_room_temperature",
+     "value": "22.5",
+     "subject_type": "environment_sensor",
+     "subject_id": "living_room_temperature",
+     "source_system": "homeassistant",
+     "collector_service": "graphyard-agent",
+     "collector_host": "homeassistant",
+     "source_instance": "default",
+     "source_entity_id": "sensor.living_room_temperature",
+     "host": null,
+     "service": "homeassistant",
+     "tags": [
+      [
+       "entity_id",
+       "sensor.living_room_temperature"
+      ],
+      [
+       "spec_name",
+       "env scan include_device_classes not a list"
+      ],
+      [
+       "device_class",
+       "temperature"
+      ]
+     ]
+    },
+    {
+     "ts": "2026-03-04T12:00:00+00:00",
+     "metric": "ha.sensor.living_room_humidity",
+     "value": "52.4",
+     "subject_type": "environment_sensor",
+     "subject_id": "living_room_humidity",
+     "source_system": "homeassistant",
+     "collector_service": "graphyard-agent",
+     "collector_host": "homeassistant",
+     "source_instance": "default",
+     "source_entity_id": "sensor.living_room_humidity",
+     "host": null,
+     "service": "homeassistant",
+     "tags": [
+      [
+       "entity_id",
+       "sensor.living_room_humidity"
+      ],
+      [
+       "spec_name",
+       "env scan include_device_classes not a list"
+      ],
+      [
+       "device_class",
+       "humidity"
+      ]
+     ]
+    }
+   ],
+   "log": [
+    "HTTP Request: GET http://fixture.test/api/states \"HTTP/1.1 200 OK\"",
+    "Spec env scan include_device_classes not a list missing config.subject_mapping; using default entity_name_slug mapping"
+   ]
+  },
+  {
+   "name": "env scan normalisation error stops the scan",
+   "spec_name": "env scan normalisation error stops the scan",
+   "spec_type": "home_assistant_env_scan",
+   "config": "{\"base_url\": \"http://fixture.test\", \"access_token\": \"token\", \"subject_mapping\": {\"default\": {}}}",
+   "routes": {
+    "/api/states": {
+     "status": 200,
+     "headers": [],
+     "body_hex": "5b7b22656e746974795f6964223a202273656e736f722e6f6b5f74656d7065726174757265222c20227374617465223a202231227d2c207b22656e746974795f6964223a202273656e736f722e222c20227374617465223a202232222c202261747472696275746573223a207b226465766963655f636c617373223a202274656d7065726174757265227d7d5d"
+    }
+   },
+   "write_error": null,
+   "touch_error": null,
+   "outcome": [
+    "critical",
+    0,
+    0,
+    "Invalid subject_id '': expected lowercase snake_case identifier"
+   ],
+   "requests": [
+    {
+     "method": "GET",
+     "target": "/api/states",
+     "authorization": "Bearer token",
+     "accept": "application/json"
+    }
+   ],
+   "written": null,
+   "touched": null,
+   "log": [
+    "HTTP Request: GET http://fixture.test/api/states \"HTTP/1.1 200 OK\""
+   ]
+  },
+  {
+   "name": "env scan write failure",
+   "spec_name": "env scan write failure",
+   "spec_type": "home_assistant_env_scan",
+   "config": "{\"base_url\": \"http://fixture.test\", \"access_token\": \"token\"}",
+   "routes": {
+    "/api/states": {
+     "status": 200,
+     "headers": [],
+     "body_hex": "5b7b22656e746974795f6964223a202273656e736f722e6c6976696e675f726f6f6d5f74656d7065726174757265222c20227374617465223a202232322e35222c20226c6173745f75706461746564223a2022323032362d30332d30345431323a30303a30305a222c202261747472696275746573223a207b226465766963655f636c617373223a202274656d7065726174757265227d7d2c207b22656e746974795f6964223a202273656e736f722e6c6976696e675f726f6f6d5f68756d6964697479222c20227374617465223a202235322e34222c20226c6173745f75706461746564223a2022323032362d30332d30345431323a30303a30305a222c202261747472696275746573223a207b226465766963655f636c617373223a202268756d6964697479227d7d2c207b22656e746974795f6964223a202273656e736f722e6b69746368656e5f68756d6964697479222c20227374617465223a2022756e6b6e6f776e222c20226c6173745f75706461746564223a2022323032362d30332d30345431323a30303a30305a222c202261747472696275746573223a207b226465766963655f636c617373223a202268756d6964697479227d7d2c207b22656e746974795f6964223a202262696e6172795f73656e736f722e646f6f72222c20227374617465223a20226f6e222c202261747472696275746573223a207b7d7d5d"
+    }
+   },
+   "write_error": "write failed",
+   "touch_error": null,
+   "outcome": [
+    "critical",
+    0,
+    0,
+    "write failed"
+   ],
+   "requests": [
+    {
+     "method": "GET",
+     "target": "/api/states",
+     "authorization": "Bearer token",
+     "accept": "application/json"
+    }
+   ],
+   "written": [
+    {
+     "ts": "2026-03-04T12:00:00+00:00",
+     "metric": "ha.sensor.living_room_temperature",
+     "value": "22.5",
+     "subject_type": "environment_sensor",
+     "subject_id": "living_room_temperature",
+     "source_system": "homeassistant",
+     "collector_service": "graphyard-agent",
+     "collector_host": "homeassistant",
+     "source_instance": "default",
+     "source_entity_id": "sensor.living_room_temperature",
+     "host": null,
+     "service": "homeassistant",
+     "tags": [
+      [
+       "entity_id",
+       "sensor.living_room_temperature"
+      ],
+      [
+       "spec_name",
+       "env scan write failure"
+      ],
+      [
+       "device_class",
+       "temperature"
+      ]
+     ]
+    },
+    {
+     "ts": "2026-03-04T12:00:00+00:00",
+     "metric": "ha.sensor.living_room_humidity",
+     "value": "52.4",
+     "subject_type": "environment_sensor",
+     "subject_id": "living_room_humidity",
+     "source_system": "homeassistant",
+     "collector_service": "graphyard-agent",
+     "collector_host": "homeassistant",
+     "source_instance": "default",
+     "source_entity_id": "sensor.living_room_humidity",
+     "host": null,
+     "service": "homeassistant",
+     "tags": [
+      [
+       "entity_id",
+       "sensor.living_room_humidity"
+      ],
+      [
+       "spec_name",
+       "env scan write failure"
+      ],
+      [
+       "device_class",
+       "humidity"
+      ]
+     ]
+    }
+   ],
+   "touched": null,
+   "log": [
+    "HTTP Request: GET http://fixture.test/api/states \"HTTP/1.1 200 OK\"",
+    "Spec env scan write failure missing config.subject_mapping; using default entity_name_slug mapping"
+   ]
+  },
+  {
+   "name": "env scan server error",
+   "spec_name": "env scan server error",
+   "spec_type": "home_assistant_env_scan",
+   "config": "{\"base_url\": \"http://fixture.test\", \"access_token\": \"token\"}",
+   "routes": {
+    "/api/states": {
+     "status": 503,
+     "headers": [],
+     "body_hex": "62757379"
+    }
+   },
+   "write_error": null,
+   "touch_error": null,
+   "outcome": [
+    "critical",
+    0,
+    0,
+    "Server error '503 Service Unavailable' for url 'http://fixture.test/api/states'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/503"
+   ],
+   "requests": [
+    {
+     "method": "GET",
+     "target": "/api/states",
+     "authorization": "Bearer token",
+     "accept": "application/json"
+    }
+   ],
+   "written": null,
+   "touched": null,
+   "log": [
+    "HTTP Request: GET http://fixture.test/api/states \"HTTP/1.1 503 Service Unavailable\""
+   ]
+  },
+  {
+   "name": "json ingests value (test_http_json_metric_spec_ingests_value)",
+   "spec_name": "mail queue depth",
+   "spec_type": "http_json_metric",
+   "config": "{\"url\": \"http://fixture.test/health\", \"metric_path\": \"$.queue.depth\", \"metric_name\": \"service.queue_depth\", \"host_id\": \"macmini\", \"service_id\": \"mail\"}",
+   "routes": {
+    "/health": {
+     "status": 200,
+     "headers": [],
+     "body_hex": "7b227175657565223a207b226465707468223a2031327d7d"
+    }
+   },
+   "write_error": null,
+   "touch_error": null,
+   "outcome": [
+    "ok",
+    1,
+    0,
+    ""
+   ],
+   "requests": [
+    {
+     "method": "GET",
+     "target": "/health",
+     "authorization": null,
+     "accept": "application/json"
+    }
+   ],
+   "written": [
+    {
+     "ts": "2026-10-21T09:45:00.250000+00:00",
+     "metric": "service.queue_depth",
+     "value": "12.0",
+     "subject_type": "service",
+     "subject_id": "mail",
+     "source_system": "http",
+     "collector_service": "mail",
+     "collector_host": "macmini",
+     "source_instance": "default",
+     "source_entity_id": null,
+     "host": null,
+     "service": "mail",
+     "tags": [
+      [
+       "spec_name",
+       "mail queue depth"
+      ]
+     ]
+    }
+   ],
+   "touched": [
+    {
+     "ts": "2026-10-21T09:45:00.250000+00:00",
+     "metric": "service.queue_depth",
+     "value": "12.0",
+     "subject_type": "service",
+     "subject_id": "mail",
+     "source_system": "http",
+     "collector_service": "mail",
+     "collector_host": "macmini",
+     "source_instance": "default",
+     "source_entity_id": null,
+     "host": null,
+     "service": "mail",
+     "tags": [
+      [
+       "spec_name",
+       "mail queue depth"
+      ]
+     ]
+    }
+   ],
+   "log": [
+    "HTTP Request: GET http://fixture.test/health \"HTTP/1.1 200 OK\""
+   ]
+  },
+  {
+   "name": "json missing path (test_http_json_metric_spec_missing_path_sets_warning)",
+   "spec_name": "json missing path (test_http_json_metric_spec_missing_path_sets_warning)",
+   "spec_type": "http_json_metric",
+   "config": "{\"url\": \"http://fixture.test/health\", \"metric_path\": \"$.queue.missing\", \"metric_name\": \"service.queue_depth\", \"host_id\": \"macmini\", \"service_id\": \"mail\"}",
+   "routes": {
+    "/health": {
+     "status": 200,
+     "headers": [],
+     "body_hex": "7b227175657565223a207b226465707468223a2031327d7d"
+    }
+   },
+   "write_error": null,
+   "touch_error": null,
+   "outcome": [
+    "warning",
+    0,
+    1,
+    "metric_path not found: $.queue.missing"
+   ],
+   "requests": [
+    {
+     "method": "GET",
+     "target": "/health",
+     "authorization": null,
+     "accept": "application/json"
+    }
+   ],
+   "written": null,
+   "touched": null,
+   "log": [
+    "HTTP Request: GET http://fixture.test/health \"HTTP/1.1 200 OK\""
+   ]
+  },
+  {
+   "name": "json nested value (test_http_json_metric_spec_ingests_three_level_nested_value)",
+   "spec_name": "json nested value (test_http_json_metric_spec_ingests_three_level_nested_value)",
+   "spec_type": "http_json_metric",
+   "config": "{\"url\": \"http://fixture.test/thermal\", \"metric_path\": \"$.lm_sensors.cpu_tctl.value\", \"metric_name\": \"host.temperature_celsius\", \"host_id\": \"fractal\", \"subject_type\": \"host\", \"subject_id\": \"fractal\", \"source_system\": \"fractal_thermal_endpoint\", \"source_instance\": \"fractal-lm-sensors\", \"source_entity_id\": \"lm_sensors:k10temp:Tctl\"}",
+   "routes": {
+    "/thermal": {
+     "status": 200,
+     "headers": [],
+     "body_hex": "7b226c6d5f73656e736f7273223a207b226370755f7463746c223a207b2276616c7565223a2035352e3632357d7d7d"
+    }
+   },
+   "write_error": null,
+   "touch_error": null,
+   "outcome": [
+    "ok",
+    1,
+    0,
+    ""
+   ],
+   "requests": [
+    {
+     "method": "GET",
+     "target": "/thermal",
+     "authorization": null,
+     "accept": "application/json"
+    }
+   ],
+   "written": [
+    {
+     "ts": "2026-10-21T09:45:00.250000+00:00",
+     "metric": "host.temperature_celsius",
+     "value": "55.625",
+     "subject_type": "host",
+     "subject_id": "fractal",
+     "source_system": "fractal_thermal_endpoint",
+     "collector_service": "graphyard-agent",
+     "collector_host": "fractal",
+     "source_instance": "fractal-lm-sensors",
+     "source_entity_id": "lm_sensors:k10temp:Tctl",
+     "host": "fractal",
+     "service": null,
+     "tags": [
+      [
+       "spec_name",
+       "json nested value (test_http_json_metric_spec_ingests_three_level_nested_value)"
+      ]
+     ]
+    }
+   ],
+   "touched": [
+    {
+     "ts": "2026-10-21T09:45:00.250000+00:00",
+     "metric": "host.temperature_celsius",
+     "value": "55.625",
+     "subject_type": "host",
+     "subject_id": "fractal",
+     "source_system": "fractal_thermal_endpoint",
+     "collector_service": "graphyard-agent",
+     "collector_host": "fractal",
+     "source_instance": "fractal-lm-sensors",
+     "source_entity_id": "lm_sensors:k10temp:Tctl",
+     "host": "fractal",
+     "service": null,
+     "tags": [
+      [
+       "spec_name",
+       "json nested value (test_http_json_metric_spec_ingests_three_level_nested_value)"
+      ]
+     ]
+    }
+   ],
+   "log": [
+    "HTTP Request: GET http://fixture.test/thermal \"HTTP/1.1 200 OK\""
+   ]
+  },
+  {
+   "name": "json non-finite value (test_http_json_metric_spec_skips_non_finite_value)",
+   "spec_name": "json non-finite value (test_http_json_metric_spec_skips_non_finite_value)",
+   "spec_type": "http_json_metric",
+   "config": "{\"url\": \"http://fixture.test/health\", \"metric_path\": \"$.queue.depth\", \"metric_name\": \"service.queue_depth\", \"host_id\": \"macmini\", \"service_id\": \"mail\"}",
+   "routes": {
+    "/health": {
+     "status": 200,
+     "headers": [],
+     "body_hex": "7b227175657565223a207b226465707468223a20224e614e227d7d"
+    }
+   },
+   "write_error": null,
+   "touch_error": null,
+   "outcome": [
+    "warning",
+    0,
+    1,
+    "metric value is not a finite number"
+   ],
+   "requests": [
+    {
+     "method": "GET",
+     "target": "/health",
+     "authorization": null,
+     "accept": "application/json"
+    }
+   ],
+   "written": null,
+   "touched": null,
+   "log": [
+    "HTTP Request: GET http://fixture.test/health \"HTTP/1.1 200 OK\""
+   ]
+  },
+  {
+   "name": "json canonical dimensions (test_http_json_metric_spec_emits_canonical_dimensions)",
+   "spec_name": "json canonical dimensions (test_http_json_metric_spec_emits_canonical_dimensions)",
+   "spec_type": "http_json_metric",
+   "config": "{\"url\": \"http://fixture.test/health\", \"metric_path\": \"$.queue.depth\", \"metric_name\": \"service.queue_depth\", \"host_id\": \"macmini\", \"service_id\": \"mail\", \"subject_type\": \"service\", \"subject_id\": \"graphyard_web\", \"source_system\": \"graphyard\", \"source_instance\": \"default\", \"source_entity_id\": \"fractal_thermal_endpoint:queue_depth\", \"collector_service\": \"graphyard-agent\", \"collector_host\": \"macmini\"}",
+   "routes": {
+    "/health": {
+     "status": 200,
+     "headers": [],
+     "body_hex": "7b227175657565223a207b226465707468223a2031327d7d"
+    }
+   },
+   "write_error": null,
+   "touch_error": null,
+   "outcome": [
+    "ok",
+    1,
+    0,
+    ""
+   ],
+   "requests": [
+    {
+     "method": "GET",
+     "target": "/health",
+     "authorization": null,
+     "accept": "application/json"
+    }
+   ],
+   "written": [
+    {
+     "ts": "2026-10-21T09:45:00.250000+00:00",
+     "metric": "service.queue_depth",
+     "value": "12.0",
+     "subject_type": "service",
+     "subject_id": "graphyard_web",
+     "source_system": "graphyard",
+     "collector_service": "graphyard-agent",
+     "collector_host": "macmini",
+     "source_instance": "default",
+     "source_entity_id": "fractal_thermal_endpoint:queue_depth",
+     "host": null,
+     "service": "mail",
+     "tags": [
+      [
+       "spec_name",
+       "json canonical dimensions (test_http_json_metric_spec_emits_canonical_dimensions)"
+      ]
+     ]
+    }
+   ],
+   "touched": [
+    {
+     "ts": "2026-10-21T09:45:00.250000+00:00",
+     "metric": "service.queue_depth",
+     "value": "12.0",
+     "subject_type": "service",
+     "subject_id": "graphyard_web",
+     "source_system": "graphyard",
+     "collector_service": "graphyard-agent",
+     "collector_host": "macmini",
+     "source_instance": "default",
+     "source_entity_id": "fractal_thermal_endpoint:queue_depth",
+     "host": null,
+     "service": "mail",
+     "tags": [
+      [
+       "spec_name",
+       "json canonical dimensions (test_http_json_metric_spec_emits_canonical_dimensions)"
+      ]
+     ]
+    }
+   ],
+   "log": [
+    "HTTP Request: GET http://fixture.test/health \"HTTP/1.1 200 OK\""
+   ]
+  },
+  {
+   "name": "json bearer token",
+   "spec_name": "json bearer token",
+   "spec_type": "http_json_metric",
+   "config": "{\"url\": \"http://fixture.test/health\", \"metric_path\": \"$.queue.depth\", \"metric_name\": \"service.queue_depth\", \"host_id\": \"macmini\", \"service_id\": \"mail\", \"bearer_token\": \" test-bearer \", \"verify_tls\": false}",
+   "routes": {
+    "/health": {
+     "status": 200,
+     "headers": [],
+     "body_hex": "7b227175657565223a207b226465707468223a2031327d7d"
+    }
+   },
+   "write_error": null,
+   "touch_error": null,
+   "outcome": [
+    "ok",
+    1,
+    0,
+    ""
+   ],
+   "requests": [
+    {
+     "method": "GET",
+     "target": "/health",
+     "authorization": "Bearer test-bearer",
+     "accept": "application/json"
+    }
+   ],
+   "written": [
+    {
+     "ts": "2026-10-21T09:45:00.250000+00:00",
+     "metric": "service.queue_depth",
+     "value": "12.0",
+     "subject_type": "service",
+     "subject_id": "mail",
+     "source_system": "http",
+     "collector_service": "mail",
+     "collector_host": "macmini",
+     "source_instance": "default",
+     "source_entity_id": null,
+     "host": null,
+     "service": "mail",
+     "tags": [
+      [
+       "spec_name",
+       "json bearer token"
+      ]
+     ]
+    }
+   ],
+   "touched": [
+    {
+     "ts": "2026-10-21T09:45:00.250000+00:00",
+     "metric": "service.queue_depth",
+     "value": "12.0",
+     "subject_type": "service",
+     "subject_id": "mail",
+     "source_system": "http",
+     "collector_service": "mail",
+     "collector_host": "macmini",
+     "source_instance": "default",
+     "source_entity_id": null,
+     "host": null,
+     "service": "mail",
+     "tags": [
+      [
+       "spec_name",
+       "json bearer token"
+      ]
+     ]
+    }
+   ],
+   "log": [
+    "HTTP Request: GET http://fixture.test/health \"HTTP/1.1 200 OK\""
+   ]
+  },
+  {
+   "name": "json basic auth",
+   "spec_name": "json basic auth",
+   "spec_type": "http_json_metric",
+   "config": "{\"url\": \"http://fixture.test/health\", \"metric_path\": \"$.queue.depth\", \"metric_name\": \"service.queue_depth\", \"host_id\": \"macmini\", \"service_id\": \"mail\", \"basic_username\": \"user\", \"basic_password\": \"pass\"}",
+   "routes": {
+    "/health": {
+     "status": 200,
+     "headers": [],
+     "body_hex": "7b227175657565223a207b226465707468223a2031327d7d"
+    }
+   },
+   "write_error": null,
+   "touch_error": null,
+   "outcome": [
+    "ok",
+    1,
+    0,
+    ""
+   ],
+   "requests": [
+    {
+     "method": "GET",
+     "target": "/health",
+     "authorization": "Basic dXNlcjpwYXNz",
+     "accept": "application/json"
+    }
+   ],
+   "written": [
+    {
+     "ts": "2026-10-21T09:45:00.250000+00:00",
+     "metric": "service.queue_depth",
+     "value": "12.0",
+     "subject_type": "service",
+     "subject_id": "mail",
+     "source_system": "http",
+     "collector_service": "mail",
+     "collector_host": "macmini",
+     "source_instance": "default",
+     "source_entity_id": null,
+     "host": null,
+     "service": "mail",
+     "tags": [
+      [
+       "spec_name",
+       "json basic auth"
+      ]
+     ]
+    }
+   ],
+   "touched": [
+    {
+     "ts": "2026-10-21T09:45:00.250000+00:00",
+     "metric": "service.queue_depth",
+     "value": "12.0",
+     "subject_type": "service",
+     "subject_id": "mail",
+     "source_system": "http",
+     "collector_service": "mail",
+     "collector_host": "macmini",
+     "source_instance": "default",
+     "source_entity_id": null,
+     "host": null,
+     "service": "mail",
+     "tags": [
+      [
+       "spec_name",
+       "json basic auth"
+      ]
+     ]
+    }
+   ],
+   "log": [
+    "HTTP Request: GET http://fixture.test/health \"HTTP/1.1 200 OK\""
+   ]
+  },
+  {
+   "name": "json basic auth needs both fields",
+   "spec_name": "json basic auth needs both fields",
+   "spec_type": "http_json_metric",
+   "config": "{\"url\": \"http://fixture.test/health\", \"metric_path\": \"$.queue.depth\", \"metric_name\": \"service.queue_depth\", \"host_id\": \"macmini\", \"service_id\": \"mail\", \"basic_username\": \"user\", \"basic_password\": \"   \"}",
+   "routes": {
+    "/health": {
+     "status": 200,
+     "headers": [],
+     "body_hex": "7b227175657565223a207b226465707468223a2031327d7d"
+    }
+   },
+   "write_error": null,
+   "touch_error": null,
+   "outcome": [
+    "ok",
+    1,
+    0,
+    ""
+   ],
+   "requests": [
+    {
+     "method": "GET",
+     "target": "/health",
+     "authorization": null,
+     "accept": "application/json"
+    }
+   ],
+   "written": [
+    {
+     "ts": "2026-10-21T09:45:00.250000+00:00",
+     "metric": "service.queue_depth",
+     "value": "12.0",
+     "subject_type": "service",
+     "subject_id": "mail",
+     "source_system": "http",
+     "collector_service": "mail",
+     "collector_host": "macmini",
+     "source_instance": "default",
+     "source_entity_id": null,
+     "host": null,
+     "service": "mail",
+     "tags": [
+      [
+       "spec_name",
+       "json basic auth needs both fields"
+      ]
+     ]
+    }
+   ],
+   "touched": [
+    {
+     "ts": "2026-10-21T09:45:00.250000+00:00",
+     "metric": "service.queue_depth",
+     "value": "12.0",
+     "subject_type": "service",
+     "subject_id": "mail",
+     "source_system": "http",
+     "collector_service": "mail",
+     "collector_host": "macmini",
+     "source_instance": "default",
+     "source_entity_id": null,
+     "host": null,
+     "service": "mail",
+     "tags": [
+      [
+       "spec_name",
+       "json basic auth needs both fields"
+      ]
+     ]
+    }
+   ],
+   "log": [
+    "HTTP Request: GET http://fixture.test/health \"HTTP/1.1 200 OK\""
+   ]
+  },
+  {
+   "name": "json bearer and basic auth",
+   "spec_name": "json bearer and basic auth",
+   "spec_type": "http_json_metric",
+   "config": "{\"url\": \"http://fixture.test/health\", \"metric_path\": \"$.queue.depth\", \"metric_name\": \"service.queue_depth\", \"host_id\": \"macmini\", \"service_id\": \"mail\", \"bearer_token\": \"b\", \"basic_username\": \"u\", \"basic_password\": \"p\"}",
+   "routes": {
+    "/health": {
+     "status": 200,
+     "headers": [],
+     "body_hex": "7b227175657565223a207b226465707468223a2031327d7d"
+    }
+   },
+   "write_error": null,
+   "touch_error": null,
+   "outcome": [
+    "ok",
+    1,
+    0,
+    ""
+   ],
+   "requests": [
+    {
+     "method": "GET",
+     "target": "/health",
+     "authorization": "Basic dTpw",
+     "accept": "application/json"
+    }
+   ],
+   "written": [
+    {
+     "ts": "2026-10-21T09:45:00.250000+00:00",
+     "metric": "service.queue_depth",
+     "value": "12.0",
+     "subject_type": "service",
+     "subject_id": "mail",
+     "source_system": "http",
+     "collector_service": "mail",
+     "collector_host": "macmini",
+     "source_instance": "default",
+     "source_entity_id": null,
+     "host": null,
+     "service": "mail",
+     "tags": [
+      [
+       "spec_name",
+       "json bearer and basic auth"
+      ]
+     ]
+    }
+   ],
+   "touched": [
+    {
+     "ts": "2026-10-21T09:45:00.250000+00:00",
+     "metric": "service.queue_depth",
+     "value": "12.0",
+     "subject_type": "service",
+     "subject_id": "mail",
+     "source_system": "http",
+     "collector_service": "mail",
+     "collector_host": "macmini",
+     "source_instance": "default",
+     "source_entity_id": null,
+     "host": null,
+     "service": "mail",
+     "tags": [
+      [
+       "spec_name",
+       "json bearer and basic auth"
+      ]
+     ]
+    }
+   ],
+   "log": [
+    "HTTP Request: GET http://fixture.test/health \"HTTP/1.1 200 OK\""
+   ]
+  },
+  {
+   "name": "json credentials in the URL",
+   "spec_name": "json credentials in the URL",
+   "spec_type": "http_json_metric",
+   "config": "{\"url\": \"http://nyx:secret@fixture.test/health\", \"metric_path\": \"$.queue.depth\", \"metric_name\": \"service.queue_depth\", \"host_id\": \"macmini\", \"service_id\": \"mail\"}",
+   "routes": {
+    "/health": {
+     "status": 200,
+     "headers": [],
+     "body_hex": "7b227175657565223a207b226465707468223a2031327d7d"
+    }
+   },
+   "write_error": null,
+   "touch_error": null,
+   "outcome": [
+    "ok",
+    1,
+    0,
+    ""
+   ],
+   "requests": [
+    {
+     "method": "GET",
+     "target": "/health",
+     "authorization": "Basic bnl4OnNlY3JldA==",
+     "accept": "application/json"
+    }
+   ],
+   "written": [
+    {
+     "ts": "2026-10-21T09:45:00.250000+00:00",
+     "metric": "service.queue_depth",
+     "value": "12.0",
+     "subject_type": "service",
+     "subject_id": "mail",
+     "source_system": "http",
+     "collector_service": "mail",
+     "collector_host": "macmini",
+     "source_instance": "default",
+     "source_entity_id": null,
+     "host": null,
+     "service": "mail",
+     "tags": [
+      [
+       "spec_name",
+       "json credentials in the URL"
+      ]
+     ]
+    }
+   ],
+   "touched": [
+    {
+     "ts": "2026-10-21T09:45:00.250000+00:00",
+     "metric": "service.queue_depth",
+     "value": "12.0",
+     "subject_type": "service",
+     "subject_id": "mail",
+     "source_system": "http",
+     "collector_service": "mail",
+     "collector_host": "macmini",
+     "source_instance": "default",
+     "source_entity_id": null,
+     "host": null,
+     "service": "mail",
+     "tags": [
+      [
+       "spec_name",
+       "json credentials in the URL"
+      ]
+     ]
+    }
+   ],
+   "log": [
+    "HTTP Request: GET http://nyx:secret@fixture.test/health \"HTTP/1.1 200 OK\""
+   ]
+  },
+  {
+   "name": "json fractal storage endpoint (production shape)",
+   "spec_name": "fractal fast pool capacity",
+   "spec_type": "http_json_metric",
+   "config": "{\"url\": \"http://fixture.test/storage\", \"basic_username\": \"nyxmon\", \"basic_password\": \"redacted\", \"metric_path\": \"$.pools.fast.cap_ratio\", \"metric_name\": \"host.zfs_pool_capacity_ratio\", \"host_id\": \"fractal\", \"subject_type\": \"host\", \"subject_id\": \"fractal\", \"source_system\": \"fractal_storage_endpoint\", \"source_instance\": \"fractal-zfs\", \"source_entity_id\": \"zfs:fast:cap_ratio\", \"collector_service\": \"graphyard-agent\", \"collector_host\": \"macmini\", \"tags\": {\"pool\": \"fast\"}, \"request_timeout_seconds\": 10}",
+   "routes": {
+    "/storage": {
+     "status": 200,
+     "headers": [],
+     "body_hex": "7b22706f6f6c73223a207b2266617374223a207b226361705f726174696f223a20302e32377d7d7d"
+    }
+   },
+   "write_error": null,
+   "touch_error": null,
+   "outcome": [
+    "ok",
+    1,
+    0,
+    ""
+   ],
+   "requests": [
+    {
+     "method": "GET",
+     "target": "/storage",
+     "authorization": "Basic bnl4bW9uOnJlZGFjdGVk",
+     "accept": "application/json"
+    }
+   ],
+   "written": [
+    {
+     "ts": "2026-10-21T09:45:00.250000+00:00",
+     "metric": "host.zfs_pool_capacity_ratio",
+     "value": "0.27",
+     "subject_type": "host",
+     "subject_id": "fractal",
+     "source_system": "fractal_storage_endpoint",
+     "collector_service": "graphyard-agent",
+     "collector_host": "macmini",
+     "source_instance": "fractal-zfs",
+     "source_entity_id": "zfs:fast:cap_ratio",
+     "host": "fractal",
+     "service": null,
+     "tags": [
+      [
+       "spec_name",
+       "fractal fast pool capacity"
+      ],
+      [
+       "pool",
+       "fast"
+      ]
+     ]
+    }
+   ],
+   "touched": [
+    {
+     "ts": "2026-10-21T09:45:00.250000+00:00",
+     "metric": "host.zfs_pool_capacity_ratio",
+     "value": "0.27",
+     "subject_type": "host",
+     "subject_id": "fractal",
+     "source_system": "fractal_storage_endpoint",
+     "collector_service": "graphyard-agent",
+     "collector_host": "macmini",
+     "source_instance": "fractal-zfs",
+     "source_entity_id": "zfs:fast:cap_ratio",
+     "host": "fractal",
+     "service": null,
+     "tags": [
+      [
+       "spec_name",
+       "fractal fast pool capacity"
+      ],
+      [
+       "pool",
+       "fast"
+      ]
+     ]
+    }
+   ],
+   "log": [
+    "HTTP Request: GET http://fixture.test/storage \"HTTP/1.1 200 OK\""
+   ]
+  },
+  {
+   "name": "json host subject keeps the raw host id",
+   "spec_name": "json host subject keeps the raw host id",
+   "spec_type": "http_json_metric",
+   "config": "{\"url\": \"http://fixture.test/health\", \"metric_path\": \"$.queue.depth\", \"metric_name\": \"service.queue_depth\", \"host_id\": \" Mac Mini \", \"service_id\": \"mail\", \"subject_type\": \" Host \", \"subject_id\": \"macmini\"}",
+   "routes": {
+    "/health": {
+     "status": 200,
+     "headers": [],
+     "body_hex": "7b227175657565223a207b226465707468223a2031327d7d"
+    }
+   },
+   "write_error": null,
+   "touch_error": null,
+   "outcome": [
+    "ok",
+    1,
+    0,
+    ""
+   ],
+   "requests": [
+    {
+     "method": "GET",
+     "target": "/health",
+     "authorization": null,
+     "accept": "application/json"
+    }
+   ],
+   "written": [
+    {
+     "ts": "2026-10-21T09:45:00.250000+00:00",
+     "metric": "service.queue_depth",
+     "value": "12.0",
+     "subject_type": "Host",
+     "subject_id": "macmini",
+     "source_system": "http",
+     "collector_service": "mail",
+     "collector_host": "Mac Mini",
+     "source_instance": "default",
+     "source_entity_id": null,
+     "host": " Mac Mini ",
+     "service": "mail",
+     "tags": [
+      [
+       "spec_name",
+       "json host subject keeps the raw host id"
+      ]
+     ]
+    }
+   ],
+   "touched": [
+    {
+     "ts": "2026-10-21T09:45:00.250000+00:00",
+     "metric": "service.queue_depth",
+     "value": "12.0",
+     "subject_type": "Host",
+     "subject_id": "macmini",
+     "source_system": "http",
+     "collector_service": "mail",
+     "collector_host": "Mac Mini",
+     "source_instance": "default",
+     "source_entity_id": null,
+     "host": " Mac Mini ",
+     "service": "mail",
+     "tags": [
+      [
+       "spec_name",
+       "json host subject keeps the raw host id"
+      ]
+     ]
+    }
+   ],
+   "log": [
+    "HTTP Request: GET http://fixture.test/health \"HTTP/1.1 200 OK\""
+   ]
+  },
+  {
+   "name": "json default chain without service",
+   "spec_name": "json default chain without service",
+   "spec_type": "http_json_metric",
+   "config": "{\"url\": \"http://fixture.test/health\", \"metric_path\": \"$.queue.depth\", \"metric_name\": \"m\"}",
+   "routes": {
+    "/health": {
+     "status": 200,
+     "headers": [],
+     "body_hex": "7b227175657565223a207b226465707468223a2031327d7d"
+    }
+   },
+   "write_error": null,
+   "touch_error": null,
+   "outcome": [
+    "ok",
+    1,
+    0,
+    ""
+   ],
+   "requests": [
+    {
+     "method": "GET",
+     "target": "/health",
+     "authorization": null,
+     "accept": "application/json"
+    }
+   ],
+   "written": [
+    {
+     "ts": "2026-10-21T09:45:00.250000+00:00",
+     "metric": "m",
+     "value": "12.0",
+     "subject_type": "service",
+     "subject_id": "external",
+     "source_system": "http",
+     "collector_service": "graphyard-agent",
+     "collector_host": "external",
+     "source_instance": "default",
+     "source_entity_id": null,
+     "host": null,
+     "service": null,
+     "tags": [
+      [
+       "spec_name",
+       "json default chain without service"
+      ]
+     ]
+    }
+   ],
+   "touched": [
+    {
+     "ts": "2026-10-21T09:45:00.250000+00:00",
+     "metric": "m",
+     "value": "12.0",
+     "subject_type": "service",
+     "subject_id": "external",
+     "source_system": "http",
+     "collector_service": "graphyard-agent",
+     "collector_host": "external",
+     "source_instance": "default",
+     "source_entity_id": null,
+     "host": null,
+     "service": null,
+     "tags": [
+      [
+       "spec_name",
+       "json default chain without service"
+      ]
+     ]
+    }
+   ],
+   "log": [
+    "HTTP Request: GET http://fixture.test/health \"HTTP/1.1 200 OK\""
+   ]
+  },
+  {
+   "name": "json default chain with empty host id",
+   "spec_name": "json default chain with empty host id",
+   "spec_type": "http_json_metric",
+   "config": "{\"url\": \"http://fixture.test/health\", \"metric_path\": \"$.queue.depth\", \"metric_name\": \"service.queue_depth\", \"host_id\": \"\", \"service_id\": \"\"}",
+   "routes": {
+    "/health": {
+     "status": 200,
+     "headers": [],
+     "body_hex": "7b227175657565223a207b226465707468223a2031327d7d"
+    }
+   },
+   "write_error": null,
+   "touch_error": null,
+   "outcome": [
+    "ok",
+    1,
+    0,
+    ""
+   ],
+   "requests": [
+    {
+     "method": "GET",
+     "target": "/health",
+     "authorization": null,
+     "accept": "application/json"
+    }
+   ],
+   "written": [
+    {
+     "ts": "2026-10-21T09:45:00.250000+00:00",
+     "metric": "service.queue_depth",
+     "value": "12.0",
+     "subject_type": "service",
+     "subject_id": "external",
+     "source_system": "http",
+     "collector_service": "graphyard-agent",
+     "collector_host": "external",
+     "source_instance": "default",
+     "source_entity_id": null,
+     "host": null,
+     "service": null,
+     "tags": [
+      [
+       "spec_name",
+       "json default chain with empty host id"
+      ]
+     ]
+    }
+   ],
+   "touched": [
+    {
+     "ts": "2026-10-21T09:45:00.250000+00:00",
+     "metric": "service.queue_depth",
+     "value": "12.0",
+     "subject_type": "service",
+     "subject_id": "external",
+     "source_system": "http",
+     "collector_service": "graphyard-agent",
+     "collector_host": "external",
+     "source_instance": "default",
+     "source_entity_id": null,
+     "host": null,
+     "service": null,
+     "tags": [
+      [
+       "spec_name",
+       "json default chain with empty host id"
+      ]
+     ]
+    }
+   ],
+   "log": [
+    "HTTP Request: GET http://fixture.test/health \"HTTP/1.1 200 OK\""
+   ]
+  },
+  {
+   "name": "json blank fields fall back",
+   "spec_name": "json blank fields fall back",
+   "spec_type": "http_json_metric",
+   "config": "{\"url\": \"http://fixture.test/health\", \"metric_path\": \"$.queue.depth\", \"metric_name\": \"service.queue_depth\", \"host_id\": \"\", \"service_id\": \"  \", \"source_instance\": \"  \", \"source_entity_id\": \"  \", \"collector_service\": \" \", \"collector_host\": \" \"}",
+   "routes": {
+    "/health": {
+     "status": 200,
+     "headers": [],
+     "body_hex": "7b227175657565223a207b226465707468223a2031327d7d"
+    }
+   },
+   "write_error": null,
+   "touch_error": null,
+   "outcome": [
+    "ok",
+    1,
+    0,
+    ""
+   ],
+   "requests": [
+    {
+     "method": "GET",
+     "target": "/health",
+     "authorization": null,
+     "accept": "application/json"
+    }
+   ],
+   "written": [
+    {
+     "ts": "2026-10-21T09:45:00.250000+00:00",
+     "metric": "service.queue_depth",
+     "value": "12.0",
+     "subject_type": "service",
+     "subject_id": "external",
+     "source_system": "http",
+     "collector_service": "graphyard-agent",
+     "collector_host": "external",
+     "source_instance": "default",
+     "source_entity_id": null,
+     "host": null,
+     "service": null,
+     "tags": [
+      [
+       "spec_name",
+       "json blank fields fall back"
+      ]
+     ]
+    }
+   ],
+   "touched": [
+    {
+     "ts": "2026-10-21T09:45:00.250000+00:00",
+     "metric": "service.queue_depth",
+     "value": "12.0",
+     "subject_type": "service",
+     "subject_id": "external",
+     "source_system": "http",
+     "collector_service": "graphyard-agent",
+     "collector_host": "external",
+     "source_instance": "default",
+     "source_entity_id": null,
+     "host": null,
+     "service": null,
+     "tags": [
+      [
+       "spec_name",
+       "json blank fields fall back"
+      ]
+     ]
+    }
+   ],
+   "log": [
+    "HTTP Request: GET http://fixture.test/health \"HTTP/1.1 200 OK\""
+   ]
+  },
+  {
+   "name": "json null fields are text",
+   "spec_name": "json null fields are text",
+   "spec_type": "http_json_metric",
+   "config": "{\"url\": \"http://fixture.test/health\", \"metric_path\": \"$.queue.depth\", \"metric_name\": \"service.queue_depth\", \"host_id\": null, \"service_id\": null, \"subject_type\": null, \"subject_id\": null, \"source_system\": null}",
+   "routes": {
+    "/health": {
+     "status": 200,
+     "headers": [],
+     "body_hex": "7b227175657565223a207b226465707468223a2031327d7d"
+    }
+   },
+   "write_error": null,
+   "touch_error": null,
+   "outcome": [
+    "ok",
+    1,
+    0,
+    ""
+   ],
+   "requests": [
+    {
+     "method": "GET",
+     "target": "/health",
+     "authorization": null,
+     "accept": "application/json"
+    }
+   ],
+   "written": [
+    {
+     "ts": "2026-10-21T09:45:00.250000+00:00",
+     "metric": "service.queue_depth",
+     "value": "12.0",
+     "subject_type": "None",
+     "subject_id": "None",
+     "source_system": "None",
+     "collector_service": "None",
+     "collector_host": "None",
+     "source_instance": "default",
+     "source_entity_id": null,
+     "host": null,
+     "service": "None",
+     "tags": [
+      [
+       "spec_name",
+       "json null fields are text"
+      ]
+     ]
+    }
+   ],
+   "touched": [
+    {
+     "ts": "2026-10-21T09:45:00.250000+00:00",
+     "metric": "service.queue_depth",
+     "value": "12.0",
+     "subject_type": "None",
+     "subject_id": "None",
+     "source_system": "None",
+     "collector_service": "None",
+     "collector_host": "None",
+     "source_instance": "default",
+     "source_entity_id": null,
+     "host": null,
+     "service": "None",
+     "tags": [
+      [
+       "spec_name",
+       "json null fields are text"
+      ]
+     ]
+    }
+   ],
+   "log": [
+    "HTTP Request: GET http://fixture.test/health \"HTTP/1.1 200 OK\""
+   ]
+  },
+  {
+   "name": "json tags",
+   "spec_name": "json tags",
+   "spec_type": "http_json_metric",
+   "config": "{\"url\": \"http://fixture.test/health\", \"metric_path\": \"$.queue.depth\", \"metric_name\": \"service.queue_depth\", \"host_id\": \"macmini\", \"service_id\": \"mail\", \"tags\": {\"pool\": \"fast\", \"n\": 1, \"flag\": true, \"none\": null, \"spec_name\": \"override\"}}",
+   "routes": {
+    "/health": {
+     "status": 200,
+     "headers": [],
+     "body_hex": "7b227175657565223a207b226465707468223a2031327d7d"
+    }
+   },
+   "write_error": null,
+   "touch_error": null,
+   "outcome": [
+    "ok",
+    1,
+    0,
+    ""
+   ],
+   "requests": [
+    {
+     "method": "GET",
+     "target": "/health",
+     "authorization": null,
+     "accept": "application/json"
+    }
+   ],
+   "written": [
+    {
+     "ts": "2026-10-21T09:45:00.250000+00:00",
+     "metric": "service.queue_depth",
+     "value": "12.0",
+     "subject_type": "service",
+     "subject_id": "mail",
+     "source_system": "http",
+     "collector_service": "mail",
+     "collector_host": "macmini",
+     "source_instance": "default",
+     "source_entity_id": null,
+     "host": null,
+     "service": "mail",
+     "tags": [
+      [
+       "spec_name",
+       "override"
+      ],
+      [
+       "pool",
+       "fast"
+      ],
+      [
+       "n",
+       "1"
+      ],
+      [
+       "flag",
+       "True"
+      ],
+      [
+       "none",
+       "None"
+      ]
+     ]
+    }
+   ],
+   "touched": [
+    {
+     "ts": "2026-10-21T09:45:00.250000+00:00",
+     "metric": "service.queue_depth",
+     "value": "12.0",
+     "subject_type": "service",
+     "subject_id": "mail",
+     "source_system": "http",
+     "collector_service": "mail",
+     "collector_host": "macmini",
+     "source_instance": "default",
+     "source_entity_id": null,
+     "host": null,
+     "service": "mail",
+     "tags": [
+      [
+       "spec_name",
+       "override"
+      ],
+      [
+       "pool",
+       "fast"
+      ],
+      [
+       "n",
+       "1"
+      ],
+      [
+       "flag",
+       "True"
+      ],
+      [
+       "none",
+       "None"
+      ]
+     ]
+    }
+   ],
+   "log": [
+    "HTTP Request: GET http://fixture.test/health \"HTTP/1.1 200 OK\""
+   ]
+  },
+  {
+   "name": "json tags not an object",
+   "spec_name": "json tags not an object",
+   "spec_type": "http_json_metric",
+   "config": "{\"url\": \"http://fixture.test/health\", \"metric_path\": \"$.queue.depth\", \"metric_name\": \"service.queue_depth\", \"host_id\": \"macmini\", \"service_id\": \"mail\", \"tags\": [\"a\"]}",
+   "routes": {
+    "/health": {
+     "status": 200,
+     "headers": [],
+     "body_hex": "7b227175657565223a207b226465707468223a2031327d7d"
+    }
+   },
+   "write_error": null,
+   "touch_error": null,
+   "outcome": [
+    "ok",
+    1,
+    0,
+    ""
+   ],
+   "requests": [
+    {
+     "method": "GET",
+     "target": "/health",
+     "authorization": null,
+     "accept": "application/json"
+    }
+   ],
+   "written": [
+    {
+     "ts": "2026-10-21T09:45:00.250000+00:00",
+     "metric": "service.queue_depth",
+     "value": "12.0",
+     "subject_type": "service",
+     "subject_id": "mail",
+     "source_system": "http",
+     "collector_service": "mail",
+     "collector_host": "macmini",
+     "source_instance": "default",
+     "source_entity_id": null,
+     "host": null,
+     "service": "mail",
+     "tags": [
+      [
+       "spec_name",
+       "json tags not an object"
+      ]
+     ]
+    }
+   ],
+   "touched": [
+    {
+     "ts": "2026-10-21T09:45:00.250000+00:00",
+     "metric": "service.queue_depth",
+     "value": "12.0",
+     "subject_type": "service",
+     "subject_id": "mail",
+     "source_system": "http",
+     "collector_service": "mail",
+     "collector_host": "macmini",
+     "source_instance": "default",
+     "source_entity_id": null,
+     "host": null,
+     "service": "mail",
+     "tags": [
+      [
+       "spec_name",
+       "json tags not an object"
+      ]
+     ]
+    }
+   ],
+   "log": [
+    "HTTP Request: GET http://fixture.test/health \"HTTP/1.1 200 OK\""
+   ]
+  },
+  {
+   "name": "json config not an object",
+   "spec_name": "json config not an object",
+   "spec_type": "http_json_metric",
+   "config": "\"text\"",
+   "routes": {},
+   "write_error": null,
+   "touch_error": null,
+   "outcome": [
+    "critical",
+    0,
+    0,
+    "config must be an object"
+   ],
+   "requests": [],
+   "written": null,
+   "touched": null,
+   "log": []
+  },
+  {
+   "name": "json url required",
+   "spec_name": "json url required",
+   "spec_type": "http_json_metric",
+   "config": "{\"url\": \"  \", \"metric_path\": \"$.queue.depth\", \"metric_name\": \"service.queue_depth\", \"host_id\": \"macmini\", \"service_id\": \"mail\"}",
+   "routes": {},
+   "write_error": null,
+   "touch_error": null,
+   "outcome": [
+    "critical",
+    0,
+    0,
+    "config.url is required"
+   ],
+   "requests": [],
+   "written": null,
+   "touched": null,
+   "log": []
+  },
+  {
+   "name": "json metric_path required",
+   "spec_name": "json metric_path required",
+   "spec_type": "http_json_metric",
+   "config": "{\"url\": \"http://fixture.test/health\", \"metric_path\": \"\", \"metric_name\": \"service.queue_depth\", \"host_id\": \"macmini\", \"service_id\": \"mail\"}",
+   "routes": {},
+   "write_error": null,
+   "touch_error": null,
+   "outcome": [
+    "critical",
+    0,
+    0,
+    "config.metric_path is required"
+   ],
+   "requests": [],
+   "written": null,
+   "touched": null,
+   "log": []
+  },
+  {
+   "name": "json metric_name required",
+   "spec_name": "json metric_name required",
+   "spec_type": "http_json_metric",
+   "config": "{\"url\": \"http://fixture.test/health\", \"metric_path\": \"$.queue.depth\", \"metric_name\": \" \", \"host_id\": \"macmini\", \"service_id\": \"mail\"}",
+   "routes": {},
+   "write_error": null,
+   "touch_error": null,
+   "outcome": [
+    "critical",
+    0,
+    0,
+    "config.metric_name is required"
+   ],
+   "requests": [],
+   "written": null,
+   "touched": null,
+   "log": []
+  },
+  {
+   "name": "json knobs before required fields",
+   "spec_name": "json knobs before required fields",
+   "spec_type": "http_json_metric",
+   "config": "{\"request_timeout_seconds\": 0}",
+   "routes": {},
+   "write_error": null,
+   "touch_error": null,
+   "error": {
+    "class": "SpecConfigError",
+    "message": "config.request_timeout_seconds must be a number greater than 0, got 0"
+   },
+   "requests": [],
+   "written": null,
+   "touched": null,
+   "log": []
+  },
+  {
+   "name": "json max_body_bytes knob error",
+   "spec_name": "json max_body_bytes knob error",
+   "spec_type": "http_json_metric",
+   "config": "{\"url\": \"http://fixture.test/health\", \"metric_path\": \"$.queue.depth\", \"metric_name\": \"service.queue_depth\", \"host_id\": \"macmini\", \"service_id\": \"mail\", \"max_body_bytes\": \"lots\"}",
+   "routes": {},
+   "write_error": null,
+   "touch_error": null,
+   "error": {
+    "class": "SpecConfigError",
+    "message": "config.max_body_bytes must be a positive integer, got 'lots'"
+   },
+   "requests": [],
+   "written": null,
+   "touched": null,
+   "log": []
+  },
+  {
+   "name": "json server error",
+   "spec_name": "json server error",
+   "spec_type": "http_json_metric",
+   "config": "{\"url\": \"http://fixture.test/health\", \"metric_path\": \"$.queue.depth\", \"metric_name\": \"service.queue_depth\", \"host_id\": \"macmini\", \"service_id\": \"mail\"}",
+   "routes": {
+    "/health": {
+     "status": 500,
+     "headers": [],
+     "body_hex": "626f6f6d"
+    }
+   },
+   "write_error": null,
+   "touch_error": null,
+   "outcome": [
+    "critical",
+    0,
+    0,
+    "Server error '500 Internal Server Error' for url 'http://fixture.test/health'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/500"
+   ],
+   "requests": [
+    {
+     "method": "GET",
+     "target": "/health",
+     "authorization": null,
+     "accept": "application/json"
+    }
+   ],
+   "written": null,
+   "touched": null,
+   "log": [
+    "HTTP Request: GET http://fixture.test/health \"HTTP/1.1 500 Internal Server Error\""
+   ]
+  },
+  {
+   "name": "json root path on a scalar",
+   "spec_name": "json root path on a scalar",
+   "spec_type": "http_json_metric",
+   "config": "{\"url\": \"http://fixture.test/health\", \"metric_path\": \"$\", \"metric_name\": \"service.queue_depth\", \"host_id\": \"macmini\", \"service_id\": \"mail\"}",
+   "routes": {
+    "/health": {
+     "status": 200,
+     "headers": [],
+     "body_hex": "37"
+    }
+   },
+   "write_error": null,
+   "touch_error": null,
+   "outcome": [
+    "ok",
+    1,
+    0,
+    ""
+   ],
+   "requests": [
+    {
+     "method": "GET",
+     "target": "/health",
+     "authorization": null,
+     "accept": "application/json"
+    }
+   ],
+   "written": [
+    {
+     "ts": "2026-10-21T09:45:00.250000+00:00",
+     "metric": "service.queue_depth",
+     "value": "7.0",
+     "subject_type": "service",
+     "subject_id": "mail",
+     "source_system": "http",
+     "collector_service": "mail",
+     "collector_host": "macmini",
+     "source_instance": "default",
+     "source_entity_id": null,
+     "host": null,
+     "service": "mail",
+     "tags": [
+      [
+       "spec_name",
+       "json root path on a scalar"
+      ]
+     ]
+    }
+   ],
+   "touched": [
+    {
+     "ts": "2026-10-21T09:45:00.250000+00:00",
+     "metric": "service.queue_depth",
+     "value": "7.0",
+     "subject_type": "service",
+     "subject_id": "mail",
+     "source_system": "http",
+     "collector_service": "mail",
+     "collector_host": "macmini",
+     "source_instance": "default",
+     "source_entity_id": null,
+     "host": null,
+     "service": "mail",
+     "tags": [
+      [
+       "spec_name",
+       "json root path on a scalar"
+      ]
+     ]
+    }
+   ],
+   "log": [
+    "HTTP Request: GET http://fixture.test/health \"HTTP/1.1 200 OK\""
+   ]
+  },
+  {
+   "name": "json null value is not found",
+   "spec_name": "json null value is not found",
+   "spec_type": "http_json_metric",
+   "config": "{\"url\": \"http://fixture.test/health\", \"metric_path\": \"$.queue.depth\", \"metric_name\": \"service.queue_depth\", \"host_id\": \"macmini\", \"service_id\": \"mail\"}",
+   "routes": {
+    "/health": {
+     "status": 200,
+     "headers": [],
+     "body_hex": "7b227175657565223a207b226465707468223a206e756c6c7d7d"
+    }
+   },
+   "write_error": null,
+   "touch_error": null,
+   "outcome": [
+    "warning",
+    0,
+    1,
+    "metric_path not found: $.queue.depth"
+   ],
+   "requests": [
+    {
+     "method": "GET",
+     "target": "/health",
+     "authorization": null,
+     "accept": "application/json"
+    }
+   ],
+   "written": null,
+   "touched": null,
+   "log": [
+    "HTTP Request: GET http://fixture.test/health \"HTTP/1.1 200 OK\""
+   ]
+  },
+  {
+   "name": "json bool value",
+   "spec_name": "json bool value",
+   "spec_type": "http_json_metric",
+   "config": "{\"url\": \"http://fixture.test/health\", \"metric_path\": \"$.queue.depth\", \"metric_name\": \"service.queue_depth\", \"host_id\": \"macmini\", \"service_id\": \"mail\"}",
+   "routes": {
+    "/health": {
+     "status": 200,
+     "headers": [],
+     "body_hex": "7b227175657565223a207b226465707468223a20747275657d7d"
+    }
+   },
+   "write_error": null,
+   "touch_error": null,
+   "outcome": [
+    "warning",
+    0,
+    1,
+    "metric value is not a finite number"
+   ],
+   "requests": [
+    {
+     "method": "GET",
+     "target": "/health",
+     "authorization": null,
+     "accept": "application/json"
+    }
+   ],
+   "written": null,
+   "touched": null,
+   "log": [
+    "HTTP Request: GET http://fixture.test/health \"HTTP/1.1 200 OK\""
+   ]
+  },
+  {
+   "name": "json string value",
+   "spec_name": "json string value",
+   "spec_type": "http_json_metric",
+   "config": "{\"url\": \"http://fixture.test/health\", \"metric_path\": \"$.queue.depth\", \"metric_name\": \"service.queue_depth\", \"host_id\": \"macmini\", \"service_id\": \"mail\"}",
+   "routes": {
+    "/health": {
+     "status": 200,
+     "headers": [],
+     "body_hex": "7b227175657565223a207b226465707468223a202220343220227d7d"
+    }
+   },
+   "write_error": null,
+   "touch_error": null,
+   "outcome": [
+    "ok",
+    1,
+    0,
+    ""
+   ],
+   "requests": [
+    {
+     "method": "GET",
+     "target": "/health",
+     "authorization": null,
+     "accept": "application/json"
+    }
+   ],
+   "written": [
+    {
+     "ts": "2026-10-21T09:45:00.250000+00:00",
+     "metric": "service.queue_depth",
+     "value": "42.0",
+     "subject_type": "service",
+     "subject_id": "mail",
+     "source_system": "http",
+     "collector_service": "mail",
+     "collector_host": "macmini",
+     "source_instance": "default",
+     "source_entity_id": null,
+     "host": null,
+     "service": "mail",
+     "tags": [
+      [
+       "spec_name",
+       "json string value"
+      ]
+     ]
+    }
+   ],
+   "touched": [
+    {
+     "ts": "2026-10-21T09:45:00.250000+00:00",
+     "metric": "service.queue_depth",
+     "value": "42.0",
+     "subject_type": "service",
+     "subject_id": "mail",
+     "source_system": "http",
+     "collector_service": "mail",
+     "collector_host": "macmini",
+     "source_instance": "default",
+     "source_entity_id": null,
+     "host": null,
+     "service": "mail",
+     "tags": [
+      [
+       "spec_name",
+       "json string value"
+      ]
+     ]
+    }
+   ],
+   "log": [
+    "HTTP Request: GET http://fixture.test/health \"HTTP/1.1 200 OK\""
+   ]
+  },
+  {
+   "name": "json list index",
+   "spec_name": "json list index",
+   "spec_type": "http_json_metric",
+   "config": "{\"url\": \"http://fixture.test/health\", \"metric_path\": \"$.queue.1\", \"metric_name\": \"service.queue_depth\", \"host_id\": \"macmini\", \"service_id\": \"mail\"}",
+   "routes": {
+    "/health": {
+     "status": 200,
+     "headers": [],
+     "body_hex": "7b227175657565223a205b312c20322e355d7d"
+    }
+   },
+   "write_error": null,
+   "touch_error": null,
+   "outcome": [
+    "ok",
+    1,
+    0,
+    ""
+   ],
+   "requests": [
+    {
+     "method": "GET",
+     "target": "/health",
+     "authorization": null,
+     "accept": "application/json"
+    }
+   ],
+   "written": [
+    {
+     "ts": "2026-10-21T09:45:00.250000+00:00",
+     "metric": "service.queue_depth",
+     "value": "2.5",
+     "subject_type": "service",
+     "subject_id": "mail",
+     "source_system": "http",
+     "collector_service": "mail",
+     "collector_host": "macmini",
+     "source_instance": "default",
+     "source_entity_id": null,
+     "host": null,
+     "service": "mail",
+     "tags": [
+      [
+       "spec_name",
+       "json list index"
+      ]
+     ]
+    }
+   ],
+   "touched": [
+    {
+     "ts": "2026-10-21T09:45:00.250000+00:00",
+     "metric": "service.queue_depth",
+     "value": "2.5",
+     "subject_type": "service",
+     "subject_id": "mail",
+     "source_system": "http",
+     "collector_service": "mail",
+     "collector_host": "macmini",
+     "source_instance": "default",
+     "source_entity_id": null,
+     "host": null,
+     "service": "mail",
+     "tags": [
+      [
+       "spec_name",
+       "json list index"
+      ]
+     ]
+    }
+   ],
+   "log": [
+    "HTTP Request: GET http://fixture.test/health \"HTTP/1.1 200 OK\""
+   ]
+  },
+  {
+   "name": "json index beyond the digit limit",
+   "spec_name": "json index beyond the digit limit",
+   "spec_type": "http_json_metric",
+   "config": "{\"url\": \"http://fixture.test/health\", \"metric_path\": \"$.queue.11111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111\", \"metric_name\": \"service.queue_depth\", \"host_id\": \"macmini\", \"service_id\": \"mail\"}",
+   "routes": {
+    "/health": {
+     "status": 200,
+     "headers": [],
+     "body_hex": "7b227175657565223a205b312c20322e355d7d"
+    }
+   },
+   "write_error": null,
+   "touch_error": null,
+   "outcome": [
+    "critical",
+    0,
+    0,
+    "Exceeds the limit (4300 digits) for integer string conversion: value has 4301 digits; use sys.set_int_max_str_digits() to increase the limit"
+   ],
+   "requests": [
+    {
+     "method": "GET",
+     "target": "/health",
+     "authorization": null,
+     "accept": "application/json"
+    }
+   ],
+   "written": null,
+   "touched": null,
+   "log": [
+    "HTTP Request: GET http://fixture.test/health \"HTTP/1.1 200 OK\""
+   ]
+  },
+  {
+   "name": "json integer beyond the digit limit in the body",
+   "spec_name": "json integer beyond the digit limit in the body",
+   "spec_type": "http_json_metric",
+   "config": "{\"url\": \"http://fixture.test/health\", \"metric_path\": \"$.queue.depth\", \"metric_name\": \"service.queue_depth\", \"host_id\": \"macmini\", \"service_id\": \"mail\"}",
+   "routes": {
+    "/health": {
+     "status": 200,
+     "headers": [],
+     "body_hex": "7b227175657565223a207b226465707468223a2039393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939397d7d"
+    }
+   },
+   "write_error": null,
+   "touch_error": null,
+   "outcome": [
+    "critical",
+    0,
+    0,
+    "Exceeds the limit (4300 digits) for integer string conversion: value has 4301 digits; use sys.set_int_max_str_digits() to increase the limit"
+   ],
+   "requests": [
+    {
+     "method": "GET",
+     "target": "/health",
+     "authorization": null,
+     "accept": "application/json"
+    }
+   ],
+   "written": null,
+   "touched": null,
+   "log": [
+    "HTTP Request: GET http://fixture.test/health \"HTTP/1.1 200 OK\""
+   ]
+  },
+  {
+   "name": "json huge integer value",
+   "spec_name": "json huge integer value",
+   "spec_type": "http_json_metric",
+   "config": "{\"url\": \"http://fixture.test/health\", \"metric_path\": \"$.queue.depth\", \"metric_name\": \"service.queue_depth\", \"host_id\": \"macmini\", \"service_id\": \"mail\"}",
+   "routes": {
+    "/health": {
+     "status": 200,
+     "headers": [],
+     "body_hex": "7b227175657565223a207b226465707468223a2031303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030307d7d"
+    }
+   },
+   "write_error": null,
+   "touch_error": null,
+   "outcome": [
+    "warning",
+    0,
+    1,
+    "metric value is not a finite number"
+   ],
+   "requests": [
+    {
+     "method": "GET",
+     "target": "/health",
+     "authorization": null,
+     "accept": "application/json"
+    }
+   ],
+   "written": null,
+   "touched": null,
+   "log": [
+    "HTTP Request: GET http://fixture.test/health \"HTTP/1.1 200 OK\""
+   ]
+  },
+  {
+   "name": "json invalid URL",
+   "spec_name": "json invalid URL",
+   "spec_type": "http_json_metric",
+   "config": "{\"url\": \"http://[::1\", \"metric_path\": \"$.queue.depth\", \"metric_name\": \"service.queue_depth\", \"host_id\": \"macmini\", \"service_id\": \"mail\"}",
+   "routes": {},
+   "write_error": null,
+   "touch_error": null,
+   "outcome": [
+    "critical",
+    0,
+    0,
+    "Invalid port: ':1'"
+   ],
+   "requests": [],
+   "written": null,
+   "touched": null,
+   "log": []
+  },
+  {
+   "name": "json write failure",
+   "spec_name": "json write failure",
+   "spec_type": "http_json_metric",
+   "config": "{\"url\": \"http://fixture.test/health\", \"metric_path\": \"$.queue.depth\", \"metric_name\": \"service.queue_depth\", \"host_id\": \"macmini\", \"service_id\": \"mail\"}",
+   "routes": {
+    "/health": {
+     "status": 200,
+     "headers": [],
+     "body_hex": "7b227175657565223a207b226465707468223a2031327d7d"
+    }
+   },
+   "write_error": "(400)\nReason: Bad Request\n",
+   "touch_error": null,
+   "outcome": [
+    "critical",
+    0,
+    0,
+    "(400)\nReason: Bad Request\n"
+   ],
+   "requests": [
+    {
+     "method": "GET",
+     "target": "/health",
+     "authorization": null,
+     "accept": "application/json"
+    }
+   ],
+   "written": [
+    {
+     "ts": "2026-10-21T09:45:00.250000+00:00",
+     "metric": "service.queue_depth",
+     "value": "12.0",
+     "subject_type": "service",
+     "subject_id": "mail",
+     "source_system": "http",
+     "collector_service": "mail",
+     "collector_host": "macmini",
+     "source_instance": "default",
+     "source_entity_id": null,
+     "host": null,
+     "service": "mail",
+     "tags": [
+      [
+       "spec_name",
+       "json write failure"
+      ]
+     ]
+    }
+   ],
+   "touched": null,
+   "log": [
+    "HTTP Request: GET http://fixture.test/health \"HTTP/1.1 200 OK\""
+   ]
+  },
+  {
+   "name": "json registry failure",
+   "spec_name": "json registry failure",
+   "spec_type": "http_json_metric",
+   "config": "{\"url\": \"http://fixture.test/health\", \"metric_path\": \"$.queue.depth\", \"metric_name\": \"service.queue_depth\", \"host_id\": \"macmini\", \"service_id\": \"mail\"}",
+   "routes": {
+    "/health": {
+     "status": 200,
+     "headers": [],
+     "body_hex": "7b227175657565223a207b226465707468223a2031327d7d"
+    }
+   },
+   "write_error": null,
+   "touch_error": "Invalid subject_id '': expected lowercase snake_case identifier",
+   "outcome": [
+    "critical",
+    0,
+    0,
+    "Invalid subject_id '': expected lowercase snake_case identifier"
+   ],
+   "requests": [
+    {
+     "method": "GET",
+     "target": "/health",
+     "authorization": null,
+     "accept": "application/json"
+    }
+   ],
+   "written": [
+    {
+     "ts": "2026-10-21T09:45:00.250000+00:00",
+     "metric": "service.queue_depth",
+     "value": "12.0",
+     "subject_type": "service",
+     "subject_id": "mail",
+     "source_system": "http",
+     "collector_service": "mail",
+     "collector_host": "macmini",
+     "source_instance": "default",
+     "source_entity_id": null,
+     "host": null,
+     "service": "mail",
+     "tags": [
+      [
+       "spec_name",
+       "json registry failure"
+      ]
+     ]
+    }
+   ],
+   "touched": [
+    {
+     "ts": "2026-10-21T09:45:00.250000+00:00",
+     "metric": "service.queue_depth",
+     "value": "12.0",
+     "subject_type": "service",
+     "subject_id": "mail",
+     "source_system": "http",
+     "collector_service": "mail",
+     "collector_host": "macmini",
+     "source_instance": "default",
+     "source_entity_id": null,
+     "host": null,
+     "service": "mail",
+     "tags": [
+      [
+       "spec_name",
+       "json registry failure"
+      ]
+     ]
+    }
+   ],
+   "log": [
+    "HTTP Request: GET http://fixture.test/health \"HTTP/1.1 200 OK\""
+   ]
+  }
+ ]
+}

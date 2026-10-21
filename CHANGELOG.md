@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+- Rust agent port (`agent-rs/`, slice S7a): the Home Assistant and HTTP JSON
+  executors (`graphyard-collect::executors`: `home_assistant_sensor`,
+  `home_assistant_env_scan`, `http_json_metric`) with the HA state
+  normalisation, subject and metric mappings (`graphyard_core::home_assistant`,
+  user regexes on `fancy-regex`) and the metric path
+  (`graphyard_core::json_path`). Pinned by new fixtures generated from the
+  Python code: `ha_mapping.json` (including macmini's production env scan
+  config), `json_path.json` (including the production metric paths) and
+  `ha_json_executors.json`, which runs the Python executors on a scripted
+  transport and is replayed against a fake server. The HTTP layer's JSON
+  reader now rejects integers beyond CPython's 4300-digit limit like
+  `json.loads`. The plan records the regex backtracking limit (D-5) and
+  corrects the Unicode-digit path case (D-6). Nothing runs the Rust code
+  yet; the Python agent is unchanged.
+
 - Rust agent port (`agent-rs/`, slice S7b): the `http_page_probe` and
   `unifi_device_traffic` executors in `graphyard-collect::executors`, ports
   of `_execute_http_page_probe_spec` and `_execute_unifi_device_traffic_spec`

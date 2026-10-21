@@ -1,0 +1,381 @@
+{
+ "cases": [
+  {
+   "payload": "{\"filesystems_by_name\": {\"rootfs\": {\"used_ratio\": 0.41}}, \"ipmi\": {\"FAN1_1\": {\"value\": 1120}, \"FAN2_1\": {\"value\": 980.0}, \"FAN3_1\": {\"value\": \"1040\"}, \"FAN6_1\": {\"value\": null}, \"TEMP_CARD_SIDE\": {\"value\": 41.5}, \"TEMP_CPU\": {\"value\": 55}, \"TEMP_DDR5_A1\": {\"value\": 38.25}, \"TEMP_DDR5_B1\": {\"value\": 37.75}, \"TEMP_FCH\": {\"value\": 47}, \"TEMP_MB\": {\"value\": 36}}, \"lm_sensors\": {\"cpu_tctl\": {\"value\": 55.625}, \"gpu_edge\": {\"value\": 44.0}, \"nvme_boot_composite\": {\"value\": 39.85}, \"nvme_fast_composite\": {\"value\": 41.85}}, \"pools\": {\"fast\": {\"cap_ratio\": 0.27}, \"tank\": {\"cap_ratio\": 0.63}}, \"sysfs\": {\"cpu_package\": {\"value\": 52.0}, \"fan1\": {\"value\": 1200}, \"nvme_composite\": {\"value\": 40.85}, \"pch_temperature\": {\"value\": 48.0}}, \"usb\": {\"device_present_value\": 1, \"last_known_used_ratio\": 0.5, \"pool_imported_value\": 0}}",
+   "path": "$.filesystems_by_name.rootfs.used_ratio",
+   "found": "0.41"
+  },
+  {
+   "payload": "{\"filesystems_by_name\": {\"rootfs\": {\"used_ratio\": 0.41}}, \"ipmi\": {\"FAN1_1\": {\"value\": 1120}, \"FAN2_1\": {\"value\": 980.0}, \"FAN3_1\": {\"value\": \"1040\"}, \"FAN6_1\": {\"value\": null}, \"TEMP_CARD_SIDE\": {\"value\": 41.5}, \"TEMP_CPU\": {\"value\": 55}, \"TEMP_DDR5_A1\": {\"value\": 38.25}, \"TEMP_DDR5_B1\": {\"value\": 37.75}, \"TEMP_FCH\": {\"value\": 47}, \"TEMP_MB\": {\"value\": 36}}, \"lm_sensors\": {\"cpu_tctl\": {\"value\": 55.625}, \"gpu_edge\": {\"value\": 44.0}, \"nvme_boot_composite\": {\"value\": 39.85}, \"nvme_fast_composite\": {\"value\": 41.85}}, \"pools\": {\"fast\": {\"cap_ratio\": 0.27}, \"tank\": {\"cap_ratio\": 0.63}}, \"sysfs\": {\"cpu_package\": {\"value\": 52.0}, \"fan1\": {\"value\": 1200}, \"nvme_composite\": {\"value\": 40.85}, \"pch_temperature\": {\"value\": 48.0}}, \"usb\": {\"device_present_value\": 1, \"last_known_used_ratio\": 0.5, \"pool_imported_value\": 0}}",
+   "path": "$.ipmi.FAN1_1.value",
+   "found": "1120"
+  },
+  {
+   "payload": "{\"filesystems_by_name\": {\"rootfs\": {\"used_ratio\": 0.41}}, \"ipmi\": {\"FAN1_1\": {\"value\": 1120}, \"FAN2_1\": {\"value\": 980.0}, \"FAN3_1\": {\"value\": \"1040\"}, \"FAN6_1\": {\"value\": null}, \"TEMP_CARD_SIDE\": {\"value\": 41.5}, \"TEMP_CPU\": {\"value\": 55}, \"TEMP_DDR5_A1\": {\"value\": 38.25}, \"TEMP_DDR5_B1\": {\"value\": 37.75}, \"TEMP_FCH\": {\"value\": 47}, \"TEMP_MB\": {\"value\": 36}}, \"lm_sensors\": {\"cpu_tctl\": {\"value\": 55.625}, \"gpu_edge\": {\"value\": 44.0}, \"nvme_boot_composite\": {\"value\": 39.85}, \"nvme_fast_composite\": {\"value\": 41.85}}, \"pools\": {\"fast\": {\"cap_ratio\": 0.27}, \"tank\": {\"cap_ratio\": 0.63}}, \"sysfs\": {\"cpu_package\": {\"value\": 52.0}, \"fan1\": {\"value\": 1200}, \"nvme_composite\": {\"value\": 40.85}, \"pch_temperature\": {\"value\": 48.0}}, \"usb\": {\"device_present_value\": 1, \"last_known_used_ratio\": 0.5, \"pool_imported_value\": 0}}",
+   "path": "$.ipmi.FAN2_1.value",
+   "found": "980.0"
+  },
+  {
+   "payload": "{\"filesystems_by_name\": {\"rootfs\": {\"used_ratio\": 0.41}}, \"ipmi\": {\"FAN1_1\": {\"value\": 1120}, \"FAN2_1\": {\"value\": 980.0}, \"FAN3_1\": {\"value\": \"1040\"}, \"FAN6_1\": {\"value\": null}, \"TEMP_CARD_SIDE\": {\"value\": 41.5}, \"TEMP_CPU\": {\"value\": 55}, \"TEMP_DDR5_A1\": {\"value\": 38.25}, \"TEMP_DDR5_B1\": {\"value\": 37.75}, \"TEMP_FCH\": {\"value\": 47}, \"TEMP_MB\": {\"value\": 36}}, \"lm_sensors\": {\"cpu_tctl\": {\"value\": 55.625}, \"gpu_edge\": {\"value\": 44.0}, \"nvme_boot_composite\": {\"value\": 39.85}, \"nvme_fast_composite\": {\"value\": 41.85}}, \"pools\": {\"fast\": {\"cap_ratio\": 0.27}, \"tank\": {\"cap_ratio\": 0.63}}, \"sysfs\": {\"cpu_package\": {\"value\": 52.0}, \"fan1\": {\"value\": 1200}, \"nvme_composite\": {\"value\": 40.85}, \"pch_temperature\": {\"value\": 48.0}}, \"usb\": {\"device_present_value\": 1, \"last_known_used_ratio\": 0.5, \"pool_imported_value\": 0}}",
+   "path": "$.ipmi.FAN3_1.value",
+   "found": "'1040'"
+  },
+  {
+   "payload": "{\"filesystems_by_name\": {\"rootfs\": {\"used_ratio\": 0.41}}, \"ipmi\": {\"FAN1_1\": {\"value\": 1120}, \"FAN2_1\": {\"value\": 980.0}, \"FAN3_1\": {\"value\": \"1040\"}, \"FAN6_1\": {\"value\": null}, \"TEMP_CARD_SIDE\": {\"value\": 41.5}, \"TEMP_CPU\": {\"value\": 55}, \"TEMP_DDR5_A1\": {\"value\": 38.25}, \"TEMP_DDR5_B1\": {\"value\": 37.75}, \"TEMP_FCH\": {\"value\": 47}, \"TEMP_MB\": {\"value\": 36}}, \"lm_sensors\": {\"cpu_tctl\": {\"value\": 55.625}, \"gpu_edge\": {\"value\": 44.0}, \"nvme_boot_composite\": {\"value\": 39.85}, \"nvme_fast_composite\": {\"value\": 41.85}}, \"pools\": {\"fast\": {\"cap_ratio\": 0.27}, \"tank\": {\"cap_ratio\": 0.63}}, \"sysfs\": {\"cpu_package\": {\"value\": 52.0}, \"fan1\": {\"value\": 1200}, \"nvme_composite\": {\"value\": 40.85}, \"pch_temperature\": {\"value\": 48.0}}, \"usb\": {\"device_present_value\": 1, \"last_known_used_ratio\": 0.5, \"pool_imported_value\": 0}}",
+   "path": "$.ipmi.FAN6_1.value",
+   "found": null
+  },
+  {
+   "payload": "{\"filesystems_by_name\": {\"rootfs\": {\"used_ratio\": 0.41}}, \"ipmi\": {\"FAN1_1\": {\"value\": 1120}, \"FAN2_1\": {\"value\": 980.0}, \"FAN3_1\": {\"value\": \"1040\"}, \"FAN6_1\": {\"value\": null}, \"TEMP_CARD_SIDE\": {\"value\": 41.5}, \"TEMP_CPU\": {\"value\": 55}, \"TEMP_DDR5_A1\": {\"value\": 38.25}, \"TEMP_DDR5_B1\": {\"value\": 37.75}, \"TEMP_FCH\": {\"value\": 47}, \"TEMP_MB\": {\"value\": 36}}, \"lm_sensors\": {\"cpu_tctl\": {\"value\": 55.625}, \"gpu_edge\": {\"value\": 44.0}, \"nvme_boot_composite\": {\"value\": 39.85}, \"nvme_fast_composite\": {\"value\": 41.85}}, \"pools\": {\"fast\": {\"cap_ratio\": 0.27}, \"tank\": {\"cap_ratio\": 0.63}}, \"sysfs\": {\"cpu_package\": {\"value\": 52.0}, \"fan1\": {\"value\": 1200}, \"nvme_composite\": {\"value\": 40.85}, \"pch_temperature\": {\"value\": 48.0}}, \"usb\": {\"device_present_value\": 1, \"last_known_used_ratio\": 0.5, \"pool_imported_value\": 0}}",
+   "path": "$.ipmi.TEMP_CARD_SIDE.value",
+   "found": "41.5"
+  },
+  {
+   "payload": "{\"filesystems_by_name\": {\"rootfs\": {\"used_ratio\": 0.41}}, \"ipmi\": {\"FAN1_1\": {\"value\": 1120}, \"FAN2_1\": {\"value\": 980.0}, \"FAN3_1\": {\"value\": \"1040\"}, \"FAN6_1\": {\"value\": null}, \"TEMP_CARD_SIDE\": {\"value\": 41.5}, \"TEMP_CPU\": {\"value\": 55}, \"TEMP_DDR5_A1\": {\"value\": 38.25}, \"TEMP_DDR5_B1\": {\"value\": 37.75}, \"TEMP_FCH\": {\"value\": 47}, \"TEMP_MB\": {\"value\": 36}}, \"lm_sensors\": {\"cpu_tctl\": {\"value\": 55.625}, \"gpu_edge\": {\"value\": 44.0}, \"nvme_boot_composite\": {\"value\": 39.85}, \"nvme_fast_composite\": {\"value\": 41.85}}, \"pools\": {\"fast\": {\"cap_ratio\": 0.27}, \"tank\": {\"cap_ratio\": 0.63}}, \"sysfs\": {\"cpu_package\": {\"value\": 52.0}, \"fan1\": {\"value\": 1200}, \"nvme_composite\": {\"value\": 40.85}, \"pch_temperature\": {\"value\": 48.0}}, \"usb\": {\"device_present_value\": 1, \"last_known_used_ratio\": 0.5, \"pool_imported_value\": 0}}",
+   "path": "$.ipmi.TEMP_CPU.value",
+   "found": "55"
+  },
+  {
+   "payload": "{\"filesystems_by_name\": {\"rootfs\": {\"used_ratio\": 0.41}}, \"ipmi\": {\"FAN1_1\": {\"value\": 1120}, \"FAN2_1\": {\"value\": 980.0}, \"FAN3_1\": {\"value\": \"1040\"}, \"FAN6_1\": {\"value\": null}, \"TEMP_CARD_SIDE\": {\"value\": 41.5}, \"TEMP_CPU\": {\"value\": 55}, \"TEMP_DDR5_A1\": {\"value\": 38.25}, \"TEMP_DDR5_B1\": {\"value\": 37.75}, \"TEMP_FCH\": {\"value\": 47}, \"TEMP_MB\": {\"value\": 36}}, \"lm_sensors\": {\"cpu_tctl\": {\"value\": 55.625}, \"gpu_edge\": {\"value\": 44.0}, \"nvme_boot_composite\": {\"value\": 39.85}, \"nvme_fast_composite\": {\"value\": 41.85}}, \"pools\": {\"fast\": {\"cap_ratio\": 0.27}, \"tank\": {\"cap_ratio\": 0.63}}, \"sysfs\": {\"cpu_package\": {\"value\": 52.0}, \"fan1\": {\"value\": 1200}, \"nvme_composite\": {\"value\": 40.85}, \"pch_temperature\": {\"value\": 48.0}}, \"usb\": {\"device_present_value\": 1, \"last_known_used_ratio\": 0.5, \"pool_imported_value\": 0}}",
+   "path": "$.ipmi.TEMP_DDR5_A1.value",
+   "found": "38.25"
+  },
+  {
+   "payload": "{\"filesystems_by_name\": {\"rootfs\": {\"used_ratio\": 0.41}}, \"ipmi\": {\"FAN1_1\": {\"value\": 1120}, \"FAN2_1\": {\"value\": 980.0}, \"FAN3_1\": {\"value\": \"1040\"}, \"FAN6_1\": {\"value\": null}, \"TEMP_CARD_SIDE\": {\"value\": 41.5}, \"TEMP_CPU\": {\"value\": 55}, \"TEMP_DDR5_A1\": {\"value\": 38.25}, \"TEMP_DDR5_B1\": {\"value\": 37.75}, \"TEMP_FCH\": {\"value\": 47}, \"TEMP_MB\": {\"value\": 36}}, \"lm_sensors\": {\"cpu_tctl\": {\"value\": 55.625}, \"gpu_edge\": {\"value\": 44.0}, \"nvme_boot_composite\": {\"value\": 39.85}, \"nvme_fast_composite\": {\"value\": 41.85}}, \"pools\": {\"fast\": {\"cap_ratio\": 0.27}, \"tank\": {\"cap_ratio\": 0.63}}, \"sysfs\": {\"cpu_package\": {\"value\": 52.0}, \"fan1\": {\"value\": 1200}, \"nvme_composite\": {\"value\": 40.85}, \"pch_temperature\": {\"value\": 48.0}}, \"usb\": {\"device_present_value\": 1, \"last_known_used_ratio\": 0.5, \"pool_imported_value\": 0}}",
+   "path": "$.ipmi.TEMP_DDR5_B1.value",
+   "found": "37.75"
+  },
+  {
+   "payload": "{\"filesystems_by_name\": {\"rootfs\": {\"used_ratio\": 0.41}}, \"ipmi\": {\"FAN1_1\": {\"value\": 1120}, \"FAN2_1\": {\"value\": 980.0}, \"FAN3_1\": {\"value\": \"1040\"}, \"FAN6_1\": {\"value\": null}, \"TEMP_CARD_SIDE\": {\"value\": 41.5}, \"TEMP_CPU\": {\"value\": 55}, \"TEMP_DDR5_A1\": {\"value\": 38.25}, \"TEMP_DDR5_B1\": {\"value\": 37.75}, \"TEMP_FCH\": {\"value\": 47}, \"TEMP_MB\": {\"value\": 36}}, \"lm_sensors\": {\"cpu_tctl\": {\"value\": 55.625}, \"gpu_edge\": {\"value\": 44.0}, \"nvme_boot_composite\": {\"value\": 39.85}, \"nvme_fast_composite\": {\"value\": 41.85}}, \"pools\": {\"fast\": {\"cap_ratio\": 0.27}, \"tank\": {\"cap_ratio\": 0.63}}, \"sysfs\": {\"cpu_package\": {\"value\": 52.0}, \"fan1\": {\"value\": 1200}, \"nvme_composite\": {\"value\": 40.85}, \"pch_temperature\": {\"value\": 48.0}}, \"usb\": {\"device_present_value\": 1, \"last_known_used_ratio\": 0.5, \"pool_imported_value\": 0}}",
+   "path": "$.ipmi.TEMP_FCH.value",
+   "found": "47"
+  },
+  {
+   "payload": "{\"filesystems_by_name\": {\"rootfs\": {\"used_ratio\": 0.41}}, \"ipmi\": {\"FAN1_1\": {\"value\": 1120}, \"FAN2_1\": {\"value\": 980.0}, \"FAN3_1\": {\"value\": \"1040\"}, \"FAN6_1\": {\"value\": null}, \"TEMP_CARD_SIDE\": {\"value\": 41.5}, \"TEMP_CPU\": {\"value\": 55}, \"TEMP_DDR5_A1\": {\"value\": 38.25}, \"TEMP_DDR5_B1\": {\"value\": 37.75}, \"TEMP_FCH\": {\"value\": 47}, \"TEMP_MB\": {\"value\": 36}}, \"lm_sensors\": {\"cpu_tctl\": {\"value\": 55.625}, \"gpu_edge\": {\"value\": 44.0}, \"nvme_boot_composite\": {\"value\": 39.85}, \"nvme_fast_composite\": {\"value\": 41.85}}, \"pools\": {\"fast\": {\"cap_ratio\": 0.27}, \"tank\": {\"cap_ratio\": 0.63}}, \"sysfs\": {\"cpu_package\": {\"value\": 52.0}, \"fan1\": {\"value\": 1200}, \"nvme_composite\": {\"value\": 40.85}, \"pch_temperature\": {\"value\": 48.0}}, \"usb\": {\"device_present_value\": 1, \"last_known_used_ratio\": 0.5, \"pool_imported_value\": 0}}",
+   "path": "$.ipmi.TEMP_MB.value",
+   "found": "36"
+  },
+  {
+   "payload": "{\"filesystems_by_name\": {\"rootfs\": {\"used_ratio\": 0.41}}, \"ipmi\": {\"FAN1_1\": {\"value\": 1120}, \"FAN2_1\": {\"value\": 980.0}, \"FAN3_1\": {\"value\": \"1040\"}, \"FAN6_1\": {\"value\": null}, \"TEMP_CARD_SIDE\": {\"value\": 41.5}, \"TEMP_CPU\": {\"value\": 55}, \"TEMP_DDR5_A1\": {\"value\": 38.25}, \"TEMP_DDR5_B1\": {\"value\": 37.75}, \"TEMP_FCH\": {\"value\": 47}, \"TEMP_MB\": {\"value\": 36}}, \"lm_sensors\": {\"cpu_tctl\": {\"value\": 55.625}, \"gpu_edge\": {\"value\": 44.0}, \"nvme_boot_composite\": {\"value\": 39.85}, \"nvme_fast_composite\": {\"value\": 41.85}}, \"pools\": {\"fast\": {\"cap_ratio\": 0.27}, \"tank\": {\"cap_ratio\": 0.63}}, \"sysfs\": {\"cpu_package\": {\"value\": 52.0}, \"fan1\": {\"value\": 1200}, \"nvme_composite\": {\"value\": 40.85}, \"pch_temperature\": {\"value\": 48.0}}, \"usb\": {\"device_present_value\": 1, \"last_known_used_ratio\": 0.5, \"pool_imported_value\": 0}}",
+   "path": "$.lm_sensors.cpu_tctl.value",
+   "found": "55.625"
+  },
+  {
+   "payload": "{\"filesystems_by_name\": {\"rootfs\": {\"used_ratio\": 0.41}}, \"ipmi\": {\"FAN1_1\": {\"value\": 1120}, \"FAN2_1\": {\"value\": 980.0}, \"FAN3_1\": {\"value\": \"1040\"}, \"FAN6_1\": {\"value\": null}, \"TEMP_CARD_SIDE\": {\"value\": 41.5}, \"TEMP_CPU\": {\"value\": 55}, \"TEMP_DDR5_A1\": {\"value\": 38.25}, \"TEMP_DDR5_B1\": {\"value\": 37.75}, \"TEMP_FCH\": {\"value\": 47}, \"TEMP_MB\": {\"value\": 36}}, \"lm_sensors\": {\"cpu_tctl\": {\"value\": 55.625}, \"gpu_edge\": {\"value\": 44.0}, \"nvme_boot_composite\": {\"value\": 39.85}, \"nvme_fast_composite\": {\"value\": 41.85}}, \"pools\": {\"fast\": {\"cap_ratio\": 0.27}, \"tank\": {\"cap_ratio\": 0.63}}, \"sysfs\": {\"cpu_package\": {\"value\": 52.0}, \"fan1\": {\"value\": 1200}, \"nvme_composite\": {\"value\": 40.85}, \"pch_temperature\": {\"value\": 48.0}}, \"usb\": {\"device_present_value\": 1, \"last_known_used_ratio\": 0.5, \"pool_imported_value\": 0}}",
+   "path": "$.lm_sensors.gpu_edge.value",
+   "found": "44.0"
+  },
+  {
+   "payload": "{\"filesystems_by_name\": {\"rootfs\": {\"used_ratio\": 0.41}}, \"ipmi\": {\"FAN1_1\": {\"value\": 1120}, \"FAN2_1\": {\"value\": 980.0}, \"FAN3_1\": {\"value\": \"1040\"}, \"FAN6_1\": {\"value\": null}, \"TEMP_CARD_SIDE\": {\"value\": 41.5}, \"TEMP_CPU\": {\"value\": 55}, \"TEMP_DDR5_A1\": {\"value\": 38.25}, \"TEMP_DDR5_B1\": {\"value\": 37.75}, \"TEMP_FCH\": {\"value\": 47}, \"TEMP_MB\": {\"value\": 36}}, \"lm_sensors\": {\"cpu_tctl\": {\"value\": 55.625}, \"gpu_edge\": {\"value\": 44.0}, \"nvme_boot_composite\": {\"value\": 39.85}, \"nvme_fast_composite\": {\"value\": 41.85}}, \"pools\": {\"fast\": {\"cap_ratio\": 0.27}, \"tank\": {\"cap_ratio\": 0.63}}, \"sysfs\": {\"cpu_package\": {\"value\": 52.0}, \"fan1\": {\"value\": 1200}, \"nvme_composite\": {\"value\": 40.85}, \"pch_temperature\": {\"value\": 48.0}}, \"usb\": {\"device_present_value\": 1, \"last_known_used_ratio\": 0.5, \"pool_imported_value\": 0}}",
+   "path": "$.lm_sensors.nvme_boot_composite.value",
+   "found": "39.85"
+  },
+  {
+   "payload": "{\"filesystems_by_name\": {\"rootfs\": {\"used_ratio\": 0.41}}, \"ipmi\": {\"FAN1_1\": {\"value\": 1120}, \"FAN2_1\": {\"value\": 980.0}, \"FAN3_1\": {\"value\": \"1040\"}, \"FAN6_1\": {\"value\": null}, \"TEMP_CARD_SIDE\": {\"value\": 41.5}, \"TEMP_CPU\": {\"value\": 55}, \"TEMP_DDR5_A1\": {\"value\": 38.25}, \"TEMP_DDR5_B1\": {\"value\": 37.75}, \"TEMP_FCH\": {\"value\": 47}, \"TEMP_MB\": {\"value\": 36}}, \"lm_sensors\": {\"cpu_tctl\": {\"value\": 55.625}, \"gpu_edge\": {\"value\": 44.0}, \"nvme_boot_composite\": {\"value\": 39.85}, \"nvme_fast_composite\": {\"value\": 41.85}}, \"pools\": {\"fast\": {\"cap_ratio\": 0.27}, \"tank\": {\"cap_ratio\": 0.63}}, \"sysfs\": {\"cpu_package\": {\"value\": 52.0}, \"fan1\": {\"value\": 1200}, \"nvme_composite\": {\"value\": 40.85}, \"pch_temperature\": {\"value\": 48.0}}, \"usb\": {\"device_present_value\": 1, \"last_known_used_ratio\": 0.5, \"pool_imported_value\": 0}}",
+   "path": "$.lm_sensors.nvme_fast_composite.value",
+   "found": "41.85"
+  },
+  {
+   "payload": "{\"filesystems_by_name\": {\"rootfs\": {\"used_ratio\": 0.41}}, \"ipmi\": {\"FAN1_1\": {\"value\": 1120}, \"FAN2_1\": {\"value\": 980.0}, \"FAN3_1\": {\"value\": \"1040\"}, \"FAN6_1\": {\"value\": null}, \"TEMP_CARD_SIDE\": {\"value\": 41.5}, \"TEMP_CPU\": {\"value\": 55}, \"TEMP_DDR5_A1\": {\"value\": 38.25}, \"TEMP_DDR5_B1\": {\"value\": 37.75}, \"TEMP_FCH\": {\"value\": 47}, \"TEMP_MB\": {\"value\": 36}}, \"lm_sensors\": {\"cpu_tctl\": {\"value\": 55.625}, \"gpu_edge\": {\"value\": 44.0}, \"nvme_boot_composite\": {\"value\": 39.85}, \"nvme_fast_composite\": {\"value\": 41.85}}, \"pools\": {\"fast\": {\"cap_ratio\": 0.27}, \"tank\": {\"cap_ratio\": 0.63}}, \"sysfs\": {\"cpu_package\": {\"value\": 52.0}, \"fan1\": {\"value\": 1200}, \"nvme_composite\": {\"value\": 40.85}, \"pch_temperature\": {\"value\": 48.0}}, \"usb\": {\"device_present_value\": 1, \"last_known_used_ratio\": 0.5, \"pool_imported_value\": 0}}",
+   "path": "$.pools.fast.cap_ratio",
+   "found": "0.27"
+  },
+  {
+   "payload": "{\"filesystems_by_name\": {\"rootfs\": {\"used_ratio\": 0.41}}, \"ipmi\": {\"FAN1_1\": {\"value\": 1120}, \"FAN2_1\": {\"value\": 980.0}, \"FAN3_1\": {\"value\": \"1040\"}, \"FAN6_1\": {\"value\": null}, \"TEMP_CARD_SIDE\": {\"value\": 41.5}, \"TEMP_CPU\": {\"value\": 55}, \"TEMP_DDR5_A1\": {\"value\": 38.25}, \"TEMP_DDR5_B1\": {\"value\": 37.75}, \"TEMP_FCH\": {\"value\": 47}, \"TEMP_MB\": {\"value\": 36}}, \"lm_sensors\": {\"cpu_tctl\": {\"value\": 55.625}, \"gpu_edge\": {\"value\": 44.0}, \"nvme_boot_composite\": {\"value\": 39.85}, \"nvme_fast_composite\": {\"value\": 41.85}}, \"pools\": {\"fast\": {\"cap_ratio\": 0.27}, \"tank\": {\"cap_ratio\": 0.63}}, \"sysfs\": {\"cpu_package\": {\"value\": 52.0}, \"fan1\": {\"value\": 1200}, \"nvme_composite\": {\"value\": 40.85}, \"pch_temperature\": {\"value\": 48.0}}, \"usb\": {\"device_present_value\": 1, \"last_known_used_ratio\": 0.5, \"pool_imported_value\": 0}}",
+   "path": "$.pools.tank.cap_ratio",
+   "found": "0.63"
+  },
+  {
+   "payload": "{\"filesystems_by_name\": {\"rootfs\": {\"used_ratio\": 0.41}}, \"ipmi\": {\"FAN1_1\": {\"value\": 1120}, \"FAN2_1\": {\"value\": 980.0}, \"FAN3_1\": {\"value\": \"1040\"}, \"FAN6_1\": {\"value\": null}, \"TEMP_CARD_SIDE\": {\"value\": 41.5}, \"TEMP_CPU\": {\"value\": 55}, \"TEMP_DDR5_A1\": {\"value\": 38.25}, \"TEMP_DDR5_B1\": {\"value\": 37.75}, \"TEMP_FCH\": {\"value\": 47}, \"TEMP_MB\": {\"value\": 36}}, \"lm_sensors\": {\"cpu_tctl\": {\"value\": 55.625}, \"gpu_edge\": {\"value\": 44.0}, \"nvme_boot_composite\": {\"value\": 39.85}, \"nvme_fast_composite\": {\"value\": 41.85}}, \"pools\": {\"fast\": {\"cap_ratio\": 0.27}, \"tank\": {\"cap_ratio\": 0.63}}, \"sysfs\": {\"cpu_package\": {\"value\": 52.0}, \"fan1\": {\"value\": 1200}, \"nvme_composite\": {\"value\": 40.85}, \"pch_temperature\": {\"value\": 48.0}}, \"usb\": {\"device_present_value\": 1, \"last_known_used_ratio\": 0.5, \"pool_imported_value\": 0}}",
+   "path": "$.sysfs.cpu_package.value",
+   "found": "52.0"
+  },
+  {
+   "payload": "{\"filesystems_by_name\": {\"rootfs\": {\"used_ratio\": 0.41}}, \"ipmi\": {\"FAN1_1\": {\"value\": 1120}, \"FAN2_1\": {\"value\": 980.0}, \"FAN3_1\": {\"value\": \"1040\"}, \"FAN6_1\": {\"value\": null}, \"TEMP_CARD_SIDE\": {\"value\": 41.5}, \"TEMP_CPU\": {\"value\": 55}, \"TEMP_DDR5_A1\": {\"value\": 38.25}, \"TEMP_DDR5_B1\": {\"value\": 37.75}, \"TEMP_FCH\": {\"value\": 47}, \"TEMP_MB\": {\"value\": 36}}, \"lm_sensors\": {\"cpu_tctl\": {\"value\": 55.625}, \"gpu_edge\": {\"value\": 44.0}, \"nvme_boot_composite\": {\"value\": 39.85}, \"nvme_fast_composite\": {\"value\": 41.85}}, \"pools\": {\"fast\": {\"cap_ratio\": 0.27}, \"tank\": {\"cap_ratio\": 0.63}}, \"sysfs\": {\"cpu_package\": {\"value\": 52.0}, \"fan1\": {\"value\": 1200}, \"nvme_composite\": {\"value\": 40.85}, \"pch_temperature\": {\"value\": 48.0}}, \"usb\": {\"device_present_value\": 1, \"last_known_used_ratio\": 0.5, \"pool_imported_value\": 0}}",
+   "path": "$.sysfs.fan1.value",
+   "found": "1200"
+  },
+  {
+   "payload": "{\"filesystems_by_name\": {\"rootfs\": {\"used_ratio\": 0.41}}, \"ipmi\": {\"FAN1_1\": {\"value\": 1120}, \"FAN2_1\": {\"value\": 980.0}, \"FAN3_1\": {\"value\": \"1040\"}, \"FAN6_1\": {\"value\": null}, \"TEMP_CARD_SIDE\": {\"value\": 41.5}, \"TEMP_CPU\": {\"value\": 55}, \"TEMP_DDR5_A1\": {\"value\": 38.25}, \"TEMP_DDR5_B1\": {\"value\": 37.75}, \"TEMP_FCH\": {\"value\": 47}, \"TEMP_MB\": {\"value\": 36}}, \"lm_sensors\": {\"cpu_tctl\": {\"value\": 55.625}, \"gpu_edge\": {\"value\": 44.0}, \"nvme_boot_composite\": {\"value\": 39.85}, \"nvme_fast_composite\": {\"value\": 41.85}}, \"pools\": {\"fast\": {\"cap_ratio\": 0.27}, \"tank\": {\"cap_ratio\": 0.63}}, \"sysfs\": {\"cpu_package\": {\"value\": 52.0}, \"fan1\": {\"value\": 1200}, \"nvme_composite\": {\"value\": 40.85}, \"pch_temperature\": {\"value\": 48.0}}, \"usb\": {\"device_present_value\": 1, \"last_known_used_ratio\": 0.5, \"pool_imported_value\": 0}}",
+   "path": "$.sysfs.nvme_composite.value",
+   "found": "40.85"
+  },
+  {
+   "payload": "{\"filesystems_by_name\": {\"rootfs\": {\"used_ratio\": 0.41}}, \"ipmi\": {\"FAN1_1\": {\"value\": 1120}, \"FAN2_1\": {\"value\": 980.0}, \"FAN3_1\": {\"value\": \"1040\"}, \"FAN6_1\": {\"value\": null}, \"TEMP_CARD_SIDE\": {\"value\": 41.5}, \"TEMP_CPU\": {\"value\": 55}, \"TEMP_DDR5_A1\": {\"value\": 38.25}, \"TEMP_DDR5_B1\": {\"value\": 37.75}, \"TEMP_FCH\": {\"value\": 47}, \"TEMP_MB\": {\"value\": 36}}, \"lm_sensors\": {\"cpu_tctl\": {\"value\": 55.625}, \"gpu_edge\": {\"value\": 44.0}, \"nvme_boot_composite\": {\"value\": 39.85}, \"nvme_fast_composite\": {\"value\": 41.85}}, \"pools\": {\"fast\": {\"cap_ratio\": 0.27}, \"tank\": {\"cap_ratio\": 0.63}}, \"sysfs\": {\"cpu_package\": {\"value\": 52.0}, \"fan1\": {\"value\": 1200}, \"nvme_composite\": {\"value\": 40.85}, \"pch_temperature\": {\"value\": 48.0}}, \"usb\": {\"device_present_value\": 1, \"last_known_used_ratio\": 0.5, \"pool_imported_value\": 0}}",
+   "path": "$.sysfs.pch_temperature.value",
+   "found": "48.0"
+  },
+  {
+   "payload": "{\"filesystems_by_name\": {\"rootfs\": {\"used_ratio\": 0.41}}, \"ipmi\": {\"FAN1_1\": {\"value\": 1120}, \"FAN2_1\": {\"value\": 980.0}, \"FAN3_1\": {\"value\": \"1040\"}, \"FAN6_1\": {\"value\": null}, \"TEMP_CARD_SIDE\": {\"value\": 41.5}, \"TEMP_CPU\": {\"value\": 55}, \"TEMP_DDR5_A1\": {\"value\": 38.25}, \"TEMP_DDR5_B1\": {\"value\": 37.75}, \"TEMP_FCH\": {\"value\": 47}, \"TEMP_MB\": {\"value\": 36}}, \"lm_sensors\": {\"cpu_tctl\": {\"value\": 55.625}, \"gpu_edge\": {\"value\": 44.0}, \"nvme_boot_composite\": {\"value\": 39.85}, \"nvme_fast_composite\": {\"value\": 41.85}}, \"pools\": {\"fast\": {\"cap_ratio\": 0.27}, \"tank\": {\"cap_ratio\": 0.63}}, \"sysfs\": {\"cpu_package\": {\"value\": 52.0}, \"fan1\": {\"value\": 1200}, \"nvme_composite\": {\"value\": 40.85}, \"pch_temperature\": {\"value\": 48.0}}, \"usb\": {\"device_present_value\": 1, \"last_known_used_ratio\": 0.5, \"pool_imported_value\": 0}}",
+   "path": "$.usb.device_present_value",
+   "found": "1"
+  },
+  {
+   "payload": "{\"filesystems_by_name\": {\"rootfs\": {\"used_ratio\": 0.41}}, \"ipmi\": {\"FAN1_1\": {\"value\": 1120}, \"FAN2_1\": {\"value\": 980.0}, \"FAN3_1\": {\"value\": \"1040\"}, \"FAN6_1\": {\"value\": null}, \"TEMP_CARD_SIDE\": {\"value\": 41.5}, \"TEMP_CPU\": {\"value\": 55}, \"TEMP_DDR5_A1\": {\"value\": 38.25}, \"TEMP_DDR5_B1\": {\"value\": 37.75}, \"TEMP_FCH\": {\"value\": 47}, \"TEMP_MB\": {\"value\": 36}}, \"lm_sensors\": {\"cpu_tctl\": {\"value\": 55.625}, \"gpu_edge\": {\"value\": 44.0}, \"nvme_boot_composite\": {\"value\": 39.85}, \"nvme_fast_composite\": {\"value\": 41.85}}, \"pools\": {\"fast\": {\"cap_ratio\": 0.27}, \"tank\": {\"cap_ratio\": 0.63}}, \"sysfs\": {\"cpu_package\": {\"value\": 52.0}, \"fan1\": {\"value\": 1200}, \"nvme_composite\": {\"value\": 40.85}, \"pch_temperature\": {\"value\": 48.0}}, \"usb\": {\"device_present_value\": 1, \"last_known_used_ratio\": 0.5, \"pool_imported_value\": 0}}",
+   "path": "$.usb.last_known_used_ratio",
+   "found": "0.5"
+  },
+  {
+   "payload": "{\"filesystems_by_name\": {\"rootfs\": {\"used_ratio\": 0.41}}, \"ipmi\": {\"FAN1_1\": {\"value\": 1120}, \"FAN2_1\": {\"value\": 980.0}, \"FAN3_1\": {\"value\": \"1040\"}, \"FAN6_1\": {\"value\": null}, \"TEMP_CARD_SIDE\": {\"value\": 41.5}, \"TEMP_CPU\": {\"value\": 55}, \"TEMP_DDR5_A1\": {\"value\": 38.25}, \"TEMP_DDR5_B1\": {\"value\": 37.75}, \"TEMP_FCH\": {\"value\": 47}, \"TEMP_MB\": {\"value\": 36}}, \"lm_sensors\": {\"cpu_tctl\": {\"value\": 55.625}, \"gpu_edge\": {\"value\": 44.0}, \"nvme_boot_composite\": {\"value\": 39.85}, \"nvme_fast_composite\": {\"value\": 41.85}}, \"pools\": {\"fast\": {\"cap_ratio\": 0.27}, \"tank\": {\"cap_ratio\": 0.63}}, \"sysfs\": {\"cpu_package\": {\"value\": 52.0}, \"fan1\": {\"value\": 1200}, \"nvme_composite\": {\"value\": 40.85}, \"pch_temperature\": {\"value\": 48.0}}, \"usb\": {\"device_present_value\": 1, \"last_known_used_ratio\": 0.5, \"pool_imported_value\": 0}}",
+   "path": "$.usb.pool_imported_value",
+   "found": "0"
+  },
+  {
+   "payload": "{\"queue\": {\"depth\": 12, \"items\": [{\"id\": \"a\", \"n\": 1.5}, {\"id\": \"b\", \"n\": -2}]}, \"list\": [10, [20, 30], {\"0\": \"key zero\"}], \"\": {\"\": \"empty keys\"}, \"a.b\": 1, \"flag\": true, \"off\": false, \"nothing\": null, \"text\": \"42\", \"big\": 1000000000000000000000000000000, \"zero\": 0, \"unicode\": {\"\\u00e4\": \"umlaut\"}, \"dup\": 1, \"dup\": 2}",
+   "path": "$",
+   "found": "{'queue': {'depth': 12, 'items': [{'id': 'a', 'n': 1.5}, {'id': 'b', 'n': -2}]}, 'list': [10, [20, 30], {'0': 'key zero'}], '': {'': 'empty keys'}, 'a.b': 1, 'flag': True, 'off': False, 'nothing': None, 'text': '42', 'big': 1000000000000000000000000000000, 'zero': 0, 'unicode': {'\u00e4': 'umlaut'}, 'dup': 2}"
+  },
+  {
+   "payload": "null",
+   "path": "$",
+   "found": null
+  },
+  {
+   "payload": "[1, 2]",
+   "path": "$",
+   "found": "[1, 2]"
+  },
+  {
+   "payload": "7",
+   "path": "$",
+   "found": "7"
+  },
+  {
+   "payload": "{\"queue\": {\"depth\": 12, \"items\": [{\"id\": \"a\", \"n\": 1.5}, {\"id\": \"b\", \"n\": -2}]}, \"list\": [10, [20, 30], {\"0\": \"key zero\"}], \"\": {\"\": \"empty keys\"}, \"a.b\": 1, \"flag\": true, \"off\": false, \"nothing\": null, \"text\": \"42\", \"big\": 1000000000000000000000000000000, \"zero\": 0, \"unicode\": {\"\\u00e4\": \"umlaut\"}, \"dup\": 1, \"dup\": 2}",
+   "path": "$.",
+   "found": "{'queue': {'depth': 12, 'items': [{'id': 'a', 'n': 1.5}, {'id': 'b', 'n': -2}]}, 'list': [10, [20, 30], {'0': 'key zero'}], '': {'': 'empty keys'}, 'a.b': 1, 'flag': True, 'off': False, 'nothing': None, 'text': '42', 'big': 1000000000000000000000000000000, 'zero': 0, 'unicode': {'\u00e4': 'umlaut'}, 'dup': 2}"
+  },
+  {
+   "payload": "{\"queue\": {\"depth\": 12, \"items\": [{\"id\": \"a\", \"n\": 1.5}, {\"id\": \"b\", \"n\": -2}]}, \"list\": [10, [20, 30], {\"0\": \"key zero\"}], \"\": {\"\": \"empty keys\"}, \"a.b\": 1, \"flag\": true, \"off\": false, \"nothing\": null, \"text\": \"42\", \"big\": 1000000000000000000000000000000, \"zero\": 0, \"unicode\": {\"\\u00e4\": \"umlaut\"}, \"dup\": 1, \"dup\": 2}",
+   "path": "$..",
+   "found": "{'queue': {'depth': 12, 'items': [{'id': 'a', 'n': 1.5}, {'id': 'b', 'n': -2}]}, 'list': [10, [20, 30], {'0': 'key zero'}], '': {'': 'empty keys'}, 'a.b': 1, 'flag': True, 'off': False, 'nothing': None, 'text': '42', 'big': 1000000000000000000000000000000, 'zero': 0, 'unicode': {'\u00e4': 'umlaut'}, 'dup': 2}"
+  },
+  {
+   "payload": "{\"queue\": {\"depth\": 12, \"items\": [{\"id\": \"a\", \"n\": 1.5}, {\"id\": \"b\", \"n\": -2}]}, \"list\": [10, [20, 30], {\"0\": \"key zero\"}], \"\": {\"\": \"empty keys\"}, \"a.b\": 1, \"flag\": true, \"off\": false, \"nothing\": null, \"text\": \"42\", \"big\": 1000000000000000000000000000000, \"zero\": 0, \"unicode\": {\"\\u00e4\": \"umlaut\"}, \"dup\": 1, \"dup\": 2}",
+   "path": "$.queue",
+   "found": "{'depth': 12, 'items': [{'id': 'a', 'n': 1.5}, {'id': 'b', 'n': -2}]}"
+  },
+  {
+   "payload": "{\"queue\": {\"depth\": 12, \"items\": [{\"id\": \"a\", \"n\": 1.5}, {\"id\": \"b\", \"n\": -2}]}, \"list\": [10, [20, 30], {\"0\": \"key zero\"}], \"\": {\"\": \"empty keys\"}, \"a.b\": 1, \"flag\": true, \"off\": false, \"nothing\": null, \"text\": \"42\", \"big\": 1000000000000000000000000000000, \"zero\": 0, \"unicode\": {\"\\u00e4\": \"umlaut\"}, \"dup\": 1, \"dup\": 2}",
+   "path": "$.queue.depth",
+   "found": "12"
+  },
+  {
+   "payload": "{\"queue\": {\"depth\": 12, \"items\": [{\"id\": \"a\", \"n\": 1.5}, {\"id\": \"b\", \"n\": -2}]}, \"list\": [10, [20, 30], {\"0\": \"key zero\"}], \"\": {\"\": \"empty keys\"}, \"a.b\": 1, \"flag\": true, \"off\": false, \"nothing\": null, \"text\": \"42\", \"big\": 1000000000000000000000000000000, \"zero\": 0, \"unicode\": {\"\\u00e4\": \"umlaut\"}, \"dup\": 1, \"dup\": 2}",
+   "path": "$..queue...depth..",
+   "found": "12"
+  },
+  {
+   "payload": "{\"queue\": {\"depth\": 12, \"items\": [{\"id\": \"a\", \"n\": 1.5}, {\"id\": \"b\", \"n\": -2}]}, \"list\": [10, [20, 30], {\"0\": \"key zero\"}], \"\": {\"\": \"empty keys\"}, \"a.b\": 1, \"flag\": true, \"off\": false, \"nothing\": null, \"text\": \"42\", \"big\": 1000000000000000000000000000000, \"zero\": 0, \"unicode\": {\"\\u00e4\": \"umlaut\"}, \"dup\": 1, \"dup\": 2}",
+   "path": "$.queue.missing",
+   "found": null
+  },
+  {
+   "payload": "{\"queue\": {\"depth\": 12, \"items\": [{\"id\": \"a\", \"n\": 1.5}, {\"id\": \"b\", \"n\": -2}]}, \"list\": [10, [20, 30], {\"0\": \"key zero\"}], \"\": {\"\": \"empty keys\"}, \"a.b\": 1, \"flag\": true, \"off\": false, \"nothing\": null, \"text\": \"42\", \"big\": 1000000000000000000000000000000, \"zero\": 0, \"unicode\": {\"\\u00e4\": \"umlaut\"}, \"dup\": 1, \"dup\": 2}",
+   "path": "$.queue.depth.deeper",
+   "found": null
+  },
+  {
+   "payload": "{\"queue\": {\"depth\": 12, \"items\": [{\"id\": \"a\", \"n\": 1.5}, {\"id\": \"b\", \"n\": -2}]}, \"list\": [10, [20, 30], {\"0\": \"key zero\"}], \"\": {\"\": \"empty keys\"}, \"a.b\": 1, \"flag\": true, \"off\": false, \"nothing\": null, \"text\": \"42\", \"big\": 1000000000000000000000000000000, \"zero\": 0, \"unicode\": {\"\\u00e4\": \"umlaut\"}, \"dup\": 1, \"dup\": 2}",
+   "path": "$.queue.items.0.n",
+   "found": "1.5"
+  },
+  {
+   "payload": "{\"queue\": {\"depth\": 12, \"items\": [{\"id\": \"a\", \"n\": 1.5}, {\"id\": \"b\", \"n\": -2}]}, \"list\": [10, [20, 30], {\"0\": \"key zero\"}], \"\": {\"\": \"empty keys\"}, \"a.b\": 1, \"flag\": true, \"off\": false, \"nothing\": null, \"text\": \"42\", \"big\": 1000000000000000000000000000000, \"zero\": 0, \"unicode\": {\"\\u00e4\": \"umlaut\"}, \"dup\": 1, \"dup\": 2}",
+   "path": "$.queue.items.1.id",
+   "found": "'b'"
+  },
+  {
+   "payload": "{\"queue\": {\"depth\": 12, \"items\": [{\"id\": \"a\", \"n\": 1.5}, {\"id\": \"b\", \"n\": -2}]}, \"list\": [10, [20, 30], {\"0\": \"key zero\"}], \"\": {\"\": \"empty keys\"}, \"a.b\": 1, \"flag\": true, \"off\": false, \"nothing\": null, \"text\": \"42\", \"big\": 1000000000000000000000000000000, \"zero\": 0, \"unicode\": {\"\\u00e4\": \"umlaut\"}, \"dup\": 1, \"dup\": 2}",
+   "path": "$.queue.items.2.id",
+   "found": null
+  },
+  {
+   "payload": "{\"queue\": {\"depth\": 12, \"items\": [{\"id\": \"a\", \"n\": 1.5}, {\"id\": \"b\", \"n\": -2}]}, \"list\": [10, [20, 30], {\"0\": \"key zero\"}], \"\": {\"\": \"empty keys\"}, \"a.b\": 1, \"flag\": true, \"off\": false, \"nothing\": null, \"text\": \"42\", \"big\": 1000000000000000000000000000000, \"zero\": 0, \"unicode\": {\"\\u00e4\": \"umlaut\"}, \"dup\": 1, \"dup\": 2}",
+   "path": "$.queue.items.00.n",
+   "found": "1.5"
+  },
+  {
+   "payload": "{\"queue\": {\"depth\": 12, \"items\": [{\"id\": \"a\", \"n\": 1.5}, {\"id\": \"b\", \"n\": -2}]}, \"list\": [10, [20, 30], {\"0\": \"key zero\"}], \"\": {\"\": \"empty keys\"}, \"a.b\": 1, \"flag\": true, \"off\": false, \"nothing\": null, \"text\": \"42\", \"big\": 1000000000000000000000000000000, \"zero\": 0, \"unicode\": {\"\\u00e4\": \"umlaut\"}, \"dup\": 1, \"dup\": 2}",
+   "path": "$.queue.items.-1.n",
+   "found": null
+  },
+  {
+   "payload": "{\"queue\": {\"depth\": 12, \"items\": [{\"id\": \"a\", \"n\": 1.5}, {\"id\": \"b\", \"n\": -2}]}, \"list\": [10, [20, 30], {\"0\": \"key zero\"}], \"\": {\"\": \"empty keys\"}, \"a.b\": 1, \"flag\": true, \"off\": false, \"nothing\": null, \"text\": \"42\", \"big\": 1000000000000000000000000000000, \"zero\": 0, \"unicode\": {\"\\u00e4\": \"umlaut\"}, \"dup\": 1, \"dup\": 2}",
+   "path": "$.queue.items.+1.n",
+   "found": null
+  },
+  {
+   "payload": "{\"queue\": {\"depth\": 12, \"items\": [{\"id\": \"a\", \"n\": 1.5}, {\"id\": \"b\", \"n\": -2}]}, \"list\": [10, [20, 30], {\"0\": \"key zero\"}], \"\": {\"\": \"empty keys\"}, \"a.b\": 1, \"flag\": true, \"off\": false, \"nothing\": null, \"text\": \"42\", \"big\": 1000000000000000000000000000000, \"zero\": 0, \"unicode\": {\"\\u00e4\": \"umlaut\"}, \"dup\": 1, \"dup\": 2}",
+   "path": "$.queue.items. 1.n",
+   "found": null
+  },
+  {
+   "payload": "{\"queue\": {\"depth\": 12, \"items\": [{\"id\": \"a\", \"n\": 1.5}, {\"id\": \"b\", \"n\": -2}]}, \"list\": [10, [20, 30], {\"0\": \"key zero\"}], \"\": {\"\": \"empty keys\"}, \"a.b\": 1, \"flag\": true, \"off\": false, \"nothing\": null, \"text\": \"42\", \"big\": 1000000000000000000000000000000, \"zero\": 0, \"unicode\": {\"\\u00e4\": \"umlaut\"}, \"dup\": 1, \"dup\": 2}",
+   "path": "$.queue.items.1_0.n",
+   "found": null
+  },
+  {
+   "payload": "{\"queue\": {\"depth\": 12, \"items\": [{\"id\": \"a\", \"n\": 1.5}, {\"id\": \"b\", \"n\": -2}]}, \"list\": [10, [20, 30], {\"0\": \"key zero\"}], \"\": {\"\": \"empty keys\"}, \"a.b\": 1, \"flag\": true, \"off\": false, \"nothing\": null, \"text\": \"42\", \"big\": 1000000000000000000000000000000, \"zero\": 0, \"unicode\": {\"\\u00e4\": \"umlaut\"}, \"dup\": 1, \"dup\": 2}",
+   "path": "$.queue.items.first",
+   "found": null
+  },
+  {
+   "payload": "{\"queue\": {\"depth\": 12, \"items\": [{\"id\": \"a\", \"n\": 1.5}, {\"id\": \"b\", \"n\": -2}]}, \"list\": [10, [20, 30], {\"0\": \"key zero\"}], \"\": {\"\": \"empty keys\"}, \"a.b\": 1, \"flag\": true, \"off\": false, \"nothing\": null, \"text\": \"42\", \"big\": 1000000000000000000000000000000, \"zero\": 0, \"unicode\": {\"\\u00e4\": \"umlaut\"}, \"dup\": 1, \"dup\": 2}",
+   "path": "$.queue.items.99999999999999999999999999",
+   "found": null
+  },
+  {
+   "payload": "{\"queue\": {\"depth\": 12, \"items\": [{\"id\": \"a\", \"n\": 1.5}, {\"id\": \"b\", \"n\": -2}]}, \"list\": [10, [20, 30], {\"0\": \"key zero\"}], \"\": {\"\": \"empty keys\"}, \"a.b\": 1, \"flag\": true, \"off\": false, \"nothing\": null, \"text\": \"42\", \"big\": 1000000000000000000000000000000, \"zero\": 0, \"unicode\": {\"\\u00e4\": \"umlaut\"}, \"dup\": 1, \"dup\": 2}",
+   "path": "$.list.1.0",
+   "found": "20"
+  },
+  {
+   "payload": "{\"queue\": {\"depth\": 12, \"items\": [{\"id\": \"a\", \"n\": 1.5}, {\"id\": \"b\", \"n\": -2}]}, \"list\": [10, [20, 30], {\"0\": \"key zero\"}], \"\": {\"\": \"empty keys\"}, \"a.b\": 1, \"flag\": true, \"off\": false, \"nothing\": null, \"text\": \"42\", \"big\": 1000000000000000000000000000000, \"zero\": 0, \"unicode\": {\"\\u00e4\": \"umlaut\"}, \"dup\": 1, \"dup\": 2}",
+   "path": "$.list.2.0",
+   "found": "'key zero'"
+  },
+  {
+   "payload": "{\"queue\": {\"depth\": 12, \"items\": [{\"id\": \"a\", \"n\": 1.5}, {\"id\": \"b\", \"n\": -2}]}, \"list\": [10, [20, 30], {\"0\": \"key zero\"}], \"\": {\"\": \"empty keys\"}, \"a.b\": 1, \"flag\": true, \"off\": false, \"nothing\": null, \"text\": \"42\", \"big\": 1000000000000000000000000000000, \"zero\": 0, \"unicode\": {\"\\u00e4\": \"umlaut\"}, \"dup\": 1, \"dup\": 2}",
+   "path": "$.list.0.0",
+   "found": null
+  },
+  {
+   "payload": "{\"queue\": {\"depth\": 12, \"items\": [{\"id\": \"a\", \"n\": 1.5}, {\"id\": \"b\", \"n\": -2}]}, \"list\": [10, [20, 30], {\"0\": \"key zero\"}], \"\": {\"\": \"empty keys\"}, \"a.b\": 1, \"flag\": true, \"off\": false, \"nothing\": null, \"text\": \"42\", \"big\": 1000000000000000000000000000000, \"zero\": 0, \"unicode\": {\"\\u00e4\": \"umlaut\"}, \"dup\": 1, \"dup\": 2}",
+   "path": "$.a.b",
+   "found": null
+  },
+  {
+   "payload": "{\"queue\": {\"depth\": 12, \"items\": [{\"id\": \"a\", \"n\": 1.5}, {\"id\": \"b\", \"n\": -2}]}, \"list\": [10, [20, 30], {\"0\": \"key zero\"}], \"\": {\"\": \"empty keys\"}, \"a.b\": 1, \"flag\": true, \"off\": false, \"nothing\": null, \"text\": \"42\", \"big\": 1000000000000000000000000000000, \"zero\": 0, \"unicode\": {\"\\u00e4\": \"umlaut\"}, \"dup\": 1, \"dup\": 2}",
+   "path": "$.flag",
+   "found": "True"
+  },
+  {
+   "payload": "{\"queue\": {\"depth\": 12, \"items\": [{\"id\": \"a\", \"n\": 1.5}, {\"id\": \"b\", \"n\": -2}]}, \"list\": [10, [20, 30], {\"0\": \"key zero\"}], \"\": {\"\": \"empty keys\"}, \"a.b\": 1, \"flag\": true, \"off\": false, \"nothing\": null, \"text\": \"42\", \"big\": 1000000000000000000000000000000, \"zero\": 0, \"unicode\": {\"\\u00e4\": \"umlaut\"}, \"dup\": 1, \"dup\": 2}",
+   "path": "$.off",
+   "found": "False"
+  },
+  {
+   "payload": "{\"queue\": {\"depth\": 12, \"items\": [{\"id\": \"a\", \"n\": 1.5}, {\"id\": \"b\", \"n\": -2}]}, \"list\": [10, [20, 30], {\"0\": \"key zero\"}], \"\": {\"\": \"empty keys\"}, \"a.b\": 1, \"flag\": true, \"off\": false, \"nothing\": null, \"text\": \"42\", \"big\": 1000000000000000000000000000000, \"zero\": 0, \"unicode\": {\"\\u00e4\": \"umlaut\"}, \"dup\": 1, \"dup\": 2}",
+   "path": "$.nothing",
+   "found": null
+  },
+  {
+   "payload": "{\"queue\": {\"depth\": 12, \"items\": [{\"id\": \"a\", \"n\": 1.5}, {\"id\": \"b\", \"n\": -2}]}, \"list\": [10, [20, 30], {\"0\": \"key zero\"}], \"\": {\"\": \"empty keys\"}, \"a.b\": 1, \"flag\": true, \"off\": false, \"nothing\": null, \"text\": \"42\", \"big\": 1000000000000000000000000000000, \"zero\": 0, \"unicode\": {\"\\u00e4\": \"umlaut\"}, \"dup\": 1, \"dup\": 2}",
+   "path": "$.text",
+   "found": "'42'"
+  },
+  {
+   "payload": "{\"queue\": {\"depth\": 12, \"items\": [{\"id\": \"a\", \"n\": 1.5}, {\"id\": \"b\", \"n\": -2}]}, \"list\": [10, [20, 30], {\"0\": \"key zero\"}], \"\": {\"\": \"empty keys\"}, \"a.b\": 1, \"flag\": true, \"off\": false, \"nothing\": null, \"text\": \"42\", \"big\": 1000000000000000000000000000000, \"zero\": 0, \"unicode\": {\"\\u00e4\": \"umlaut\"}, \"dup\": 1, \"dup\": 2}",
+   "path": "$.big",
+   "found": "1000000000000000000000000000000"
+  },
+  {
+   "payload": "{\"queue\": {\"depth\": 12, \"items\": [{\"id\": \"a\", \"n\": 1.5}, {\"id\": \"b\", \"n\": -2}]}, \"list\": [10, [20, 30], {\"0\": \"key zero\"}], \"\": {\"\": \"empty keys\"}, \"a.b\": 1, \"flag\": true, \"off\": false, \"nothing\": null, \"text\": \"42\", \"big\": 1000000000000000000000000000000, \"zero\": 0, \"unicode\": {\"\\u00e4\": \"umlaut\"}, \"dup\": 1, \"dup\": 2}",
+   "path": "$.zero",
+   "found": "0"
+  },
+  {
+   "payload": "{\"queue\": {\"depth\": 12, \"items\": [{\"id\": \"a\", \"n\": 1.5}, {\"id\": \"b\", \"n\": -2}]}, \"list\": [10, [20, 30], {\"0\": \"key zero\"}], \"\": {\"\": \"empty keys\"}, \"a.b\": 1, \"flag\": true, \"off\": false, \"nothing\": null, \"text\": \"42\", \"big\": 1000000000000000000000000000000, \"zero\": 0, \"unicode\": {\"\\u00e4\": \"umlaut\"}, \"dup\": 1, \"dup\": 2}",
+   "path": "$.unicode.\u00e4",
+   "found": "'umlaut'"
+  },
+  {
+   "payload": "{\"queue\": {\"depth\": 12, \"items\": [{\"id\": \"a\", \"n\": 1.5}, {\"id\": \"b\", \"n\": -2}]}, \"list\": [10, [20, 30], {\"0\": \"key zero\"}], \"\": {\"\": \"empty keys\"}, \"a.b\": 1, \"flag\": true, \"off\": false, \"nothing\": null, \"text\": \"42\", \"big\": 1000000000000000000000000000000, \"zero\": 0, \"unicode\": {\"\\u00e4\": \"umlaut\"}, \"dup\": 1, \"dup\": 2}",
+   "path": "$.dup",
+   "found": "2"
+  },
+  {
+   "payload": "{\"queue\": {\"depth\": 12, \"items\": [{\"id\": \"a\", \"n\": 1.5}, {\"id\": \"b\", \"n\": -2}]}, \"list\": [10, [20, 30], {\"0\": \"key zero\"}], \"\": {\"\": \"empty keys\"}, \"a.b\": 1, \"flag\": true, \"off\": false, \"nothing\": null, \"text\": \"42\", \"big\": 1000000000000000000000000000000, \"zero\": 0, \"unicode\": {\"\\u00e4\": \"umlaut\"}, \"dup\": 1, \"dup\": 2}",
+   "path": "queue.depth",
+   "found": null
+  },
+  {
+   "payload": "{\"queue\": {\"depth\": 12, \"items\": [{\"id\": \"a\", \"n\": 1.5}, {\"id\": \"b\", \"n\": -2}]}, \"list\": [10, [20, 30], {\"0\": \"key zero\"}], \"\": {\"\": \"empty keys\"}, \"a.b\": 1, \"flag\": true, \"off\": false, \"nothing\": null, \"text\": \"42\", \"big\": 1000000000000000000000000000000, \"zero\": 0, \"unicode\": {\"\\u00e4\": \"umlaut\"}, \"dup\": 1, \"dup\": 2}",
+   "path": "$queue",
+   "found": null
+  },
+  {
+   "payload": "{\"queue\": {\"depth\": 12, \"items\": [{\"id\": \"a\", \"n\": 1.5}, {\"id\": \"b\", \"n\": -2}]}, \"list\": [10, [20, 30], {\"0\": \"key zero\"}], \"\": {\"\": \"empty keys\"}, \"a.b\": 1, \"flag\": true, \"off\": false, \"nothing\": null, \"text\": \"42\", \"big\": 1000000000000000000000000000000, \"zero\": 0, \"unicode\": {\"\\u00e4\": \"umlaut\"}, \"dup\": 1, \"dup\": 2}",
+   "path": " $.queue",
+   "found": null
+  },
+  {
+   "payload": "{\"queue\": {\"depth\": 12, \"items\": [{\"id\": \"a\", \"n\": 1.5}, {\"id\": \"b\", \"n\": -2}]}, \"list\": [10, [20, 30], {\"0\": \"key zero\"}], \"\": {\"\": \"empty keys\"}, \"a.b\": 1, \"flag\": true, \"off\": false, \"nothing\": null, \"text\": \"42\", \"big\": 1000000000000000000000000000000, \"zero\": 0, \"unicode\": {\"\\u00e4\": \"umlaut\"}, \"dup\": 1, \"dup\": 2}",
+   "path": "$ .queue",
+   "found": null
+  },
+  {
+   "payload": "{\"queue\": {\"depth\": 12, \"items\": [{\"id\": \"a\", \"n\": 1.5}, {\"id\": \"b\", \"n\": -2}]}, \"list\": [10, [20, 30], {\"0\": \"key zero\"}], \"\": {\"\": \"empty keys\"}, \"a.b\": 1, \"flag\": true, \"off\": false, \"nothing\": null, \"text\": \"42\", \"big\": 1000000000000000000000000000000, \"zero\": 0, \"unicode\": {\"\\u00e4\": \"umlaut\"}, \"dup\": 1, \"dup\": 2}",
+   "path": "",
+   "found": null
+  },
+  {
+   "payload": "{\"queue\": {\"depth\": 12, \"items\": [{\"id\": \"a\", \"n\": 1.5}, {\"id\": \"b\", \"n\": -2}]}, \"list\": [10, [20, 30], {\"0\": \"key zero\"}], \"\": {\"\": \"empty keys\"}, \"a.b\": 1, \"flag\": true, \"off\": false, \"nothing\": null, \"text\": \"42\", \"big\": 1000000000000000000000000000000, \"zero\": 0, \"unicode\": {\"\\u00e4\": \"umlaut\"}, \"dup\": 1, \"dup\": 2}",
+   "path": "$.QUEUE.depth",
+   "found": null
+  },
+  {
+   "payload": "[[1, [2, 3]]]",
+   "path": "$.0.1.1",
+   "found": "3"
+  },
+  {
+   "payload": "[1, 2]",
+   "path": "$.queue",
+   "found": null
+  },
+  {
+   "payload": "\"text\"",
+   "path": "$.0",
+   "found": null
+  },
+  {
+   "payload": "[1, 2]",
+   "path": "$.10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+   "error": {
+    "class": "ValueError",
+    "message": "Exceeds the limit (4300 digits) for integer string conversion: value has 4301 digits; use sys.set_int_max_str_digits() to increase the limit"
+   }
+  },
+  {
+   "payload": "[1, 2]",
+   "path": "$.1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+   "found": null
+  },
+  {
+   "payload": "{\"k\": [1]}",
+   "path": "$.k.00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+   "error": {
+    "class": "ValueError",
+    "message": "Exceeds the limit (4300 digits) for integer string conversion: value has 4301 digits; use sys.set_int_max_str_digits() to increase the limit"
+   }
+  },
+  {
+   "payload": "{\"11111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111\": 5}",
+   "path": "$.11111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
+   "found": "5"
+  },
+  {
+   "payload": "[10, 20, 30, 40]",
+   "path": "$.\u0663",
+   "found": "40",
+   "divergence": "D-6",
+   "rust": {
+    "found": null
+   }
+  },
+  {
+   "payload": "[10, 20, 30, 40]",
+   "path": "$.\u00b2",
+   "error": {
+    "class": "ValueError",
+    "message": "invalid literal for int() with base 10: '\u00b2'"
+   },
+   "divergence": "D-6",
+   "rust": {
+    "found": null
+   }
+  }
+ ]
+}

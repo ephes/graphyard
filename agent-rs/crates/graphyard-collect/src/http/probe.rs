@@ -8,7 +8,7 @@ use std::time::Instant;
 
 use serde_json::Value;
 
-use graphyard_core::pycompat::json_loads;
+use graphyard_core::pycompat::{int_digit_limit_error, json_loads};
 
 use super::client::{HttpClient, MAX_REDIRECTS, Method, Request, Response};
 use super::deadline::Deadline;
@@ -63,11 +63,14 @@ fn exceeds(length: usize, max_body_bytes: u64) -> bool {
 
 /// `json.loads(body)` of a response body: UTF-8 (a UTF-8 byte order mark is
 /// skipped, as `json.detect_encoding` does); UTF-16/32 bodies are a decode
-/// error (D-4). The error texts are P2.
+/// error (D-4). The error texts are P2, except CPython's integer digit
+/// limit (P1).
 ///
 /// # Errors
 /// `UnicodeDecodeError` for invalid UTF-8, `JSONDecodeError` for invalid
-/// JSON.
+/// JSON, `ValueError` for an integer token of more than 4300 digits (D-11;
+/// Python raises it while parsing, so a document that is also invalid
+/// after that token is a `JSONDecodeError` here, P2).
 pub fn decode_json(body: &[u8]) -> Result<Value, HttpError> {
     let body = body.strip_prefix(b"\xef\xbb\xbf").unwrap_or(body);
     let text = std::str::from_utf8(body).map_err(|err| {
@@ -85,7 +88,12 @@ pub fn decode_json(body: &[u8]) -> Result<Value, HttpError> {
             ),
         )
     })?;
-    json_loads(text).map_err(|err| HttpError::new(ErrorKind::JsonDecodeError, err.to_string()))
+    let payload = json_loads(text)
+        .map_err(|err| HttpError::new(ErrorKind::JsonDecodeError, err.to_string()))?;
+    if let Some(err) = int_digit_limit_error(text) {
+        return Err(HttpError::new(ErrorKind::ValueError, err.message));
+    }
+    Ok(payload)
 }
 
 /// The timings and outcome of a page probe (`_PageProbeResult`).

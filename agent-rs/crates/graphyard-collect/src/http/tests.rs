@@ -4,7 +4,7 @@
 //! the log capture and the TLS material are shared with the executor tests.
 
 mod deadline;
-mod fixture;
+pub(crate) mod fixture;
 pub(crate) mod logs;
 mod scenarios;
 pub(crate) mod server;

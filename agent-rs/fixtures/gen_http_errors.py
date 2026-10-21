@@ -379,6 +379,7 @@ def _exception_classes() -> list[dict[str, Any]]:
         services._PageProbeDeadlineExceeded("x"),
         json.JSONDecodeError("x", "", 0),
         UnicodeDecodeError("utf-8", b"\xff", 0, 1, "invalid start byte"),
+        ValueError("x"),
         OverflowError("x"),
     ]
     return [
@@ -712,6 +713,20 @@ JSON_SCENARIOS: list[tuple[str, dict[str, Reply | list[Reply]], int]] = [
         10485760,
     ),
     ("no content", {"/": _reply(204)}, 10485760),
+    (
+        "integer at the digit limit",
+        {"/": _reply(200, b'{"value": ' + b"7" * 4300 + b"}")},
+        10485760,
+    ),
+    (
+        "integer beyond the digit limit",
+        {
+            "/": _reply(
+                200, b'{"text": "' + b"1" * 5000 + b'", "value": -' + b"7" * 4301 + b"}"
+            )
+        },
+        10485760,
+    ),
 ]
 
 

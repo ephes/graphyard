@@ -25,6 +25,9 @@ graphyard-influx = { path = "crates/graphyard-influx" }
 graphyard-collect = { path = "crates/graphyard-collect" }
 chrono = { version = "0.4", default-features = false, features = ["std"] }
 csv = "1"
+# User regexes of spec configs (PLAN.md 4.3, D-5): Python `re` features such
+# as lookaround and backreferences.
+fancy-regex = "0.19"
 indexmap = "2"
 log = "0.4"
 num-bigint = "0.4"
