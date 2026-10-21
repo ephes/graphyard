@@ -154,6 +154,10 @@ and changes no registry or usage rows. Bound ingests cannot take over foreign se
 including when ownership changes after validation. Unbound tokens keep the current
 behavior while `GRAPHYARD_REQUIRE_BOUND_INGEST_TOKENS=false` (the default). Setting it
 to `true` rejects all unbound tokens with `403`, even those with a host scope.
+Accepted batches update the host, subject and service registry once per distinct row,
+in one transaction. `last_seen_at` moves at most once a minute, so steady ingest does
+not write registry rows. Bound tokens write services only under the same
+unowned-or-own-host condition.
 Binding rejections log `metrics_ingest_rejected category=binding` with the token id
 and point index (when known), and set a fixed-text warning heartbeat without host,
 service or token names. Check web logs during rollout; the global heartbeat can later

@@ -2082,74 +2082,257 @@ def record_token_host_usage(token: IngestToken, identifiers: set[str]) -> None:
             )
 
 
+# Registry ``last_seen_at`` is informational (admin, index page). Moving it at
+# most once per interval keeps steady ingest free of SQLite writes.
+REGISTRY_LAST_SEEN_UPDATE_INTERVAL = timedelta(seconds=60)
+
+
+@dataclass
+class _RegistryBatch:
+    """Distinct registry rows named by one batch of points, in first-seen order."""
+
+    # (subject_type, subject_id) -> last non-empty source_system in the batch.
+    subjects: dict[tuple[str, str], str | None]
+    # Host subject id -> index of the first point that registers it.
+    host_ids: dict[str, int]
+    # service_id -> (host_id, point index) for each point naming the service:
+    # the point's own host subject, else its collector host.
+    service_hosts: dict[str, list[tuple[str | None, int]]]
+
+
+@dataclass
+class _RegistryRows:
+    subjects: dict[tuple[str, str], SubjectRegistry]
+    hosts: dict[str, HostRegistry]
+    services: dict[str, ServiceRegistry]
+    # Hosts that existed before this batch created any.
+    preexisting_hosts: set[str]
+
+
+def _collect_registry_batch(points: list[influx.MetricPoint]) -> _RegistryBatch:
+    batch = _RegistryBatch(subjects={}, host_ids={}, service_hosts={})
+    for index, point in enumerate(points):
+        normalized = influx.normalize_metric_point(point)
+        key = (normalized.subject_type, normalized.subject_id)
+        previous = batch.subjects.get(key)
+        batch.subjects[key] = normalized.source_system or previous
+        is_host = normalized.subject_type == SubjectType.HOST
+        if is_host:
+            batch.host_ids.setdefault(normalized.subject_id, index)
+        if normalized.service:
+            host_id = normalized.subject_id if is_host else normalized.collector_host
+            batch.service_hosts.setdefault(normalized.service, []).append(
+                (host_id, index)
+            )
+    return batch
+
+
+def _load_registry_rows(batch: _RegistryBatch) -> _RegistryRows:
+    subject_types = {subject_type for subject_type, _ in batch.subjects}
+    subject_ids = {subject_id for _, subject_id in batch.subjects}
+    host_ids = set(batch.host_ids) | {
+        host_id
+        for candidates in batch.service_hosts.values()
+        for host_id, _ in candidates
+        if host_id
+    }
+    hosts = {
+        row.host_id: row for row in HostRegistry.objects.filter(host_id__in=host_ids)
+    }
+    return _RegistryRows(
+        subjects={
+            (row.subject_type, row.subject_id): row
+            for row in SubjectRegistry.objects.filter(
+                subject_type__in=subject_types, subject_id__in=subject_ids
+            )
+            if (row.subject_type, row.subject_id) in batch.subjects
+        },
+        hosts=hosts,
+        services={
+            row.service_id: row
+            for row in ServiceRegistry.objects.filter(
+                service_id__in=batch.service_hosts
+            )
+        },
+        preexisting_hosts=set(hosts),
+    )
+
+
+def _service_target_host(
+    service_id: str, batch: _RegistryBatch, rows: _RegistryRows
+) -> HostRegistry | None:
+    """Return the host the service belongs to after the batch, if any.
+
+    Matches per-point processing: the last point whose host was registered at
+    that point (before the batch, or by an earlier or the same point) wins.
+    """
+    for host_id, index in reversed(batch.service_hosts[service_id]):
+        if not host_id or host_id not in rows.hosts:
+            continue
+        if (
+            host_id in rows.preexisting_hosts
+            or batch.host_ids.get(host_id, index + 1) <= index
+        ):
+            return rows.hosts[host_id]
+    return None
+
+
+def _last_seen_is_stale(value: datetime | None, now: datetime) -> bool:
+    return value is None or now - value >= REGISTRY_LAST_SEEN_UPDATE_INTERVAL
+
+
+@dataclass
+class _RegistryPlan:
+    """Row updates by primary key; each write also moves ``last_seen_at``."""
+
+    subject_seen: list[int]
+    subject_source: dict[int, str]
+    host_seen: list[int]
+    service_seen: list[int]
+    service_reparent: dict[int, int]
+
+    def is_empty(self) -> bool:
+        return not (
+            self.subject_seen
+            or self.subject_source
+            or self.host_seen
+            or self.service_seen
+            or self.service_reparent
+        )
+
+
+def _plan_registry_updates(
+    batch: _RegistryBatch, rows: _RegistryRows, now: datetime
+) -> _RegistryPlan:
+    """Plan updates for rows that exist; missing rows are created separately."""
+    plan = _RegistryPlan(
+        subject_seen=[],
+        subject_source={},
+        host_seen=[],
+        service_seen=[],
+        service_reparent={},
+    )
+    for key, source_system in batch.subjects.items():
+        subject = rows.subjects.get(key)
+        if subject is None:
+            continue
+        if source_system and subject.source_system != source_system:
+            plan.subject_source[subject.pk] = source_system
+        elif _last_seen_is_stale(subject.last_seen_at, now):
+            plan.subject_seen.append(subject.pk)
+    for host_id in batch.host_ids:
+        host = rows.hosts.get(host_id)
+        if host is not None and _last_seen_is_stale(host.last_seen_at, now):
+            plan.host_seen.append(host.pk)
+    for service_id in batch.service_hosts:
+        service = rows.services.get(service_id)
+        if service is None:
+            continue
+        target = _service_target_host(service_id, batch, rows)
+        if target is not None and service.host_id != target.pk:
+            plan.service_reparent[service.pk] = target.pk
+        elif _last_seen_is_stale(service.last_seen_at, now):
+            plan.service_seen.append(service.pk)
+    return plan
+
+
+def _registry_needs_write(
+    batch: _RegistryBatch, rows: _RegistryRows, now: datetime
+) -> bool:
+    if (
+        len(rows.subjects) < len(batch.subjects)
+        or any(host_id not in rows.hosts for host_id in batch.host_ids)
+        or len(rows.services) < len(batch.service_hosts)
+    ):
+        return True
+    return not _plan_registry_updates(batch, rows, now).is_empty()
+
+
+def _create_missing_registry_rows(
+    batch: _RegistryBatch, rows: _RegistryRows, now: datetime
+) -> None:
+    # get_or_create keeps a concurrent insert of the same row harmless; a row
+    # found that way is refreshed by the update plan like any existing row.
+    for (subject_type, subject_id), source_system in batch.subjects.items():
+        if (subject_type, subject_id) in rows.subjects:
+            continue
+        subject, _ = SubjectRegistry.objects.get_or_create(
+            subject_type=subject_type,
+            subject_id=subject_id,
+            defaults={
+                "display_name": subject_id,
+                "source_system": source_system,
+                "last_seen_at": now,
+            },
+        )
+        rows.subjects[(subject_type, subject_id)] = subject
+    for host_id in batch.host_ids:
+        if host_id in rows.hosts:
+            continue
+        host, _ = HostRegistry.objects.get_or_create(
+            host_id=host_id,
+            defaults={"display_name": host_id, "last_seen_at": now},
+        )
+        rows.hosts[host_id] = host
+    for service_id in batch.service_hosts:
+        if service_id in rows.services:
+            continue
+        service, _ = ServiceRegistry.objects.get_or_create(
+            service_id=service_id,
+            defaults={
+                "display_name": service_id,
+                "host": _service_target_host(service_id, batch, rows),
+                "last_seen_at": now,
+            },
+        )
+        rows.services[service_id] = service
+
+
 def touch_registry_from_points(
     points: list[influx.MetricPoint], *, bound_subject_id: str | None = None
 ) -> None:
+    """Create and refresh subject, host and service registry rows for ``points``.
+
+    Works on the distinct rows of the batch, not per point. Reads run without
+    the write lock. Creates and updates share one transaction and only happen
+    when a row is missing, changes, or its ``last_seen_at`` is older than
+    ``REGISTRY_LAST_SEEN_UPDATE_INTERVAL``.
+
+    With ``bound_subject_id`` every service write is conditional: it never
+    re-parents or touches a service that another host owns, even if ownership
+    changed after request validation.
+    """
+    if not points:
+        return
+    batch = _collect_registry_batch(points)
     now = timezone.now()
-    for point in points:
-        normalized = influx.normalize_metric_point(point)
+    if not _registry_needs_write(batch, _load_registry_rows(batch), now):
+        return
 
-        subject, _ = SubjectRegistry.objects.get_or_create(
-            subject_type=normalized.subject_type,
-            subject_id=normalized.subject_id,
-            defaults={
-                "display_name": normalized.subject_id,
-                "source_system": normalized.source_system,
-            },
-        )
-        subject_changed_fields: list[str] = []
-        if subject.last_seen_at is None or now > subject.last_seen_at:
-            subject.last_seen_at = now
-            subject_changed_fields.append("last_seen_at")
-        if (
-            normalized.source_system
-            and subject.source_system != normalized.source_system
-        ):
-            subject.source_system = normalized.source_system
-            subject_changed_fields.append("source_system")
-        if subject_changed_fields:
-            subject.save(update_fields=subject_changed_fields)
+    with transaction.atomic():
+        # Reload under the write lock so the plan sees committed concurrent work.
+        rows = _load_registry_rows(batch)
+        _create_missing_registry_rows(batch, rows, now)
+        plan = _plan_registry_updates(batch, rows, now)
 
-        host: HostRegistry | None = None
-        if normalized.subject_type == SubjectType.HOST:
-            host, _ = HostRegistry.objects.get_or_create(
-                host_id=normalized.subject_id,
-                defaults={"display_name": normalized.subject_id},
+        if plan.subject_seen:
+            SubjectRegistry.objects.filter(pk__in=plan.subject_seen).update(
+                last_seen_at=now
             )
-            if host.last_seen_at is None or now > host.last_seen_at:
-                host.last_seen_at = now
-                host.save(update_fields=["last_seen_at"])
-
-        if normalized.service:
-            service_host: HostRegistry | None = host
-            if service_host is None:
-                service_host = HostRegistry.objects.filter(
-                    host_id=normalized.collector_host
-                ).first()
-            service, _ = ServiceRegistry.objects.get_or_create(
-                service_id=normalized.service,
-                defaults={
-                    "display_name": normalized.service,
-                    "host": service_host,
-                },
+        for pk, source_system in plan.subject_source.items():
+            SubjectRegistry.objects.filter(pk=pk).update(
+                source_system=source_system, last_seen_at=now
             )
-            if bound_subject_id is not None:
-                # Conditional update also protects against ownership changes after
-                # request validation. Never re-parent or touch a foreign service.
-                allowed = ServiceRegistry.objects.filter(pk=service.pk).filter(
-                    Q(host__isnull=True) | Q(host__host_id=bound_subject_id)
-                )
-                updates: dict[str, object] = {"last_seen_at": now}
-                if service_host is not None:
-                    updates["host_id"] = service_host.pk
-                allowed.update(**updates)
-                continue
-            changed_fields: list[str] = []
-            if service_host is not None and service.host_id != service_host.id:
-                service.host = service_host
-                changed_fields.append("host")
-            if service.last_seen_at is None or now > service.last_seen_at:
-                service.last_seen_at = now
-                changed_fields.append("last_seen_at")
-            if changed_fields:
-                service.save(update_fields=changed_fields)
+        if plan.host_seen:
+            HostRegistry.objects.filter(pk__in=plan.host_seen).update(last_seen_at=now)
+
+        writable_services = ServiceRegistry.objects.all()
+        if bound_subject_id is not None:
+            # Filter inside each UPDATE: never touch a foreign service.
+            writable_services = writable_services.filter(
+                Q(host__isnull=True) | Q(host__host_id=bound_subject_id)
+            )
+        if plan.service_seen:
+            writable_services.filter(pk__in=plan.service_seen).update(last_seen_at=now)
+        for pk, host_pk in plan.service_reparent.items():
+            writable_services.filter(pk=pk).update(host_id=host_pk, last_seen_at=now)

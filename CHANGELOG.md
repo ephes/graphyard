@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- Fix slow metric ingest for bound ingest tokens. The registry update issued one
+  `UPDATE service_registry` per point, each a separate SQLite commit, so a
+  50-point batch took several seconds under load and Vector producers fell
+  behind. Registry rows are now read once per distinct subject, host and service
+  per request. Creates and updates share one transaction and run only when a row
+  is missing or changes, or its `last_seen_at` is older than 60 seconds. Steady
+  ingest no longer writes to SQLite for the registry. Bound-token ownership
+  protection is unchanged: every bound service write stays conditional on the
+  service being unowned or owned by the bound host. Registry `last_seen_at` (admin
+  and index page) now lags by up to 60 seconds.
+
 - Update the locked certifi CA bundle to 2026.10.19 for the eMudhra/emSign
   CA compromise
   ([GHSA-6q48-6c7w-9gw2](https://github.com/certifi/python-certifi/security/advisories/GHSA-6q48-6c7w-9gw2)).
