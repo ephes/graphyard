@@ -134,6 +134,10 @@ Every reviewer finding about parity names its class.
   config error messages (Rust escapes ASCII control characters like Python,
   other non-printable code points may differ);
 - HTTP request headers other than those listed in section 6.1.
+- the response text inside UniFi error summaries (S7b) when the server
+  declares a charset other than UTF-8 in `Content-Type`: httpx decodes with
+  that charset, Rust always as UTF-8 with replacement characters (httpx's
+  default); UTF-8 and ASCII bodies are identical.
 
 **P3 — intentional divergence.** Exhaustive list in section 2.4. Anything else
 that differs is a bug.
@@ -167,7 +171,10 @@ that differs is a bug.
   reports `InfluxDB query sample must be a finite number` (both a condition
   evaluation error), and nesting deeper than `serde_json`'s 128 levels is
   "invalid JSON" where Python parses up to its recursion limit (SQL rows are
-  flat). A UTF-8 BOM is skipped like `json.loads(bytes)` does.
+  flat). A UTF-8 BOM is skipped like `json.loads(bytes)` does. The UniFi
+  login check (S7b) counts an unparseable body as a successful login, so a
+  2xx login body with such a token and `meta.rc` other than `ok` is a
+  success in Rust and a failed attempt in Python.
 - **D-5 Regex dialect.** User regexes in spec configs run on `fancy-regex`
   (backtracking features like Python `re`), not CPython `re`. Patterns valid
   in one and not the other, and Unicode case-folding corner cases, differ.
@@ -181,6 +188,10 @@ that differs is a bug.
   The same holds for Django's `datetime_re` fallback when reading a stored
   datetime (5.3): its `\d` matches Unicode digits, Rust's ASCII only, so
   such text loads as NULL in Rust (`fromisoformat` is ASCII-only in both).
+  The UniFi selector `port_idx:<n>` (S7b) likewise takes ASCII digits only:
+  Python's `isdigit()`/`int()` accept other decimal digits (`port_idx:٣`
+  is port 3), Rust reports `invalid port_idx selector: …` (`critical` in
+  both unless such a port exists).
 - **D-7 Django command plumbing.** No Django system checks, no Django global
   options, clap usage text on bad flags (exit 2 as argparse). Settings that
   only the web reads (secret key, login throttle, ingest windows) are not
@@ -936,6 +947,25 @@ in the order the Python code checks them.
   `tx_bytes-r`), each skipped when not finite; no points → `warning, 0,
   skipped, "no numeric traffic values found"`.
 
+As implemented in S7b (`graphyard-collect::executors`): an executor is
+`async fn(&HttpContext, &impl MetricSink, name, &config) ->
+Result<SpecOutcome, ExecutorError>`. `MetricSink` stands for
+`influx.write_points` and `touch_registry_from_points` (the agent wires the
+InfluxDB writer and the store into it in S8; a `SinkError` carries the
+Python class and `str(err)`). `ExecutorError` is what Python lets escape the
+executor: `Config` (a `SpecConfigError` of a typed knob, raised before the
+required-field checks in both executors) or `Raised` (the page probe's
+warning-path sink failure, which the runner turns into `collector raised
+<class>: <message>`). The page probe uses `run_with_deadline` +
+`run_page_probe` of S6, UniFi `send_following_redirects` (the login `POST`
+carries httpx's compact `json.dumps(ensure_ascii=False)` body with
+`Content-Type` and `Content-Length`; `client.post`/`client.get` read the
+whole body before the status is looked at). UniFi bodies are decoded like
+`resp.json()`, including `json.loads`' 4300-digit integer limit
+(`int_digit_limit_error`); `resp.text` for the summaries is UTF-8 with
+replacement characters (P2 for other declared charsets, 2.3). Points carry
+`datetime.now(UTC)` at microsecond precision, one instant per execution.
+
 ### 6.4 InfluxDB writes (`influx.py:write_points`, P1)
 
 Normalise each point (`normalize_metric_point`: metric required, subject type
@@ -1337,7 +1367,8 @@ a string produces a text file written verbatim (`schema/schema.sql`).
 | `line_protocol.json` | `write_points` with a capturing client, `Point.to_line_protocol` | points → lines, logs, counts (escape and float corner cases) |
 | `json_path.json` | `_resolve_json_path` | payload × path |
 | `ha_mapping.json` | `_resolve_subject_mapping`, `_resolve_home_assistant_metric_mapping`, `_normalize_home_assistant_sensor_state` (incl. the production spec config of section 1) | state payloads → point or `None` + warnings |
-| `unifi.json` | `_find_unifi_device`, `_resolve_unifi_interface_stats`, `_unifi_response_summary`, `_unifi_login_response_ok` | device/response corpus |
+| `unifi.json` (S7b, `gen_page_probe_unifi.py`) | `_find_unifi_device`, `_resolve_unifi_interface_stats`, `_unifi_response_summary`, `_unifi_response_error`, `_unifi_login_response_ok`, `_execute_unifi_device_traffic_spec` on `httpx.MockTransport` with a recording sink | device/selector/response corpus; executor scenarios: config × scripted replies → requests (method, target, selected headers, body), sink calls with their points, outcome or raised exception, `HTTP Request:` lines |
+| `page_probe.json` (S7b, same builder) | `_execute_http_page_probe_spec` on `httpx.MockTransport` with a recording sink | executor scenarios as for UniFi (timing values masked) |
 | `http_errors.json` | httpx `raise_for_status`, exception classes for the page probe | responses/URLs → message and class |
 | `flux.json` | `query_condition_window` (with `query_range` stubbed), `_query_range_v2_flux` (query text), `query_range` mode v2 end to end against a loopback fake InfluxDB (request, `FluxCsvParser` on canned CSV, errors), `base64.b64decode` | condition × now → window, tags, warning, Flux text; scripted responses → request, samples or error |
 | `sql_v3.json` | `_query_range_v3_sql` (SQL text, payload, headers), `query_range` modes v3 and auto end to end (row decoding, `_read_v3_sql_rows` errors, the httpx log line) | |

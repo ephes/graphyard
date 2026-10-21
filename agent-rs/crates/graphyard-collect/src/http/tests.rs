@@ -1,12 +1,13 @@
 //! Tests of the HTTP layer: the `http_errors.json` fixture cases and
 //! fake-server tests per rule of PLAN.md 6.1/6.2 (no test reaches the
-//! network; names resolve through stubs or to loopback).
+//! network; names resolve through stubs or to loopback). The fake servers,
+//! the log capture and the TLS material are shared with the executor tests.
 
 mod deadline;
 mod fixture;
-mod logs;
+pub(crate) mod logs;
 mod scenarios;
-mod server;
+pub(crate) mod server;
 mod texts;
-mod transport;
+pub(crate) mod transport;
 mod urls;

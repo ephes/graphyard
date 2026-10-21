@@ -29,7 +29,7 @@ static LOGGER: ThreadLogger = ThreadLogger;
 static INIT: Once = Once::new();
 
 /// Start capturing on this thread; earlier lines are dropped.
-pub(super) fn capture() {
+pub(crate) fn capture() {
     INIT.call_once(|| {
         log::set_logger(&LOGGER).expect("no other logger in the test binary");
         log::set_max_level(log::LevelFilter::Info);
@@ -38,6 +38,6 @@ pub(super) fn capture() {
 }
 
 /// The lines logged on this thread since [`capture`].
-pub(super) fn lines() -> Vec<String> {
+pub(crate) fn lines() -> Vec<String> {
     LINES.with(|lines| lines.borrow().clone())
 }

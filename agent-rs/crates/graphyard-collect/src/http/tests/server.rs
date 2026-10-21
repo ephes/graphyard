@@ -13,7 +13,7 @@ use crate::http::resolve::{Lookup, LookupError};
 
 /// A request as the server received it.
 #[derive(Clone, Debug)]
-pub(super) struct Recorded {
+pub(crate) struct Recorded {
     pub method: String,
     pub target: String,
     pub headers: Vec<(String, String)>,
@@ -37,7 +37,7 @@ impl Recorded {
 
 /// What the server does with a request.
 #[derive(Clone, Debug)]
-pub(super) enum Reply {
+pub(crate) enum Reply {
     /// Write these bytes and close.
     Raw(Vec<u8>),
     /// Write `prefix`, then one byte of `drip` (cycled) per `interval` for
@@ -53,7 +53,7 @@ pub(super) enum Reply {
 }
 
 /// A complete response with `Content-Length` and `Connection: close`.
-pub(super) fn response(status_line: &str, headers: &[(&str, &str)], body: &[u8]) -> Reply {
+pub(crate) fn response(status_line: &str, headers: &[(&str, &str)], body: &[u8]) -> Reply {
     let mut head = format!("HTTP/1.1 {status_line}\r\n");
     for (name, value) in headers {
         head.push_str(&format!("{name}: {value}\r\n"));
@@ -70,7 +70,7 @@ pub(super) fn response(status_line: &str, headers: &[(&str, &str)], body: &[u8])
 type Handler = dyn Fn(&Recorded) -> Reply + Send + Sync;
 
 /// A server answering every connection with `handler`.
-pub(super) struct Server {
+pub(crate) struct Server {
     pub addr: SocketAddr,
     requests: Arc<Mutex<Vec<Recorded>>>,
     accepted: Arc<AtomicUsize>,
@@ -240,7 +240,7 @@ fn find(haystack: &[u8], needle: &[u8]) -> Option<usize> {
 
 /// A resolver stub: every name is loopback, optionally after a delay or
 /// until released; `fail` names fail with a `gaierror` text.
-pub(super) struct StubLookup {
+pub(crate) struct StubLookup {
     pub delay: Duration,
     pub gate: Option<Arc<Gate>>,
     pub fail: Vec<String>,
@@ -277,7 +277,7 @@ impl Lookup for StubLookup {
 /// A gate blocking resolver threads until opened (opened on drop, so a
 /// failing test never leaves a blocked thread behind).
 #[derive(Default)]
-pub(super) struct Gate {
+pub(crate) struct Gate {
     open: Mutex<bool>,
     changed: Condvar,
 }
@@ -297,7 +297,7 @@ impl Gate {
 }
 
 /// Opens the gate when dropped.
-pub(super) struct GateGuard(pub Arc<Gate>);
+pub(crate) struct GateGuard(pub Arc<Gate>);
 
 impl Drop for GateGuard {
     fn drop(&mut self) {

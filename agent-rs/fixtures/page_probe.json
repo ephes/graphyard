@@ -1,0 +1,5608 @@
+{
+ "origin": "http://probe.test",
+ "executor": [
+  {
+   "name": "success with the production dimensions",
+   "spec_name": "page probe",
+   "config": {
+    "url": "http://probe.test/",
+    "subject_id": "example_site",
+    "service_id": "example_service",
+    "source_system": "http_probe",
+    "source_instance": "public_web",
+    "collector_service": "graphyard-agent",
+    "collector_host": "macmini",
+    "request_timeout_seconds": 15
+   },
+   "routes": {
+    "/": [
+     {
+      "status": 200,
+      "headers": [],
+      "body_hex": "3c68746d6c3e6f6b3c2f68746d6c3e"
+     }
+    ]
+   },
+   "sink": {
+    "write_error": null,
+    "registry_error": null
+   },
+   "outcome": [
+    "ok",
+    5,
+    0,
+    ""
+   ],
+   "p2": false,
+   "requests": [
+    {
+     "method": "GET",
+     "target": "/",
+     "headers": [
+      [
+       "accept",
+       "*/*"
+      ]
+     ],
+     "body": ""
+    }
+   ],
+   "calls": [
+    {
+     "call": "write",
+     "points": [
+      {
+       "metric": "service.http_page_ttfb_seconds",
+       "value": null,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "macmini",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_service",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_total_seconds",
+       "value": null,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "macmini",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_service",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_status_code",
+       "value": 200.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "macmini",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_service",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_success",
+       "value": 1.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "macmini",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_service",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_redirect_count",
+       "value": 0.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "macmini",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_service",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      }
+     ]
+    },
+    {
+     "call": "touch",
+     "points": [
+      {
+       "metric": "service.http_page_ttfb_seconds",
+       "value": null,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "macmini",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_service",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_total_seconds",
+       "value": null,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "macmini",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_service",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_status_code",
+       "value": 200.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "macmini",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_service",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_success",
+       "value": 1.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "macmini",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_service",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_redirect_count",
+       "value": 0.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "macmini",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_service",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      }
+     ]
+    }
+   ],
+   "log": [
+    "HTTP Request: GET http://probe.test/ \"HTTP/1.1 200 OK\""
+   ]
+  },
+  {
+   "name": "defaults",
+   "spec_name": "page probe",
+   "config": {
+    "url": "http://probe.test/",
+    "subject_id": "example_site"
+   },
+   "routes": {
+    "/": [
+     {
+      "status": 200,
+      "headers": [],
+      "body_hex": "3c68746d6c3e6f6b3c2f68746d6c3e"
+     }
+    ]
+   },
+   "sink": {
+    "write_error": null,
+    "registry_error": null
+   },
+   "outcome": [
+    "ok",
+    5,
+    0,
+    ""
+   ],
+   "p2": false,
+   "requests": [
+    {
+     "method": "GET",
+     "target": "/",
+     "headers": [
+      [
+       "accept",
+       "*/*"
+      ]
+     ],
+     "body": ""
+    }
+   ],
+   "calls": [
+    {
+     "call": "write",
+     "points": [
+      {
+       "metric": "service.http_page_ttfb_seconds",
+       "value": null,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_total_seconds",
+       "value": null,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_status_code",
+       "value": 200.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_success",
+       "value": 1.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_redirect_count",
+       "value": 0.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      }
+     ]
+    },
+    {
+     "call": "touch",
+     "points": [
+      {
+       "metric": "service.http_page_ttfb_seconds",
+       "value": null,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_total_seconds",
+       "value": null,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_status_code",
+       "value": 200.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_success",
+       "value": 1.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_redirect_count",
+       "value": 0.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      }
+     ]
+    }
+   ],
+   "log": [
+    "HTTP Request: GET http://probe.test/ \"HTTP/1.1 200 OK\""
+   ]
+  },
+  {
+   "name": "values are str() and stripped, empty dimensions fall back",
+   "spec_name": "page probe",
+   "config": {
+    "url": "  http://probe.test/  ",
+    "subject_id": "  Example_Site ",
+    "service_id": " ",
+    "source_system": "",
+    "source_instance": "  ",
+    "collector_service": "",
+    "collector_host": " "
+   },
+   "routes": {
+    "/": [
+     {
+      "status": 200,
+      "headers": [],
+      "body_hex": "3c68746d6c3e6f6b3c2f68746d6c3e"
+     }
+    ]
+   },
+   "sink": {
+    "write_error": null,
+    "registry_error": null
+   },
+   "outcome": [
+    "ok",
+    5,
+    0,
+    ""
+   ],
+   "p2": false,
+   "requests": [
+    {
+     "method": "GET",
+     "target": "/",
+     "headers": [
+      [
+       "accept",
+       "*/*"
+      ]
+     ],
+     "body": ""
+    }
+   ],
+   "calls": [
+    {
+     "call": "write",
+     "points": [
+      {
+       "metric": "service.http_page_ttfb_seconds",
+       "value": null,
+       "subject_type": "service",
+       "subject_id": "Example_Site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_total_seconds",
+       "value": null,
+       "subject_type": "service",
+       "subject_id": "Example_Site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_status_code",
+       "value": 200.0,
+       "subject_type": "service",
+       "subject_id": "Example_Site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_success",
+       "value": 1.0,
+       "subject_type": "service",
+       "subject_id": "Example_Site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_redirect_count",
+       "value": 0.0,
+       "subject_type": "service",
+       "subject_id": "Example_Site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      }
+     ]
+    },
+    {
+     "call": "touch",
+     "points": [
+      {
+       "metric": "service.http_page_ttfb_seconds",
+       "value": null,
+       "subject_type": "service",
+       "subject_id": "Example_Site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_total_seconds",
+       "value": null,
+       "subject_type": "service",
+       "subject_id": "Example_Site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_status_code",
+       "value": 200.0,
+       "subject_type": "service",
+       "subject_id": "Example_Site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_success",
+       "value": 1.0,
+       "subject_type": "service",
+       "subject_id": "Example_Site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_redirect_count",
+       "value": 0.0,
+       "subject_type": "service",
+       "subject_id": "Example_Site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      }
+     ]
+    }
+   ],
+   "log": [
+    "HTTP Request: GET http://probe.test/ \"HTTP/1.1 200 OK\""
+   ]
+  },
+  {
+   "name": "non-string values are str()",
+   "spec_name": "page probe",
+   "config": {
+    "url": "http://probe.test/",
+    "subject_id": 42,
+    "service_id": true,
+    "source_system": null,
+    "source_instance": 1.5,
+    "collector_host": [
+     "a",
+     1
+    ]
+   },
+   "routes": {
+    "/": [
+     {
+      "status": 200,
+      "headers": [],
+      "body_hex": "3c68746d6c3e6f6b3c2f68746d6c3e"
+     }
+    ]
+   },
+   "sink": {
+    "write_error": null,
+    "registry_error": null
+   },
+   "outcome": [
+    "ok",
+    5,
+    0,
+    ""
+   ],
+   "p2": false,
+   "requests": [
+    {
+     "method": "GET",
+     "target": "/",
+     "headers": [
+      [
+       "accept",
+       "*/*"
+      ]
+     ],
+     "body": ""
+    }
+   ],
+   "calls": [
+    {
+     "call": "write",
+     "points": [
+      {
+       "metric": "service.http_page_ttfb_seconds",
+       "value": null,
+       "subject_type": "service",
+       "subject_id": "42",
+       "source_system": "None",
+       "collector_service": "graphyard-agent",
+       "collector_host": "['a', 1]",
+       "source_instance": "1.5",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "True",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_total_seconds",
+       "value": null,
+       "subject_type": "service",
+       "subject_id": "42",
+       "source_system": "None",
+       "collector_service": "graphyard-agent",
+       "collector_host": "['a', 1]",
+       "source_instance": "1.5",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "True",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_status_code",
+       "value": 200.0,
+       "subject_type": "service",
+       "subject_id": "42",
+       "source_system": "None",
+       "collector_service": "graphyard-agent",
+       "collector_host": "['a', 1]",
+       "source_instance": "1.5",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "True",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_success",
+       "value": 1.0,
+       "subject_type": "service",
+       "subject_id": "42",
+       "source_system": "None",
+       "collector_service": "graphyard-agent",
+       "collector_host": "['a', 1]",
+       "source_instance": "1.5",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "True",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_redirect_count",
+       "value": 0.0,
+       "subject_type": "service",
+       "subject_id": "42",
+       "source_system": "None",
+       "collector_service": "graphyard-agent",
+       "collector_host": "['a', 1]",
+       "source_instance": "1.5",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "True",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      }
+     ]
+    },
+    {
+     "call": "touch",
+     "points": [
+      {
+       "metric": "service.http_page_ttfb_seconds",
+       "value": null,
+       "subject_type": "service",
+       "subject_id": "42",
+       "source_system": "None",
+       "collector_service": "graphyard-agent",
+       "collector_host": "['a', 1]",
+       "source_instance": "1.5",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "True",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_total_seconds",
+       "value": null,
+       "subject_type": "service",
+       "subject_id": "42",
+       "source_system": "None",
+       "collector_service": "graphyard-agent",
+       "collector_host": "['a', 1]",
+       "source_instance": "1.5",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "True",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_status_code",
+       "value": 200.0,
+       "subject_type": "service",
+       "subject_id": "42",
+       "source_system": "None",
+       "collector_service": "graphyard-agent",
+       "collector_host": "['a', 1]",
+       "source_instance": "1.5",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "True",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_success",
+       "value": 1.0,
+       "subject_type": "service",
+       "subject_id": "42",
+       "source_system": "None",
+       "collector_service": "graphyard-agent",
+       "collector_host": "['a', 1]",
+       "source_instance": "1.5",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "True",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_redirect_count",
+       "value": 0.0,
+       "subject_type": "service",
+       "subject_id": "42",
+       "source_system": "None",
+       "collector_service": "graphyard-agent",
+       "collector_host": "['a', 1]",
+       "source_instance": "1.5",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "True",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      }
+     ]
+    }
+   ],
+   "log": [
+    "HTTP Request: GET http://probe.test/ \"HTTP/1.1 200 OK\""
+   ]
+  },
+  {
+   "name": "configured tags are str() and override the fixed ones",
+   "spec_name": "page probe",
+   "config": {
+    "url": "http://probe.test/",
+    "subject_id": "example_site",
+    "tags": {
+     "env": "prod",
+     "count": 3,
+     "ratio": 1.0,
+     "flag": false,
+     "none": null,
+     "nested": {
+      "a": [
+       1,
+       "b"
+      ]
+     },
+     "http_method": "HEAD",
+     "spec_name": "override"
+    }
+   },
+   "routes": {
+    "/": [
+     {
+      "status": 200,
+      "headers": [],
+      "body_hex": "3c68746d6c3e6f6b3c2f68746d6c3e"
+     }
+    ]
+   },
+   "sink": {
+    "write_error": null,
+    "registry_error": null
+   },
+   "outcome": [
+    "ok",
+    5,
+    0,
+    ""
+   ],
+   "p2": false,
+   "requests": [
+    {
+     "method": "GET",
+     "target": "/",
+     "headers": [
+      [
+       "accept",
+       "*/*"
+      ]
+     ],
+     "body": ""
+    }
+   ],
+   "calls": [
+    {
+     "call": "write",
+     "points": [
+      {
+       "metric": "service.http_page_ttfb_seconds",
+       "value": null,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "override"
+        ],
+        [
+         "http_method",
+         "HEAD"
+        ],
+        [
+         "env",
+         "prod"
+        ],
+        [
+         "count",
+         "3"
+        ],
+        [
+         "ratio",
+         "1.0"
+        ],
+        [
+         "flag",
+         "False"
+        ],
+        [
+         "none",
+         "None"
+        ],
+        [
+         "nested",
+         "{'a': [1, 'b']}"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_total_seconds",
+       "value": null,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "override"
+        ],
+        [
+         "http_method",
+         "HEAD"
+        ],
+        [
+         "env",
+         "prod"
+        ],
+        [
+         "count",
+         "3"
+        ],
+        [
+         "ratio",
+         "1.0"
+        ],
+        [
+         "flag",
+         "False"
+        ],
+        [
+         "none",
+         "None"
+        ],
+        [
+         "nested",
+         "{'a': [1, 'b']}"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_status_code",
+       "value": 200.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "override"
+        ],
+        [
+         "http_method",
+         "HEAD"
+        ],
+        [
+         "env",
+         "prod"
+        ],
+        [
+         "count",
+         "3"
+        ],
+        [
+         "ratio",
+         "1.0"
+        ],
+        [
+         "flag",
+         "False"
+        ],
+        [
+         "none",
+         "None"
+        ],
+        [
+         "nested",
+         "{'a': [1, 'b']}"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_success",
+       "value": 1.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "override"
+        ],
+        [
+         "http_method",
+         "HEAD"
+        ],
+        [
+         "env",
+         "prod"
+        ],
+        [
+         "count",
+         "3"
+        ],
+        [
+         "ratio",
+         "1.0"
+        ],
+        [
+         "flag",
+         "False"
+        ],
+        [
+         "none",
+         "None"
+        ],
+        [
+         "nested",
+         "{'a': [1, 'b']}"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_redirect_count",
+       "value": 0.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "override"
+        ],
+        [
+         "http_method",
+         "HEAD"
+        ],
+        [
+         "env",
+         "prod"
+        ],
+        [
+         "count",
+         "3"
+        ],
+        [
+         "ratio",
+         "1.0"
+        ],
+        [
+         "flag",
+         "False"
+        ],
+        [
+         "none",
+         "None"
+        ],
+        [
+         "nested",
+         "{'a': [1, 'b']}"
+        ]
+       ]
+      }
+     ]
+    },
+    {
+     "call": "touch",
+     "points": [
+      {
+       "metric": "service.http_page_ttfb_seconds",
+       "value": null,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "override"
+        ],
+        [
+         "http_method",
+         "HEAD"
+        ],
+        [
+         "env",
+         "prod"
+        ],
+        [
+         "count",
+         "3"
+        ],
+        [
+         "ratio",
+         "1.0"
+        ],
+        [
+         "flag",
+         "False"
+        ],
+        [
+         "none",
+         "None"
+        ],
+        [
+         "nested",
+         "{'a': [1, 'b']}"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_total_seconds",
+       "value": null,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "override"
+        ],
+        [
+         "http_method",
+         "HEAD"
+        ],
+        [
+         "env",
+         "prod"
+        ],
+        [
+         "count",
+         "3"
+        ],
+        [
+         "ratio",
+         "1.0"
+        ],
+        [
+         "flag",
+         "False"
+        ],
+        [
+         "none",
+         "None"
+        ],
+        [
+         "nested",
+         "{'a': [1, 'b']}"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_status_code",
+       "value": 200.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "override"
+        ],
+        [
+         "http_method",
+         "HEAD"
+        ],
+        [
+         "env",
+         "prod"
+        ],
+        [
+         "count",
+         "3"
+        ],
+        [
+         "ratio",
+         "1.0"
+        ],
+        [
+         "flag",
+         "False"
+        ],
+        [
+         "none",
+         "None"
+        ],
+        [
+         "nested",
+         "{'a': [1, 'b']}"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_success",
+       "value": 1.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "override"
+        ],
+        [
+         "http_method",
+         "HEAD"
+        ],
+        [
+         "env",
+         "prod"
+        ],
+        [
+         "count",
+         "3"
+        ],
+        [
+         "ratio",
+         "1.0"
+        ],
+        [
+         "flag",
+         "False"
+        ],
+        [
+         "none",
+         "None"
+        ],
+        [
+         "nested",
+         "{'a': [1, 'b']}"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_redirect_count",
+       "value": 0.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "override"
+        ],
+        [
+         "http_method",
+         "HEAD"
+        ],
+        [
+         "env",
+         "prod"
+        ],
+        [
+         "count",
+         "3"
+        ],
+        [
+         "ratio",
+         "1.0"
+        ],
+        [
+         "flag",
+         "False"
+        ],
+        [
+         "none",
+         "None"
+        ],
+        [
+         "nested",
+         "{'a': [1, 'b']}"
+        ]
+       ]
+      }
+     ]
+    }
+   ],
+   "log": [
+    "HTTP Request: GET http://probe.test/ \"HTTP/1.1 200 OK\""
+   ]
+  },
+  {
+   "name": "tags that are not an object are ignored",
+   "spec_name": "page probe",
+   "config": {
+    "url": "http://probe.test/",
+    "subject_id": "example_site",
+    "tags": [
+     "env",
+     "prod"
+    ]
+   },
+   "routes": {
+    "/": [
+     {
+      "status": 200,
+      "headers": [],
+      "body_hex": "3c68746d6c3e6f6b3c2f68746d6c3e"
+     }
+    ]
+   },
+   "sink": {
+    "write_error": null,
+    "registry_error": null
+   },
+   "outcome": [
+    "ok",
+    5,
+    0,
+    ""
+   ],
+   "p2": false,
+   "requests": [
+    {
+     "method": "GET",
+     "target": "/",
+     "headers": [
+      [
+       "accept",
+       "*/*"
+      ]
+     ],
+     "body": ""
+    }
+   ],
+   "calls": [
+    {
+     "call": "write",
+     "points": [
+      {
+       "metric": "service.http_page_ttfb_seconds",
+       "value": null,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_total_seconds",
+       "value": null,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_status_code",
+       "value": 200.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_success",
+       "value": 1.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_redirect_count",
+       "value": 0.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      }
+     ]
+    },
+    {
+     "call": "touch",
+     "points": [
+      {
+       "metric": "service.http_page_ttfb_seconds",
+       "value": null,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_total_seconds",
+       "value": null,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_status_code",
+       "value": 200.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_success",
+       "value": 1.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_redirect_count",
+       "value": 0.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      }
+     ]
+    }
+   ],
+   "log": [
+    "HTTP Request: GET http://probe.test/ \"HTTP/1.1 200 OK\""
+   ]
+  },
+  {
+   "name": "redirect followed",
+   "spec_name": "page probe",
+   "config": {
+    "url": "http://probe.test/",
+    "subject_id": "example_site"
+   },
+   "routes": {
+    "/": [
+     {
+      "status": 301,
+      "headers": [
+       [
+        "Location",
+        "/final"
+       ]
+      ],
+      "body_hex": "6d6f766564"
+     }
+    ],
+    "/final": [
+     {
+      "status": 200,
+      "headers": [],
+      "body_hex": ""
+     }
+    ]
+   },
+   "sink": {
+    "write_error": null,
+    "registry_error": null
+   },
+   "outcome": [
+    "ok",
+    5,
+    0,
+    ""
+   ],
+   "p2": false,
+   "requests": [
+    {
+     "method": "GET",
+     "target": "/",
+     "headers": [
+      [
+       "accept",
+       "*/*"
+      ]
+     ],
+     "body": ""
+    },
+    {
+     "method": "GET",
+     "target": "/final",
+     "headers": [
+      [
+       "accept",
+       "*/*"
+      ]
+     ],
+     "body": ""
+    }
+   ],
+   "calls": [
+    {
+     "call": "write",
+     "points": [
+      {
+       "metric": "service.http_page_ttfb_seconds",
+       "value": null,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_total_seconds",
+       "value": null,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_status_code",
+       "value": 200.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_success",
+       "value": 1.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_redirect_count",
+       "value": 1.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      }
+     ]
+    },
+    {
+     "call": "touch",
+     "points": [
+      {
+       "metric": "service.http_page_ttfb_seconds",
+       "value": null,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_total_seconds",
+       "value": null,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_status_code",
+       "value": 200.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_success",
+       "value": 1.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_redirect_count",
+       "value": 1.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      }
+     ]
+    }
+   ],
+   "log": [
+    "HTTP Request: GET http://probe.test/ \"HTTP/1.1 301 Moved Permanently\"",
+    "HTTP Request: GET http://probe.test/final \"HTTP/1.1 200 OK\""
+   ]
+  },
+  {
+   "name": "redirect not followed is a success",
+   "spec_name": "page probe",
+   "config": {
+    "url": "http://probe.test/",
+    "subject_id": "example_site",
+    "follow_redirects": false
+   },
+   "routes": {
+    "/": [
+     {
+      "status": 302,
+      "headers": [
+       [
+        "Location",
+        "/final"
+       ]
+      ],
+      "body_hex": "6d6f766564"
+     }
+    ]
+   },
+   "sink": {
+    "write_error": null,
+    "registry_error": null
+   },
+   "outcome": [
+    "ok",
+    5,
+    0,
+    ""
+   ],
+   "p2": false,
+   "requests": [
+    {
+     "method": "GET",
+     "target": "/",
+     "headers": [
+      [
+       "accept",
+       "*/*"
+      ]
+     ],
+     "body": ""
+    }
+   ],
+   "calls": [
+    {
+     "call": "write",
+     "points": [
+      {
+       "metric": "service.http_page_ttfb_seconds",
+       "value": null,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_total_seconds",
+       "value": null,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_status_code",
+       "value": 302.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_success",
+       "value": 1.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_redirect_count",
+       "value": 0.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      }
+     ]
+    },
+    {
+     "call": "touch",
+     "points": [
+      {
+       "metric": "service.http_page_ttfb_seconds",
+       "value": null,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_total_seconds",
+       "value": null,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_status_code",
+       "value": 302.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_success",
+       "value": 1.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_redirect_count",
+       "value": 0.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      }
+     ]
+    }
+   ],
+   "log": [
+    "HTTP Request: GET http://probe.test/ \"HTTP/1.1 302 Found\""
+   ]
+  },
+  {
+   "name": "server error is a warning with five points",
+   "spec_name": "page probe",
+   "config": {
+    "url": "http://probe.test/",
+    "subject_id": "example_site"
+   },
+   "routes": {
+    "/": [
+     {
+      "status": 503,
+      "headers": [],
+      "body_hex": "646f776e"
+     }
+    ]
+   },
+   "sink": {
+    "write_error": null,
+    "registry_error": null
+   },
+   "outcome": [
+    "warning",
+    5,
+    0,
+    "unexpected status code: 503"
+   ],
+   "p2": false,
+   "requests": [
+    {
+     "method": "GET",
+     "target": "/",
+     "headers": [
+      [
+       "accept",
+       "*/*"
+      ]
+     ],
+     "body": ""
+    }
+   ],
+   "calls": [
+    {
+     "call": "write",
+     "points": [
+      {
+       "metric": "service.http_page_ttfb_seconds",
+       "value": null,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_total_seconds",
+       "value": null,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_status_code",
+       "value": 503.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_success",
+       "value": 0.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_redirect_count",
+       "value": 0.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      }
+     ]
+    },
+    {
+     "call": "touch",
+     "points": [
+      {
+       "metric": "service.http_page_ttfb_seconds",
+       "value": null,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_total_seconds",
+       "value": null,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_status_code",
+       "value": 503.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_success",
+       "value": 0.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_redirect_count",
+       "value": 0.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      }
+     ]
+    }
+   ],
+   "log": [
+    "HTTP Request: GET http://probe.test/ \"HTTP/1.1 503 Service Unavailable\""
+   ]
+  },
+  {
+   "name": "not found is a warning",
+   "spec_name": "page probe",
+   "config": {
+    "url": "http://probe.test/",
+    "subject_id": "example_site"
+   },
+   "routes": {
+    "/": [
+     {
+      "status": 404,
+      "headers": [],
+      "body_hex": ""
+     }
+    ]
+   },
+   "sink": {
+    "write_error": null,
+    "registry_error": null
+   },
+   "outcome": [
+    "warning",
+    5,
+    0,
+    "unexpected status code: 404"
+   ],
+   "p2": false,
+   "requests": [
+    {
+     "method": "GET",
+     "target": "/",
+     "headers": [
+      [
+       "accept",
+       "*/*"
+      ]
+     ],
+     "body": ""
+    }
+   ],
+   "calls": [
+    {
+     "call": "write",
+     "points": [
+      {
+       "metric": "service.http_page_ttfb_seconds",
+       "value": null,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_total_seconds",
+       "value": null,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_status_code",
+       "value": 404.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_success",
+       "value": 0.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_redirect_count",
+       "value": 0.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      }
+     ]
+    },
+    {
+     "call": "touch",
+     "points": [
+      {
+       "metric": "service.http_page_ttfb_seconds",
+       "value": null,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_total_seconds",
+       "value": null,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_status_code",
+       "value": 404.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_success",
+       "value": 0.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_redirect_count",
+       "value": 0.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      }
+     ]
+    }
+   ],
+   "log": [
+    "HTTP Request: GET http://probe.test/ \"HTTP/1.1 404 Not Found\""
+   ]
+  },
+  {
+   "name": "no content is a success",
+   "spec_name": "page probe",
+   "config": {
+    "url": "http://probe.test/",
+    "subject_id": "example_site"
+   },
+   "routes": {
+    "/": [
+     {
+      "status": 204,
+      "headers": [],
+      "body_hex": ""
+     }
+    ]
+   },
+   "sink": {
+    "write_error": null,
+    "registry_error": null
+   },
+   "outcome": [
+    "ok",
+    5,
+    0,
+    ""
+   ],
+   "p2": false,
+   "requests": [
+    {
+     "method": "GET",
+     "target": "/",
+     "headers": [
+      [
+       "accept",
+       "*/*"
+      ]
+     ],
+     "body": ""
+    }
+   ],
+   "calls": [
+    {
+     "call": "write",
+     "points": [
+      {
+       "metric": "service.http_page_ttfb_seconds",
+       "value": null,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_total_seconds",
+       "value": null,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_status_code",
+       "value": 204.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_success",
+       "value": 1.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_redirect_count",
+       "value": 0.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      }
+     ]
+    },
+    {
+     "call": "touch",
+     "points": [
+      {
+       "metric": "service.http_page_ttfb_seconds",
+       "value": null,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_total_seconds",
+       "value": null,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_status_code",
+       "value": 204.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_success",
+       "value": 1.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_redirect_count",
+       "value": 0.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      }
+     ]
+    }
+   ],
+   "log": [
+    "HTTP Request: GET http://probe.test/ \"HTTP/1.1 204 No Content\""
+   ]
+  },
+  {
+   "name": "body over the cap is the warning path",
+   "spec_name": "page probe",
+   "config": {
+    "url": "http://probe.test/",
+    "subject_id": "example_site",
+    "max_body_bytes": 4
+   },
+   "routes": {
+    "/": [
+     {
+      "status": 200,
+      "headers": [],
+      "body_hex": "616263646566"
+     }
+    ]
+   },
+   "sink": {
+    "write_error": null,
+    "registry_error": null
+   },
+   "outcome": [
+    "warning",
+    2,
+    0,
+    "response body exceeded max_body_bytes=4"
+   ],
+   "p2": false,
+   "requests": [
+    {
+     "method": "GET",
+     "target": "/",
+     "headers": [
+      [
+       "accept",
+       "*/*"
+      ]
+     ],
+     "body": ""
+    }
+   ],
+   "calls": [
+    {
+     "call": "write",
+     "points": [
+      {
+       "metric": "service.http_page_status_code",
+       "value": 0.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_success",
+       "value": 0.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      }
+     ]
+    },
+    {
+     "call": "touch",
+     "points": [
+      {
+       "metric": "service.http_page_status_code",
+       "value": 0.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_success",
+       "value": 0.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      }
+     ]
+    }
+   ],
+   "log": [
+    "HTTP Request: GET http://probe.test/ \"HTTP/1.1 200 OK\""
+   ]
+  },
+  {
+   "name": "decoded bytes count towards the cap",
+   "spec_name": "page probe",
+   "config": {
+    "url": "http://probe.test/",
+    "subject_id": "example_site",
+    "max_body_bytes": "64"
+   },
+   "routes": {
+    "/": [
+     {
+      "status": 200,
+      "headers": [
+       [
+        "Content-Encoding",
+        "gzip"
+       ]
+      ],
+      "body_hex": "1f8b0800000000000203edc1010d000000c2a02aef9fd21e0e28000000e0dd0022e823a500100000"
+     }
+    ]
+   },
+   "sink": {
+    "write_error": null,
+    "registry_error": null
+   },
+   "outcome": [
+    "warning",
+    2,
+    0,
+    "response body exceeded max_body_bytes=64"
+   ],
+   "p2": false,
+   "requests": [
+    {
+     "method": "GET",
+     "target": "/",
+     "headers": [
+      [
+       "accept",
+       "*/*"
+      ]
+     ],
+     "body": ""
+    }
+   ],
+   "calls": [
+    {
+     "call": "write",
+     "points": [
+      {
+       "metric": "service.http_page_status_code",
+       "value": 0.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_success",
+       "value": 0.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      }
+     ]
+    },
+    {
+     "call": "touch",
+     "points": [
+      {
+       "metric": "service.http_page_status_code",
+       "value": 0.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_success",
+       "value": 0.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      }
+     ]
+    }
+   ],
+   "log": [
+    "HTTP Request: GET http://probe.test/ \"HTTP/1.1 200 OK\""
+   ]
+  },
+  {
+   "name": "redirect body counts towards the cap",
+   "spec_name": "page probe",
+   "config": {
+    "url": "http://probe.test/",
+    "subject_id": "example_site",
+    "max_body_bytes": 4
+   },
+   "routes": {
+    "/": [
+     {
+      "status": 301,
+      "headers": [
+       [
+        "Location",
+        "/final"
+       ]
+      ],
+      "body_hex": "7878787878787878787878787878787878787878"
+     }
+    ],
+    "/final": [
+     {
+      "status": 200,
+      "headers": [],
+      "body_hex": "6f6b"
+     }
+    ]
+   },
+   "sink": {
+    "write_error": null,
+    "registry_error": null
+   },
+   "outcome": [
+    "warning",
+    2,
+    0,
+    "response body exceeded max_body_bytes=4"
+   ],
+   "p2": false,
+   "requests": [
+    {
+     "method": "GET",
+     "target": "/",
+     "headers": [
+      [
+       "accept",
+       "*/*"
+      ]
+     ],
+     "body": ""
+    }
+   ],
+   "calls": [
+    {
+     "call": "write",
+     "points": [
+      {
+       "metric": "service.http_page_status_code",
+       "value": 0.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_success",
+       "value": 0.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      }
+     ]
+    },
+    {
+     "call": "touch",
+     "points": [
+      {
+       "metric": "service.http_page_status_code",
+       "value": 0.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_success",
+       "value": 0.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      }
+     ]
+    }
+   ],
+   "log": [
+    "HTTP Request: GET http://probe.test/ \"HTTP/1.1 301 Moved Permanently\""
+   ]
+  },
+  {
+   "name": "twenty-one redirects",
+   "spec_name": "page probe",
+   "config": {
+    "url": "http://probe.test/r0",
+    "subject_id": "example_site"
+   },
+   "routes": {
+    "/r0": [
+     {
+      "status": 302,
+      "headers": [
+       [
+        "Location",
+        "/r1"
+       ]
+      ],
+      "body_hex": ""
+     }
+    ],
+    "/r1": [
+     {
+      "status": 302,
+      "headers": [
+       [
+        "Location",
+        "/r2"
+       ]
+      ],
+      "body_hex": ""
+     }
+    ],
+    "/r2": [
+     {
+      "status": 302,
+      "headers": [
+       [
+        "Location",
+        "/r3"
+       ]
+      ],
+      "body_hex": ""
+     }
+    ],
+    "/r3": [
+     {
+      "status": 302,
+      "headers": [
+       [
+        "Location",
+        "/r4"
+       ]
+      ],
+      "body_hex": ""
+     }
+    ],
+    "/r4": [
+     {
+      "status": 302,
+      "headers": [
+       [
+        "Location",
+        "/r5"
+       ]
+      ],
+      "body_hex": ""
+     }
+    ],
+    "/r5": [
+     {
+      "status": 302,
+      "headers": [
+       [
+        "Location",
+        "/r6"
+       ]
+      ],
+      "body_hex": ""
+     }
+    ],
+    "/r6": [
+     {
+      "status": 302,
+      "headers": [
+       [
+        "Location",
+        "/r7"
+       ]
+      ],
+      "body_hex": ""
+     }
+    ],
+    "/r7": [
+     {
+      "status": 302,
+      "headers": [
+       [
+        "Location",
+        "/r8"
+       ]
+      ],
+      "body_hex": ""
+     }
+    ],
+    "/r8": [
+     {
+      "status": 302,
+      "headers": [
+       [
+        "Location",
+        "/r9"
+       ]
+      ],
+      "body_hex": ""
+     }
+    ],
+    "/r9": [
+     {
+      "status": 302,
+      "headers": [
+       [
+        "Location",
+        "/r10"
+       ]
+      ],
+      "body_hex": ""
+     }
+    ],
+    "/r10": [
+     {
+      "status": 302,
+      "headers": [
+       [
+        "Location",
+        "/r11"
+       ]
+      ],
+      "body_hex": ""
+     }
+    ],
+    "/r11": [
+     {
+      "status": 302,
+      "headers": [
+       [
+        "Location",
+        "/r12"
+       ]
+      ],
+      "body_hex": ""
+     }
+    ],
+    "/r12": [
+     {
+      "status": 302,
+      "headers": [
+       [
+        "Location",
+        "/r13"
+       ]
+      ],
+      "body_hex": ""
+     }
+    ],
+    "/r13": [
+     {
+      "status": 302,
+      "headers": [
+       [
+        "Location",
+        "/r14"
+       ]
+      ],
+      "body_hex": ""
+     }
+    ],
+    "/r14": [
+     {
+      "status": 302,
+      "headers": [
+       [
+        "Location",
+        "/r15"
+       ]
+      ],
+      "body_hex": ""
+     }
+    ],
+    "/r15": [
+     {
+      "status": 302,
+      "headers": [
+       [
+        "Location",
+        "/r16"
+       ]
+      ],
+      "body_hex": ""
+     }
+    ],
+    "/r16": [
+     {
+      "status": 302,
+      "headers": [
+       [
+        "Location",
+        "/r17"
+       ]
+      ],
+      "body_hex": ""
+     }
+    ],
+    "/r17": [
+     {
+      "status": 302,
+      "headers": [
+       [
+        "Location",
+        "/r18"
+       ]
+      ],
+      "body_hex": ""
+     }
+    ],
+    "/r18": [
+     {
+      "status": 302,
+      "headers": [
+       [
+        "Location",
+        "/r19"
+       ]
+      ],
+      "body_hex": ""
+     }
+    ],
+    "/r19": [
+     {
+      "status": 302,
+      "headers": [
+       [
+        "Location",
+        "/r20"
+       ]
+      ],
+      "body_hex": ""
+     }
+    ],
+    "/r20": [
+     {
+      "status": 302,
+      "headers": [
+       [
+        "Location",
+        "/r21"
+       ]
+      ],
+      "body_hex": ""
+     }
+    ],
+    "/r21": [
+     {
+      "status": 200,
+      "headers": [],
+      "body_hex": ""
+     }
+    ]
+   },
+   "sink": {
+    "write_error": null,
+    "registry_error": null
+   },
+   "outcome": [
+    "warning",
+    2,
+    0,
+    "Exceeded maximum allowed redirects."
+   ],
+   "p2": false,
+   "requests": [
+    {
+     "method": "GET",
+     "target": "/r0",
+     "headers": [
+      [
+       "accept",
+       "*/*"
+      ]
+     ],
+     "body": ""
+    },
+    {
+     "method": "GET",
+     "target": "/r1",
+     "headers": [
+      [
+       "accept",
+       "*/*"
+      ]
+     ],
+     "body": ""
+    },
+    {
+     "method": "GET",
+     "target": "/r2",
+     "headers": [
+      [
+       "accept",
+       "*/*"
+      ]
+     ],
+     "body": ""
+    },
+    {
+     "method": "GET",
+     "target": "/r3",
+     "headers": [
+      [
+       "accept",
+       "*/*"
+      ]
+     ],
+     "body": ""
+    },
+    {
+     "method": "GET",
+     "target": "/r4",
+     "headers": [
+      [
+       "accept",
+       "*/*"
+      ]
+     ],
+     "body": ""
+    },
+    {
+     "method": "GET",
+     "target": "/r5",
+     "headers": [
+      [
+       "accept",
+       "*/*"
+      ]
+     ],
+     "body": ""
+    },
+    {
+     "method": "GET",
+     "target": "/r6",
+     "headers": [
+      [
+       "accept",
+       "*/*"
+      ]
+     ],
+     "body": ""
+    },
+    {
+     "method": "GET",
+     "target": "/r7",
+     "headers": [
+      [
+       "accept",
+       "*/*"
+      ]
+     ],
+     "body": ""
+    },
+    {
+     "method": "GET",
+     "target": "/r8",
+     "headers": [
+      [
+       "accept",
+       "*/*"
+      ]
+     ],
+     "body": ""
+    },
+    {
+     "method": "GET",
+     "target": "/r9",
+     "headers": [
+      [
+       "accept",
+       "*/*"
+      ]
+     ],
+     "body": ""
+    },
+    {
+     "method": "GET",
+     "target": "/r10",
+     "headers": [
+      [
+       "accept",
+       "*/*"
+      ]
+     ],
+     "body": ""
+    },
+    {
+     "method": "GET",
+     "target": "/r11",
+     "headers": [
+      [
+       "accept",
+       "*/*"
+      ]
+     ],
+     "body": ""
+    },
+    {
+     "method": "GET",
+     "target": "/r12",
+     "headers": [
+      [
+       "accept",
+       "*/*"
+      ]
+     ],
+     "body": ""
+    },
+    {
+     "method": "GET",
+     "target": "/r13",
+     "headers": [
+      [
+       "accept",
+       "*/*"
+      ]
+     ],
+     "body": ""
+    },
+    {
+     "method": "GET",
+     "target": "/r14",
+     "headers": [
+      [
+       "accept",
+       "*/*"
+      ]
+     ],
+     "body": ""
+    },
+    {
+     "method": "GET",
+     "target": "/r15",
+     "headers": [
+      [
+       "accept",
+       "*/*"
+      ]
+     ],
+     "body": ""
+    },
+    {
+     "method": "GET",
+     "target": "/r16",
+     "headers": [
+      [
+       "accept",
+       "*/*"
+      ]
+     ],
+     "body": ""
+    },
+    {
+     "method": "GET",
+     "target": "/r17",
+     "headers": [
+      [
+       "accept",
+       "*/*"
+      ]
+     ],
+     "body": ""
+    },
+    {
+     "method": "GET",
+     "target": "/r18",
+     "headers": [
+      [
+       "accept",
+       "*/*"
+      ]
+     ],
+     "body": ""
+    },
+    {
+     "method": "GET",
+     "target": "/r19",
+     "headers": [
+      [
+       "accept",
+       "*/*"
+      ]
+     ],
+     "body": ""
+    },
+    {
+     "method": "GET",
+     "target": "/r20",
+     "headers": [
+      [
+       "accept",
+       "*/*"
+      ]
+     ],
+     "body": ""
+    }
+   ],
+   "calls": [
+    {
+     "call": "write",
+     "points": [
+      {
+       "metric": "service.http_page_status_code",
+       "value": 0.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/r0",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_success",
+       "value": 0.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/r0",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      }
+     ]
+    },
+    {
+     "call": "touch",
+     "points": [
+      {
+       "metric": "service.http_page_status_code",
+       "value": 0.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/r0",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_success",
+       "value": 0.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/r0",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      }
+     ]
+    }
+   ],
+   "log": [
+    "HTTP Request: GET http://probe.test/r0 \"HTTP/1.1 302 Found\"",
+    "HTTP Request: GET http://probe.test/r1 \"HTTP/1.1 302 Found\"",
+    "HTTP Request: GET http://probe.test/r2 \"HTTP/1.1 302 Found\"",
+    "HTTP Request: GET http://probe.test/r3 \"HTTP/1.1 302 Found\"",
+    "HTTP Request: GET http://probe.test/r4 \"HTTP/1.1 302 Found\"",
+    "HTTP Request: GET http://probe.test/r5 \"HTTP/1.1 302 Found\"",
+    "HTTP Request: GET http://probe.test/r6 \"HTTP/1.1 302 Found\"",
+    "HTTP Request: GET http://probe.test/r7 \"HTTP/1.1 302 Found\"",
+    "HTTP Request: GET http://probe.test/r8 \"HTTP/1.1 302 Found\"",
+    "HTTP Request: GET http://probe.test/r9 \"HTTP/1.1 302 Found\"",
+    "HTTP Request: GET http://probe.test/r10 \"HTTP/1.1 302 Found\"",
+    "HTTP Request: GET http://probe.test/r11 \"HTTP/1.1 302 Found\"",
+    "HTTP Request: GET http://probe.test/r12 \"HTTP/1.1 302 Found\"",
+    "HTTP Request: GET http://probe.test/r13 \"HTTP/1.1 302 Found\"",
+    "HTTP Request: GET http://probe.test/r14 \"HTTP/1.1 302 Found\"",
+    "HTTP Request: GET http://probe.test/r15 \"HTTP/1.1 302 Found\"",
+    "HTTP Request: GET http://probe.test/r16 \"HTTP/1.1 302 Found\"",
+    "HTTP Request: GET http://probe.test/r17 \"HTTP/1.1 302 Found\"",
+    "HTTP Request: GET http://probe.test/r18 \"HTTP/1.1 302 Found\"",
+    "HTTP Request: GET http://probe.test/r19 \"HTTP/1.1 302 Found\"",
+    "HTTP Request: GET http://probe.test/r20 \"HTTP/1.1 302 Found\""
+   ]
+  },
+  {
+   "name": "invalid location is the warning path",
+   "spec_name": "page probe",
+   "config": {
+    "url": "http://probe.test/",
+    "subject_id": "example_site"
+   },
+   "routes": {
+    "/": [
+     {
+      "status": 302,
+      "headers": [
+       [
+        "Location",
+        "https://[::1"
+       ]
+      ],
+      "body_hex": ""
+     }
+    ]
+   },
+   "sink": {
+    "write_error": null,
+    "registry_error": null
+   },
+   "outcome": [
+    "warning",
+    2,
+    0,
+    "Invalid URL in location header: Invalid port: ':1'."
+   ],
+   "p2": false,
+   "requests": [
+    {
+     "method": "GET",
+     "target": "/",
+     "headers": [
+      [
+       "accept",
+       "*/*"
+      ]
+     ],
+     "body": ""
+    }
+   ],
+   "calls": [
+    {
+     "call": "write",
+     "points": [
+      {
+       "metric": "service.http_page_status_code",
+       "value": 0.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_success",
+       "value": 0.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      }
+     ]
+    },
+    {
+     "call": "touch",
+     "points": [
+      {
+       "metric": "service.http_page_status_code",
+       "value": 0.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_success",
+       "value": 0.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      }
+     ]
+    }
+   ],
+   "log": [
+    "HTTP Request: GET http://probe.test/ \"HTTP/1.1 302 Found\""
+   ]
+  },
+  {
+   "name": "invalid url is critical",
+   "spec_name": "page probe",
+   "config": {
+    "url": "http://[::1",
+    "subject_id": "example_site"
+   },
+   "routes": {},
+   "sink": {
+    "write_error": null,
+    "registry_error": null
+   },
+   "outcome": [
+    "critical",
+    0,
+    0,
+    "Invalid port: ':1'"
+   ],
+   "p2": false,
+   "requests": [],
+   "calls": [],
+   "log": []
+  },
+  {
+   "name": "config not an object",
+   "spec_name": "page probe",
+   "config": [
+    "url"
+   ],
+   "routes": {},
+   "sink": {
+    "write_error": null,
+    "registry_error": null
+   },
+   "outcome": [
+    "critical",
+    0,
+    0,
+    "config must be an object"
+   ],
+   "p2": false,
+   "requests": [],
+   "calls": [],
+   "log": []
+  },
+  {
+   "name": "url is required",
+   "spec_name": "page probe",
+   "config": {
+    "url": "  ",
+    "subject_id": "x"
+   },
+   "routes": {},
+   "sink": {
+    "write_error": null,
+    "registry_error": null
+   },
+   "outcome": [
+    "critical",
+    0,
+    0,
+    "config.url is required"
+   ],
+   "p2": false,
+   "requests": [],
+   "calls": [],
+   "log": []
+  },
+  {
+   "name": "subject_id is required",
+   "spec_name": "page probe",
+   "config": {
+    "url": "http://probe.test/"
+   },
+   "routes": {},
+   "sink": {
+    "write_error": null,
+    "registry_error": null
+   },
+   "outcome": [
+    "critical",
+    0,
+    0,
+    "config.subject_id is required"
+   ],
+   "p2": false,
+   "requests": [],
+   "calls": [],
+   "log": []
+  },
+  {
+   "name": "config errors come before the required fields",
+   "spec_name": "page probe",
+   "config": {
+    "request_timeout_seconds": 0
+   },
+   "routes": {},
+   "sink": {
+    "write_error": null,
+    "registry_error": null
+   },
+   "raised": {
+    "class": "SpecConfigError",
+    "message": "config.request_timeout_seconds must be a number greater than 0, got 0"
+   },
+   "p2": false,
+   "requests": [],
+   "calls": [],
+   "log": []
+  },
+  {
+   "name": "total timeout config error",
+   "spec_name": "page probe",
+   "config": {
+    "url": "http://probe.test/",
+    "subject_id": "example_site",
+    "total_timeout_seconds": "soon"
+   },
+   "routes": {},
+   "sink": {
+    "write_error": null,
+    "registry_error": null
+   },
+   "raised": {
+    "class": "SpecConfigError",
+    "message": "config.total_timeout_seconds must be a number greater than 0, got 'soon'"
+   },
+   "p2": false,
+   "requests": [],
+   "calls": [],
+   "log": []
+  },
+  {
+   "name": "max_body_bytes config error",
+   "spec_name": "page probe",
+   "config": {
+    "url": "http://probe.test/",
+    "subject_id": "example_site",
+    "max_body_bytes": 0
+   },
+   "routes": {},
+   "sink": {
+    "write_error": null,
+    "registry_error": null
+   },
+   "raised": {
+    "class": "SpecConfigError",
+    "message": "config.max_body_bytes must be a positive integer, got 0"
+   },
+   "p2": false,
+   "requests": [],
+   "calls": [],
+   "log": []
+  },
+  {
+   "name": "verify_tls config error",
+   "spec_name": "page probe",
+   "config": {
+    "url": "http://probe.test/",
+    "subject_id": "example_site",
+    "verify_tls": "false"
+   },
+   "routes": {},
+   "sink": {
+    "write_error": null,
+    "registry_error": null
+   },
+   "raised": {
+    "class": "SpecConfigError",
+    "message": "config.verify_tls must be true or false, got 'false'"
+   },
+   "p2": false,
+   "requests": [],
+   "calls": [],
+   "log": []
+  },
+  {
+   "name": "follow_redirects config error",
+   "spec_name": "page probe",
+   "config": {
+    "url": "http://probe.test/",
+    "subject_id": "example_site",
+    "follow_redirects": 1
+   },
+   "routes": {},
+   "sink": {
+    "write_error": null,
+    "registry_error": null
+   },
+   "raised": {
+    "class": "SpecConfigError",
+    "message": "config.follow_redirects must be true or false, got 1"
+   },
+   "p2": false,
+   "requests": [],
+   "calls": [],
+   "log": []
+  },
+  {
+   "name": "write failure on success is critical",
+   "spec_name": "page probe",
+   "config": {
+    "url": "http://probe.test/",
+    "subject_id": "example_site"
+   },
+   "routes": {
+    "/": [
+     {
+      "status": 200,
+      "headers": [],
+      "body_hex": "3c68746d6c3e6f6b3c2f68746d6c3e"
+     }
+    ]
+   },
+   "sink": {
+    "write_error": "influx write failed",
+    "registry_error": null
+   },
+   "outcome": [
+    "critical",
+    0,
+    0,
+    "influx write failed"
+   ],
+   "p2": false,
+   "requests": [
+    {
+     "method": "GET",
+     "target": "/",
+     "headers": [
+      [
+       "accept",
+       "*/*"
+      ]
+     ],
+     "body": ""
+    }
+   ],
+   "calls": [
+    {
+     "call": "write",
+     "points": [
+      {
+       "metric": "service.http_page_ttfb_seconds",
+       "value": null,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_total_seconds",
+       "value": null,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_status_code",
+       "value": 200.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_success",
+       "value": 1.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_redirect_count",
+       "value": 0.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      }
+     ]
+    }
+   ],
+   "log": [
+    "HTTP Request: GET http://probe.test/ \"HTTP/1.1 200 OK\""
+   ]
+  },
+  {
+   "name": "registry failure on success is critical",
+   "spec_name": "page probe",
+   "config": {
+    "url": "http://probe.test/",
+    "subject_id": "example_site"
+   },
+   "routes": {
+    "/": [
+     {
+      "status": 200,
+      "headers": [],
+      "body_hex": "3c68746d6c3e6f6b3c2f68746d6c3e"
+     }
+    ]
+   },
+   "sink": {
+    "write_error": null,
+    "registry_error": "registry failed"
+   },
+   "outcome": [
+    "critical",
+    0,
+    0,
+    "registry failed"
+   ],
+   "p2": false,
+   "requests": [
+    {
+     "method": "GET",
+     "target": "/",
+     "headers": [
+      [
+       "accept",
+       "*/*"
+      ]
+     ],
+     "body": ""
+    }
+   ],
+   "calls": [
+    {
+     "call": "write",
+     "points": [
+      {
+       "metric": "service.http_page_ttfb_seconds",
+       "value": null,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_total_seconds",
+       "value": null,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_status_code",
+       "value": 200.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_success",
+       "value": 1.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_redirect_count",
+       "value": 0.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      }
+     ]
+    },
+    {
+     "call": "touch",
+     "points": [
+      {
+       "metric": "service.http_page_ttfb_seconds",
+       "value": null,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_total_seconds",
+       "value": null,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_status_code",
+       "value": 200.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_success",
+       "value": 1.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_redirect_count",
+       "value": 0.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      }
+     ]
+    }
+   ],
+   "log": [
+    "HTTP Request: GET http://probe.test/ \"HTTP/1.1 200 OK\""
+   ]
+  },
+  {
+   "name": "write failure on the warning path is raised",
+   "spec_name": "page probe",
+   "config": {
+    "url": "http://probe.test/",
+    "subject_id": "example_site",
+    "max_body_bytes": 1
+   },
+   "routes": {
+    "/": [
+     {
+      "status": 200,
+      "headers": [],
+      "body_hex": "3c68746d6c3e6f6b3c2f68746d6c3e"
+     }
+    ]
+   },
+   "sink": {
+    "write_error": "influx write failed",
+    "registry_error": null
+   },
+   "raised": {
+    "class": "RuntimeError",
+    "message": "influx write failed"
+   },
+   "p2": false,
+   "requests": [
+    {
+     "method": "GET",
+     "target": "/",
+     "headers": [
+      [
+       "accept",
+       "*/*"
+      ]
+     ],
+     "body": ""
+    }
+   ],
+   "calls": [
+    {
+     "call": "write",
+     "points": [
+      {
+       "metric": "service.http_page_status_code",
+       "value": 0.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_success",
+       "value": 0.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      }
+     ]
+    }
+   ],
+   "log": [
+    "HTTP Request: GET http://probe.test/ \"HTTP/1.1 200 OK\""
+   ]
+  },
+  {
+   "name": "registry failure on the warning path is raised",
+   "spec_name": "page probe",
+   "config": {
+    "url": "http://probe.test/",
+    "subject_id": "example_site",
+    "max_body_bytes": 1
+   },
+   "routes": {
+    "/": [
+     {
+      "status": 200,
+      "headers": [],
+      "body_hex": "3c68746d6c3e6f6b3c2f68746d6c3e"
+     }
+    ]
+   },
+   "sink": {
+    "write_error": null,
+    "registry_error": "registry failed"
+   },
+   "raised": {
+    "class": "RuntimeError",
+    "message": "registry failed"
+   },
+   "p2": false,
+   "requests": [
+    {
+     "method": "GET",
+     "target": "/",
+     "headers": [
+      [
+       "accept",
+       "*/*"
+      ]
+     ],
+     "body": ""
+    }
+   ],
+   "calls": [
+    {
+     "call": "write",
+     "points": [
+      {
+       "metric": "service.http_page_status_code",
+       "value": 0.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_success",
+       "value": 0.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      }
+     ]
+    },
+    {
+     "call": "touch",
+     "points": [
+      {
+       "metric": "service.http_page_status_code",
+       "value": 0.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      },
+      {
+       "metric": "service.http_page_success",
+       "value": 0.0,
+       "subject_type": "service",
+       "subject_id": "example_site",
+       "source_system": "http_probe",
+       "collector_service": "graphyard-agent",
+       "collector_host": "external",
+       "source_instance": "public_web",
+       "source_entity_id": "http://probe.test/",
+       "host": null,
+       "service": "example_site",
+       "tags": [
+        [
+         "spec_name",
+         "page probe"
+        ],
+        [
+         "http_method",
+         "get"
+        ]
+       ]
+      }
+     ]
+    }
+   ],
+   "log": [
+    "HTTP Request: GET http://probe.test/ \"HTTP/1.1 200 OK\""
+   ]
+  }
+ ]
+}

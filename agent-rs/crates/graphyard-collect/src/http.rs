@@ -40,4 +40,4 @@ pub use resolve::{Lookup, LookupError, SystemLookup};
 pub use url::HttpxUrl;
 
 #[cfg(test)]
-mod tests;
+pub(crate) mod tests;

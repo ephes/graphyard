@@ -662,7 +662,7 @@ fn system_lookup_resolves_localhost_without_network() {
 
 /// A CA and a server certificate for `tls.test` (short validity and the
 /// server-auth usage, which platform verifiers insist on).
-fn tls_material() -> (CertificateDer<'static>, tokio_rustls::TlsAcceptor) {
+pub(crate) fn tls_material() -> (CertificateDer<'static>, tokio_rustls::TlsAcceptor) {
     use rcgen::{
         BasicConstraints, CertificateParams, CertifiedIssuer, ExtendedKeyUsagePurpose, IsCa,
         KeyPair,
