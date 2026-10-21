@@ -1,6 +1,7 @@
 # Rust port of the graphyard agent — implementation plan
 
-Status: plan, not yet implemented. Stream `rust-graphyard-agent` of the
+Status: slices S1 to S10b implemented (first release `agent-rs-v0.1.0`,
+section 8.2); nothing deployed yet. Stream `rust-graphyard-agent` of the
 campaign "Rust-Ports Runde 2" (umbrella item `rust-ports-campaign`). The
 owner decided the open questions on 2026-10-21 (section 14).
 
@@ -1251,7 +1252,10 @@ and `<archive>.sha256`, GitHub release (only that job has `contents:
 write`), pinned action SHAs, no cargo cache in the release job. CI
 (`.github/workflows/ci.yml`) gains a `rust` job (fmt, clippy `-D warnings`,
 `cargo test --locked`, release build size report, `cargo deny --locked
-check`) and a `parity` job (section 9.4). First release `agent-rs-v0.1.0`.
+check`) and a `parity` job (section 9.4). First release `agent-rs-v0.1.0`
+(S10b, published 2026-10-21 from `19f56e6`; archive sha256
+`42d6dbb5b931599c1b35ab7f19a29823bf9583d65b45e2259a69b5dbc64b80e2`; recorded in
+`agent-rs/README.md`, "Published releases").
 
 ### 8.3 Deploy mechanism today and the changes
 

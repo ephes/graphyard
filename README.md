@@ -699,7 +699,8 @@ with the same flags plus `--db`, `--check-schema`, `--version` and the shadow
 mode `--influx-write-file`. It is not deployed yet; the Python command above
 remains the agent until the cutover. Release archives of the Rust binary are
 built by `.github/workflows/agent-rs-release.yml` from `agent-rs-v<version>`
-tags.
+tags; the first is
+[`agent-rs-v0.1.0`](https://github.com/ephes/graphyard/releases/tag/agent-rs-v0.1.0).
 
 ## Nyxmon Integration Contract
 
