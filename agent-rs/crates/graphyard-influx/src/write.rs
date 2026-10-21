@@ -58,7 +58,7 @@ const QUOTE_PLUS: &AsciiSet = &NON_ALPHANUMERIC
     .remove(b'~')
     .remove(b' ');
 
-fn quote_plus(text: &str) -> String {
+pub(crate) fn quote_plus(text: &str) -> String {
     utf8_percent_encode(text, QUOTE_PLUS)
         .to_string()
         .replace(' ', "+")
@@ -142,7 +142,7 @@ fn warn_hash_measurement(measurement: &str) {
 /// Build an HTTP client: HTTP/1.1, no redirects, no retries, no proxy, no
 /// idle connections, TLS with the system trust store (D-12); `timeout` is
 /// the connect timeout and the per-read inactivity timeout.
-fn build_client(timeout: Option<Duration>) -> Result<reqwest::Client, reqwest::Error> {
+pub(crate) fn build_client(timeout: Option<Duration>) -> Result<reqwest::Client, reqwest::Error> {
     // reqwest is built without a provider of its own and panics without one.
     crate::install_crypto_provider();
     let mut builder = reqwest::Client::builder()
@@ -320,11 +320,19 @@ fn api_exception_text(status: StatusCode, headers: &[String], body: &str) -> Str
 /// # Errors
 /// `URLSchemeUnknown` or `LocationParseError` (P2 texts).
 pub fn write_url(host: &str, org: &str, bucket: &str) -> Result<Url, WriteError> {
-    let text = format!(
+    urllib3_url(format!(
         "{host}{WRITE_PATH}?org={}&bucket={}&precision=ns",
         quote_plus(org),
         quote_plus(bucket)
-    );
+    ))
+}
+
+/// A request URL of the Python client parsed like urllib3 (`parse_url`), as
+/// [`write_url`] describes; the v2 query uses it too.
+///
+/// # Errors
+/// `URLSchemeUnknown` or `LocationParseError` (P2 texts).
+pub(crate) fn urllib3_url(text: String) -> Result<Url, WriteError> {
     // urllib3 `_SCHEME_RE = ^(?:[a-zA-Z][a-zA-Z0-9+-]*:|/)`; anything else
     // is read as `//<text>`, a host without a scheme (http).
     let scheme_end = text
@@ -366,14 +374,14 @@ pub fn write_url(host: &str, org: &str, bucket: &str) -> Result<Url, WriteError>
 }
 
 /// Host and port as urllib3 names them in its messages.
-struct Target {
+pub(crate) struct Target {
     https: bool,
     host: String,
     port: u16,
 }
 
 impl Target {
-    fn of(url: &Url) -> Self {
+    pub(crate) fn of(url: &Url) -> Self {
         Self {
             https: url.scheme() == "https",
             host: url.host_str().unwrap_or_default().to_owned(),
@@ -478,7 +486,7 @@ fn tls_error(err: &reqwest::Error, target: &Target) -> Option<String> {
 }
 
 /// The urllib3 exception (class and P2 text) for a reqwest failure.
-fn transport_error(
+pub(crate) fn transport_error(
     err: &reqwest::Error,
     target: &Target,
     timeout: Option<RequestTimeout>,

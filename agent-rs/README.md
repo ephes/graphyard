@@ -28,6 +28,15 @@ by `conditions.json`. The
 `graphyard-agent` binary is a placeholder that exits 1 until slice S8; it
 answers only `--version`.
 
+Slice S4b adds the condition queries in `graphyard-influx` (PLAN.md 6.5):
+the lookback window of a condition, the v2 Flux text and request, the
+decoding of InfluxDB's annotated CSV, the v3 SQL request with its byte cap
+and deadline, and the `auto` fallback, plus `datetime.fromisoformat`,
+`base64.b64decode` and `int / int` in `graphyard_core::pycompat`. Pinned by
+`flux.json`, `sql_v3.json` and `isoformat.json`; the end-to-end cases run
+against a loopback fake InfluxDB that replays the responses the fixture
+generator served to the Python code.
+
 Slice S10a adds the release pipeline (PLAN.md 8.2): the workflow
 `.github/workflows/agent-rs-release.yml`, the checks in
 `scripts/release_checks.py` and the commit stamp of `--version`

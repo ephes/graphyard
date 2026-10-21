@@ -253,3 +253,52 @@ fn json_loads_accepts_and_rejects_like_serde_json() {
     let unicode = json_loads(r#"{"k\u00e9y": "v\u00e4l", "n": -0}"#).unwrap();
     assert_eq!(py_repr(&unicode), "{'k\u{e9}y': 'v\u{e4}l', 'n': 0}");
 }
+
+/// `int / 60` of CPython (values computed with Python 3.12).
+#[test]
+fn int_true_divide_rounds_like_python() {
+    let cases = [
+        ("0", "0.0"),
+        ("1", "0.016666666666666666"),
+        ("-1", "-0.016666666666666666"),
+        ("59", "0.9833333333333333"),
+        ("60", "1.0"),
+        ("-61", "-1.0166666666666666"),
+        ("9007199254740992", "150119987579016.53"),
+        ("9007199254740993", "150119987579016.56"),
+        ("1152921504606859321", "1.9215358410114324e+16"),
+        ("-18446744073709551617", "-3.0744573456182586e+17"),
+        ("1000000000000000000000000000007", "1.6666666666666667e+28"),
+        ("3626777458843887524118557", "6.044629098073146e+22"),
+        ("70835497243044678205470", "1.1805916207174113e+21"),
+        ("70835497243044678205530", "1.1805916207174113e+21"),
+    ];
+    for (numerator, expected) in cases {
+        let numerator: num_bigint::BigInt = numerator.parse().expect("integer");
+        let quotient = py_int_true_divide(&numerator, 60).expect("in range");
+        assert_eq!(py_float_repr(quotient), expected, "{numerator}");
+    }
+    let big = num_bigint::BigInt::from(10).pow(307) * 60;
+    assert_eq!(
+        py_float_repr(py_int_true_divide(&big, 60).expect("in range")),
+        "1e+307"
+    );
+    // The double range ends at MAX + half an ulp (2^970), which rounds to
+    // even, away from MAX.
+    let max = (num_bigint::BigInt::from(2).pow(53) - 1) * num_bigint::BigInt::from(2).pow(971);
+    let half_ulp = num_bigint::BigInt::from(2).pow(970);
+    for below in [&max * 60 - 1, (&max + &half_ulp) * 60 - 1] {
+        assert_eq!(
+            py_int_true_divide(&below, 60).expect("rounds to max"),
+            f64::MAX
+        );
+    }
+    for over in [
+        (&max + &half_ulp) * 60,
+        num_bigint::BigInt::from(2).pow(1024) * 60 - 1,
+    ] {
+        let err = py_int_true_divide(&over, 60).expect_err("overflow");
+        assert_eq!(err.python_class(), "OverflowError");
+        assert_eq!(err.message, "integer division result too large for a float");
+    }
+}

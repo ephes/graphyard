@@ -162,6 +162,12 @@ that differs is a bug.
   Such a body is a JSON decode error in Rust (spec `critical`), where Python
   parsed it and then usually rejected the non-finite value (`warning`). None
   of the 32 production endpoints emits them (checked again in the shadow run).
+  The same holds for the v3 SQL response (S4b): a `NaN` token or a UTF-16/32
+  body is `InfluxDB SQL query failed: invalid JSON` in Rust where Python
+  reports `InfluxDB query sample must be a finite number` (both a condition
+  evaluation error), and nesting deeper than `serde_json`'s 128 levels is
+  "invalid JSON" where Python parses up to its recursion limit (SQL rows are
+  flat). A UTF-8 BOM is skipped like `json.loads(bytes)` does.
 - **D-5 Regex dialect.** User regexes in spec configs run on `fancy-regex`
   (backtracking features like Python `re`), not CPython `re`. Patterns valid
   in one and not the other, and Unicode case-folding corner cases, differ.
@@ -475,13 +481,13 @@ keep every fixture-tested function in `graphyard-core`.
 | Need | Crate | Justification |
 | --- | --- | --- |
 | async runtime | `tokio` (rt, time, signal, macros) | |
-| HTTP (collectors, Influx) | `reqwest` 0.13 (no default features; `rustls-no-provider` with `rustls` + `ring` installed as the process provider, as in nyxmon; `gzip`, `deflate`, `cookies`, `stream` where the collectors need them) | maintained client covering everything httpx does for us: per-connect and per-read timeouts, streaming bodies for byte caps, cookie jar (UniFi session), `danger_accept_invalid_certs` for `verify_tls: false`, redirect policy `none` for the hand-driven page-probe redirects; the rules of section 6.1 are applied on top, not a new HTTP implementation |
+| HTTP (collectors, Influx) | `reqwest` 0.13 (no default features; `rustls-no-provider` with `rustls` + `ring` installed as the process provider, as in nyxmon; `gzip`, `deflate` for the query responses (S4b), `cookies`, `stream` where the collectors need them; the status-line reason phrase of the httpx log line comes from `hyper::ext::ReasonPhrase`) | maintained client covering everything httpx does for us: per-connect and per-read timeouts, streaming bodies for byte caps, cookie jar (UniFi session), `danger_accept_invalid_certs` for `verify_tls: false`, redirect policy `none` for the hand-driven page-probe redirects; the rules of section 6.1 are applied on top, not a new HTTP implementation |
 | name resolution | reqwest custom `Resolve` running libc `getaddrinfo` on the blocking pool | `macmini.local` needs nss-mdns, so glibc resolution is mandatory (section 13.1 R2); the wrapper counts abandoned lookups (D-3) |
 | TLS roots | system store via reqwest's platform verifier (`rustls-platform-verifier`, which reads the system store on Linux; S4a) | Q1, D-12 |
 | InfluxDB v2 write | plain HTTP `POST /api/v2/write` with our line formatter (section 6.4) | the Python client is itself a thin wrapper over this documented API (`SYNCHRONOUS` write, no batching, no retries); the Rust InfluxDB crates are either unmaintained (`influxdb2`, last release 2024-07) or InfluxQL/v1-oriented (`influxdb`); series identity needs `influxdb_client`'s exact escaping and float rendering, which no crate promises |
 | line protocol parsing (tests only) | `influxdb-line-protocol` (InfluxData) as dev-dependency | semantic comparison of written lines in fixtures, harness and shadow tooling |
 | fake servers (tests only) | `hyper` 1 (`server`, `http1`) + `hyper-util`, `http-body-util` as dev-dependencies | fake InfluxDB and collector endpoints without a hand-written HTTP parser |
-| InfluxDB v2 Flux query | plain HTTP `POST /api/v2/query` + `csv` crate for the annotated CSV | same reasoning; annotated CSV is plain CSV plus `#datatype/#group/#default` rows, read with the maintained `csv` crate |
+| InfluxDB v2 Flux query | plain HTTP `POST /api/v2/query` + `csv` crate for the annotated CSV | same reasoning; annotated CSV is plain CSV plus `#datatype/#group/#default` rows, read with the maintained `csv` crate; `FluxCsvParser`'s state machine and value typing are ported on top (S4b) |
 | InfluxDB v3 SQL | plain HTTP `POST /api/v3/query_sql` + `serde_json` | mirrors `_read_v3_sql_rows` |
 | SQLite | `rusqlite` (`bundled`) | same as nyxmon; synchronous API keeps Django's statement boundaries reviewable |
 | JSON | `serde_json` (`preserve_order`, `arbitrary_precision`) | key order of configs and payloads (rule order, tag order), big integers survive like in Python |
@@ -937,23 +943,75 @@ logs the client's `SyntaxWarning` once per process (P2).
   filters = `tags_filter` (`str()` of values, JSON key order) + normalised
   `subject_type_filter`/`subject_id_filter`; `host_filter` dropped with the
   warning for non-host subject types.
+- Window arithmetic as Python does it: `ceil(seconds / 60)` is a float
+  division of Python `int`s (`OverflowError: integer division result too
+  large for a float` beyond the double range), `timedelta(minutes=…)` fails
+  with `Python int too large to convert to C int` or `days=<d>; must have
+  magnitude <= 999999999`, the subtraction with `date value out of range`;
+  these come before the `tags_filter` check (`'<type>' object has no
+  attribute 'items'` for a non-object) and `normalize_subject_id`.
 - v2 Flux text (byte-identical, `_query_range_v2_flux`): `_flux_escape`
   (`\`, `"`, `${`), bracket access `r["key"]`, timestamps `isoformat` with
   `Z` (no fraction when µs is 0), `sort(columns: ["_time"], desc: false)`.
-  Request `POST /api/v2/query?org=<org>` with the client's JSON body (query,
-  dialect `header: true, delimiter ",", commentPrefix "#", annotations
-  [datatype, group, default], dateTimeFormat RFC3339`, `extern` as the client
-  sends it; pinned from a request captured from the Python client in S4b),
-  `Authorization: Token`. Annotated CSV: typed values per `#datatype`, empty
-  cells take `#default`, `_value` must be a finite number
-  (`InfluxDB query sample must be a finite number`), `_time` parsed with
-  Python's `fromisoformat` semantics (fraction truncated to µs, confirmed by
-  fixture), tags = every column except the known ones.
+  Request (captured from the Python client in S4b, `flux.json` `requests`):
+  `POST <INFLUX_URL minus one trailing "/">/api/v2/query?org=<quote_plus(org)>`,
+  headers `Accept: application/json`, `Accept-Encoding: identity` (a gzip or
+  deflate response is still decoded, as urllib3 does),
+  `Content-Type: application/json`, `Authorization: Token <token>` (Latin-1
+  as `http.client` encodes it), `User-Agent: influxdb-client-python/1.50.0`;
+  body `json.dumps` with default separators and `ensure_ascii`:
+  `{"extern": {"imports": [], "body": []}, "query": …, "dialect": {"header":
+  true, "delimiter": ",", "annotations": ["datatype", "group", "default"],
+  "commentPrefix": "#", "dateTimeFormat": "RFC3339"}}`. No retries, no
+  redirects (a 3xx is an `ApiException`), no environment proxy. Timeout from
+  `INFLUX_TIMEOUT_MS` as urllib3 applies `Timeout(total=ms/1000)` (connect and
+  per read): 0 means none, a negative value is urllib3's `ValueError`
+  (`Attempted to set total timeout to -0.005, …`), above the C time range
+  `OverflowError` (P2 text). A non-2xx response is `ApiException` (status,
+  reason, `HTTPHeaderDict` and body repr; header names lower-cased in Rust,
+  P2; a body read failure raises the transport error instead, so a broken
+  404 does not fall back in `auto`); transport errors keep urllib3's class (`NewConnectionError`,
+  `ReadTimeoutError`, `ProtocolError`, P2 text).
+- Annotated CSV (`FluxCsvParser`, table mode, `fixtures/flux.json` `csv`):
+  rows read like Python's `csv` module (excel dialect), annotation rows start
+  a table, typed values per `#datatype` (`string`, `boolean` = `"true"`,
+  `long`/`unsignedLong`/`duration` = `int()`, `double` = `float()`,
+  `base64Binary` = `base64.b64decode`, `dateTime:RFC3339[Nano]` =
+  `datetime.fromisoformat` (fraction truncated to µs), unknown = `None`),
+  empty cells take `#default` (the table id cell does not: `int('')` fails),
+  a missing or short `#group`/`#default`/header row is an `IndexError`, an
+  `error,reference` table raises `FluxQueryException` whose `str()` is the
+  repr of both values, duplicated column names keep the first position and
+  the last value (Python prints a warning to stdout and through `warnings`,
+  Rust logs it, P2). Then per record: `KeyError` without `_value`/`_time`,
+  skip when either is `None`, `AttributeError` for a non-datetime `_time`,
+  `_value` must be a finite number (`InfluxDB query sample must be a finite
+  number`, via `float(str(v))`), tags = every column except the known ones,
+  all values as `str()` (`None`, `True`, `b'…'`, `str(datetime)`).
+- `datetime.fromisoformat` is a port of CPython 3.12's C parser
+  (`graphyard_core::pycompat::py_fromisoformat`, `fixtures/isoformat.json`);
+  `influxdb_client` uses it because `ciso8601` is not installed. S7a reuses it
+  for Home Assistant's `last_updated`.
 - v3 SQL (`_query_range_v3_sql`, `_read_v3_sql_rows`): SQL text identical,
-  `POST /api/v3/query_sql` JSON `{"db", "q"}`, Bearer token when set, timeout
-  `max(1, INFLUX_TIMEOUT_MS/1000)` s, 10 MiB decoded cap, 30 s total; the
-  error texts of `_read_v3_sql_rows` (404 hint, `HTTP <code>`, the httpx error
-  class name for transport errors, invalid JSON, size and deadline).
+  `POST <INFLUX_URL minus trailing "/">/api/v3/query_sql` with httpx's compact
+  JSON `{"db":…,"q":…}` (UTF-8, not ASCII-escaped), `Accept:
+  application/json`, `Accept-Encoding: gzip, deflate` (decoded),
+  `User-Agent: python-httpx/0.28.1`, Bearer token when set (the v3 default
+  token of `_build_client` is not used here), per-operation timeout
+  `max(1, INFLUX_TIMEOUT_MS/1000)` s (its `OverflowError` is not caught),
+  10 MiB decoded cap, 30 s total including the JSON decode; the error texts
+  of `_read_v3_sql_rows` (404 hint, `HTTP <code>` for any other non-2xx,
+  `InfluxDB SQL query failed: <httpx class>` for transport errors:
+  `ConnectError`, `ConnectTimeout`, `ReadTimeout`, `RemoteProtocolError`,
+  `ReadError`, `DecodingError`, `UnsupportedProtocol` (also for an empty or
+  scheme-less `INFLUX_URL`), `UnicodeEncodeError` for a non-ASCII token,
+  `LocalProtocolError` for a control character in it; invalid JSON, size
+  and deadline). The httpx request log line is written once the response
+  headers arrive. Rows: non-objects and rows without `value`/`time` are
+  skipped, `time` goes through `_parse_influx_ts(str(time))` (every `Z`
+  replaced, a `ValueError` skips the row, the UTC conversion's
+  `OverflowError` propagates), values and tags as `str()` of the JSON value
+  (`None`, `True`, dict/list repr).
 - `auto`: v2 first; only a 404 falls back to v3; any other error propagates.
 
 ---
@@ -1220,8 +1278,9 @@ a string produces a text file written verbatim (`schema/schema.sql`).
 | `ha_mapping.json` | `_resolve_subject_mapping`, `_resolve_home_assistant_metric_mapping`, `_normalize_home_assistant_sensor_state` (incl. the production spec config of section 1) | state payloads → point or `None` + warnings |
 | `unifi.json` | `_find_unifi_device`, `_resolve_unifi_interface_stats`, `_unifi_response_summary`, `_unifi_login_response_ok` | device/response corpus |
 | `http_errors.json` | httpx `raise_for_status`, exception classes for the page probe | responses/URLs → message and class |
-| `flux.json` | `_query_range_v2_flux` (query text), `FluxCsvParser` on canned CSV, `query_condition_window` | condition × now → query text; CSV → samples |
-| `sql_v3.json` | `_query_range_v3_sql` (SQL text, row decoding) | |
+| `flux.json` | `query_condition_window` (with `query_range` stubbed), `_query_range_v2_flux` (query text), `query_range` mode v2 end to end against a loopback fake InfluxDB (request, `FluxCsvParser` on canned CSV, errors), `base64.b64decode` | condition × now → window, tags, warning, Flux text; scripted responses → request, samples or error |
+| `sql_v3.json` | `_query_range_v3_sql` (SQL text, payload, headers), `query_range` modes v3 and auto end to end (row decoding, `_read_v3_sql_rows` errors, the httpx log line) | |
+| `isoformat.json` | `datetime.fromisoformat` (C, 3.12), `str(datetime)`, `influx._ensure_utc` | string corpus → fields, offset, `str()`, UTC, or the `ValueError` |
 | `conditions.json` | `evaluate_condition` with stubbed samples, `timedelta.total_seconds()` | condition × samples × now → evaluation or exception; microseconds → `total_seconds()` |
 | `store_ops.json` | spec/condition loads and updates, `record_heartbeat` (S3a), `touch_registry_from_points` (S3b) on a temp DB | rows before → loaded values or exception, rows after |
 | `datetime_codec.json` | `parse_datetime` through the `sqlite3` converter, `convert_datetimefield_value`, `adapt_datetimefield_value` | stored text → loaded instant or exception, text written back |
