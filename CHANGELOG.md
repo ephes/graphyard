@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Rust agent port (`agent-rs/`, slices S12 and S13). `agent-rs-v0.2.0` is
+  installed on macmini under `/opt/graphyard-agent/0.2.0/` by the
+  `graphyard_core` deploy of 2026-10-22 09:12 UTC. The pin moved from
+  `0.1.0`, since 0.2.0 only adds `evaluate-conditions`. The Python agent
+  stays selected. The same deploy shipped graphyard `24baf74`, with no
+  `src/` change, and the `Wants=` units. The approved shadow run started at
+  T0 09:13:12 UTC. PLAN.md 11.1 and 11.2 record both steps.
+
 - Rust agent port (`agent-rs/`, slice S11c): ops-control wires the agent
   switch. The pyinfra `graphyard_core` deploy maps macmini's
   `graphyard_agent_impl`, `graphyard_agent_rust_version` and

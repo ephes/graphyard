@@ -404,7 +404,8 @@ that is not 7 to 40 lowercase hex digits fails the build.
 ### Published releases
 
 Deploys pin the version and the archive's sha256 (ops-control host vars,
-slice S11c).
+slice S11c). macmini has had `agent-rs-v0.2.0` installed since slice S12
+(2026-10-22), with the Python agent still selected.
 
 | Tag | Commit | Archive sha256 |
 | --- | --- | --- |

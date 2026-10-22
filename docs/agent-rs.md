@@ -7,9 +7,11 @@ replaced. The binding contract is [`agent-rs/PLAN.md`](../agent-rs/PLAN.md);
 build and test instructions are in [`agent-rs/README.md`](../agent-rs/README.md);
 the Python test → Rust test map is [`agent-rs/TESTMAP.md`](../agent-rs/TESTMAP.md).
 
-Status: the agent is implemented and tested but not deployed. Production runs
-the Python agent until the cutover (PLAN.md 11.3); the deployment selects the
-Rust binary only through a systemd drop-in that the ops repositories add.
+Status: the agent is implemented and tested. Release `agent-rs-v0.2.0` is
+installed on macmini but not selected (slice S12, 2026-10-22). The shadow run
+(S13) started the same day. Production runs the Python agent until the cutover
+(PLAN.md 11.3); the deployment selects the Rust binary only through a systemd
+drop-in that the ops repositories add.
 
 ## Architecture
 
