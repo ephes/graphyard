@@ -3,7 +3,9 @@
 Status: slices S1 to S11c implemented (first release `agent-rs-v0.1.0`,
 section 8.2; deploy wiring in ops-library, ops-deploy and ops-control,
 section 8.3) and S15a (`evaluate-conditions`, release `agent-rs-v0.2.0`,
-section 11.4); nothing deployed yet. Stream `rust-graphyard-agent` of the
+section 11.4); S12 done on 2026-10-22 (`agent-rs-v0.2.0` installed on
+macmini, the Python agent still selected, section 11.1) and the S13 shadow
+run started the same day (section 11.2). Stream `rust-graphyard-agent` of the
 campaign "Rust-Ports Runde 2" (umbrella item `rust-ports-campaign`). The
 owner decided the open questions on 2026-10-21 (section 14).
 
@@ -1272,7 +1274,7 @@ execs `just pyinfra-deploy-one graphyard_core macmini`. ops-control's
 (`macmini_graphyard_*` host vars, SOPS secrets `secrets/prod/graphyard.yml`
 and the spec secrets) and runs ops-deploy (pinned in
 `requirements-ops-deploy.txt`; `f8f24ce` when this plan was written,
-`5b866ed` since before S11c)
+`5b866ed` since before S11c, `309862c` since S12)
 `ops_deploy.services.graphyard.core.deploy_graphyard_core`: rsync of the tree,
 `uv sync`, migrate/collectstatic when needed, units rendered byte-identical to
 the Ansible role `graphyard_deploy` (ops-library), restart of web and agent
@@ -1627,6 +1629,24 @@ reviewed ops-control commit), check that macmini's host vars still hold
 `--check-schema` passed, no drop-in, `graphyard-agent` still runs Python
 (`/proc/<pid>/cmdline`), web healthy.
 
+As run (S12, 2026-10-22): the pin moved to `0.2.0` (sha256
+`d8efcb78fd09f5047d5e747696bc7966c94e70de8a44bbe1d5d34111a7a058d4`), since
+it is `0.1.0` plus `evaluate-conditions` with an unchanged agent loop, so the
+shadow, the cutover and S15b use one installed release. The coordinator's
+collection release is ops-library 2.66.2, which also carries the S11d units
+(`Wants=` + `After=` on `graphyard-runtime`); `deploy-graphyard-core.yml`
+refuses an older collection. ops-control `7a9096ce` pins ops-deploy
+`309862c` (S11d's `9860f56` plus an unrelated `ssh_guard` check).
+`DEPLOY_REF=24baf74 just deploy-one graphyard_core` ran from 09:11:44 to
+09:12:13 UTC, exit 0. It moved production from `4d5baf1` to `24baf74`, with
+no `src/` change. It installed and checked 0.2.0 (`--version`
+`graphyard-agent 0.2.0 (17a929f…)`, `--check-schema` exit 0, no drop-in) and
+rewrote both units without `Requires=`, restarting web and agent once
+(`NRestarts=0`, argv `manage.py start_agent`). The runtime and its containers
+kept running. `/v1/health` was `ok`, and the Python agent's points reached
+InfluxDB again from 09:13:20. The evidence is in the deploy log of ops-control
+`docs/GRAPHYARD_RUST_AGENT.md`.
+
 ### 11.2 Shadow run on macmini (S13, ≈ 24 h, no production writes)
 
 Prerequisites: S9b tooling, S12. Owner approval given 2026-10-21 (Q2): about
@@ -1677,6 +1697,17 @@ exceeds the tolerance (default 5 %) is a finding, single pairs beyond it are
 notes. Status sequences are compared with repeats collapsed; `last_error`,
 condition messages and heartbeat details are notes (P2). It reports
 findings and notes and exits 1 on findings only with `--fail-on-findings`.
+
+As started (S13, 2026-10-22): the three tools from `24baf74` were copied to
+`/var/lib/graphyard-shadow/tools/` (graphyard, 0500, inside the 0700 shadow
+directory, so the teardown removes them too). `shadow_prepare.py` exited 0
+with no listed rows and no disabled spec. T0 is `2026-10-22T09:13:12Z`, with
+32 enabled specs and 2 conditions. The transient unit
+`graphyard-agent-shadow` runs `/opt/graphyard-agent/0.2.0/graphyard-agent`
+since 09:13:18 UTC. `shadow_record.py` runs in the root tmux session
+`graphyard-shadow` on macmini, writing `record.jsonl`, with its console
+output in `record.log`. The evaluation is due about 24 h after T0; the report
+follows with the comparison.
 
 ### 11.3 Cutover and rollback drill (S14)
 
