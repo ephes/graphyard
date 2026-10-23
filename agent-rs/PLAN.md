@@ -1809,10 +1809,13 @@ main after it only changes documentation, so web was not restarted).
   `ok`.
 - Memory after the final start (T3 + 5 min): `MemoryCurrent` 4.5 MiB,
   `MemoryPeak` 6.0 MiB, `RssAnon` 3.9 MiB, `memory.stat` anon 3.9 MiB / file
-  424 KiB; Python before the cutover 73.7 / 77.0 / 72.7 MiB. The 1 h
-  measurement (due 12:41 UTC) and the 24 h measurement (due 2026-10-24
-  11:41 UTC, with CPU per day; owner decision in 11.2) are pending and go
-  into the report.
+  424 KiB; Python before the cutover 73.7 / 77.0 / 72.7 MiB. After 1 h
+  (12:42 UTC): 5.7 MiB / 7.6 MiB / 4.3 MiB, `memory.stat` anon 4.3 MiB /
+  file 1.2 MiB, all within section 10. CPU was 4.97 s in the first hour
+  (about 1.97 min/day, above the 1.5 target; the production agent also
+  writes to InfluxDB over HTTP). The 24 h measurement (due 2026-10-24
+  11:41 UTC, with CPU per day; owner decision in 11.2) is pending and
+  decides on a tuning slice.
 - Two deviations, both in the ops procedure, not in the agent. The cutover
   deploy also shipped a pending ops-control change to the runtime's compose
   file and restarted `graphyard-runtime` for about 2 s. The
