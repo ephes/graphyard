@@ -699,9 +699,9 @@ with the same flags plus `--db`, `--check-schema`, `--version` and the shadow
 mode `--influx-write-file`; its subcommand `graphyard-agent
 evaluate-conditions [--condition-id N]` is the port of `evaluate_conditions`
 above (same summary lines and exit codes, settings from the process
-environment only). Release 0.2.0 is installed on macmini (2026-10-22) and
-runs there only as the shadow agent on a copy of the database; the Python
-command above remains the production agent until the cutover. Release archives of the Rust binary are
+environment only). Release 0.2.0 is installed on macmini (2026-10-22) but not
+running: the 24 h shadow run on a copy of the database ended on 2026-10-23,
+and the Python command above remains the production agent until the cutover. Release archives of the Rust binary are
 built by `.github/workflows/agent-rs-release.yml` from `agent-rs-v<version>`
 tags; the first is
 [`agent-rs-v0.1.0`](https://github.com/ephes/graphyard/releases/tag/agent-rs-v0.1.0),

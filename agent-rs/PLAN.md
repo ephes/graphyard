@@ -4,8 +4,10 @@ Status: slices S1 to S11c implemented (first release `agent-rs-v0.1.0`,
 section 8.2; deploy wiring in ops-library, ops-deploy and ops-control,
 section 8.3) and S15a (`evaluate-conditions`, release `agent-rs-v0.2.0`,
 section 11.4); S12 done on 2026-10-22 (`agent-rs-v0.2.0` installed on
-macmini, the Python agent still selected, section 11.1) and the S13 shadow
-run started the same day (section 11.2). Stream `rust-graphyard-agent` of the
+macmini, the Python agent still selected, section 11.1); the S13 shadow
+run ran 2026-10-22/23 and is torn down; its acceptance is not met (two lean
+goals missed, explained heartbeat and registry deviations; section 11.2).
+Stream `rust-graphyard-agent` of the
 campaign "Rust-Ports Runde 2" (umbrella item `rust-ports-campaign`). The
 owner decided the open questions on 2026-10-21 (section 14).
 
@@ -1708,6 +1710,53 @@ since 09:13:18 UTC. `shadow_record.py` runs in the root tmux session
 `graphyard-shadow` on macmini, writing `record.jsonl`, with its console
 output in `record.log`. The evaluation is due about 24 h after T0; the report
 follows with the comparison.
+
+As evaluated (S13, 2026-10-23; report: ops-control
+`docs/deployments/2026-10-22-graphyard-agent-shadow.md`): the recorder and
+the unit stopped at 09:19:47/09:19:50 UTC, and `shadow_compare.py` ran over
+09:13:12Z..2026-10-23T09:19:19Z (24.1 h, exit 0; production 22 497 points,
+shadow 39 430, 71 series on each side). Result: **acceptance not met**.
+Met: no series-key difference; shadow `NRestarts=0` with one PID; condition
+status sequences identical; page-probe status sequences identical; Home
+Assistant values 2651 pairs, 0 mismatches. Not identical but explained (to be
+accepted as deviations): the heartbeat statuses and one registry row. Missed:
+two lean goals (below). The 35 findings and their causes:
+
+- 28 spec `last_status` findings and the `metric_collectors` heartbeat: an
+  ops-library storage migration on the host stopped docker, the runtime,
+  web and the Python agent three times (2026-10-22 09:56:10–09:58:00,
+  10:08:21–10:16:27, 10:27:43–10:33:48 UTC). Each first Python run after a
+  restart failed its InfluxDB write (`ConnectionResetError`). The shadow
+  writes to a file and stayed `ok`.
+- `condition_evaluator` heartbeat: the shadow's 15 failed condition runs
+  while InfluxDB was down, when the Python agent was stopped.
+- Registry `host/macmini` `source_system`: production also receives web
+  ingest (`POST /v1/metrics`, source `macmini_host_metrics`), which never
+  reaches the copy. A second registry difference seen in the record
+  (`usw_pro_xg_8_poe` `homeassistant` vs `unifi`, 246 of 1447 samples) is the
+  recorder reading the copy between the Home Assistant scan and the UniFi
+  spec of one run; it is not an ordering difference.
+- UniFi uplink rates (median relative difference 0.77/0.68): the
+  controller's instantaneous rates, read about 29 s apart after the Python
+  restarts. For the shadow points before 10:08 UTC (median pairing offset
+  5.6 s) the median was 0.000, with 29 of 54 pairs equal.
+
+Lean goals (section 10), shadow vs Python over the same window:
+`MemoryCurrent` steady median **17.4 MiB** (target ≤ 16; Python 72.9),
+`MemoryPeak` 27.8 MiB (≤ 40; 77.0), `RssAnon` 5.1 MiB (≤ 12; 72.7), `ps` RSS
+14.3 MiB (≤ 25; 88.8), binary 8.5 MiB (≤ 15), CPU **1.639 min/day** (≤ 1.5;
+Python 6.27), startup to first request 19 ms (≤ 1 s). `MemoryCurrent` rose
+linearly from 3.5 to 26.0 MiB while `RssAnon` stayed at 4.4–4.5 MiB. That
+points to page cache of the shadow-only files (`points.lp`, 18.6 MB, and the
+copy's WAL) charged to the unit's cgroup, not to process memory. Inferred,
+since `memory.stat` was not sampled; S14 should record `memory.stat` with
+its 1 h and 24 h measurements. The CPU miss (9 %) is real, at 26 % of the
+Python agent. Whether S14 proceeds with these results or a follow-up slice
+comes first is a coordinator/owner decision. Teardown under the deploy lock
+(09:19:43–09:24:08 UTC): unit stopped, `/var/lib/graphyard-shadow` (copy,
+WAL, `points.lp`, record, tools) deleted at 09:23:55. Afterwards: Python
+agent active (`NRestarts=0`, no drop-in), `/v1/health` `ok`, 32 specs `ok`,
+heartbeats fresh, its points reaching InfluxDB, no failed unit.
 
 ### 11.3 Cutover and rollback drill (S14)
 
