@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Rust agent port (`agent-rs/`, slice S13): the 24 h shadow run on macmini
+  was evaluated and torn down on 2026-10-23 (unit stopped, database copy
+  deleted, Python agent verified). The acceptance is not met. No series-key
+  difference, no restart and identical condition statuses. The heartbeat
+  statuses and one registry row differ, explained by host restarts and web
+  ingest. Steady `MemoryCurrent` 17.4 MiB (target 16) and CPU 1.639 min/day
+  (target 1.5) miss the lean goals. PLAN.md 11.2 records
+  the numbers.
+
 - Rust agent port (`agent-rs/`, slices S12 and S13). `agent-rs-v0.2.0` is
   installed on macmini under `/opt/graphyard-agent/0.2.0/` by the
   `graphyard_core` deploy of 2026-10-22 09:12 UTC. The pin moved from
