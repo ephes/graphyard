@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Rust agent port (`agent-rs/`, slice S14): `agent-rs-v0.2.0` is the
+  production agent on macmini since the cutover of 2026-10-23 11:31:46 UTC.
+  The rollback drill (to Python and back) passed, and the 7-day soak runs
+  from 11:41:37 UTC. The owner accepted the S13 shadow results; memory and
+  CPU are measured again 24 h after the cutover. PLAN.md 11.2 and 11.3 record
+  both.
+
 - Rust agent port (`agent-rs/`, slice S13): the 24 h shadow run on macmini
   was evaluated and torn down on 2026-10-23 (unit stopped, database copy
   deleted, Python agent verified). The acceptance is not met. No series-key

@@ -5,9 +5,12 @@ section 8.2; deploy wiring in ops-library, ops-deploy and ops-control,
 section 8.3) and S15a (`evaluate-conditions`, release `agent-rs-v0.2.0`,
 section 11.4); S12 done on 2026-10-22 (`agent-rs-v0.2.0` installed on
 macmini, the Python agent still selected, section 11.1); the S13 shadow
-run ran 2026-10-22/23 and is torn down; its acceptance is not met (two lean
-goals missed, explained heartbeat and registry deviations; section 11.2).
-Stream `rust-graphyard-agent` of the
+run ran 2026-10-22/23; its acceptance was not met (two lean goals missed
+narrowly, explained heartbeat and registry deviations), and the owner
+accepted the results on 2026-10-23 (section 11.2). S14 done on 2026-10-23:
+the Rust agent runs on macmini since the cutover (T1 11:31:46 UTC), the
+rollback drill passed, and the 7-day soak runs from 11:41:37 UTC
+(section 11.3). Stream `rust-graphyard-agent` of the
 campaign "Rust-Ports Runde 2" (umbrella item `rust-ports-campaign`). The
 owner decided the open questions on 2026-10-21 (section 14).
 
@@ -1758,6 +1761,13 @@ WAL, `points.lp`, record, tools) deleted at 09:23:55. Afterwards: Python
 agent active (`NRestarts=0`, no drop-in), `/v1/health` `ok`, 32 specs `ok`,
 heartbeats fresh, its points reaching InfluxDB, no failed unit.
 
+Owner decision (2026-10-23, about 09:55 UTC): the explained deviations
+(heartbeat statuses, the `host/macmini` registry row) and the two narrow
+lean-goal misses are accepted. Memory, including the cgroup's `memory.stat`
+(`anon` and `file`), and CPU are measured again 24 h after the cutover. A
+tuning slice follows only if a lean goal is still missed then. S14 was
+approved to run at once.
+
 ### 11.3 Cutover and rollback drill (S14)
 
 Owner decision Q3 (2026-10-21): one cutover window after the S13 shadow
@@ -1781,6 +1791,33 @@ Python agent resumes (spec rows advance), flip back to `rust`, deploy,
 re-verify. Soak 7 days with a daily check of the same queries; roll back on
 a spec without a run for `2 × interval`, a heartbeat older than 15 minutes, a
 restart loop, a series-key change, or memory trending above budget.
+
+As run (S14, 2026-10-23; report: ops-control
+`docs/deployments/2026-10-23-graphyard-agent-cutover.md`). Q3: the certifi
+relock `85cdb60` was already in `24baf74`, which S12 shipped, so every
+deploy ran `DEPLOY_REF=24baf74 just deploy-one graphyard_core` (graphyard
+main after it only changes documentation, so web was not restarted).
+
+- Cutover 11:31:17–11:31:47 UTC: the Rust agent has run since T1 = 11:31:46,
+  `exe` `/opt/graphyard-agent/0.2.0/graphyard-agent`, `NRestarts=0`. All 32
+  specs `ok` with a run after T1, heartbeats `ok`, `/v1/health` `ok` as
+  before, conditions unchanged (2 `ok`), no new series key against the hour
+  before T1.
+- Drill to Python 11:35:22–11:35:38: the spec rows advanced (all 32 `ok`
+  since 11:35:38). Back to Rust 11:41:21–11:41:38: `MainPID` since
+  11:41:37 (soak start), all 32 specs `ok`, nyxmon's Graphyard checks
+  `ok`.
+- Memory after the final start (T3 + 5 min): `MemoryCurrent` 4.5 MiB,
+  `MemoryPeak` 6.0 MiB, `RssAnon` 3.9 MiB, `memory.stat` anon 3.9 MiB / file
+  424 KiB; Python before the cutover 73.7 / 77.0 / 72.7 MiB. The 1 h
+  measurement (due 12:41 UTC) and the 24 h measurement (due 2026-10-24
+  11:41 UTC, with CPU per day; owner decision in 11.2) are pending and go
+  into the report.
+- Two deviations, both in the ops procedure, not in the agent. The cutover
+  deploy also shipped a pending ops-control change to the runtime's compose
+  file and restarted `graphyard-runtime` for about 2 s. The
+  forward deploy ran without the shared deploy lock, which another worker
+  held for a staging run.
 
 ### 11.4 `evaluate-conditions` and Python retirement (S15a, S15b, S15c; Q4)
 

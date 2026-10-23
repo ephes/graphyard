@@ -7,14 +7,14 @@ replaced. The binding contract is [`agent-rs/PLAN.md`](../agent-rs/PLAN.md);
 build and test instructions are in [`agent-rs/README.md`](../agent-rs/README.md);
 the Python test → Rust test map is [`agent-rs/TESTMAP.md`](../agent-rs/TESTMAP.md).
 
-Status: the agent is implemented and tested. Release `agent-rs-v0.2.0` is
-installed on macmini but not selected (slice S12, 2026-10-22). The shadow run
-(S13, 2026-10-22/23) is evaluated and torn down. Its acceptance is not met:
-steady `MemoryCurrent` (17.4 MiB) and CPU (1.639 min/day) missed the lean
-goals, and the heartbeat statuses and one registry row differ for explained
-environmental reasons (PLAN.md 11.2 "As evaluated"). Production runs the Python agent until the cutover
-(PLAN.md 11.3); the deployment selects the Rust binary only through a systemd
-drop-in that the ops repositories add.
+Status: the agent is implemented and tested, and it is the production agent
+on macmini since the cutover of 2026-10-23 11:31:46 UTC (slice S14,
+release `agent-rs-v0.2.0`; PLAN.md 11.3 "As run"). The 7-day soak runs from
+11:41:37 UTC after the rollback drill. The shadow run (S13, 2026-10-22/23)
+missed two lean goals narrowly and showed explained deviations, which the
+owner accepted (PLAN.md 11.2). The deployment selects the Rust binary
+through a systemd drop-in that the ops repositories add; the Python agent
+stays installed as the rollback target until its retirement (S15b).
 
 ## Architecture
 
