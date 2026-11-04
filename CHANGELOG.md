@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Rust agent (`agent-rs/`): bump the locked `tokio` from 1.54.0 to 1.54.1
+  for RUSTSEC-2026-0384 (race condition in `tokio::time::Interval`), which
+  turned the `cargo deny` supply-chain check red. Lockfile only, no code
+  change. The deployed agent keeps 1.54.0 until a new `agent-rs` release is
+  built and rolled out.
+
 - Rust agent port (`agent-rs/`, slice S14): `agent-rs-v0.2.0` is the
   production agent on macmini since the cutover of 2026-10-23 11:31:46 UTC.
   The rollback drill (to Python and back) passed, and the 7-day soak runs
