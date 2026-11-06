@@ -158,3 +158,42 @@ jobs:
         run: cargo build --locked
       - name: Parity harness
         run: uv run python agent-rs/parity/run_parity.py --rust-binary agent-rs/target/debug/graphyard-agent
+
+  postgres-contract:
+    name: Inventory credential contracts (PostgreSQL)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: graphyard_test
+          POSTGRES_DB: graphyard_test
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U graphyard_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      GRAPHYARD_TEST_DATABASE_URL: postgres://graphyard_test@127.0.0.1:5432/graphyard_test
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - name: Set up uv
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          version: "0.12.23"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: Synthetic database contract tests
+        run: >-
+          uv run --with 'psycopg[binary]==3.2.10' pytest -q
+          --ds=config.settings.postgres_contract
+          tests/test_inventory_credential_lifecycle.py

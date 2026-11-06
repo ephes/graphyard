@@ -56,7 +56,7 @@ async fn migrated_schema_passes() {
     assert_eq!(report.journal_mode, "delete");
     assert_eq!(
         report.to_string(),
-        "database schema satisfies the agent contract (graphyard.0010_condition_stale_allowance, \
+        "database schema satisfies the agent contract (graphyard.0013_inventory_single_enabled_credential, \
          journal_mode=delete)"
     );
 
@@ -82,6 +82,7 @@ fn a_migration_that_drops_an_agent_column_is_named_with_the_migration() {
         .lines()
         .filter(|line| {
             !line.contains("'0010_condition_stale_allowance'")
+                && !line.contains("'0013_inventory_single_enabled_credential'")
                 && !line.contains("'0011_")
                 && !line.contains("'0012_")
         })
@@ -113,7 +114,7 @@ fn a_migration_that_drops_an_agent_column_is_named_with_the_migration() {
         report.error_message().unwrap(),
         "database schema is older than the agent contract; missing columns: \
          condition_definition.alert_when_stale, condition_definition.stale_after_seconds; \
-         missing migration: graphyard.0010_condition_stale_allowance; run `manage.py migrate` \
+         missing migration: graphyard.0013_inventory_single_enabled_credential; run `manage.py migrate` \
          before starting the agent"
     );
 }
@@ -152,7 +153,7 @@ fn a_database_without_migrations_is_rejected() {
     );
     assert!(report.missing_migrations_table && report.missing_migration);
     assert!(report.error_message().unwrap().contains(
-        "missing migration: graphyard.0010_condition_stale_allowance (table django_migrations \
+        "missing migration: graphyard.0013_inventory_single_enabled_credential (table django_migrations \
          does not exist)"
     ));
 }

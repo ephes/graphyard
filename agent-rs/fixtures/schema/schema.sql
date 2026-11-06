@@ -45,6 +45,7 @@ CREATE TABLE "condition_definition" ("id" integer NOT NULL PRIMARY KEY AUTOINCRE
 CREATE TABLE "ingest_token" ("id" integer NOT NULL PRIMARY KEY AUTOINCREMENT, "name" varchar(128) NOT NULL UNIQUE, "token_hash" varchar(255) NOT NULL, "enabled" bool NOT NULL, "created_at" datetime NOT NULL, "revoked_at" datetime NULL, "last_used_at" datetime NULL, "host_scope" text NOT NULL CHECK ((JSON_VALID("host_scope") OR "host_scope" IS NULL)), "bound_subject_id" varchar(128) NULL);
 CREATE TABLE "ingest_token_host_usage" ("id" integer NOT NULL PRIMARY KEY AUTOINCREMENT, "host_id" varchar(128) NOT NULL, "first_seen_at" datetime NOT NULL, "last_seen_at" datetime NOT NULL, "token_id" bigint NOT NULL REFERENCES "ingest_token" ("id") DEFERRABLE INITIALLY DEFERRED, CONSTRAINT "ingest_token_host_usage_unique_host" UNIQUE ("token_id", "host_id"));
 CREATE INDEX "ingest_token_host_usage_token_id_30369477" ON "ingest_token_host_usage" ("token_id");
+CREATE UNIQUE INDEX "inventory_one_enabled_credential" ON "graphyard_inventorycredential" ("host_id") WHERE "enabled";
 CREATE TABLE "django_session" ("session_key" varchar(40) NOT NULL PRIMARY KEY, "session_data" text NOT NULL, "expire_date" datetime NOT NULL);
 CREATE INDEX "django_session_expire_date_a5c62663" ON "django_session" ("expire_date");
 INSERT INTO django_migrations (app, name, applied) VALUES ('contenttypes', '0001_initial', '2000-01-01 00:00:00');
@@ -76,4 +77,5 @@ INSERT INTO django_migrations (app, name, applied) VALUES ('graphyard', '0009_in
 INSERT INTO django_migrations (app, name, applied) VALUES ('graphyard', '0010_condition_stale_allowance', '2000-01-01 00:00:00');
 INSERT INTO django_migrations (app, name, applied) VALUES ('graphyard', '0011_ingest_token_host_scope', '2000-01-01 00:00:00');
 INSERT INTO django_migrations (app, name, applied) VALUES ('graphyard', '0012_ingest_token_subject_binding', '2000-01-01 00:00:00');
+INSERT INTO django_migrations (app, name, applied) VALUES ('graphyard', '0013_inventory_single_enabled_credential', '2000-01-01 00:00:00');
 INSERT INTO django_migrations (app, name, applied) VALUES ('sessions', '0001_initial', '2000-01-01 00:00:00');
