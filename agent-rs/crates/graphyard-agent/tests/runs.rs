@@ -319,3 +319,110 @@ async fn a_next_run_time_beyond_sqlite_integers_aborts_the_run() {
     );
     assert_eq!(db.count("pipeline_heartbeat"), 0);
 }
+
+struct DeferredCollector {
+    entered: tokio::sync::Notify,
+    finish: tokio::sync::Notify,
+    calls: std::sync::atomic::AtomicUsize,
+    db: PathBuf,
+    claim_until: i64,
+}
+
+impl SpecExecutors for DeferredCollector {
+    async fn execute(
+        &self,
+        _kind: SpecType,
+        _name: &str,
+        _config: &Value,
+        _state: &mut RunState,
+    ) -> ExecutorResult {
+        use std::sync::atomic::Ordering;
+        let next: i64 = rusqlite::Connection::open(&self.db)
+            .unwrap()
+            .query_row(
+                "SELECT next_run_time FROM metric_collection_spec",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(next, self.claim_until, "claim must precede collection");
+        if self.calls.fetch_add(1, Ordering::SeqCst) == 0 {
+            self.entered.notify_one();
+            self.finish.notified().await;
+        }
+        Ok(SpecOutcome::new(StatusLevel::Ok, 1, 0, ""))
+    }
+}
+
+#[tokio::test]
+async fn two_due_runners_execute_one_collector() {
+    let db = TestDb::new();
+    common::insert_spec(&db, "synthetic", "http_json_metric", &serde_json::json!({}));
+    db.execute("UPDATE metric_collection_spec SET interval_seconds=600");
+    let a = Store::open(db.path(), &settings(&[])).unwrap();
+    let b = Store::open(db.path(), &settings(&[])).unwrap();
+    let clock = FixedClock("2026-10-21T08:15:30Z".parse().unwrap());
+    let collector = DeferredCollector {
+        entered: tokio::sync::Notify::new(),
+        finish: tokio::sync::Notify::new(),
+        calls: std::sync::atomic::AtomicUsize::new(0),
+        db: db.path.clone(),
+        claim_until: clock.0.timestamp() + 300,
+    };
+    let (first, second) = tokio::time::timeout(std::time::Duration::from_secs(10), async {
+        tokio::join!(run_metric_specs(&a, &collector, &clock, true), async {
+            collector.entered.notified().await;
+            let result = run_metric_specs(&b, &collector, &clock, true).await;
+            collector.finish.notify_one();
+            result
+        })
+    })
+    .await
+    .unwrap();
+    assert_eq!(first.unwrap().total, 1);
+    assert_eq!(second.unwrap().total, 0);
+    assert_eq!(collector.calls.load(std::sync::atomic::Ordering::SeqCst), 1);
+    a.close();
+    b.close();
+}
+
+struct ClaimAfterLoadClock {
+    db: PathBuf,
+    now: DateTime<Utc>,
+    calls: std::sync::atomic::AtomicUsize,
+}
+
+impl Clock for ClaimAfterLoadClock {
+    fn now(&self) -> DateTime<Utc> {
+        if self.calls.fetch_add(1, std::sync::atomic::Ordering::SeqCst) == 1 {
+            // Another owner claims after load_specs, before this runner's CAS.
+            rusqlite::Connection::open(&self.db)
+                .unwrap()
+                .execute(
+                    "UPDATE metric_collection_spec SET next_run_time = ?",
+                    [self.now.timestamp() + 300],
+                )
+                .unwrap();
+        }
+        self.now
+    }
+}
+
+#[tokio::test]
+async fn a_claim_lost_after_loading_skips_collection_and_heartbeat() {
+    let db = TestDb::new();
+    common::insert_spec(&db, "synthetic", "http_json_metric", &serde_json::json!({}));
+    let store = Store::open(db.path(), &settings(&[])).unwrap();
+    let clock = ClaimAfterLoadClock {
+        db: db.path.clone(),
+        now: "2026-10-21T08:15:30Z".parse().unwrap(),
+        calls: std::sync::atomic::AtomicUsize::new(0),
+    };
+    let result = run_metric_specs(&store, &Faulty, &clock, true)
+        .await
+        .unwrap();
+    assert_eq!(result, graphyard_core::MetricCollectionSpecRun::default());
+    assert_eq!(clock.calls.load(std::sync::atomic::Ordering::SeqCst), 2);
+    assert_eq!(db.count("pipeline_heartbeat"), 0);
+    store.close();
+}

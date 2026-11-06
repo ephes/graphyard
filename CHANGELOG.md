@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Due collectors (Python and Rust) atomically claim scheduling slots before I/O.
+  Crashed claims expire within 300 seconds (or the shorter collection interval);
+  superseded completions cannot replace a newer schedule/result. Explicit
+  non-due manual collection still runs every enabled spec.
+
 - Conditions (Python and Rust): require bounded coverage between all breach-window
   samples and through evaluation time. Sparse sampling remains supported within
   the configured carry allowance. Publish successes and failures only when their

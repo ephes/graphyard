@@ -237,6 +237,13 @@ publications (including failures) are ignored. A failure advances
 gap and the final carry against `CONDITION_DATA_STALE_WARNING_SECONDS`, matching
 Python and the shared condition/store fixtures.
 
+Due-only metric runs claim the observed `next_run_time` before invoking a
+collector. Recovery uses the shorter of the interval (at least one second) and
+300 seconds. Completion is conditional on the claim timestamp; a newer claimant
+keeps its schedule and result. Expired long collectors may overlap a later slot.
+Explicit non-due/manual runs keep their existing behavior. Python and Rust share
+claim/recovery/completion fixtures and run only synthetic collectors in tests.
+
 ### Evaluating conditions once
 
 ```bash

@@ -452,6 +452,17 @@ InfluxDB configuration errors surface lazily, per write or query, as in
    `{"total": …, "failed": …, "warning": …, "ingested": …, "skipped": …}`.
 7. stdout `Metric specs: total=<t> failed=<f> warning=<w> ingested=<i> skipped=<s>`.
 
+Due-only runs now atomically claim each observed scheduling timestamp before
+execution (`WHERE enabled AND next_run_time = observed AND next_run_time <= now`).
+Use the per-spec claim start time and advance the timestamp by
+`min(max(1, interval_seconds), 300)` seconds. A lost claim is skipped and not counted;
+a run with no won claims returns zero counters without a heartbeat. No lock spans
+collection. A crashed claimant becomes eligible at that timestamp; a normal
+success/failure schedules its regular interval from claim start. Completion writes
+only while `next_run_time` still equals the claim timestamp. Long collectors may
+overlap later slots after expiry. Non-due manual runs retain unconditional
+execution/completion and the shared run-start timestamp.
+
 A failure outside a spec (database error, spec deleted during the run →
 0-row update, section 5.4) aborts the run: error log `Metric collection
 failed`, stderr `Metric collection failed: <err>`, no heartbeat, the loop
@@ -732,6 +743,9 @@ statement or transaction short) and closes the connection.
   **not** touched (`update_fields` excludes `auto_now` fields). 0 rows →
   error `Save with update_fields did not affect any rows.`, which aborts the
   run (3.4).
+- **Due claims/completion** — atomic conditional claim and timestamp-guarded
+  completion as described in 3.4; zero rows means skip/no-op. Explicit non-due
+  completion keeps the spec result update above.
 - **Condition success** — `status, message, last_value, last_evaluated`;
   **condition failure** — `status, message, last_evaluated`, preserving value.
   Both use the captured attempt start time and the conditional watermark in 3.5;

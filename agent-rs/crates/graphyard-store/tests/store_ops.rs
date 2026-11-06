@@ -125,6 +125,28 @@ async fn run_case(case: &Value) {
             })
             .await
             .map(|()| None),
+        "claim_spec" => store
+            .claim_due_spec(
+                op["id"].as_i64().unwrap(),
+                op["expected_due"].as_i64().unwrap(),
+                op["now_ts"].as_i64().unwrap(),
+                op["claim_until"].as_i64().unwrap(),
+            )
+            .await
+            .map(|_| None),
+        "finish_claimed_spec" => store
+            .finish_claimed_spec(
+                SpecRunUpdate {
+                    id: op["id"].as_i64().unwrap(),
+                    last_run_at: at,
+                    last_status: status(op, "last_status"),
+                    last_error: op["last_error"].as_str().unwrap().to_owned(),
+                    next_run_time: op["next_run_time"].as_i64().unwrap(),
+                },
+                op["claim_until"].as_i64().unwrap(),
+            )
+            .await
+            .map(|()| None),
         "load_conditions" => store
             .load_conditions(op["condition_id"].as_i64())
             .await
@@ -264,4 +286,28 @@ async fn registry_touch_matches_the_django_orm() {
         }
         run_registry_case(case).await;
     }
+}
+
+#[tokio::test]
+async fn independent_stores_race_for_one_due_slot() {
+    let fixture = load(STORE_OPS_JSON);
+    let row = fixture["cases"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|case| case["name"] == "claim due slot")
+        .unwrap();
+    let db = TestDb::new();
+    db.seed("metric_collection_spec", row["before"].as_array().unwrap());
+    let first = db.store();
+    let second = db.store();
+    let (a, b) = tokio::join!(
+        first.claim_due_spec(1, 100, 100, 400),
+        second.claim_due_spec(1, 100, 100, 400),
+    );
+    assert_ne!(a.unwrap(), b.unwrap());
+    assert!(!first.claim_due_spec(1, 400, 399, 699).await.unwrap());
+    assert!(second.claim_due_spec(1, 400, 400, 700).await.unwrap());
+    first.close();
+    second.close();
 }

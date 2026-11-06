@@ -201,22 +201,41 @@ pub async fn run_metric_specs<E: SpecExecutors, C: Clock>(
     let mut run = MetricCollectionSpecRun::default();
     let mut errors: Vec<String> = Vec::new();
     for spec in &specs {
+        let run_at = if due_only { clock.now() } else { now };
+        let run_ts = run_at.timestamp();
+        let claim_until = if due_only {
+            let until = run_ts
+                .checked_add(spec.interval_seconds.clamp(1, 300))
+                .ok_or(RunError::NextRunTimeOverflow)?;
+            if !store
+                .claim_due_spec(spec.id, spec.next_run_time, run_ts, until)
+                .await?
+            {
+                continue;
+            }
+            Some(until)
+        } else {
+            None
+        };
         run.total += 1;
         let outcome = run_single_spec(executors, &mut state, spec).await;
         run.ingested += outcome.ingested;
         run.skipped += outcome.skipped;
-        let next_run_time = now_ts
+        let next_run_time = run_ts
             .checked_add(spec.interval_seconds.max(1))
             .ok_or(RunError::NextRunTimeOverflow)?;
-        store
-            .update_spec_run(SpecRunUpdate {
-                id: spec.id,
-                last_run_at: now,
-                last_status: outcome.status,
-                last_error: outcome.message.clone(),
-                next_run_time,
-            })
-            .await?;
+        let update = SpecRunUpdate {
+            id: spec.id,
+            last_run_at: run_at,
+            last_status: outcome.status,
+            last_error: outcome.message.clone(),
+            next_run_time,
+        };
+        if let Some(until) = claim_until {
+            store.finish_claimed_spec(update, until).await?;
+        } else {
+            store.update_spec_run(update).await?;
+        }
         match outcome.status {
             StatusLevel::Critical => {
                 run.failed += 1;
@@ -232,6 +251,9 @@ pub async fn run_metric_specs<E: SpecExecutors, C: Clock>(
         }
     }
 
+    if run.total == 0 {
+        return Ok(run);
+    }
     let (status, success) = if run.failed > 0 && run.total == run.failed {
         (StatusLevel::Critical, false)
     } else if run.failed > 0 || run.warning > 0 {
