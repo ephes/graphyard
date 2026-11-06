@@ -1,6 +1,7 @@
 //! `condition_definition`: the conditions run's load and per-condition
 //! updates (`services.py:evaluate_conditions_once`; PLAN.md 3.5, 5.4).
 
+use chrono::{DateTime, Utc};
 use graphyard_core::{ConditionEvaluation, StatusLevel};
 use rusqlite::{Connection, params};
 
@@ -120,45 +121,46 @@ pub(crate) fn load_conditions(
         .collect()
 }
 
-/// `condition.save(update_fields=["status", "message", "last_value",
-/// "last_evaluated"])` after a successful evaluation.
+/// Publish a success only if its attempt is newer than the stored watermark.
 pub(crate) fn update_condition_success(
     connection: &Connection,
     id: i64,
     evaluation: &ConditionEvaluation,
 ) -> Result<(), StoreError> {
-    let changed = connection.execute(
+    connection.execute(
         "UPDATE condition_definition SET status = ?, message = ?, last_value = ?, \
-         last_evaluated = ? WHERE id = ?",
+         last_evaluated = ? WHERE id = ? AND (last_evaluated IS NULL OR last_evaluated < ?)",
         params![
             evaluation.status.as_str(),
             evaluation.message,
             evaluation.last_value,
             now_text(evaluation.evaluated_at)?,
             id,
+            now_text(evaluation.evaluated_at)?,
         ],
     )?;
-    if changed == 0 {
-        return Err(StoreError::NotUpdated);
-    }
     Ok(())
 }
 
-/// `condition.save(update_fields=["status", "message"])` after a failed
-/// evaluation (the caller passes `critical` and `evaluation error: <err>`).
+/// Publish a failure with the same attempt watermark, preserving last_value.
 pub(crate) fn update_condition_failure(
     connection: &Connection,
     id: i64,
     status: StatusLevel,
     message: &str,
+    attempted_at: DateTime<Utc>,
 ) -> Result<(), StoreError> {
-    let changed = connection.execute(
-        "UPDATE condition_definition SET status = ?, message = ? WHERE id = ?",
-        params![status.as_str(), message, id],
+    connection.execute(
+        "UPDATE condition_definition SET status = ?, message = ?, last_evaluated = ? \
+         WHERE id = ? AND (last_evaluated IS NULL OR last_evaluated < ?)",
+        params![
+            status.as_str(),
+            message,
+            now_text(attempted_at)?,
+            id,
+            now_text(attempted_at)?
+        ],
     )?;
-    if changed == 0 {
-        return Err(StoreError::NotUpdated);
-    }
     Ok(())
 }
 
@@ -180,7 +182,7 @@ impl Store {
     /// Write a successful evaluation.
     ///
     /// # Errors
-    /// [`StoreError::NotUpdated`] when the row is gone, SQLite errors.
+    /// SQLite errors. Stale attempts and deleted rows are no-ops.
     pub async fn update_condition_success(
         &self,
         id: i64,
@@ -193,14 +195,17 @@ impl Store {
     /// Write a failed evaluation's status and message.
     ///
     /// # Errors
-    /// [`StoreError::NotUpdated`] when the row is gone, SQLite errors.
+    /// SQLite errors. Stale attempts and deleted rows are no-ops.
     pub async fn update_condition_failure(
         &self,
         id: i64,
         status: StatusLevel,
         message: String,
+        attempted_at: DateTime<Utc>,
     ) -> Result<(), StoreError> {
-        self.call(move |connection| update_condition_failure(connection, id, status, &message))
-            .await
+        self.call(move |connection| {
+            update_condition_failure(connection, id, status, &message, attempted_at)
+        })
+        .await
     }
 }

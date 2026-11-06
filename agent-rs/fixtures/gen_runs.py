@@ -318,9 +318,8 @@ def _condition_scenarios() -> list[dict[str, Any]]:
             "scripts": {},
         },
         {
-            # The deleted condition's success save and then its failure save
-            # match no row: the run aborts without a heartbeat.
-            "name": "condition_deleted_during_run_aborts",
+            # A deleted condition is ignored by conditional publication.
+            "name": "condition_deleted_during_run_is_ignored",
             "kind": "conditions",
             "seed": {
                 CONDITION_TABLE: [

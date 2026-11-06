@@ -157,6 +157,7 @@ def test_evaluate_conditions_once_updates_condition_and_heartbeat(db, monkeypatc
         ),
     )
 
+    monkeypatch.setattr("graphyard.services.timezone.now", lambda: now)
     run = evaluate_conditions_once(condition_id=condition.id)
 
     assert run.total == 1
@@ -692,3 +693,111 @@ def test_condition_admin_form_rejects_nonfinite_threshold(field, value):
 def test_condition_clean_preserves_optional_unbounded_finite_thresholds():
     _condition(warning_threshold=None, critical_threshold=-1000).clean()
     _condition(warning_threshold=1000, critical_threshold=None).clean()
+
+
+@pytest.mark.parametrize(
+    "ages,carry,expected",
+    [
+        ([600, 0], 60, StatusLevel.OK),
+        (list(range(600, -1, -60)), 60, StatusLevel.CRITICAL),
+        ([600, 300, 0], 300, StatusLevel.CRITICAL),
+        ([601, 540, 0], 60, StatusLevel.OK),
+        ([600, 540, 480, 420, 360, 300, 240, 180, 120, 61], 60, StatusLevel.OK),
+    ],
+)
+@pytest.mark.parametrize("intermittent", [False, True])
+def test_breach_requires_coverage_throughout_window(
+    monkeypatch, settings, ages, carry, expected, intermittent
+):
+    settings.CONDITION_DATA_STALE_WARNING_SECONDS = carry
+    now = datetime(2026, 3, 4, 12, tzinfo=UTC)
+    condition = _condition(breach_minutes=10)
+    condition.stale_after_seconds = 3600
+    condition.alert_when_stale = not intermittent
+    samples = [
+        influx.MetricSample(
+            ts=now - timedelta(seconds=age),
+            value=80.0,
+            host="synthetic",
+            service=None,
+            metric=condition.metric_name,
+            tags={},
+        )
+        for age in ages
+    ]
+    monkeypatch.setattr(influx, "query_condition_window", lambda *a, **k: samples)
+    assert evaluate_condition(condition, now=now).status == expected
+
+
+@pytest.mark.django_db(transaction=True)
+@pytest.mark.parametrize("late_failure", [False, True])
+def test_old_evaluation_cannot_replace_new_result(monkeypatch, late_failure):
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Event, local
+    from django.db import connections
+    from graphyard import services
+
+    condition = _condition(breach_minutes=0)
+    condition.save()
+    older = datetime(2026, 3, 4, 12, tzinfo=UTC)
+    newer = older + timedelta(microseconds=1)
+    state = local()
+    entered, published = Event(), Event()
+    monkeypatch.setattr(services.timezone, "now", lambda: state.attempt)
+    monkeypatch.setattr(services, "record_heartbeat", lambda *a, **k: None)
+
+    def query(*args, **kwargs):
+        if kwargs["now"] == older:
+            entered.set()
+            assert published.wait(10)
+            if late_failure:
+                raise RuntimeError("synthetic late failure")
+            return [_sample(older, minutes_ago=0, value=99.0)]
+        return [_sample(newer, minutes_ago=0, value=42.0)]
+
+    def run(attempt):
+        state.attempt = attempt
+        try:
+            return evaluate_conditions_once(condition_id=condition.pk)
+        finally:
+            connections.close_all()
+
+    monkeypatch.setattr(influx, "query_condition_window", query)
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        old = pool.submit(run, older)
+        assert entered.wait(10)
+        try:
+            assert pool.submit(run, newer).result(timeout=10).failed == 0
+        finally:
+            published.set()
+        assert old.result(timeout=10).failed == int(late_failure)
+    condition.refresh_from_db()
+    assert condition.status == StatusLevel.OK
+    assert condition.last_value == 42.0
+    assert condition.last_evaluated == newer
+    assert condition.message == "Condition is within thresholds"
+
+
+@pytest.mark.parametrize("anchor_age", [1190, 1201, None])
+def test_unusable_anchor_preserves_initial_grace(monkeypatch, settings, anchor_age):
+    settings.CONDITION_DATA_STALE_WARNING_SECONDS = 600
+    now = datetime(2026, 3, 4, 12, tzinfo=UTC)
+    ages = [*range(540, -1, -60)]
+    if anchor_age is not None:
+        ages.insert(0, anchor_age)
+    samples = [
+        influx.MetricSample(
+            ts=now - timedelta(seconds=age),
+            value=80.0,
+            host="synthetic",
+            service=None,
+            metric="synthetic.metric",
+            tags={},
+        )
+        for age in ages
+    ]
+    monkeypatch.setattr(influx, "query_condition_window", lambda *a, **k: samples)
+    assert (
+        evaluate_condition(_condition(breach_minutes=10), now=now).status
+        == StatusLevel.CRITICAL
+    )

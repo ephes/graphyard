@@ -3388,7 +3388,7 @@
      "stale_after_seconds": null
     }
    ],
-   "name": "condition failure writes status and message only",
+   "name": "condition failure advances watermark and preserves value",
    "op": {
     "kind": "update_condition_failure",
     "now": "2026-10-21 08:15:30.123456",
@@ -3435,9 +3435,265 @@
      "window_minutes": 30,
      "breach_minutes": 5,
      "status": "critical",
-     "last_evaluated": "2026-10-21 08:00:00",
+     "last_evaluated": "2026-10-21 08:15:30.123456",
      "message": "evaluation error: Influx setting missing: INFLUX_URL is required",
      "last_value": 0.5,
+     "created_at": "2026-01-02 03:04:05.678901",
+     "updated_at": "2026-01-02 03:04:05.678901",
+     "subject_id_filter": "",
+     "subject_type_filter": "",
+     "alert_when_stale": 1,
+     "stale_after_seconds": null
+    }
+   ]
+  },
+  {
+   "table": "condition_definition",
+   "before": [
+    {
+     "id": 2,
+     "name": "newer",
+     "enabled": 1,
+     "metric_name": "host.filesystem_used_ratio",
+     "host_filter": "",
+     "service_filter": "",
+     "tags_filter": "{}",
+     "operator": "gte",
+     "warning_threshold": 0.8,
+     "critical_threshold": 0.9,
+     "window_minutes": 30,
+     "breach_minutes": 5,
+     "status": "ok",
+     "last_evaluated": "2026-10-21 08:15:30.123456",
+     "message": "",
+     "last_value": 42.0,
+     "created_at": "2026-01-02 03:04:05.678901",
+     "updated_at": "2026-01-02 03:04:05.678901",
+     "subject_id_filter": "",
+     "subject_type_filter": "",
+     "alert_when_stale": 1,
+     "stale_after_seconds": null
+    }
+   ],
+   "name": "update_condition_success rejects stale or tied publication 2026-10-21 08:15:30.123456",
+   "op": {
+    "kind": "update_condition_success",
+    "now": "2026-10-21 08:15:30.123456",
+    "id": 2,
+    "status": "critical",
+    "message": "old result",
+    "last_value": 99.0
+   },
+   "after": [
+    {
+     "id": 2,
+     "name": "newer",
+     "enabled": 1,
+     "metric_name": "host.filesystem_used_ratio",
+     "host_filter": "",
+     "service_filter": "",
+     "tags_filter": "{}",
+     "operator": "gte",
+     "warning_threshold": 0.8,
+     "critical_threshold": 0.9,
+     "window_minutes": 30,
+     "breach_minutes": 5,
+     "status": "ok",
+     "last_evaluated": "2026-10-21 08:15:30.123456",
+     "message": "",
+     "last_value": 42.0,
+     "created_at": "2026-01-02 03:04:05.678901",
+     "updated_at": "2026-01-02 03:04:05.678901",
+     "subject_id_filter": "",
+     "subject_type_filter": "",
+     "alert_when_stale": 1,
+     "stale_after_seconds": null
+    }
+   ]
+  },
+  {
+   "table": "condition_definition",
+   "before": [
+    {
+     "id": 2,
+     "name": "newer",
+     "enabled": 1,
+     "metric_name": "host.filesystem_used_ratio",
+     "host_filter": "",
+     "service_filter": "",
+     "tags_filter": "{}",
+     "operator": "gte",
+     "warning_threshold": 0.8,
+     "critical_threshold": 0.9,
+     "window_minutes": 30,
+     "breach_minutes": 5,
+     "status": "ok",
+     "last_evaluated": "2026-10-21 08:15:31",
+     "message": "",
+     "last_value": 42.0,
+     "created_at": "2026-01-02 03:04:05.678901",
+     "updated_at": "2026-01-02 03:04:05.678901",
+     "subject_id_filter": "",
+     "subject_type_filter": "",
+     "alert_when_stale": 1,
+     "stale_after_seconds": null
+    }
+   ],
+   "name": "update_condition_success rejects stale or tied publication 2026-10-21T08:15:31+00:00",
+   "op": {
+    "kind": "update_condition_success",
+    "now": "2026-10-21 08:15:30.123456",
+    "id": 2,
+    "status": "critical",
+    "message": "old result",
+    "last_value": 99.0
+   },
+   "after": [
+    {
+     "id": 2,
+     "name": "newer",
+     "enabled": 1,
+     "metric_name": "host.filesystem_used_ratio",
+     "host_filter": "",
+     "service_filter": "",
+     "tags_filter": "{}",
+     "operator": "gte",
+     "warning_threshold": 0.8,
+     "critical_threshold": 0.9,
+     "window_minutes": 30,
+     "breach_minutes": 5,
+     "status": "ok",
+     "last_evaluated": "2026-10-21 08:15:31",
+     "message": "",
+     "last_value": 42.0,
+     "created_at": "2026-01-02 03:04:05.678901",
+     "updated_at": "2026-01-02 03:04:05.678901",
+     "subject_id_filter": "",
+     "subject_type_filter": "",
+     "alert_when_stale": 1,
+     "stale_after_seconds": null
+    }
+   ]
+  },
+  {
+   "table": "condition_definition",
+   "before": [
+    {
+     "id": 2,
+     "name": "newer",
+     "enabled": 1,
+     "metric_name": "host.filesystem_used_ratio",
+     "host_filter": "",
+     "service_filter": "",
+     "tags_filter": "{}",
+     "operator": "gte",
+     "warning_threshold": 0.8,
+     "critical_threshold": 0.9,
+     "window_minutes": 30,
+     "breach_minutes": 5,
+     "status": "ok",
+     "last_evaluated": "2026-10-21 08:15:30.123456",
+     "message": "",
+     "last_value": 42.0,
+     "created_at": "2026-01-02 03:04:05.678901",
+     "updated_at": "2026-01-02 03:04:05.678901",
+     "subject_id_filter": "",
+     "subject_type_filter": "",
+     "alert_when_stale": 1,
+     "stale_after_seconds": null
+    }
+   ],
+   "name": "update_condition_failure rejects stale or tied publication 2026-10-21 08:15:30.123456",
+   "op": {
+    "kind": "update_condition_failure",
+    "now": "2026-10-21 08:15:30.123456",
+    "id": 2,
+    "status": "critical",
+    "message": "old result",
+    "last_value": 99.0
+   },
+   "after": [
+    {
+     "id": 2,
+     "name": "newer",
+     "enabled": 1,
+     "metric_name": "host.filesystem_used_ratio",
+     "host_filter": "",
+     "service_filter": "",
+     "tags_filter": "{}",
+     "operator": "gte",
+     "warning_threshold": 0.8,
+     "critical_threshold": 0.9,
+     "window_minutes": 30,
+     "breach_minutes": 5,
+     "status": "ok",
+     "last_evaluated": "2026-10-21 08:15:30.123456",
+     "message": "",
+     "last_value": 42.0,
+     "created_at": "2026-01-02 03:04:05.678901",
+     "updated_at": "2026-01-02 03:04:05.678901",
+     "subject_id_filter": "",
+     "subject_type_filter": "",
+     "alert_when_stale": 1,
+     "stale_after_seconds": null
+    }
+   ]
+  },
+  {
+   "table": "condition_definition",
+   "before": [
+    {
+     "id": 2,
+     "name": "newer",
+     "enabled": 1,
+     "metric_name": "host.filesystem_used_ratio",
+     "host_filter": "",
+     "service_filter": "",
+     "tags_filter": "{}",
+     "operator": "gte",
+     "warning_threshold": 0.8,
+     "critical_threshold": 0.9,
+     "window_minutes": 30,
+     "breach_minutes": 5,
+     "status": "ok",
+     "last_evaluated": "2026-10-21 08:15:31",
+     "message": "",
+     "last_value": 42.0,
+     "created_at": "2026-01-02 03:04:05.678901",
+     "updated_at": "2026-01-02 03:04:05.678901",
+     "subject_id_filter": "",
+     "subject_type_filter": "",
+     "alert_when_stale": 1,
+     "stale_after_seconds": null
+    }
+   ],
+   "name": "update_condition_failure rejects stale or tied publication 2026-10-21T08:15:31+00:00",
+   "op": {
+    "kind": "update_condition_failure",
+    "now": "2026-10-21 08:15:30.123456",
+    "id": 2,
+    "status": "critical",
+    "message": "old result",
+    "last_value": 99.0
+   },
+   "after": [
+    {
+     "id": 2,
+     "name": "newer",
+     "enabled": 1,
+     "metric_name": "host.filesystem_used_ratio",
+     "host_filter": "",
+     "service_filter": "",
+     "tags_filter": "{}",
+     "operator": "gte",
+     "warning_threshold": 0.8,
+     "critical_threshold": 0.9,
+     "window_minutes": 30,
+     "breach_minutes": 5,
+     "status": "ok",
+     "last_evaluated": "2026-10-21 08:15:31",
+     "message": "",
+     "last_value": 42.0,
      "created_at": "2026-01-02 03:04:05.678901",
      "updated_at": "2026-01-02 03:04:05.678901",
      "subject_id_filter": "",
@@ -3508,10 +3764,6 @@
     "status": "critical",
     "message": "evaluation error: x",
     "last_value": 1.5
-   },
-   "error": {
-    "class": "NotUpdated",
-    "message": "Save with update_fields did not affect any rows."
    },
    "after": [
     {
@@ -3601,10 +3853,6 @@
     "status": "critical",
     "message": "evaluation error: x",
     "last_value": 1.5
-   },
-   "error": {
-    "class": "NotUpdated",
-    "message": "Save with update_fields did not affect any rows."
    },
    "after": [
     {

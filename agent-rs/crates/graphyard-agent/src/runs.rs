@@ -271,13 +271,12 @@ pub async fn run_metric_specs<E: SpecExecutors, C: Clock>(
 
 /// `evaluate_condition(condition)` with its own `now`; the error is
 /// `str(err)`.
-async fn evaluate<S: ConditionSamples, C: Clock>(
+async fn evaluate<S: ConditionSamples>(
     condition: &ConditionRow,
     samples: &S,
-    clock: &C,
+    now: DateTime<Utc>,
     stale_warning_seconds: &BigInt,
 ) -> Result<graphyard_core::ConditionEvaluation, String> {
-    let now = clock.now();
     let tags_filter = load_stored_json("tags_filter", &condition.tags_filter)?;
     let query = ConditionQuery {
         id: condition.id,
@@ -332,7 +331,8 @@ pub async fn run_conditions<S: ConditionSamples, C: Clock>(
     let mut run = ConditionEvaluationRun::default();
     for condition in &conditions {
         run.total += 1;
-        let saved = match evaluate(condition, samples, clock, stale_warning_seconds).await {
+        let attempted_at = clock.now();
+        let saved = match evaluate(condition, samples, attempted_at, stale_warning_seconds).await {
             Ok(evaluation) => store
                 .update_condition_success(condition.id, evaluation)
                 .await
@@ -346,6 +346,7 @@ pub async fn run_conditions<S: ConditionSamples, C: Clock>(
                     condition.id,
                     StatusLevel::Critical,
                     format!("evaluation error: {message}"),
+                    attempted_at,
                 )
                 .await?;
         }

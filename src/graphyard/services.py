@@ -99,8 +99,10 @@ def _is_breached_for_duration(
     minute (for example every 5 minutes) from flapping depending on where the
     first in-window sample lands.
 
-    The anchor is only used when it is at most ``max_carry_seconds`` older
-    than the window start; an older anchor means a data gap, not evidence.
+    Every adjacent gap and the final carry to now must also fit
+    ``max_carry_seconds``. The anchor is only used when it is at most that old
+    at the window start and must reach the first sample (or now) within that
+    lifetime; otherwise use the same initial grace as when no anchor exists.
     A sample exactly at the window start supersedes the anchor. When no
     sample falls inside the window (a breach duration shorter than the
     sampling interval), the anchor alone decides.
@@ -121,7 +123,8 @@ def _is_breached_for_duration(
     before = [sample for sample in values if sample.ts < window_start]
     if before and not covers_start and max_carry_seconds is not None:
         candidate = before[-1]
-        if (window_start - candidate.ts).total_seconds() <= max_carry_seconds:
+        carry_end = window_values[0].ts if window_values else now_utc
+        if (carry_end - candidate.ts).total_seconds() <= max_carry_seconds:
             anchor = candidate
 
     if anchor is not None:
@@ -137,6 +140,12 @@ def _is_breached_for_duration(
             return False
         evaluated = window_values
 
+    if max_carry_seconds is not None:
+        for previous, following in zip(evaluated, evaluated[1:]):
+            if (following.ts - previous.ts).total_seconds() > max_carry_seconds:
+                return False
+        if (now_utc - evaluated[-1].ts).total_seconds() > max_carry_seconds:
+            return False
     return all(compare(sample.value, threshold) for sample in evaluated)
 
 
@@ -334,6 +343,19 @@ def evaluate_condition(
     )
 
 
+def _publish_condition_result(
+    condition_id: int, attempted_at: datetime, **fields
+) -> None:
+    """Publish only if no equally new or newer attempt has already finished.
+
+    Failed attempts advance the watermark too, retaining the previous value.
+    Deleted conditions and superseded publications are harmless no-ops.
+    """
+    ConditionDefinition.objects.filter(pk=condition_id).filter(
+        Q(last_evaluated__isnull=True) | Q(last_evaluated__lt=attempted_at)
+    ).update(last_evaluated=attempted_at, **fields)
+
+
 def evaluate_conditions_once(
     *,
     condition_id: int | None = None,
@@ -347,20 +369,24 @@ def evaluate_conditions_once(
 
     for condition in queryset:
         total += 1
+        attempted_at = timezone.now()
         try:
-            result = evaluate_condition(condition)
-            condition.status = result.status
-            condition.message = result.message
-            condition.last_value = result.last_value
-            condition.last_evaluated = result.evaluated_at
-            condition.save(
-                update_fields=["status", "message", "last_value", "last_evaluated"]
+            result = evaluate_condition(condition, now=attempted_at)
+            _publish_condition_result(
+                condition.pk,
+                attempted_at,
+                status=result.status,
+                message=result.message,
+                last_value=result.last_value,
             )
         except Exception as err:  # noqa: BLE001
             failed += 1
-            condition.status = StatusLevel.CRITICAL
-            condition.message = f"evaluation error: {err}"
-            condition.save(update_fields=["status", "message"])
+            _publish_condition_result(
+                condition.pk,
+                attempted_at,
+                status=StatusLevel.CRITICAL,
+                message=f"evaluation error: {err}",
+            )
 
     heartbeat_status = StatusLevel.OK if failed == 0 else StatusLevel.WARNING
     record_heartbeat(

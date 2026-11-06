@@ -688,13 +688,13 @@ def _anchor_cases() -> list[dict[str, Any]]:
     return [
         _case(
             "anchor_exactly_at_carry_limit_is_used",
-            cond,
-            [at(600 + 600), at(420), at(120)],
+            _condition(critical_threshold=None, breach_minutes=0),
+            [at(600)],
         ),
         _case(
             "anchor_one_microsecond_past_carry_limit_is_dropped",
-            cond,
-            [at(600 + 600.000001), at(420), at(120)],
+            _condition(critical_threshold=None, breach_minutes=0),
+            [at(600.000001)],
         ),
         _case(
             "anchor_carry_uses_the_global_setting_not_the_allowance",
@@ -764,6 +764,31 @@ def _anchor_cases() -> list[dict[str, Any]]:
             _condition(),
             [at(0, 80.0), at(240), at(300), at(60), at(120), at(180)],
         ),
+    ]
+
+
+def _coverage_cases() -> list[dict[str, Any]]:
+    return [
+        _case(
+            f"coverage_{index}_{intermittent}",
+            _condition(
+                breach_minutes=10,
+                stale_after_seconds=3600,
+                alert_when_stale=not intermittent,
+            ),
+            [_sample_at(NOW, seconds_ago=age, value=80.0) for age in ages],
+            stale_warning_seconds=carry,
+        )
+        for intermittent in (False, True)
+        for index, (ages, carry) in enumerate(
+            [
+                ([600, 0], 60),
+                (list(range(600, -1, -60)), 60),
+                ([600, 300, 0], 300),
+                ([601, 540, 0], 60),
+                ([600, 540, 480, 420, 360, 300, 240, 180, 120, 61], 60),
+            ]
+        )
     ]
 
 
@@ -1032,6 +1057,18 @@ def build_conditions() -> dict[str, Any]:
             *_threshold_cases(),
             *_staleness_cases(),
             *_anchor_cases(),
+            *[
+                _case(
+                    f"initial_grace_with_anchor_{age}",
+                    _condition(breach_minutes=10),
+                    [
+                        _sample_at(NOW, seconds_ago=a, value=80.0)
+                        for a in [age, *range(540, -1, -60)]
+                    ],
+                )
+                for age in (1190, 1201)
+            ],
+            *_coverage_cases(),
             *_overflow_cases(),
             *_series_cases(),
             *_query_error_cases(),
