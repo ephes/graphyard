@@ -297,7 +297,7 @@ file, including specs whose stored row is otherwise unchanged):
 
 - Timeouts must be finite and no greater than 86400 seconds (one day), a portable transport/wait limit. The derived three-request total budget is validated too.
 - `request_timeout_seconds` must be a number greater than 0 (numeric strings such as `"15"` are accepted; `"5s"` or `null` are not).
-- `total_timeout_seconds` (HTTP page probe, HTTP JSON metric and Home Assistant) must be a number greater than 0.
+- `total_timeout_seconds` (HTTP page probe, HTTP JSON metric, Home Assistant and UniFi) must be a number greater than 0.
 - `max_body_bytes` must be a positive integer.
 - `verify_tls` and `follow_redirects` must be JSON booleans. Strings such as
   `"false"` are rejected instead of silently meaning `true`.

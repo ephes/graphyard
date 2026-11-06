@@ -1045,10 +1045,12 @@ executor: `Config` (a `SpecConfigError` of a typed knob, raised before the
 required-field checks in both executors) or `Raised` (the page probe's
 warning-path sink failure, which the runner turns into `collector raised
 <class>: <message>`). The page probe uses `run_with_deadline` +
-`run_page_probe` of S6, UniFi `send_following_redirects` (the login `POST`
-carries httpx's compact `json.dumps(ensure_ascii=False)` body with
-`Content-Type` and `Content-Length`; `client.post`/`client.get` read the
-whole body before the status is looked at). UniFi bodies are decoded like
+`run_page_probe` of S6. Since round 49, UniFi uses `send_unifi_request`
+with controller-origin redirects and a shared collection byte/deadline budget
+(the login `POST` carries httpx's compact `json.dumps(ensure_ascii=False)`
+body with `Content-Type` and `Content-Length`). Response bodies are streamed
+under that budget before status/JSON handling; identity encoding is required.
+UniFi bodies are parsed like
 `resp.json()`, including `json.loads`' 4300-digit integer limit (which
 the HTTP layer's `decode_json` applies since S7a); `resp.text` for the summaries is UTF-8 with
 replacement characters (P2 for other declared charsets, 2.3). Points carry
