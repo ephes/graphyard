@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Health projection never reduces stored heartbeat severity as it ages. Python
+  heartbeat throttling tracks only the latest committed state, so recoveries and
+  retries after failed writes are persisted.
+
 - Audit the frozen Python runtime and development graph in CI with pinned
   pip-audit; document the identical local command and hook-environment scope.
 

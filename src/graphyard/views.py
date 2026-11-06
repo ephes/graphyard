@@ -709,11 +709,12 @@ def _heartbeat_component(name: str, now: datetime) -> dict[str, object]:
         }
 
     age_seconds = int((now - heartbeat.last_success).total_seconds())
-    status = heartbeat.status
+    age_status = StatusLevel.OK
     if age_seconds >= settings.HEARTBEAT_CRITICAL_SECONDS:
-        status = StatusLevel.CRITICAL
+        age_status = StatusLevel.CRITICAL
     elif age_seconds >= settings.HEARTBEAT_WARNING_SECONDS:
-        status = StatusLevel.WARNING
+        age_status = StatusLevel.WARNING
+    status = max((heartbeat.status, age_status), key=_component_status_rank)
 
     return {
         "status": status,

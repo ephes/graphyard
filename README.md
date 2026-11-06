@@ -738,7 +738,12 @@ Nyxmon can poll:
 - `/v1/conditions` for condition list plus summary counts (`total`, `ok`, `warning`, `critical`)
 - `/v1/conditions/<id>` for detailed config/status of one condition
 
-Status values are always `ok|warning|critical`.
+Status values are always `ok|warning|critical`. Heartbeat projection takes the
+worse of stored status and age-derived status, preserving the recorded error and
+details. Python heartbeat throttling suppresses only repeats of the last committed
+state per name; transitions and retries after failed/rolled-back writes publish.
+The retained Python agent uses this writer too; Rust writes every heartbeat and
+needs no throttle correction.
 
 These endpoints need no credential, but unauthenticated callers get a reduced
 payload: `/v1/health` returns the overall `status`, `checked_at`, each
