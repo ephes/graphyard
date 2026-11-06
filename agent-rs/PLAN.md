@@ -2089,3 +2089,10 @@ Campaign-wide decisions of the same day that bind this stream:
 - **Review rounds**: a slice, and this plan, may get a third review round
   over the repair delta; if round 3 is not clean, work stops and is reported
   (section 12).
+
+Round 48 publication fence: Python and Rust compare the captured condition
+configuration and enabled state before publishing success/failure; the attempt
+watermark remains monotonic. `test_definition_edit_fences_pending_publication`
+and `condition_definition_edits_fence_successes_and_failures` pin pending-query
+edits with synthetic data. SQLite locks cover only the short publication check
+and update, never the Influx query. Web ingest bookkeeping changes are Python-only.

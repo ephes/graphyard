@@ -801,3 +801,55 @@ def test_unusable_anchor_preserves_initial_grace(monkeypatch, settings, anchor_a
         evaluate_condition(_condition(breach_minutes=10), now=now).status
         == StatusLevel.CRITICAL
     )
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "edit",
+    [
+        {"warning_threshold": 1.0},
+        {"tags_filter": {"synthetic": "new"}},
+        {"enabled": False},
+        {"metric_name": "changed"},
+        {"alert_when_stale": False},
+    ],
+)
+@pytest.mark.parametrize("failure", [False, True])
+def test_definition_edit_fences_pending_publication(monkeypatch, edit, failure):
+    condition = _condition(breach_minutes=0)
+    condition.status = StatusLevel.WARNING
+    condition.message = "retained evidence"
+    condition.last_value = 17
+    condition.save()
+
+    def query(*args, **kwargs):
+        ConditionDefinition.objects.filter(pk=condition.pk).update(**edit)
+        if failure:
+            raise ValueError("synthetic query failure")
+        return [_sample(kwargs["now"], minutes_ago=0, value=99)]
+
+    monkeypatch.setattr(influx, "query_condition_window", query)
+    evaluate_conditions_once(condition_id=condition.pk)
+    condition.refresh_from_db()
+    assert condition.status == StatusLevel.WARNING
+    assert condition.message == "retained evidence"
+    assert condition.last_value == 17
+    assert condition.last_evaluated is None
+
+
+@pytest.mark.django_db
+def test_noncanonical_stored_json_still_publishes(monkeypatch):
+    from django.db import connection
+
+    condition = _condition(breach_minutes=0)
+    condition.save()
+    with connection.cursor() as cursor:
+        cursor.execute(
+            "UPDATE condition_definition SET tags_filter = %s WHERE id = %s",
+            ['{"synthetic":"x","number":1e3}', condition.pk],
+        )
+    monkeypatch.setattr(influx, "query_condition_window", lambda *a, **k: [])
+    evaluate_conditions_once(condition_id=condition.pk)
+    condition.refresh_from_db()
+    assert condition.last_evaluated is not None
+    assert condition.message == "No samples available in condition window"

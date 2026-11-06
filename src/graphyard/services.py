@@ -13,7 +13,8 @@ from typing import Callable, TypeVar
 
 import httpx
 from django.conf import settings
-from django.db.models import Q
+from django.db.models import Q, TextField
+from django.db.models.functions import Cast
 from django.db import OperationalError, connection, transaction
 from django.utils import timezone
 
@@ -345,15 +346,35 @@ def evaluate_condition(
     )
 
 
+_CONDITION_DEFINITION_FIELDS = (
+    "enabled",
+    "metric_name",
+    "host_filter",
+    "service_filter",
+    "subject_type_filter",
+    "subject_id_filter",
+    "tags_filter_text",
+    "operator",
+    "warning_threshold",
+    "critical_threshold",
+    "window_minutes",
+    "breach_minutes",
+    "stale_after_seconds",
+    "alert_when_stale",
+)
+
+
 def _publish_condition_result(
-    condition_id: int, attempted_at: datetime, **fields
+    condition_id: int, attempted_at: datetime, *, definition: dict, **fields
 ) -> None:
     """Publish only if no equally new or newer attempt has already finished.
 
     Failed attempts advance the watermark too, retaining the previous value.
     Deleted conditions and superseded publications are harmless no-ops.
     """
-    ConditionDefinition.objects.filter(pk=condition_id).filter(
+    ConditionDefinition.objects.alias(
+        tags_filter_text=Cast("tags_filter", TextField())
+    ).filter(pk=condition_id, enabled=True).filter(**definition).filter(
         Q(last_evaluated__isnull=True) | Q(last_evaluated__lt=attempted_at)
     ).update(last_evaluated=attempted_at, **fields)
 
@@ -362,7 +383,9 @@ def evaluate_conditions_once(
     *,
     condition_id: int | None = None,
 ) -> ConditionEvaluationRun:
-    queryset = ConditionDefinition.objects.filter(enabled=True)
+    queryset = ConditionDefinition.objects.annotate(
+        tags_filter_text=Cast("tags_filter", TextField())
+    ).filter(enabled=True)
     if condition_id is not None:
         queryset = queryset.filter(id=condition_id)
 
@@ -371,12 +394,16 @@ def evaluate_conditions_once(
 
     for condition in queryset:
         total += 1
+        definition = {
+            field: getattr(condition, field) for field in _CONDITION_DEFINITION_FIELDS
+        }
         attempted_at = timezone.now()
         try:
             result = evaluate_condition(condition, now=attempted_at)
             _publish_condition_result(
                 condition.pk,
                 attempted_at,
+                definition=definition,
                 status=result.status,
                 message=result.message,
                 last_value=result.last_value,
@@ -386,6 +413,7 @@ def evaluate_conditions_once(
             _publish_condition_result(
                 condition.pk,
                 attempted_at,
+                definition=definition,
                 status=StatusLevel.CRITICAL,
                 message=f"evaluation error: {err}",
             )

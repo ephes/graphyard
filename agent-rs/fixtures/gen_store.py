@@ -305,13 +305,23 @@ def _load_conditions(raw: sqlite3.Connection, op: dict[str, Any]) -> dict[str, A
 
 
 def _update_condition(op: dict[str, Any], *, success: bool) -> None:
-    condition = ConditionDefinition.objects.get(id=op["id"])
+    condition = ConditionDefinition.objects.annotate(
+        tags_filter_text=services.Cast("tags_filter", services.TextField())
+    ).get(id=op["id"])
     if op.get("delete_first"):
         ConditionDefinition.objects.filter(id=op["id"]).delete()
     fields = {"status": op["status"], "message": op["message"]}
     if success:
         fields["last_value"] = op["last_value"]
-    services._publish_condition_result(condition.pk, _now(op), **fields)
+    services._publish_condition_result(
+        condition.pk,
+        _now(op),
+        definition={
+            field: getattr(condition, field)
+            for field in services._CONDITION_DEFINITION_FIELDS
+        },
+        **fields,
+    )
 
 
 def _record_heartbeat(op: dict[str, Any]) -> None:

@@ -164,6 +164,24 @@ pub(crate) fn update_condition_failure(
     Ok(())
 }
 
+// Result fields and timestamps are intentionally excluded from the definition.
+fn same_definition(a: &ConditionRow, b: &ConditionRow) -> bool {
+    a.enabled == b.enabled
+        && a.metric_name == b.metric_name
+        && a.host_filter == b.host_filter
+        && a.service_filter == b.service_filter
+        && a.subject_type_filter == b.subject_type_filter
+        && a.subject_id_filter == b.subject_id_filter
+        && a.tags_filter == b.tags_filter
+        && a.operator == b.operator
+        && a.warning_threshold == b.warning_threshold
+        && a.critical_threshold == b.critical_threshold
+        && a.window_minutes == b.window_minutes
+        && a.breach_minutes == b.breach_minutes
+        && a.stale_after_seconds == b.stale_after_seconds
+        && a.alert_when_stale == b.alert_when_stale
+}
+
 impl Store {
     /// Load the enabled conditions ordered by name; with `condition_id`,
     /// only that one (`evaluate_conditions_once(condition_id=...)`).
@@ -185,11 +203,22 @@ impl Store {
     /// SQLite errors. Stale attempts and deleted rows are no-ops.
     pub async fn update_condition_success(
         &self,
-        id: i64,
+        definition: ConditionRow,
         evaluation: ConditionEvaluation,
     ) -> Result<(), StoreError> {
-        self.call(move |connection| update_condition_success(connection, id, &evaluation))
-            .await
+        self.call(move |connection| {
+            let tx =
+                connection.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+            if load_conditions(&tx, Some(definition.id))?
+                .first()
+                .is_some_and(|current| same_definition(current, &definition))
+            {
+                update_condition_success(&tx, definition.id, &evaluation)?;
+            }
+            tx.commit()?;
+            Ok(())
+        })
+        .await
     }
 
     /// Write a failed evaluation's status and message.
@@ -198,13 +227,22 @@ impl Store {
     /// SQLite errors. Stale attempts and deleted rows are no-ops.
     pub async fn update_condition_failure(
         &self,
-        id: i64,
+        definition: ConditionRow,
         status: StatusLevel,
         message: String,
         attempted_at: DateTime<Utc>,
     ) -> Result<(), StoreError> {
         self.call(move |connection| {
-            update_condition_failure(connection, id, status, &message, attempted_at)
+            let tx =
+                connection.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+            if load_conditions(&tx, Some(definition.id))?
+                .first()
+                .is_some_and(|current| same_definition(current, &definition))
+            {
+                update_condition_failure(&tx, definition.id, status, &message, attempted_at)?;
+            }
+            tx.commit()?;
+            Ok(())
         })
         .await
     }

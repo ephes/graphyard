@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Fence Python and Rust condition publications against definition edits and
+  disablement during queries, retaining the existing attempt-order fence.
+- Accept metrics once Influx writes succeed even when subsequent database
+  bookkeeping fails; report degraded bookkeeping with fixed logs and health.
+
+
 - Health projection never reduces stored heartbeat severity as it ages. Python
   heartbeat throttling tracks only the latest committed state, so recoveries and
   retries after failed writes are persisted.

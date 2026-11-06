@@ -241,3 +241,10 @@ extracted binary.
 | `test_query_and_ingest_log_escaping.py::test_metric_log_escapes_newline`, `::test_ingest_normalization_record_caps_error_details` | — (web ingest) | — | n/a |
 | `test_evaluate_conditions_command.py` | `graphyard-agent/tests/evaluate_conditions.rs`, `e2e.rs::evaluate_conditions_writes_the_condition_rows_and_the_heartbeat`, `runs.json` `condition_id_*`, parity rounds 6 to 8 (PLAN.md 11.4) | S15a | done |
 | web/ingest/inventory/token/admin/login tests | — (web only) | — | n/a |
+
+Round 48 publication fence: Python and Rust compare the captured condition
+configuration and enabled state before publishing success/failure; the attempt
+watermark remains monotonic. `test_definition_edit_fences_pending_publication`
+and `condition_definition_edits_fence_successes_and_failures` pin pending-query
+edits with synthetic data. SQLite locks cover only the short publication check
+and update, never the Influx query. Web ingest bookkeeping changes are Python-only.
