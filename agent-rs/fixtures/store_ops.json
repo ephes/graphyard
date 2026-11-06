@@ -1757,6 +1757,316 @@
    ]
   },
   {
+   "name": "claim due slot",
+   "table": "metric_collection_spec",
+   "before": [
+    {
+     "id": 1,
+     "name": "synthetic",
+     "enabled": 1,
+     "spec_type": "http_json_metric",
+     "interval_seconds": 300,
+     "next_run_time": 100,
+     "config": "{\"url\": \"http://127.0.0.1:9/metrics\", \"metric_path\": \"$.value\"}",
+     "last_run_at": null,
+     "last_status": "warning",
+     "last_error": "",
+     "created_at": "2026-01-02 03:04:05.678901",
+     "updated_at": "2026-01-02 03:04:05.678901"
+    }
+   ],
+   "op": {
+    "kind": "claim_spec",
+    "now": "2026-10-21 08:15:30.123456",
+    "id": 1,
+    "expected_due": 100,
+    "now_ts": 100,
+    "claim_until": 400
+   },
+   "after": [
+    {
+     "id": 1,
+     "name": "synthetic",
+     "enabled": 1,
+     "spec_type": "http_json_metric",
+     "interval_seconds": 300,
+     "next_run_time": 400,
+     "config": "{\"url\": \"http://127.0.0.1:9/metrics\", \"metric_path\": \"$.value\"}",
+     "last_run_at": null,
+     "last_status": "warning",
+     "last_error": "",
+     "created_at": "2026-01-02 03:04:05.678901",
+     "updated_at": "2026-01-02 03:04:05.678901"
+    }
+   ]
+  },
+  {
+   "name": "reject already claimed slot",
+   "table": "metric_collection_spec",
+   "before": [
+    {
+     "id": 1,
+     "name": "synthetic",
+     "enabled": 1,
+     "spec_type": "http_json_metric",
+     "interval_seconds": 300,
+     "next_run_time": 400,
+     "config": "{\"url\": \"http://127.0.0.1:9/metrics\", \"metric_path\": \"$.value\"}",
+     "last_run_at": null,
+     "last_status": "warning",
+     "last_error": "",
+     "created_at": "2026-01-02 03:04:05.678901",
+     "updated_at": "2026-01-02 03:04:05.678901"
+    }
+   ],
+   "op": {
+    "kind": "claim_spec",
+    "now": "2026-10-21 08:15:30.123456",
+    "id": 1,
+    "expected_due": 100,
+    "now_ts": 100,
+    "claim_until": 400
+   },
+   "after": [
+    {
+     "id": 1,
+     "name": "synthetic",
+     "enabled": 1,
+     "spec_type": "http_json_metric",
+     "interval_seconds": 300,
+     "next_run_time": 400,
+     "config": "{\"url\": \"http://127.0.0.1:9/metrics\", \"metric_path\": \"$.value\"}",
+     "last_run_at": null,
+     "last_status": "warning",
+     "last_error": "",
+     "created_at": "2026-01-02 03:04:05.678901",
+     "updated_at": "2026-01-02 03:04:05.678901"
+    }
+   ]
+  },
+  {
+   "name": "reject disabled slot",
+   "table": "metric_collection_spec",
+   "before": [
+    {
+     "id": 1,
+     "name": "synthetic",
+     "enabled": 0,
+     "spec_type": "http_json_metric",
+     "interval_seconds": 300,
+     "next_run_time": 100,
+     "config": "{\"url\": \"http://127.0.0.1:9/metrics\", \"metric_path\": \"$.value\"}",
+     "last_run_at": null,
+     "last_status": "warning",
+     "last_error": "",
+     "created_at": "2026-01-02 03:04:05.678901",
+     "updated_at": "2026-01-02 03:04:05.678901"
+    }
+   ],
+   "op": {
+    "kind": "claim_spec",
+    "now": "2026-10-21 08:15:30.123456",
+    "id": 1,
+    "expected_due": 100,
+    "now_ts": 100,
+    "claim_until": 400
+   },
+   "after": [
+    {
+     "id": 1,
+     "name": "synthetic",
+     "enabled": 0,
+     "spec_type": "http_json_metric",
+     "interval_seconds": 300,
+     "next_run_time": 100,
+     "config": "{\"url\": \"http://127.0.0.1:9/metrics\", \"metric_path\": \"$.value\"}",
+     "last_run_at": null,
+     "last_status": "warning",
+     "last_error": "",
+     "created_at": "2026-01-02 03:04:05.678901",
+     "updated_at": "2026-01-02 03:04:05.678901"
+    }
+   ]
+  },
+  {
+   "name": "reject future slot",
+   "table": "metric_collection_spec",
+   "before": [
+    {
+     "id": 1,
+     "name": "synthetic",
+     "enabled": 1,
+     "spec_type": "http_json_metric",
+     "interval_seconds": 300,
+     "next_run_time": 101,
+     "config": "{\"url\": \"http://127.0.0.1:9/metrics\", \"metric_path\": \"$.value\"}",
+     "last_run_at": null,
+     "last_status": "warning",
+     "last_error": "",
+     "created_at": "2026-01-02 03:04:05.678901",
+     "updated_at": "2026-01-02 03:04:05.678901"
+    }
+   ],
+   "op": {
+    "kind": "claim_spec",
+    "now": "2026-10-21 08:15:30.123456",
+    "id": 1,
+    "expected_due": 101,
+    "now_ts": 100,
+    "claim_until": 400
+   },
+   "after": [
+    {
+     "id": 1,
+     "name": "synthetic",
+     "enabled": 1,
+     "spec_type": "http_json_metric",
+     "interval_seconds": 300,
+     "next_run_time": 101,
+     "config": "{\"url\": \"http://127.0.0.1:9/metrics\", \"metric_path\": \"$.value\"}",
+     "last_run_at": null,
+     "last_status": "warning",
+     "last_error": "",
+     "created_at": "2026-01-02 03:04:05.678901",
+     "updated_at": "2026-01-02 03:04:05.678901"
+    }
+   ]
+  },
+  {
+   "name": "recover expired claim",
+   "table": "metric_collection_spec",
+   "before": [
+    {
+     "id": 1,
+     "name": "synthetic",
+     "enabled": 1,
+     "spec_type": "http_json_metric",
+     "interval_seconds": 300,
+     "next_run_time": 400,
+     "config": "{\"url\": \"http://127.0.0.1:9/metrics\", \"metric_path\": \"$.value\"}",
+     "last_run_at": null,
+     "last_status": "warning",
+     "last_error": "",
+     "created_at": "2026-01-02 03:04:05.678901",
+     "updated_at": "2026-01-02 03:04:05.678901"
+    }
+   ],
+   "op": {
+    "kind": "claim_spec",
+    "now": "2026-10-21 08:15:30.123456",
+    "id": 1,
+    "expected_due": 400,
+    "now_ts": 400,
+    "claim_until": 700
+   },
+   "after": [
+    {
+     "id": 1,
+     "name": "synthetic",
+     "enabled": 1,
+     "spec_type": "http_json_metric",
+     "interval_seconds": 300,
+     "next_run_time": 700,
+     "config": "{\"url\": \"http://127.0.0.1:9/metrics\", \"metric_path\": \"$.value\"}",
+     "last_run_at": null,
+     "last_status": "warning",
+     "last_error": "",
+     "created_at": "2026-01-02 03:04:05.678901",
+     "updated_at": "2026-01-02 03:04:05.678901"
+    }
+   ]
+  },
+  {
+   "name": "finish owned claim",
+   "table": "metric_collection_spec",
+   "before": [
+    {
+     "id": 1,
+     "name": "synthetic",
+     "enabled": 1,
+     "spec_type": "http_json_metric",
+     "interval_seconds": 300,
+     "next_run_time": 400,
+     "config": "{\"url\": \"http://127.0.0.1:9/metrics\", \"metric_path\": \"$.value\"}",
+     "last_run_at": null,
+     "last_status": "warning",
+     "last_error": "",
+     "created_at": "2026-01-02 03:04:05.678901",
+     "updated_at": "2026-01-02 03:04:05.678901"
+    }
+   ],
+   "op": {
+    "kind": "finish_claimed_spec",
+    "now": "2026-10-21 08:15:30.123456",
+    "id": 1,
+    "claim_until": 400,
+    "last_status": "ok",
+    "last_error": "",
+    "next_run_time": 1000
+   },
+   "after": [
+    {
+     "id": 1,
+     "name": "synthetic",
+     "enabled": 1,
+     "spec_type": "http_json_metric",
+     "interval_seconds": 300,
+     "next_run_time": 1000,
+     "config": "{\"url\": \"http://127.0.0.1:9/metrics\", \"metric_path\": \"$.value\"}",
+     "last_run_at": "2026-10-21 08:15:30.123456",
+     "last_status": "ok",
+     "last_error": "",
+     "created_at": "2026-01-02 03:04:05.678901",
+     "updated_at": "2026-01-02 03:04:05.678901"
+    }
+   ]
+  },
+  {
+   "name": "reject old completion",
+   "table": "metric_collection_spec",
+   "before": [
+    {
+     "id": 1,
+     "name": "synthetic",
+     "enabled": 1,
+     "spec_type": "http_json_metric",
+     "interval_seconds": 300,
+     "next_run_time": 700,
+     "config": "{\"url\": \"http://127.0.0.1:9/metrics\", \"metric_path\": \"$.value\"}",
+     "last_run_at": null,
+     "last_status": "warning",
+     "last_error": "",
+     "created_at": "2026-01-02 03:04:05.678901",
+     "updated_at": "2026-01-02 03:04:05.678901"
+    }
+   ],
+   "op": {
+    "kind": "finish_claimed_spec",
+    "now": "2026-10-21 08:15:30.123456",
+    "id": 1,
+    "claim_until": 400,
+    "last_status": "ok",
+    "last_error": "",
+    "next_run_time": 1000
+   },
+   "after": [
+    {
+     "id": 1,
+     "name": "synthetic",
+     "enabled": 1,
+     "spec_type": "http_json_metric",
+     "interval_seconds": 300,
+     "next_run_time": 700,
+     "config": "{\"url\": \"http://127.0.0.1:9/metrics\", \"metric_path\": \"$.value\"}",
+     "last_run_at": null,
+     "last_status": "warning",
+     "last_error": "",
+     "created_at": "2026-01-02 03:04:05.678901",
+     "updated_at": "2026-01-02 03:04:05.678901"
+    }
+   ]
+  },
+  {
    "table": "condition_definition",
    "before": [
     {

@@ -1909,6 +1909,28 @@ _SPEC_EXECUTORS: dict[
 }
 
 
+def _claim_due_collection_spec(
+    spec_id: int,
+    expected_due: int,
+    now_ts: int,
+    claim_until: int,
+) -> bool:
+    return bool(
+        MetricCollectionSpec.objects.filter(
+            pk=spec_id,
+            enabled=True,
+            next_run_time=expected_due,
+            next_run_time__lte=now_ts,
+        ).update(next_run_time=claim_until)
+    )
+
+
+def _finish_due_collection_spec(spec_id: int, claim_until: int, **fields) -> None:
+    MetricCollectionSpec.objects.filter(pk=spec_id, next_run_time=claim_until).update(
+        **fields
+    )
+
+
 def run_metric_collection_specs_once(
     *,
     due_only: bool = False,
@@ -1937,6 +1959,17 @@ def run_metric_collection_specs_once(
     error_messages: list[str] = []
 
     for spec in specs:
+        run_at = timezone.now() if due_only else now
+        run_ts = int(run_at.timestamp())
+        interval = max(1, int(spec.interval_seconds))
+        claim_until = run_ts + min(interval, 300)
+        if due_only and not _claim_due_collection_spec(
+            spec.pk,
+            spec.next_run_time,
+            run_ts,
+            claim_until,
+        ):
+            continue
         total += 1
         status, item_ingested, item_skipped, error_msg = (
             _run_single_metric_collection_spec(spec)
@@ -1944,13 +1977,29 @@ def run_metric_collection_specs_once(
         ingested += item_ingested
         skipped += item_skipped
 
-        spec.last_run_at = now
-        spec.last_status = status
-        spec.last_error = error_msg
-        spec.next_run_time = now_ts + max(1, int(spec.interval_seconds))
-        spec.save(
-            update_fields=["last_run_at", "last_status", "last_error", "next_run_time"]
-        )
+        if due_only:
+            # A lease may expire during I/O. A newer claimant owns completion.
+            _finish_due_collection_spec(
+                spec.pk,
+                claim_until,
+                last_run_at=run_at,
+                last_status=status,
+                last_error=error_msg,
+                next_run_time=run_ts + interval,
+            )
+        else:
+            spec.last_run_at = now
+            spec.last_status = status
+            spec.last_error = error_msg
+            spec.next_run_time = now_ts + interval
+            spec.save(
+                update_fields=[
+                    "last_run_at",
+                    "last_status",
+                    "last_error",
+                    "next_run_time",
+                ]
+            )
 
         if status == StatusLevel.CRITICAL:
             failed += 1
@@ -1959,6 +2008,11 @@ def run_metric_collection_specs_once(
             warning += 1
             if error_msg:
                 error_messages.append(f"{spec.name}: {error_msg}")
+
+    if total == 0:
+        return MetricCollectionSpecRun(
+            total=0, failed=0, warning=0, ingested=0, skipped=0
+        )
 
     if failed > 0 and (total - failed) == 0:
         heartbeat_status = StatusLevel.CRITICAL

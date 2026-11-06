@@ -308,6 +308,17 @@ error in `last_error`. Its `next_run_time` still advances and the remaining spec
 keep running. The run is reflected in the `metric_collectors` heartbeat on
 `/v1/health`: `warning` when some specs failed, `critical` only when all did.
 
+Due-only scheduler runs claim each selected slot with a conditional
+`next_run_time` update **before** any collection. Another runner with the same
+snapshot skips a lost claim. Claims expire after `min(max(1, interval_seconds),
+300)` seconds; a crash leaves the row eligible at that timestamp on the next tick.
+Successful and failed attempts schedule the next regular interval from their claim
+start. Completion only updates a row still carrying that claim timestamp, so a
+late old result cannot overwrite a newer claimant. No database lock spans network
+I/O. A collection lasting beyond its claim can overlap the next slot; this is a
+bounded recovery lease, not an unlimited execution lock. Explicit non-due runs
+(including manual one-shot collection) continue to run every enabled spec.
+
 Current supported `spec_type`:
 
 - `home_assistant_sensor`

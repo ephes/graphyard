@@ -336,6 +336,22 @@ def _run_case(raw: sqlite3.Connection, case: dict[str, Any]) -> dict[str, Any]:
                 result.update(_load_specs(raw, op))
             elif kind == "update_spec":
                 _update_spec(op)
+            elif kind == "claim_spec":
+                services._claim_due_collection_spec(
+                    op["id"],
+                    op["expected_due"],
+                    op["now_ts"],
+                    op["claim_until"],
+                )
+            elif kind == "finish_claimed_spec":
+                services._finish_due_collection_spec(
+                    op["id"],
+                    op["claim_until"],
+                    last_run_at=_now(op),
+                    last_status=op["last_status"],
+                    last_error=op["last_error"],
+                    next_run_time=op["next_run_time"],
+                )
             elif kind == "load_conditions":
                 result.update(_load_conditions(raw, op))
             elif kind == "update_condition_success":
@@ -518,6 +534,65 @@ def _spec_cases() -> list[dict[str, Any]]:
             },
         }
     )
+    return cases
+
+
+def _claim_cases() -> list[dict[str, Any]]:
+    cases = []
+    for name, row, expected_due, at in [
+        ("claim due slot", spec_row(1, "synthetic", next_run_time=100), 100, 100),
+        (
+            "reject already claimed slot",
+            spec_row(1, "synthetic", next_run_time=400),
+            100,
+            100,
+        ),
+        (
+            "reject disabled slot",
+            spec_row(1, "synthetic", next_run_time=100, enabled=0),
+            100,
+            100,
+        ),
+        ("reject future slot", spec_row(1, "synthetic", next_run_time=101), 101, 100),
+        (
+            "recover expired claim",
+            spec_row(1, "synthetic", next_run_time=400),
+            400,
+            400,
+        ),
+    ]:
+        cases.append(
+            {
+                "name": name,
+                "table": SPEC_TABLE,
+                "before": [row],
+                "op": {
+                    "kind": "claim_spec",
+                    "now": NOW_TEXT,
+                    "id": 1,
+                    "expected_due": expected_due,
+                    "now_ts": at,
+                    "claim_until": at + 300,
+                },
+            }
+        )
+    for name, current in [("finish owned claim", 400), ("reject old completion", 700)]:
+        cases.append(
+            {
+                "name": name,
+                "table": SPEC_TABLE,
+                "before": [spec_row(1, "synthetic", next_run_time=current)],
+                "op": {
+                    "kind": "finish_claimed_spec",
+                    "now": NOW_TEXT,
+                    "id": 1,
+                    "claim_until": 400,
+                    "last_status": "ok",
+                    "last_error": "",
+                    "next_run_time": 1000,
+                },
+            }
+        )
     return cases
 
 
@@ -1299,7 +1374,12 @@ def build_store_ops() -> dict[str, Any]:
     with temp_database() as raw:
         cases = [
             _run_case(raw, case)
-            for case in [*_spec_cases(), *_condition_cases(), *_heartbeat_cases()]
+            for case in [
+                *_spec_cases(),
+                *_claim_cases(),
+                *_condition_cases(),
+                *_heartbeat_cases(),
+            ]
         ]
         registry_cases = [_run_registry_case(raw, case) for case in _registry_cases()]
     return {
