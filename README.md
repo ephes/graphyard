@@ -766,6 +766,18 @@ use WAL + busy-timeout settings from `graphyard.env.example`.
 
 ## Validation Commands
 
+The uv-managed development toolchain locks filelock 4.2.1 and virtualenv
+21.14.10 to address their known advisories in developer tooling. Virtualenv also
+requires upgrading the shared runtime dependency `packaging` from 26.0 to 26.3;
+the inventory release version-parsing tests cover that usage. Runtime or Rust
+exploitation has not been demonstrated. Run `uv sync --frozen` to install the
+repaired graph. To rebuild the separately resolved Ruff hook environment with
+this virtualenv, use a fresh cache:
+
+```bash
+PRE_COMMIT_HOME="$(mktemp -d)" uv run --frozen pre-commit run --all-files
+```
+
 ```bash
 just test
 just typecheck

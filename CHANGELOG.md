@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Refresh the Python development toolchain to filelock 4.2.1 and virtualenv
+  21.14.10 and its required distlib update to address developer-tool advisories.
+  Virtualenv also requires the shared runtime `packaging` dependency to advance
+  from 26.0 to 26.3; inventory release version-parsing tests cover that usage.
+  Rust dependencies are unchanged.
+
 - Inventory issuance serializes on the registered host and enforces one enabled
   credential per enrolled host. Migration 0013 refuses existing duplicates with
   host IDs for explicit operator repair; it never retires credentials silently.
