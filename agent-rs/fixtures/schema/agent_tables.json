@@ -1,7 +1,7 @@
 {
  "min_graphyard_migration": [
   "graphyard",
-  "0010_condition_stale_allowance"
+  "0013_inventory_single_enabled_credential"
  ],
  "tables": {
   "metric_collection_spec": [

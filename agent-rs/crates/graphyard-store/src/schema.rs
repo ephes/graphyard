@@ -22,8 +22,10 @@ use crate::actor::{Store, open_read_only};
 use crate::error::StoreError;
 
 /// The minimum Django migration the agent needs, `(app, name)`: the last
-/// graphyard migration that changes an agent table.
-pub const MIN_GRAPHYARD_MIGRATION: (&str, &str) = ("graphyard", "0010_condition_stale_allowance");
+/// graphyard migration that changes an agent table or has an unattributed
+/// operation (0013 has an inventory data preflight).
+pub const MIN_GRAPHYARD_MIGRATION: (&str, &str) =
+    ("graphyard", "0013_inventory_single_enabled_credential");
 
 /// Every agent table with its columns in `PRAGMA table_info` order.
 pub const REQUIRED_COLUMNS: [(&str, &[&str]); 6] = [

@@ -4,7 +4,7 @@ import hashlib
 import secrets
 
 from django.core.management.base import BaseCommand, CommandError
-from django.db import transaction
+from django.db import IntegrityError, OperationalError, transaction
 
 from graphyard.models import HostRegistry, InventoryCredential, InventoryHost
 
@@ -29,26 +29,31 @@ class Command(BaseCommand):
             and options["warning_after_seconds"] < 60
         ):
             raise CommandError("warning-after-seconds must be at least 60")
-        with transaction.atomic():
-            try:
-                registered = HostRegistry.objects.get(
-                    host_id=options["host"], enabled=True
+        try:
+            with transaction.atomic():
+                try:
+                    registered = HostRegistry.objects.select_for_update().get(
+                        host_id=options["host"], enabled=True
+                    )
+                except HostRegistry.DoesNotExist as exc:
+                    raise CommandError("Register and enable this host first") from exc
+                host, _ = InventoryHost.objects.get_or_create(host=registered)
+                existing = InventoryCredential.objects.filter(host=host, enabled=True)
+                if existing.exists() and not options["rotate"]:
+                    raise CommandError("Host already has a credential; use --rotate")
+                existing.update(enabled=False)
+                if options["warning_after_seconds"] is not None:
+                    host.warning_after_seconds = options["warning_after_seconds"]
+                if options["intermittent"] is not None:
+                    host.alert_when_stale = not options["intermittent"]
+                host.save()
+                plaintext = secrets.token_urlsafe(32)
+                credential = InventoryCredential.objects.create(
+                    host=host, digest=hashlib.sha256(plaintext.encode()).hexdigest()
                 )
-            except HostRegistry.DoesNotExist as exc:
-                raise CommandError("Register and enable this host first") from exc
-            host, _ = InventoryHost.objects.get_or_create(host=registered)
-            existing = InventoryCredential.objects.filter(host=host, enabled=True)
-            if existing.exists() and not options["rotate"]:
-                raise CommandError("Host already has a credential; use --rotate")
-            existing.update(enabled=False)
-            if options["warning_after_seconds"] is not None:
-                host.warning_after_seconds = options["warning_after_seconds"]
-            if options["intermittent"] is not None:
-                host.alert_when_stale = not options["intermittent"]
-            host.save()
-            plaintext = secrets.token_urlsafe(32)
-            credential = InventoryCredential.objects.create(
-                host=host, digest=hashlib.sha256(plaintext.encode()).hexdigest()
-            )
+        except (IntegrityError, OperationalError) as exc:
+            raise CommandError(
+                "Credential issuance conflicted; retry the command"
+            ) from exc
         # Print only after commit; operator captures stdout securely.
         self.stdout.write(f"{credential.pk}.{plaintext}")

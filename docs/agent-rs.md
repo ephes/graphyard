@@ -41,8 +41,8 @@ against the system CA store (D-12), reads only the process environment (no
 Django migrations own the schema; the Rust agent runs no DDL. At startup (and
 with `--check-schema`) it checks that every column of the six agent tables
 exists and that `django_migrations` contains
-`graphyard.0010_condition_stale_allowance`, the last migration that changes an
-agent table, and exits 1 with one line naming every missing table, column and
+`graphyard.0013_inventory_single_enabled_credential`, the conservative migration
+floor (its data preflight is not attributable to one model by the classifier), and exits 1 with one line naming every missing table, column and
 migration otherwise (D-2). Extra columns are accepted.
 
 The rule for Python changes: `tests/test_agent_rs_schema_contract.py`

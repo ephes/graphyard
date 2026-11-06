@@ -668,16 +668,18 @@ their datetimes, 5.3), so the store selects every column too, including
 - `host_registry`: `id, host_id, display_name, grafana_url, enabled, last_seen_at`
 - `service_registry`: `id, service_id, display_name, grafana_url, enabled, last_seen_at, host_id`
 - `django_migrations` contains `('graphyard', MIN_GRAPHYARD_MIGRATION)`,
-  `0010_condition_stale_allowance`: the last migration that changes an agent
-  table (`0011`/`0012` touch only `ingest_token*`).
+  `0013_inventory_single_enabled_credential`: the conservative migration floor,
+  because its `RunPython` preflight cannot be attributed to one model by the
+  fixture classifier. Agent columns last changed in `0010`; `0011`/`0012`
+  touch only `ingest_token*`.
 
 Extra columns are accepted (a newer, compatible schema). A failed check is
 one line naming every missing table, column and the migration, e.g.
 `database schema is older than the agent contract; missing columns:
 condition_definition.stale_after_seconds; missing migration:
-graphyard.0010_condition_stale_allowance; run `manage.py migrate` before
+graphyard.0013_inventory_single_enabled_credential; run `manage.py migrate` before
 starting the agent`; a passing one reads `database schema satisfies the agent
-contract (graphyard.0010_condition_stale_allowance, journal_mode=wal)`.
+contract (graphyard.0013_inventory_single_enabled_credential, journal_mode=wal)`.
 
 `agent-rs/fixtures/gen_schema.py` (part of `just rs-fixtures`) migrates a
 temporary database with the test settings and writes

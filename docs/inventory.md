@@ -21,6 +21,20 @@ just manage create_inventory_credential --host studio
 just manage create_inventory_credential --host atlas --intermittent
 ```
 
+Issuance/rotation locks the registered host row for the whole transaction.
+SQLite uses the configured immediate transaction; PostgreSQL uses the row lock.
+A partial unique constraint allows at most one enabled inventory credential per
+host, including writes outside this command. A contended command either completes
+atomically or returns a retry/conflict error without printing a credential.
+Migration `0013_inventory_single_enabled_credential` first checks existing enabled
+credentials. If it reports duplicate inventory host IDs, stop and explicitly revoke
+the unwanted rows before rerunning migrations. It leaves every credential unchanged
+on failure and never prints a digest or secret. Migration 0013 is also the new
+Rust agent's conservative minimum schema floor: an unresolved duplicate preflight
+therefore blocks that agent's startup even though inventory is not an agent table.
+Resolve the duplicate rows and complete migrations before adopting that agent. Reversing the migration removes
+the constraint without changing credential rows.
+
 Capture stdout securely: the command prints a credential once. Only its SHA-256
 hash is stored. The credential contains its row ID plus a random secret. Use
 `--rotate` to disable existing credentials and issue a replacement. Rotation
@@ -490,3 +504,17 @@ claim active. A missing unit is not-observed, not proof of absence. Older report
 without this field show no related-unit section and acquire no inferred bindings.
 Rendering performs no collection, outbound lookup, database mutation or current
 unit-inventory join; downloading the source report retains the exact evidence.
+
+
+Credential migration and concurrency checks use synthetic fixtures on SQLite and
+PostgreSQL. For an isolated PostgreSQL test database (never a real service DB):
+
+```bash
+GRAPHYARD_TEST_DATABASE_URL=postgres://graphyard_test@127.0.0.1:5432/graphyard_test \
+  uv run --with 'psycopg[binary]==3.2.10' pytest -q \
+  --ds=config.settings.postgres_contract \
+  tests/test_inventory_credential_lifecycle.py
+```
+
+CI runs this command against its own PostgreSQL 17 service. The normal suite still
+uses SQLite; the Rust agent's production store remains SQLite-only.

@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Inventory issuance serializes on the registered host and enforces one enabled
+  credential per enrolled host. Migration 0013 refuses existing duplicates with
+  host IDs for explicit operator repair; it never retires credentials silently.
 - Due collectors (Python and Rust) atomically claim scheduling slots before I/O.
   Crashed claims expire within 300 seconds (or the shorter collection interval);
   superseded completions cannot replace a newer schedule/result. Explicit

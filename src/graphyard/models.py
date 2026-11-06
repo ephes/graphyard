@@ -409,6 +409,15 @@ class InventoryCredential(models.Model):
     enabled = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["host"],
+                condition=models.Q(enabled=True),
+                name="inventory_one_enabled_credential",
+            )
+        ]
+
 
 class InventorySnapshot(models.Model):
     host = models.ForeignKey(InventoryHost, on_delete=models.PROTECT)
