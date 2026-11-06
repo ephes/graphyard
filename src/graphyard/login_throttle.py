@@ -1,24 +1,24 @@
-"""Limit failed logins (owner login and admin login).
+"""Reserve owner/admin password attempts in fixed, generation-scoped cache windows.
 
-Failures are counted in the ``login_throttle`` cache per (username, client address) and per client address.
-Once a counter reaches its limit, further attempts for that key are refused for the rest of the window
-without checking the password. A successful login clears the (username, client address) counter.
-
-It hooks into authentication itself (a backend that stops the login, plus the ``user_login_failed`` and
-``user_logged_in`` signals), so every login form that passes the request is covered. Calls without a request
-(management commands, ``Client.login`` in tests) are not limited. Bearer tokens are not affected.
-
-The counters live in each server process (local-memory cache), so with several workers the effective limit
-is the configured limit times the number of workers.
+Failures and pending verifications share pair/address limits. Atomic increments
+reserve before hashing. Failure settlement increments before releasing pending,
+so races can refuse extra work but cannot admit extra password checks. Success
+clears pair failures while releasing only its own reservations. Generation keys
+make late completions harmless after expiry. Local-memory and Memcached atomic
+add/increment/decrement are the supported cache boundary, with per-process limits
+by default. Signals cover unwrapped callers without double-counting this backend.
 """
 
 from __future__ import annotations
 
 import hashlib
 import ipaddress
+import uuid
 
+from asgiref.sync import sync_to_async
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.contrib.auth.backends import ModelBackend
 from django.contrib.auth.signals import user_logged_in, user_login_failed
 from django.core.cache import caches
 from django.core.exceptions import PermissionDenied
@@ -60,9 +60,30 @@ def _keys(request, username: str) -> tuple[str, str]:
     return f"pair:{pair}", f"addr:{hashlib.sha256(address.encode()).hexdigest()}"
 
 
-def _count(key: str) -> int:
+def _raw_count(key: str) -> int:
     value = caches[CACHE_ALIAS].get(key, 0)
     return value if isinstance(value, int) else 0
+
+
+def _window(key: str, *, create: bool = False) -> str | None:
+    cache = caches[CACHE_ALIAS]
+    pointer = f"window:{key}"
+    generation = cache.get(pointer)
+    if generation is None and create:
+        candidate = uuid.uuid4().hex
+        if cache.add(pointer, candidate, timeout=settings.LOGIN_FAILURE_WINDOW_S):
+            generation = candidate
+        else:
+            generation = cache.get(pointer)
+    return generation if isinstance(generation, str) else None
+
+
+def _count(key: str) -> int:
+    generation = _window(key)
+    if generation is None:
+        return 0
+    prefix = f"{key}:{generation}"
+    return _raw_count(f"{prefix}:pending") + _raw_count(f"{prefix}:failed")
 
 
 def is_locked(request, username: str) -> bool:
@@ -75,56 +96,128 @@ def is_locked(request, username: str) -> bool:
     )
 
 
-def _increment(key: str) -> None:
+def _increment(key: str) -> int:
     cache = caches[CACHE_ALIAS]
-    # add() starts the window; incr() keeps the expiry of the existing entry, so the window is fixed.
-    if cache.add(key, 1, timeout=settings.LOGIN_FAILURE_WINDOW_S):
-        return
+    # add starts this generation's counter; incr never refreshes its expiry.
+    for _ in range(3):
+        if cache.add(key, 1, timeout=settings.LOGIN_FAILURE_WINDOW_S):
+            return 1
+        try:
+            return cache.incr(key)
+        except ValueError:
+            continue  # expired/evicted between add and incr
+    raise PermissionDenied("Login throttle unavailable.")
+
+
+def _release(key: str) -> None:
     try:
-        cache.incr(key)
-    except ValueError:  # expired between add() and incr()
-        cache.add(key, 1, timeout=settings.LOGIN_FAILURE_WINDOW_S)
+        caches[CACHE_ALIAS].decr(key)
+    except ValueError:
+        pass  # expired generation; never touch a replacement window
+
+
+def _reserve(request, username: str) -> list[tuple[str, str]]:
+    if is_locked(request, username):
+        raise PermissionDenied("Too many failed login attempts.")
+    pair, address = _keys(request, username)
+    reserved: list[tuple[str, str]] = []
+    try:
+        # Address first: a locked address cannot churn arbitrary username keys.
+        for key, limit in [
+            (address, settings.LOGIN_ADDRESS_FAILURE_LIMIT),
+            (pair, settings.LOGIN_FAILURE_LIMIT),
+        ]:
+            generation = _window(key, create=True)
+            if generation is None:
+                raise PermissionDenied("Login throttle unavailable.")
+            prefix = f"{key}:{generation}"
+            pending, failed = f"{prefix}:pending", f"{prefix}:failed"
+            count = _increment(pending)
+            reserved.append((pending, failed))
+            # Reserve first, then observe failures. Failure settlement adds its
+            # failure before releasing pending, so races may overcount, never
+            # admit an extra password verification.
+            if count + _raw_count(failed) > limit:
+                raise PermissionDenied("Too many failed login attempts.")
+        return reserved
+    except BaseException:
+        for pending, _ in reserved:
+            _release(pending)
+        raise
+
+
+def _settle(reserved: list[tuple[str, str]], *, success: bool) -> None:
+    try:
+        if success:
+            # Only clear pair failures; other pending attempts keep their slots.
+            caches[CACHE_ALIAS].delete(reserved[-1][1])
+        else:
+            for _, failed in reserved:
+                _increment(failed)
+    finally:
+        for pending, _ in reserved:
+            _release(pending)
 
 
 def record_failure(request, username: str) -> None:
     if request is None or settings.LOGIN_FAILURE_LIMIT <= 0:
         return
-    # Locked attempts must not create fresh keys and evict active counters.
-    if is_locked(request, username):
+    try:
+        reserved = _reserve(request, username)
+    except PermissionDenied:
         return
-    for key in _keys(request, username):
-        _increment(key)
+    _settle(reserved, success=False)
 
 
 def reset(request, username: str) -> None:
     if request is None:
         return
-    caches[CACHE_ALIAS].delete(_keys(request, username)[0])
+    pair = _keys(request, username)[0]
+    generation = _window(pair)
+    if generation is not None:
+        caches[CACHE_ALIAS].delete(f"{pair}:{generation}:failed")
 
 
-class LoginThrottleBackend:
-    """First authentication backend: stops a login attempt while its counters are at the limit.
+class LoginThrottleBackend(ModelBackend):
+    """Own password admission and settlement for owner/admin authentication.
 
-    ``PermissionDenied`` ends ``authenticate()`` before the password backends run, so a locked-out attempt
-    costs no password hash and cannot succeed even with the right password.
-
-    It only gates logins and never owns a session: it deliberately has no ``get_user`` (and no permission
-    methods), so Django never records it as the backend a user logged in with."""
+    ModelBackend remains configured for existing sessions; a failed password
+    raises PermissionDenied here so it is never checked by that fallback.
+    """
 
     def authenticate(self, request, username=None, password=None, **kwargs):
         if username is None:
             username = kwargs.get(get_user_model().USERNAME_FIELD)
-        if (
-            request is not None
-            and isinstance(username, str)
-            and is_locked(request, username)
-        ):
-            raise PermissionDenied("Too many failed login attempts.")
-        return None
+        reserved = []
+        if request is not None and settings.LOGIN_FAILURE_LIMIT > 0:
+            request._graphyard_throttle_handled = True
+            reserved = _reserve(request, username if isinstance(username, str) else "")
+        try:
+            user = super().authenticate(
+                request, username=username, password=password, **kwargs
+            )
+        except BaseException:
+            for pending, _ in reserved:
+                _release(pending)
+            raise
+        if reserved:
+            _settle(reserved, success=user is not None)
+        if user is None:
+            raise PermissionDenied("Invalid login.")
+        return user
+
+    async def aauthenticate(self, request, username=None, password=None, **kwargs):
+        # ModelBackend has its own async password path; route it through the
+        # same admission/settlement boundary rather than inheriting a bypass.
+        return await sync_to_async(self.authenticate, thread_sensitive=True)(
+            request, username=username, password=password, **kwargs
+        )
 
 
 @receiver(user_login_failed, dispatch_uid="graphyard.login_throttle.failed")
 def _on_login_failed(sender, credentials, request=None, **kwargs):
+    if request is not None and getattr(request, "_graphyard_throttle_handled", False):
+        return
     username = (
         credentials.get("username")
         or credentials.get(get_user_model().USERNAME_FIELD)
@@ -135,4 +228,5 @@ def _on_login_failed(sender, credentials, request=None, **kwargs):
 
 @receiver(user_logged_in, dispatch_uid="graphyard.login_throttle.logged_in")
 def _on_logged_in(sender, request, user, **kwargs):
-    reset(request, user.get_username())
+    if request is None or not getattr(request, "_graphyard_throttle_handled", False):
+        reset(request, user.get_username())

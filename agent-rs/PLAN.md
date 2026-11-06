@@ -2103,3 +2103,11 @@ fallback logins and redirects. Identity encoding is required to bound predecode
 allocation. `tests/test_unifi_boundaries.py` and the Rust UniFi executor tests
 use synthetic origins, oversized bodies and dripping responses; existing UniFi
 fixtures retain same-origin/legacy/UniFi-OS parity. No deployment performed.
+
+Round 49 decoder output budgets: each Rust decoding stage writes through a
+bounded standard Write sink. Compressed intermediate output is capped too; no
+post-decode truncation. JSON/page-probe response callers install the allowance
+before reading. Decoder tests pin high-ratio gzip/zlib/raw-deflate, stacked
+intermediate growth and normal split chunks. This intentional tighter allocation
+bound precedes Python's general post-decode check; accepted ordinary fixtures
+stay identical. Login admission is a Python web concern, not an agent change.

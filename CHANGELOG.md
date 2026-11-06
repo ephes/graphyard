@@ -7,6 +7,12 @@
   by one byte allowance and total deadline; require identity encoding.
 
 
+- Enforce Rust HTTP output allowances during each decoding stage, including
+  stacked encodings, instead of after expanding an unbounded chunk.
+- Reserve owner/admin login attempts atomically before password verification;
+  settle failures once and preserve concurrent reservations on success/expiry.
+
+
 - Fence Python and Rust condition publications against definition edits and
   disablement during queries, retaining the existing attempt-order fence.
 - Accept metrics once Influx writes succeed even when subsequent database

@@ -33,6 +33,7 @@ pub async fn read_http_json(
     deadline.check()?;
     let mut response = client.send(&request).await?;
     response.raise_for_status()?;
+    response.set_body_limit(max_body_bytes);
     let mut body: Vec<u8> = Vec::new();
     while let Some(chunk) = response.chunk().await? {
         deadline.check()?;
@@ -131,8 +132,15 @@ pub async fn run_page_probe(
     loop {
         deadline.check()?;
         let mut response = client.send(&request).await?;
+        response.set_body_limit(max_body_bytes.saturating_sub(body_bytes));
         let headers_received_at = Instant::now();
-        while let Some(chunk) = response.chunk().await? {
+        while let Some(chunk) = response.chunk().await.map_err(|err| {
+            if err.kind == ErrorKind::LimitExceeded {
+                HttpError::body_limit(max_body_bytes)
+            } else {
+                err
+            }
+        })? {
             deadline.check()?;
             body_bytes = body_bytes.saturating_add(chunk.len() as u64);
             if body_bytes > max_body_bytes {
