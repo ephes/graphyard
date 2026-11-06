@@ -2096,3 +2096,10 @@ watermark remains monotonic. `test_definition_edit_fences_pending_publication`
 and `condition_definition_edits_fence_successes_and_failures` pin pending-query
 edits with synthetic data. SQLite locks cover only the short publication check
 and update, never the Influx query. Web ingest bookkeeping changes are Python-only.
+
+Round 49 UniFi safety: both agents confine credentials to the configured
+controller origin and apply one collection-wide body budget/deadline, including
+fallback logins and redirects. Identity encoding is required to bound predecode
+allocation. `tests/test_unifi_boundaries.py` and the Rust UniFi executor tests
+use synthetic origins, oversized bodies and dripping responses; existing UniFi
+fixtures retain same-origin/legacy/UniFi-OS parity. No deployment performed.

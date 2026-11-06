@@ -2,8 +2,8 @@
 //! PLAN.md 6.3): log in to the UniFi controller (legacy `/api/login`, then
 //! UniFi OS `/api/auth/login`), fetch the site's device list and write the
 //! receive and transmit rates of one interface of one device. Redirects are
-//! followed automatically (`follow_redirects=True`); there is no total
-//! deadline.
+//! followed only within the controller origin. All bodies share one byte
+//! budget and the complete HTTP exchange has a total deadline.
 //!
 //! Python sources: `_execute_unifi_device_traffic_spec`, `_login_to_unifi`,
 //! `_unifi_login_response_ok`, `_unifi_response_error`,
@@ -23,13 +23,76 @@ use graphyard_core::pycompat::{
     PyError, PyNumber, json_loads, py_eq, py_int, py_number, py_split_whitespace, py_str,
     py_str_repr, py_strip,
 };
-use graphyard_core::spec_config::{Config, bool_config, request_timeout_config};
+use graphyard_core::spec_config::{
+    Config, DEFAULT_PAGE_PROBE_MAX_BODY_BYTES, bool_config, page_probe_total_timeout_config,
+    positive_int_config, request_timeout_config,
+};
 
 use super::{ExecutorResult, MetricSink, SinkError, config_object, config_text, now_utc};
 use crate::http::{
-    ClientOptions, HttpClient, HttpContext, HttpError, Method, decode_json,
-    send_following_redirects,
+    ClientOptions, ErrorKind, HttpClient, HttpContext, HttpError, Method, Request, Response,
+    decode_json, run_with_deadline,
 };
+
+// UniFi credentials are confined to the initial controller origin on every hop.
+async fn read_unifi_body(
+    response: &mut Response,
+    remaining: &mut u64,
+    max: u64,
+) -> Result<Vec<u8>, HttpError> {
+    if response
+        .header("content-encoding")
+        .is_some_and(|value| !matches!(value.trim().to_ascii_lowercase().as_str(), "" | "identity"))
+    {
+        return Err(HttpError::new(
+            ErrorKind::ValueError,
+            "UniFi compressed response refused",
+        ));
+    }
+    let mut body = Vec::new();
+    while let Some(chunk) = response.chunk().await? {
+        if chunk.len() as u64 > *remaining {
+            return Err(HttpError::body_limit(max));
+        }
+        *remaining -= chunk.len() as u64;
+        body.extend_from_slice(&chunk);
+    }
+    Ok(body)
+}
+
+async fn send_unifi_request(
+    client: &HttpClient,
+    mut request: Request,
+    remaining: &mut u64,
+    max: u64,
+) -> Result<(Response, Vec<u8>), HttpError> {
+    let origin = request.url.clone();
+    for _ in 0..=crate::http::client::MAX_REDIRECTS {
+        if !crate::http::client::same_origin(&origin, &request.url) {
+            return Err(HttpError::new(
+                ErrorKind::ValueError,
+                "UniFi redirect outside controller origin refused",
+            ));
+        }
+        let mut response = client.send(&request).await?;
+        let next = response.next_request.take();
+        if next
+            .as_ref()
+            .is_some_and(|next| !crate::http::client::same_origin(&origin, &next.url))
+        {
+            return Err(HttpError::new(
+                ErrorKind::ValueError,
+                "UniFi redirect outside controller origin refused",
+            ));
+        }
+        let body = read_unifi_body(&mut response, remaining, max).await?;
+        let Some(next) = next else {
+            return Ok((response, body));
+        };
+        request = next;
+    }
+    Err(HttpError::too_many_redirects())
+}
 
 /// The default metric names.
 pub const RECEIVE_METRIC: &str = "network_device.network_receive_bytes_per_second";
@@ -78,6 +141,8 @@ struct UnifiSpec<'a> {
     collector_service: String,
     collector_host: String,
     timeout_seconds: f64,
+    total_timeout_seconds: f64,
+    max_body_bytes: u64,
     verify_tls: bool,
     auth_mode: String,
     receive_metric_name: String,
@@ -138,6 +203,15 @@ pub async fn execute_unifi_device_traffic<S: MetricSink>(
         ),
         collector_host: stripped(config, "collector_host", "macmini"),
         timeout_seconds: request_timeout_config(config)?,
+        total_timeout_seconds: page_probe_total_timeout_config(
+            config,
+            request_timeout_config(config)?,
+        )?,
+        max_body_bytes: positive_int_config(
+            config,
+            "max_body_bytes",
+            DEFAULT_PAGE_PROBE_MAX_BODY_BYTES,
+        )?,
         verify_tls: bool_config(config, "verify_tls", true)?,
         auth_mode: or_default(stripped(config, "auth_mode", "auto").to_lowercase(), "auto"),
         receive_metric_name: stripped(config, "receive_metric_name", RECEIVE_METRIC),
@@ -171,36 +245,59 @@ async fn collect<S: MetricSink>(
     spec: &UnifiSpec<'_>,
 ) -> Result<SpecOutcome, Failure> {
     let redactions = [spec.username.as_str(), spec.password.as_str()];
-    let payload = {
-        // `with httpx.Client(..., follow_redirects=True) as client:`
-        let client = HttpClient::new(
-            http,
-            &ClientOptions::new(spec.timeout_seconds, spec.verify_tls),
-        );
-        let (api_prefix, headers) = login(&client, spec).await?;
-        let endpoint = format!("{api_prefix}/s/{}/stat/device", spec.site_id);
-        let headers: Vec<(&str, &str)> = headers
-            .iter()
-            .map(|(name, value)| (*name, value.as_str()))
-            .collect();
-        let request = client.build_request(
-            Method::Get,
-            &format!("{}{endpoint}", spec.base_url),
-            &headers,
-            None,
-        )?;
-        let mut response = send_following_redirects(&client, request).await?;
-        let body = response.read_to_end().await?;
-        if !(200..300).contains(&response.status) {
-            return Err(Failure(response_error(
-                response.status,
-                &body,
-                &endpoint,
-                &redactions,
-            )));
-        }
-        response_json(&body)?
-    };
+    let client = HttpClient::new(
+        http,
+        &ClientOptions::new(spec.timeout_seconds, spec.verify_tls)
+            .header("Accept-Encoding", "identity"),
+    );
+    let origin = client
+        .build_request(Method::Get, &spec.base_url, &[], None)?
+        .url;
+    if !matches!(origin.scheme(), "http" | "https") || origin.host().is_empty() {
+        return Err(Failure(
+            "UniFi controller URL must be absolute HTTP or HTTPS".into(),
+        ));
+    }
+    let client = &client;
+    let payload = run_with_deadline(
+        client,
+        &spec.base_url,
+        spec.total_timeout_seconds,
+        |deadline| async move {
+            let result: Result<Value, Failure> = async {
+                let mut remaining = spec.max_body_bytes;
+                let (api_prefix, headers) = login(client, spec, &mut remaining).await?;
+                let endpoint = format!("{api_prefix}/s/{}/stat/device", spec.site_id);
+                let headers: Vec<(&str, &str)> = headers
+                    .iter()
+                    .map(|(name, value)| (*name, value.as_str()))
+                    .collect();
+                let request = client.build_request(
+                    Method::Get,
+                    &format!("{}{endpoint}", spec.base_url),
+                    &headers,
+                    None,
+                )?;
+                let (response, body) =
+                    send_unifi_request(client, request, &mut remaining, spec.max_body_bytes)
+                        .await?;
+                if !(200..300).contains(&response.status) {
+                    return Err(Failure(response_error(
+                        response.status,
+                        &body,
+                        &endpoint,
+                        &redactions,
+                    )));
+                }
+                let payload = response_json(&body)?;
+                deadline.check()?;
+                Ok(payload)
+            }
+            .await;
+            result.map_err(|Failure(message)| HttpError::new(ErrorKind::ValueError, message))
+        },
+    )
+    .await?;
 
     let Some(payload) = payload.as_object() else {
         return Ok(critical("device response is not an object"));
@@ -276,6 +373,7 @@ async fn collect<S: MetricSink>(
 async fn login(
     client: &HttpClient,
     spec: &UnifiSpec<'_>,
+    remaining: &mut u64,
 ) -> Result<(&'static str, Vec<(&'static str, String)>), Failure> {
     let mut attempts: Vec<(&str, &str, &'static str)> = Vec::new();
     if matches!(spec.auth_mode.as_str(), "auto" | "legacy") {
@@ -308,8 +406,8 @@ async fn login(
             ],
             Some(body.clone()),
         )?;
-        let mut response = send_following_redirects(client, request).await?;
-        let response_body = response.read_to_end().await?;
+        let (response, response_body) =
+            send_unifi_request(client, request, remaining, spec.max_body_bytes).await?;
         if login_response_ok(response.status, &response_body) {
             let csrf = response.header("x-csrf-token").unwrap_or_default();
             let csrf = py_strip(&csrf);
