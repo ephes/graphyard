@@ -356,7 +356,7 @@ pub async fn run_conditions<S: ConditionSamples, C: Clock>(
         let attempted_at = clock.now();
         let saved = match evaluate(condition, samples, attempted_at, stale_warning_seconds).await {
             Ok(evaluation) => store
-                .update_condition_success(condition.id, evaluation)
+                .update_condition_success(condition.clone(), evaluation)
                 .await
                 .map_err(|err| err.to_string()),
             Err(message) => Err(message),
@@ -365,7 +365,7 @@ pub async fn run_conditions<S: ConditionSamples, C: Clock>(
             run.failed += 1;
             store
                 .update_condition_failure(
-                    condition.id,
+                    condition.clone(),
                     StatusLevel::Critical,
                     format!("evaluation error: {message}"),
                     attempted_at,

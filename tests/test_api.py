@@ -557,7 +557,7 @@ def test_metrics_endpoint_swallows_registry_lock_errors(client, monkeypatch):
 
 
 @pytest.mark.django_db
-def test_metrics_endpoint_reraises_non_lock_registry_errors(client, monkeypatch):
+def test_metrics_endpoint_accepts_after_non_lock_registry_errors(client, monkeypatch):
     ingest_token = IngestToken(name="collector")
     ingest_token.set_token("secret-token")
     ingest_token.save()
@@ -590,7 +590,7 @@ def test_metrics_endpoint_reraises_non_lock_registry_errors(client, monkeypatch)
         HTTP_AUTHORIZATION="Bearer secret-token",
     )
 
-    assert response.status_code == 500
+    assert response.status_code == 202
 
 
 @pytest.fixture

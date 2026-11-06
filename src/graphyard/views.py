@@ -8,7 +8,7 @@ from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import RequestDataTooBig
 from django.db import connection
-from django.db import OperationalError
+from django.db import DatabaseError, OperationalError
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
@@ -602,16 +602,18 @@ def metrics_ingest(request: HttpRequest) -> JsonResponse:
         )
         return _json_error("Failed to persist metrics", status=503)
 
+    bookkeeping_degraded = False
     try:
         if not token.bound_subject_id:
             touch_registry_from_points(points)
         else:
             touch_registry_from_points(points, bound_subject_id=token.bound_subject_id)
-    except OperationalError as err:
-        if "database is locked" not in str(err).lower():
-            raise
-        # Ingest must remain available even if local metadata tables are briefly locked.
-        logger.exception("Failed to touch registry rows due to SQLite lock")
+    except DatabaseError as err:
+        bookkeeping_degraded = True
+        logger.warning(
+            "metrics_ingest_bookkeeping_degraded stage=registry error_type=%s",
+            type(err).__name__,
+        )
 
     try:
         record_token_host_usage(
@@ -622,18 +624,31 @@ def metrics_ingest(request: HttpRequest) -> JsonResponse:
                 for identifier in _point_host_identifiers(point)
             },
         )
-    except OperationalError as err:
-        if "database is locked" not in str(err).lower():
-            raise
-        logger.exception("Failed to record token host usage due to SQLite lock")
+    except DatabaseError as err:
+        bookkeeping_degraded = True
+        logger.warning(
+            "metrics_ingest_bookkeeping_degraded stage=token_usage error_type=%s",
+            type(err).__name__,
+        )
 
-    _record_heartbeat_safe(
-        "metric_ingest",
-        status=StatusLevel.OK,
-        details={"ingested": written, "token": token.name},
-        success=True,
-        min_update_interval_seconds=settings.GRAPHYARD_INGEST_HEARTBEAT_MIN_INTERVAL_SECONDS,
-    )
+    try:
+        _record_heartbeat_safe(
+            "metric_ingest",
+            status=StatusLevel.WARNING if bookkeeping_degraded else StatusLevel.OK,
+            last_error="Metric bookkeeping degraded" if bookkeeping_degraded else "",
+            details={
+                "ingested": written,
+                "token": token.name,
+                "bookkeeping_degraded": bookkeeping_degraded,
+            },
+            success=True,
+            min_update_interval_seconds=settings.GRAPHYARD_INGEST_HEARTBEAT_MIN_INTERVAL_SECONDS,
+        )
+    except DatabaseError as err:
+        logger.warning(
+            "metrics_ingest_bookkeeping_degraded stage=heartbeat error_type=%s",
+            type(err).__name__,
+        )
     return JsonResponse({"status": "accepted", "ingested": written}, status=202)
 
 

@@ -102,6 +102,22 @@ async fn run_case(case: &Value) {
     db.seed(table, case["before"].as_array().unwrap());
     let store = db.store();
     let at = now(op["now"].as_str().unwrap());
+    let definition = if table == "condition_definition"
+        && op["kind"]
+            .as_str()
+            .unwrap()
+            .starts_with("update_condition_")
+    {
+        Some(
+            store
+                .load_conditions(op["id"].as_i64())
+                .await
+                .unwrap()
+                .remove(0),
+        )
+    } else {
+        None
+    };
     if op.get("delete_first").and_then(Value::as_bool) == Some(true) {
         db.raw()
             .execute(
@@ -153,7 +169,7 @@ async fn run_case(case: &Value) {
             .map(|conditions| Some(conditions.iter().map(condition_values).collect())),
         "update_condition_success" => store
             .update_condition_success(
-                op["id"].as_i64().unwrap(),
+                definition.clone().unwrap(),
                 ConditionEvaluation {
                     status: status(op, "status"),
                     message: op["message"].as_str().unwrap().to_owned(),
@@ -165,7 +181,7 @@ async fn run_case(case: &Value) {
             .map(|()| None),
         "update_condition_failure" => store
             .update_condition_failure(
-                op["id"].as_i64().unwrap(),
+                definition.unwrap(),
                 status(op, "status"),
                 op["message"].as_str().unwrap().to_owned(),
                 at,
@@ -310,4 +326,70 @@ async fn independent_stores_race_for_one_due_slot() {
     assert!(second.claim_due_spec(1, 400, 400, 700).await.unwrap());
     first.close();
     second.close();
+}
+
+#[tokio::test]
+async fn condition_definition_edits_fence_successes_and_failures() {
+    let fixtures = load(STORE_OPS_JSON);
+    let row = fixtures["cases"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|case| case["table"] == "condition_definition")
+        .flat_map(|case| case["before"].as_array().unwrap())
+        .find(|row| row["enabled"] == 1)
+        .unwrap()
+        .clone();
+    for edit in [
+        "warning_threshold = 12345",
+        "tags_filter = '{\"synthetic\": \"changed\"}'",
+        "enabled = 0",
+    ] {
+        for failure in [false, true] {
+            let db = TestDb::new();
+            db.seed("condition_definition", std::slice::from_ref(&row));
+            let store = db.store();
+            let definition = store.load_conditions(None).await.unwrap().remove(0);
+            db.raw()
+                .execute(&format!("UPDATE condition_definition SET {edit}"), [])
+                .unwrap();
+            let at = now("2026-10-21 08:15:30.123456");
+            if failure {
+                store
+                    .update_condition_failure(
+                        definition,
+                        StatusLevel::Critical,
+                        "synthetic failure".into(),
+                        at,
+                    )
+                    .await
+                    .unwrap();
+            } else {
+                store
+                    .update_condition_success(
+                        definition,
+                        ConditionEvaluation {
+                            status: StatusLevel::Critical,
+                            message: "synthetic result".into(),
+                            last_value: Some(999.),
+                            evaluated_at: at,
+                        },
+                    )
+                    .await
+                    .unwrap();
+            }
+            let current: (String, String, Option<f64>, Option<String>) = db
+                .raw()
+                .query_row(
+                    "SELECT status, message, last_value, last_evaluated FROM condition_definition",
+                    [],
+                    |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)),
+                )
+                .unwrap();
+            assert_eq!(current.0, row["status"].as_str().unwrap(), "{edit}");
+            assert_eq!(current.1, row["message"].as_str().unwrap());
+            assert_eq!(current.2, row["last_value"].as_f64());
+            assert_eq!(current.3.as_deref(), row["last_evaluated"].as_str());
+        }
+    }
 }

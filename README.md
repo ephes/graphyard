@@ -848,3 +848,18 @@ one address bucket among all clients of the proxy.
 Set it to the number of trusted proxy hops only when direct access to the app
 is restricted and those proxies append/replace X-Forwarded-For. With one hop,
 the rightmost address is used; spoofed entries to its left are ignored.
+
+### Evaluation publication and metric acceptance
+
+Python and Rust condition evaluators publish only while the captured metric,
+filters, thresholds, time windows, staleness policy and enabled state still match.
+Edits or disabling a condition during an Influx query leave the previous result
+and watermark intact; the next normal evaluation uses the new definition. No
+database lock spans the network query, and the newer-attempt fence still applies.
+
+A successful Influx metric write is the ingest acceptance boundary (`202` with the
+written count). Subsequent registry, token-usage or heartbeat database failures
+log fixed `metrics_ingest_bookkeeping_degraded stage=...` diagnostics rather than
+ask clients to resend accepted metrics. When available, the ingest heartbeat is
+WARNING with `bookkeeping_degraded=true`; actual metric-write failures remain
+`503`. Bookkeeping is best effort and is retried by later ingests, not backfilled.
