@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Audit the frozen Python runtime and development graph in CI with pinned
+  pip-audit; document the identical local command and hook-environment scope.
+
 - Refresh the Python development toolchain to filelock 4.2.1 and virtualenv
   21.14.10 and its required distlib update to address developer-tool advisories.
   Virtualenv also requires the shared runtime `packaging` dependency to advance

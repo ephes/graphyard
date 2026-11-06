@@ -7,6 +7,8 @@ name: CI
 # Lint runs the pre-commit Ruff hooks (check and format) exactly as locally.
 # Tests use config.settings.test (SQLite, InfluxDB mocked), so no secrets or
 # external services are needed. The opt-in inventory probes are not run here.
+# The Python job also audits the frozen runtime/dev dependency graph; run
+# `uv run --frozen python scripts/audit_python.py` locally for the same audit.
 
 on:
   push:
@@ -48,6 +50,8 @@ jobs:
           cache-dependency-glob: uv.lock
       - name: Sync locked dependencies
         run: uv sync
+      - name: Audit locked Python runtime and development dependencies
+        run: uv run --frozen python scripts/audit_python.py
       - name: Lint (just lint)
         run: uv run pre-commit run --all-files --show-diff-on-failure
       - name: Typecheck (just typecheck)

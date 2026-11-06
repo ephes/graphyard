@@ -778,6 +778,21 @@ this virtualenv, use a fresh cache:
 PRE_COMMIT_HOME="$(mktemp -d)" uv run --frozen pre-commit run --all-files
 ```
 
+Audit the frozen Python dependency graph with the same command CI uses:
+
+```bash
+uv run --frozen python scripts/audit_python.py
+```
+
+This exports runtime dependencies and all dependency groups (currently `dev`)
+from `uv.lock`, excluding the project itself, then runs `pip-audit==2.10.1`
+without resolving or installing the exported packages. Export and auditor failures
+both fail the command. It needs access to the package index and advisory service.
+The audit covers uv-managed pre-commit and its dependencies; Ruff's separately
+resolved hook environment is outside this graph. Rust advisories remain covered
+by `cargo deny`. The PostgreSQL contract job's separately injected `psycopg`
+package is also outside the locked graph.
+
 ```bash
 just test
 just typecheck
