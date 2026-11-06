@@ -1281,7 +1281,7 @@
       "window_minutes": 30,
       "breach_minutes": 5,
       "status": "critical",
-      "last_evaluated": null,
+      "last_evaluated": "2026-10-21 08:15:30.123456",
       "message": "evaluation error: Influx settings missing: INFLUX_URL, INFLUX_TOKEN, INFLUX_ORG are required",
       "last_value": null,
       "created_at": "2026-01-02 03:04:05.678901",
@@ -1515,7 +1515,7 @@
    }
   },
   {
-   "name": "condition_deleted_during_run_aborts",
+   "name": "condition_deleted_during_run_is_ignored",
    "kind": "conditions",
    "seed": {
     "condition_definition": [
@@ -1606,9 +1606,9 @@
      ]
     }
    },
-   "error": {
-    "class": "NotUpdated",
-    "message": "Save with update_fields did not affect any rows."
+   "result": {
+    "total": 2,
+    "failed": 0
    },
    "after": {
     "metric_collection_spec": [],
@@ -1643,10 +1643,10 @@
       "id": 1,
       "name": "condition_evaluator",
       "status": "ok",
-      "last_success": "2026-10-20 07:00:00.250000",
+      "last_success": "2026-10-21 08:15:30.123456",
       "last_error": "",
-      "details": "{\"total\": 1}",
-      "updated_at": "2026-10-20 07:00:00.250001"
+      "details": "{\"evaluated\": 2, \"failed\": 0}",
+      "updated_at": "2026-10-21 08:15:30.123456"
      }
     ]
    }
@@ -2179,7 +2179,7 @@
       "window_minutes": 30,
       "breach_minutes": 5,
       "status": "critical",
-      "last_evaluated": null,
+      "last_evaluated": "2026-10-21 08:15:30.123456",
       "message": "evaluation error: Influx setting missing: INFLUX_URL is required",
       "last_value": null,
       "created_at": "2026-01-02 03:04:05.678901",

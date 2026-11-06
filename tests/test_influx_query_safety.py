@@ -92,6 +92,7 @@ def test_nonfinite_query_evidence_is_an_evaluation_error(
         last_value=20.0,
         last_evaluated=NOW - timedelta(hours=1),
     )
+    monkeypatch.setattr("graphyard.services.timezone.now", lambda: NOW)
     run = evaluate_conditions_once(condition_id=condition.id)
     condition.refresh_from_db()
 
@@ -99,7 +100,7 @@ def test_nonfinite_query_evidence_is_an_evaluation_error(
     assert condition.status == StatusLevel.CRITICAL
     assert "evaluation error" in condition.message
     assert "finite" in condition.message
-    assert condition.last_evaluated == NOW - timedelta(hours=1)
+    assert condition.last_evaluated == NOW
     assert condition.last_value == 20.0
 
 

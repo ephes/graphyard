@@ -231,6 +231,12 @@ schema check; 2 for a usage error. `--influx-write-file PATH` appends every
 batch the agent would write as `# write <utc> points=<n>` followed by its
 line protocol and counts it as written; queries still go to InfluxDB.
 
+Condition writes use the attempt start time as a watermark: stale or tied
+publications (including failures) are ignored. A failure advances
+`last_evaluated` and preserves `last_value`. Breach coverage checks every adjacent
+gap and the final carry against `CONDITION_DATA_STALE_WARNING_SECONDS`, matching
+Python and the shared condition/store fixtures.
+
 ### Evaluating conditions once
 
 ```bash

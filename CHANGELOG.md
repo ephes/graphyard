@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Conditions (Python and Rust): require bounded coverage between all breach-window
+  samples and through evaluation time. Sparse sampling remains supported within
+  the configured carry allowance. Publish successes and failures only when their
+  attempt is newer than the stored result, preventing late evaluations from
+  replacing newer evidence; failures now advance `last_evaluated` too.
+
 - Rust agent (`agent-rs/`): bump the locked `tokio` from 1.54.0 to 1.54.1
   for RUSTSEC-2026-0384 (race condition in `tokio::time::Interval`), which
   turned the `cargo deny` supply-chain check red. Lockfile only, no code

@@ -469,10 +469,13 @@ convert to SQLite INTEGER`. A panicking executor is isolated (D-15).
 ### 3.5 Conditions run (`services.py:evaluate_conditions_once`, P1)
 
 Select `enabled = 1 ORDER BY name`. Per condition, sequentially:
-`evaluate_condition` (section 7) with its own `now`; success → update
-`status, message, last_value, last_evaluated`; any exception → `failed += 1`,
-update only `status='critical'`, `message='evaluation error: <err>'`. If that
-second update fails too, the run aborts (`Condition evaluation failed`,
+capture an attempt start time and pass it to `evaluate_condition` (section 7).
+Success updates `status, message, last_value, last_evaluated`; any exception →
+`failed += 1`, update `status='critical'`, `message='evaluation error: <err>'`
+and `last_evaluated` to the attempt start time, retaining `last_value`.
+Both writes require `last_evaluated IS NULL OR last_evaluated < attempt_start`;
+stale/tied attempts and deleted rows are no-ops. If a failure write itself fails,
+the run aborts (`Condition evaluation failed`,
 stderr `Condition eval failed: <err>`, no heartbeat). Heartbeat
 `condition_evaluator`: `ok`/`""`/success when nothing failed, else
 `warning`/`"<n> condition(s) failed"`/no success; details
@@ -730,7 +733,9 @@ statement or transaction short) and closes the connection.
   error `Save with update_fields did not affect any rows.`, which aborts the
   run (3.4).
 - **Condition success** — `status, message, last_value, last_evaluated`;
-  **condition failure** — `status, message` only. Same 0-row rule.
+  **condition failure** — `status, message, last_evaluated`, preserving value.
+  Both use the captured attempt start time and the conditional watermark in 3.5;
+  zero matching rows are ignored.
 - **Heartbeat** (`record_heartbeat`, `min_update_interval_seconds=0`) —
   Django 6 `update_or_create(name=…, defaults)` inside `BEGIN IMMEDIATE`:
   load the row (all columns, datetimes converted: an out-of-range stored
@@ -1206,8 +1211,10 @@ staleness `int((now - latest.ts).total_seconds())` against
 `stale_limit_seconds()` (`stale_after_seconds` or the global), then critical
 before warning via `_is_breached_for_duration` (window start, anchor carry
 bounded by the global stale setting, a sample exactly at the window start
-supersedes the anchor, one-minute grace without anchor, all evaluated samples
-must breach). One series → its result. Several → worst status, ties by
+supersedes the anchor, one-minute grace without a usable anchor (one that reaches the first sample
+within its carry lifetime), all evaluated samples
+must breach; every adjacent gap and the final carry to now must fit the same
+carry allowance). One series → its result. Several → worst status, ties by
 oldest latest sample then label; `ok` reports the newest series value with
 ` (<n> series)`; otherwise ` [series: <label>] (<k> of <n> series not OK)`.
 Thresholds in messages use `py_float_repr`. Pinned by `conditions.json`

@@ -409,10 +409,12 @@ fn evaluate_series(
 /// now, max_carry_seconds=settings.CONDITION_DATA_STALE_WARNING_SECONDS)`.
 ///
 /// The breach window is `[now - breach_minutes, now]`. The last sample
-/// before it (the anchor) covers the window start when it is at most
-/// `max_carry_seconds` older and no sample lies exactly at the start; the
-/// anchor and every in-window sample must breach. Without an anchor the
-/// first in-window sample must lie within one minute of the window start.
+/// before it (the anchor) covers the window start if its carry lifetime
+/// reaches the first in-window sample (or now) and no sample lies exactly
+/// at the start. The anchor and every in-window sample must breach.
+/// Adjacent gaps and the final carry must fit `max_carry_seconds`.
+/// Without a usable anchor, the first in-window sample must lie within
+/// one minute of the window start.
 fn is_breached_for_duration(
     values: &[Point],
     operator: &str,
@@ -446,26 +448,38 @@ fn is_breached_for_duration(
             .copied()
             .filter(|candidate| {
                 total_seconds_at_most(
-                    micros_between(window_start, candidate.ts),
+                    micros_between(
+                        window_values.first().map_or(now, |point| point.ts),
+                        candidate.ts,
+                    ),
                     max_carry_seconds,
                 )
             })
     };
 
-    let breached = |point: &Point| operator.compare(point.value, threshold);
-    match anchor {
-        Some(anchor) => Ok(breached(&anchor) && window_values.iter().all(breached)),
-        None => {
-            let Some(first) = window_values.first() else {
-                return Ok(false);
-            };
-            let grace_start = py_datetime_add(window_start, py_timedelta_minutes(1)?)?;
-            if first.ts > grace_start {
-                return Ok(false);
-            }
-            Ok(window_values.iter().all(breached))
+    let mut evaluated = window_values;
+    if let Some(anchor) = anchor {
+        evaluated.insert(0, anchor);
+    } else {
+        let Some(first) = evaluated.first() else {
+            return Ok(false);
+        };
+        let grace_start = py_datetime_add(window_start, py_timedelta_minutes(1)?)?;
+        if first.ts > grace_start {
+            return Ok(false);
         }
     }
+    if evaluated.windows(2).any(|pair| {
+        !total_seconds_at_most(micros_between(pair[1].ts, pair[0].ts), max_carry_seconds)
+    }) || !total_seconds_at_most(
+        micros_between(now, evaluated.last().expect("nonempty window").ts),
+        max_carry_seconds,
+    ) {
+        return Ok(false);
+    }
+    Ok(evaluated
+        .iter()
+        .all(|point| operator.compare(point.value, threshold)))
 }
 
 /// `later - earlier` in microseconds. Both come from Python-range datetimes

@@ -653,7 +653,17 @@ minute; with a breach duration shorter than the sampling interval, the carried
 sample alone decides. The carried sample may be at most `CONDITION_DATA_STALE_WARNING_SECONDS`
 (default 600 s) older than the window start; without one (for example a series
 that started recently), the first sample in the window must lie within one
-minute of its start.
+minute of its start. An anchor that cannot reach the first in-window sample
+within its carry lifetime is treated as absent for this initial grace. Every gap between samples, including the anchor-to-first
+sample gap and the final carry to evaluation time, must fit that same allowance.
+A larger `stale_after_seconds` or `--intermittent` changes freshness alerts only;
+it cannot certify a continuous breach across missing data.
+
+Condition results use the attempt start time as `last_evaluated`. A conditional
+write rejects an older or equally timed success or failure after another result
+has won. Failures advance this watermark while retaining the last observed value;
+removed conditions are ignored. Heartbeats still count the attempts and failures
+of their own run.
 
 ### Conditions that match several series
 

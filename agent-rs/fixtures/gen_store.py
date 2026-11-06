@@ -12,8 +12,8 @@ afterwards (all columns, raw SQLite values) or the exception. The operations:
 * ``update_spec``: ``spec.save(update_fields=[...])`` of the run result;
 * ``load_conditions``: ``evaluate_conditions_once``'s queryset (optionally
   filtered by ``condition_id``) with the loaded values;
-* ``update_condition_success`` / ``update_condition_failure``: the two
-  ``condition.save(update_fields=...)`` calls of ``evaluate_conditions_once``;
+* ``update_condition_success`` / ``update_condition_failure``: conditional
+  publication with an attempt timestamp of ``evaluate_conditions_once``;
 * ``record_heartbeat``: ``services.record_heartbeat``;
 * ``touch_registry`` (``registry_cases``, S3b):
   ``services.touch_registry_from_points(points)`` without a bound subject,
@@ -308,16 +308,10 @@ def _update_condition(op: dict[str, Any], *, success: bool) -> None:
     condition = ConditionDefinition.objects.get(id=op["id"])
     if op.get("delete_first"):
         ConditionDefinition.objects.filter(id=op["id"]).delete()
-    condition.status = op["status"]
-    condition.message = op["message"]
+    fields = {"status": op["status"], "message": op["message"]}
     if success:
-        condition.last_value = op["last_value"]
-        condition.last_evaluated = _now(op)
-        condition.save(
-            update_fields=["status", "message", "last_value", "last_evaluated"]
-        )
-    else:
-        condition.save(update_fields=["status", "message"])
+        fields["last_value"] = op["last_value"]
+    services._publish_condition_result(condition.pk, _now(op), **fields)
 
 
 def _record_heartbeat(op: dict[str, Any]) -> None:
@@ -588,7 +582,7 @@ def _condition_cases() -> list[dict[str, Any]]:
                     2, "second", last_value=0.5, last_evaluated="2026-10-21 08:00:00"
                 ),
             ],
-            "name": "condition failure writes status and message only",
+            "name": "condition failure advances watermark and preserves value",
             "op": {
                 "kind": "update_condition_failure",
                 "now": NOW_TEXT,
@@ -598,6 +592,31 @@ def _condition_cases() -> list[dict[str, Any]]:
             },
         }
     )
+    for kind in ("update_condition_success", "update_condition_failure"):
+        for watermark in (NOW_TEXT, "2026-10-21T08:15:31+00:00"):
+            cases.append(
+                {
+                    "table": CONDITION_TABLE,
+                    "before": [
+                        condition_row(
+                            2,
+                            "newer",
+                            status="ok",
+                            last_value=42.0,
+                            last_evaluated=_db_text(datetime.fromisoformat(watermark)),
+                        )
+                    ],
+                    "name": f"{kind} rejects stale or tied publication {watermark}",
+                    "op": {
+                        "kind": kind,
+                        "now": NOW_TEXT,
+                        "id": 2,
+                        "status": "critical",
+                        "message": "old result",
+                        "last_value": 99.0,
+                    },
+                }
+            )
     for kind in ("update_condition_success", "update_condition_failure"):
         cases.append(
             {
