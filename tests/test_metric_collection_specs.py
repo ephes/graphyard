@@ -100,7 +100,7 @@ class _FakePageProbeClient:
         return self._responses.pop(0)
 
 
-class _FakeUnifiClient:
+class _FakeUnifiClient(httpx.Client):
     def __init__(
         self,
         *,
@@ -126,11 +126,23 @@ class _FakeUnifiClient:
         self._auth_login_headers = auth_login_headers or {}
         self._capture = capture if capture is not None else {"posts": [], "gets": []}
 
-    def __enter__(self) -> _FakeUnifiClient:
-        return self
+        super().__init__(transport=httpx.MockTransport(self._handle))
 
-    def __exit__(self, exc_type, exc, tb) -> None:
-        del exc_type, exc, tb
+    def _handle(self, request):
+        if request.method == "POST":
+            reply = self.post(str(request.url))
+        else:
+            headers = {"Accept": request.headers["accept"]}
+            if "x-csrf-token" in request.headers:
+                headers["x-csrf-token"] = request.headers["x-csrf-token"]
+            reply = self.get(str(request.url), headers=headers)
+        if reply.text:
+            return httpx.Response(
+                reply.status_code, content=reply.text.encode(), headers=reply.headers
+            )
+        return httpx.Response(
+            reply.status_code, json=reply.json(), headers=reply.headers
+        )
 
     def post(self, url: str, **kwargs) -> _FakeResponse:
         del kwargs

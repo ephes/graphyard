@@ -259,7 +259,7 @@ impl Request {
 }
 
 /// `_same_origin`.
-fn same_origin(url: &HttpxUrl, other: &HttpxUrl) -> bool {
+pub(crate) fn same_origin(url: &HttpxUrl, other: &HttpxUrl) -> bool {
     url.scheme() == other.scheme()
         && url.host() == other.host()
         && url.port_or_default() == other.port_or_default()

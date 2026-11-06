@@ -32,11 +32,12 @@ pub const DEFAULT_PAGE_PROBE_TOTAL_TIMEOUT_FACTOR: f64 = 3.0;
 
 /// The spec types whose total deadline defaults to three request timeouts
 /// in `validate_spec_config` (the executors that run under the deadline).
-const DEADLINE_SPEC_TYPES: [&str; 4] = [
+const DEADLINE_SPEC_TYPES: [&str; 5] = [
     "http_page_probe",
     "http_json_metric",
     "home_assistant_sensor",
     "home_assistant_env_scan",
+    "unifi_device_traffic",
 ];
 
 /// A spec config value has the wrong type or range (`SpecConfigError`, a

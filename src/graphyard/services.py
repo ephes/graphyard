@@ -1682,6 +1682,119 @@ def _unifi_login_response_ok(resp: httpx.Response) -> bool:
     return str(meta.get("rc", "ok")).lower() == "ok"
 
 
+def _unifi_origin(url: httpx.URL) -> tuple[str, str, int | None]:
+    return url.scheme, url.host, url.port
+
+
+def _guard_unifi_origin(base_url: str) -> Callable[[httpx.Request], None]:
+    origin = httpx.URL(base_url)
+    if origin.scheme not in {"http", "https"} or not origin.host:
+        raise ValueError("UniFi controller URL must be absolute HTTP or HTTPS")
+
+    def guard(request: httpx.Request) -> None:
+        if _unifi_origin(request.url) != _unifi_origin(origin):
+            raise ValueError("UniFi redirect outside controller origin refused")
+
+    return guard
+
+
+def _unifi_request(
+    client: httpx.Client,
+    method: str,
+    url: str,
+    *,
+    headers: dict[str, str],
+    remaining: list[int],
+    max_body_bytes: int,
+    cancellation: _PageProbeCancellation,
+    payload: dict | None = None,
+) -> httpx.Response:
+    request = client.build_request(
+        method,
+        url,
+        headers=headers,
+        json=payload,
+    )
+    guard = _guard_unifi_origin(url)
+    for _ in range(client.max_redirects + 1):
+        cancellation.check()
+        request.extensions["trace"] = cancellation.trace
+        response = client.send(request, stream=True, follow_redirects=False)
+        try:
+            next_request = response.next_request
+            if next_request is not None:
+                guard(next_request)
+            if response.headers.get(
+                "content-encoding", "identity"
+            ).strip().lower() not in {"", "identity"}:
+                raise ValueError("UniFi compressed response refused")
+            body = bytearray()
+            for chunk in response.iter_bytes():
+                cancellation.check()
+                if len(chunk) > remaining[0]:
+                    raise _PageProbeLimitExceeded(
+                        f"response body exceeded max_body_bytes={max_body_bytes}"
+                    )
+                remaining[0] -= len(chunk)
+                body.extend(chunk)
+            cancellation.check()
+            if next_request is None:
+                return httpx.Response(
+                    response.status_code,
+                    headers=response.headers,
+                    content=bytes(body),
+                    request=response.request,
+                )
+            request = next_request
+        finally:
+            response.close()
+    raise httpx.TooManyRedirects("Exceeded maximum allowed redirects.")
+
+
+def _read_unifi_devices(
+    client: httpx.Client,
+    *,
+    base_url: str,
+    username: str,
+    password: str,
+    auth_mode: str,
+    site_id: str,
+    max_body_bytes: int,
+    cancellation: _PageProbeCancellation,
+) -> object:
+    with client:
+        remaining = [max_body_bytes]
+        api_prefix, headers = _login_to_unifi(
+            client,
+            base_url=base_url,
+            username=username,
+            password=password,
+            auth_mode=auth_mode,
+            remaining=remaining,
+            max_body_bytes=max_body_bytes,
+            cancellation=cancellation,
+        )
+        endpoint = f"{api_prefix}/s/{site_id}/stat/device"
+        response = _unifi_request(
+            client,
+            "GET",
+            f"{base_url}{endpoint}",
+            headers=headers,
+            remaining=remaining,
+            max_body_bytes=max_body_bytes,
+            cancellation=cancellation,
+        )
+        if not 200 <= response.status_code < 300:
+            raise ValueError(
+                _unifi_response_error(
+                    response, endpoint=endpoint, redactions=(username, password)
+                )
+            )
+        payload = response.json()
+        cancellation.check()
+        return payload
+
+
 def _login_to_unifi(
     client: httpx.Client,
     *,
@@ -1689,6 +1802,9 @@ def _login_to_unifi(
     username: str,
     password: str,
     auth_mode: str,
+    remaining: list[int],
+    max_body_bytes: int,
+    cancellation: _PageProbeCancellation,
 ) -> tuple[str, dict[str, str]]:
     attempts: list[tuple[str, str, str, dict[str, object]]] = []
     if auth_mode in {"auto", "legacy"}:
@@ -1719,8 +1835,15 @@ def _login_to_unifi(
     }
     errors: list[str] = []
     for mode_name, login_path, api_prefix, payload in attempts:
-        login_resp = client.post(
-            f"{base_url}{login_path}", json=payload, headers=headers
+        login_resp = _unifi_request(
+            client,
+            "POST",
+            f"{base_url}{login_path}",
+            headers=headers,
+            payload=payload,
+            remaining=remaining,
+            max_body_bytes=max_body_bytes,
+            cancellation=cancellation,
         )
         if _unifi_login_response_ok(login_resp):
             csrf_token = login_resp.headers.get("x-csrf-token", "").strip()
@@ -1765,6 +1888,12 @@ def _execute_unifi_device_traffic_spec(
     )
     collector_host = str(spec.config.get("collector_host", "macmini")).strip()
     timeout_seconds = request_timeout_config(spec.config)
+    total_timeout_seconds = page_probe_total_timeout_config(
+        spec.config, timeout_seconds
+    )
+    max_body_bytes = positive_int_config(
+        spec.config, "max_body_bytes", DEFAULT_PAGE_PROBE_MAX_BODY_BYTES
+    )
     verify_tls = bool_config(spec.config, "verify_tls", True)
     auth_mode = str(spec.config.get("auth_mode", "auto")).strip().lower() or "auto"
     receive_metric_name = str(
@@ -1796,32 +1925,28 @@ def _execute_unifi_device_traffic_spec(
         return StatusLevel.CRITICAL, 0, 0, "config.subject_id is required"
 
     try:
-        with httpx.Client(
+        client = httpx.Client(
             timeout=timeout_seconds,
             verify=verify_tls,
-            follow_redirects=True,
-        ) as client:
-            api_prefix, request_headers = _login_to_unifi(
+            follow_redirects=False,
+            headers={"Accept-Encoding": "identity"},
+            event_hooks={"request": [_guard_unifi_origin(base_url)]},
+        )
+        payload = _run_http_with_deadline(
+            client,
+            url=base_url,
+            total_timeout_seconds=total_timeout_seconds,
+            operation=lambda cancellation: _read_unifi_devices(
                 client,
                 base_url=base_url,
                 username=username,
                 password=password,
                 auth_mode=auth_mode,
-            )
-
-            resp = client.get(
-                f"{base_url}{api_prefix}/s/{site_id}/stat/device",
-                headers=request_headers,
-            )
-            if not 200 <= resp.status_code < 300:
-                raise ValueError(
-                    _unifi_response_error(
-                        resp,
-                        endpoint=f"{api_prefix}/s/{site_id}/stat/device",
-                        redactions=(username, password),
-                    )
-                )
-            payload = resp.json()
+                site_id=site_id,
+                max_body_bytes=max_body_bytes,
+                cancellation=cancellation,
+            ),
+        )
 
         if not isinstance(payload, dict):
             return StatusLevel.CRITICAL, 0, 0, "device response is not an object"

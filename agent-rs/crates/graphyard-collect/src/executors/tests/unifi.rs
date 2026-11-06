@@ -233,3 +233,128 @@ async fn transport_failures_are_critical() {
     assert!(outcome.message.starts_with("[Errno "), "{outcome:?}");
     assert!(sink.calls.borrow().is_empty());
 }
+
+fn synthetic_config(server: &Server) -> Value {
+    json!({"base_url": server.origin(), "username": "invented-user", "password": "invented-password", "device_name": "synthetic", "subject_id": "synthetic", "auth_mode": "legacy"})
+}
+
+#[tokio::test]
+async fn credentials_never_reach_foreign_redirect_receivers() {
+    for status in ["307 Temporary Redirect", "308 Permanent Redirect"] {
+        for device in [false, true] {
+            for tls in [false, true] {
+                let receiver = Server::start(|_| response("200 OK", &[], b"{}")).await;
+                let location = format!("{}/leak", receiver.origin());
+                let controller = Server::start_with(
+                    move |request| {
+                        if device && request.target == "/api/login" {
+                            response("200 OK", &[("x-csrf-token", "invented-csrf")], b"{}")
+                        } else {
+                            response(status, &[("location", &location)], b"")
+                        }
+                    },
+                    if tls { Some(tls_material().1) } else { None },
+                )
+                .await;
+                let mut config = synthetic_config(&controller);
+                if tls {
+                    config["base_url"] = json!(controller.origin().replacen("http:", "https:", 1));
+                    config["verify_tls"] = json!(false);
+                }
+                let sink = RecordingSink::default();
+                let outcome =
+                    execute_unifi_device_traffic(&HttpContext::new(), &sink, "synthetic", &config)
+                        .await
+                        .unwrap();
+                assert_eq!(outcome.status, StatusLevel::Critical);
+                assert!(outcome.message.contains("origin"), "{outcome:?}");
+                assert!(receiver.requests().is_empty());
+                assert!(sink.calls.borrow().is_empty());
+            }
+        }
+    }
+}
+
+#[tokio::test]
+async fn all_unifi_response_bodies_share_one_budget() {
+    for stage in ["login", "device", "redirect", "combined"] {
+        let controller = Server::start(move |request| {
+            if stage == "redirect" {
+                return response(
+                    "307 Temporary Redirect",
+                    &[("location", "/next")],
+                    &[b'x'; 129],
+                );
+            }
+            let login = request.target == "/api/login";
+            let mut body = vec![
+                b' ';
+                if (login && stage == "login") || (!login && stage == "device") {
+                    129
+                } else {
+                    70
+                }
+            ];
+            body.extend_from_slice(if login { b"{}" } else { br#"{"data":[]}"# });
+            response("200 OK", &[], &body)
+        })
+        .await;
+        let mut config = synthetic_config(&controller);
+        config["max_body_bytes"] = json!(128);
+        let sink = RecordingSink::default();
+        let outcome =
+            execute_unifi_device_traffic(&HttpContext::new(), &sink, "synthetic", &config)
+                .await
+                .unwrap();
+        assert_eq!(outcome.status, StatusLevel::Critical, "{stage}");
+        assert!(
+            outcome.message.contains("max_body_bytes=128"),
+            "{outcome:?}"
+        );
+        assert!(sink.calls.borrow().is_empty());
+    }
+}
+
+#[tokio::test]
+async fn continuously_arriving_unifi_body_hits_collection_deadline() {
+    use crate::http::tests::server::Reply;
+    use std::time::{Duration, Instant};
+    let controller = Server::start(|_| Reply::Drip {
+        prefix: b"HTTP/1.1 200 OK\r\nContent-Length: 100000\r\n\r\n".to_vec(),
+        drip: vec![b' '],
+        interval: Duration::from_millis(5),
+        give_up: Duration::from_secs(2),
+    })
+    .await;
+    let mut config = synthetic_config(&controller);
+    config["total_timeout_seconds"] = json!(0.05);
+    let sink = RecordingSink::default();
+    let start = Instant::now();
+    let outcome = execute_unifi_device_traffic(&HttpContext::new(), &sink, "synthetic", &config)
+        .await
+        .unwrap();
+    assert!(start.elapsed() < Duration::from_secs(2));
+    assert!(
+        outcome.message.contains("total_timeout_seconds=0.05"),
+        "{outcome:?}"
+    );
+    assert!(sink.calls.borrow().is_empty());
+}
+
+#[tokio::test]
+async fn unsolicited_compression_is_rejected_before_decoding() {
+    let controller =
+        Server::start(|_| response("200 OK", &[("content-encoding", "gzip")], b"not compressed"))
+            .await;
+    let sink = RecordingSink::default();
+    let outcome = execute_unifi_device_traffic(
+        &HttpContext::new(),
+        &sink,
+        "synthetic",
+        &synthetic_config(&controller),
+    )
+    .await
+    .unwrap();
+    assert_eq!(outcome.message, "UniFi compressed response refused");
+    assert!(sink.calls.borrow().is_empty());
+}

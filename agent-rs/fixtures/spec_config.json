@@ -2544,7 +2544,9 @@
   {
    "spec_type": "unifi_device_traffic",
    "config": "{\"request_timeout_seconds\": 43200.0}",
-   "errors": []
+   "errors": [
+    "config.total_timeout_seconds must be <= 86400.0 seconds"
+   ]
   },
   {
    "spec_type": "unknown_type",
@@ -2744,7 +2746,9 @@
   {
    "spec_type": "unifi_device_traffic",
    "config": "{\"total_timeout_seconds\": 1e308}",
-   "errors": []
+   "errors": [
+    "config.total_timeout_seconds must be <= 86400.0 seconds"
+   ]
   },
   {
    "spec_type": "unknown_type",
@@ -2782,7 +2786,9 @@
   {
    "spec_type": "unifi_device_traffic",
    "config": "{\"request_timeout_seconds\": 28800.000000000004}",
-   "errors": []
+   "errors": [
+    "config.total_timeout_seconds must be <= 86400.0 seconds"
+   ]
   },
   {
    "spec_type": "unknown_type",

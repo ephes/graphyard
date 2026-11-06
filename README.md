@@ -863,3 +863,21 @@ log fixed `metrics_ingest_bookkeeping_degraded stage=...` diagnostics rather tha
 ask clients to resend accepted metrics. When available, the ingest heartbeat is
 WARNING with `bookkeeping_degraded=true`; actual metric-write failures remain
 `503`. Bookkeeping is best effort and is retried by later ingests, not backfilled.
+
+### UniFi controller transfer policy
+
+Use an absolute HTTP(S) `base_url` for the controller (prefer HTTPS with TLS
+verification). Login passwords, cookies and CSRF headers stay on that exact
+scheme/host/effective-port origin: cross-origin redirects and scheme changes,
+including HTTPS downgrades, are refused. Same-origin redirects remain supported.
+Point `base_url` at the final origin rather than a redirecting alias.
+
+Both Python and Rust UniFi collectors apply `max_body_bytes` (default 10 MiB)
+to the sum of all login attempts, redirect bodies and device responses.
+`total_timeout_seconds` (default three times `request_timeout_seconds`, maximum
+86400) covers the whole exchange, including fallback authentication and JSON
+parsing. HTTP-only work is canceled before metrics can be written. UniFi asks
+for identity encoding and refuses unsolicited compressed responses before
+reading/decoding them; controllers must honor `Accept-Encoding: identity`.
+These changes take effect only after the web/Python command or rebuilt Rust
+collector is deployed/restarted; no rollout is performed by this change.
