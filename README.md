@@ -297,7 +297,7 @@ file, including specs whose stored row is otherwise unchanged):
 
 - Timeouts must be finite and no greater than 86400 seconds (one day), a portable transport/wait limit. The derived three-request total budget is validated too.
 - `request_timeout_seconds` must be a number greater than 0 (numeric strings such as `"15"` are accepted; `"5s"` or `null` are not).
-- `total_timeout_seconds` (HTTP page probe, HTTP JSON metric and Home Assistant) must be a number greater than 0.
+- `total_timeout_seconds` (HTTP page probe, HTTP JSON metric, Home Assistant and UniFi) must be a number greater than 0.
 - `max_body_bytes` must be a positive integer.
 - `verify_tls` and `follow_redirects` must be JSON booleans. Strings such as
   `"false"` are rejected instead of silently meaning `true`.
@@ -826,9 +826,18 @@ Required production entrypoint: `config.wsgi_proxy:application`.
 See [web service deployment](docs/deployment.md) for the trusted loopback proxy
 contract and its REMOTE_ADDR dependency.
 
-Both `/login/` and the Django admin refuse authentication after five failed
-attempts per username/client address, or 50 per address, in a fixed 15-minute
-window. A successful login clears the username/address counter. Configure
+Both `/login/` and the Django admin reserve password attempts before verification:
+five failed or pending attempts per username/client address, or 50 per address,
+in a fixed 15-minute window starting at the first reservation. A failure becomes
+one counted failure; success releases only its own pending slots and clears the
+pair's completed failures, preserving other concurrent attempts. Address failures
+remain until expiry. Backend exceptions release pending slots without counting
+a failed password; the exception still propagates. Sync and async authentication
+use the same admission boundary. Window generations keep late completions from changing a
+replacement window. Admission uses atomic cache add/increment operations; a race
+with failure settlement may conservatively refuse an extra request. The throttle
+backend owns password verification; the configured ModelBackend remains available
+for sessions created before this change and is never a second password attempt. Configure
 `GRAPHYARD_LOGIN_FAILURE_LIMIT`, `GRAPHYARD_LOGIN_ADDRESS_FAILURE_LIMIT` and
 `GRAPHYARD_LOGIN_FAILURE_WINDOW_SECONDS`; a nonpositive username limit disables
 throttling. Blocked attempts show the standard invalid-credentials form response
@@ -837,7 +846,8 @@ limits apply per process and reset on restart. Use a shared Django cache backend
 for the `login_throttle` alias if multiple workers must share limits. Supported
 backends are local memory and Memcached, whose atomic increments preserve
 expiry; other cache backends are not supported. The local cache holds
-up to 10000 keys; exceeding capacity can evict active counters. Already locked
+up to 10000 keys; each window uses a generation pointer and up to two counters,
+and exceeding capacity can evict active throttle state. Already locked
 attempts do not create new keys. Address limits and window seconds must be
 positive; proxy hops must be nonnegative. Invalid settings abort startup.
 `GRAPHYARD_LOGIN_THROTTLE_PROXY_HOPS` defaults to 0 (use REMOTE_ADDR without reading forwarded headers in the throttle).
@@ -881,3 +891,15 @@ for identity encoding and refuses unsolicited compressed responses before
 reading/decoding them; controllers must honor `Accept-Encoding: identity`.
 These changes take effect only after the web/Python command or rebuilt Rust
 collector is deployed/restarted; no rollout is performed by this change.
+
+### Rust HTTP decoder allocation limits
+
+Rust bounded JSON collectors and page probes enforce `max_body_bytes` inside each
+gzip/deflate/identity decoding stage, including intermediate stacked encodings,
+before growing the output vector. The allowance is cumulative across chunks in a
+response; the existing full-probe body count still includes redirect responses.
+A tiny cap can reject a stacked encoding whose intermediate representation is
+larger than its final payload. Normal compressed and split-chunk transfers remain
+supported. Limit failures retain the existing body-limit category. This tighter
+preallocation guard is Rust-specific; Python's general HTTP decoders still check
+decoded chunks afterward. UniFi uses the separate identity-only policy above.

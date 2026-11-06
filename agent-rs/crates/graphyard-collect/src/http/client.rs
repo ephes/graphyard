@@ -339,6 +339,11 @@ impl Response {
         }
     }
 
+    /// Set the cumulative output allowance of every decoding stage before reading.
+    pub fn set_body_limit(&mut self, limit: u64) {
+        self.decoder.set_limit(limit);
+    }
+
     /// The next chunk of the decoded body (`iter_bytes()`), `None` at the
     /// end.
     ///

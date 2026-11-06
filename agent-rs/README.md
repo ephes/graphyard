@@ -90,7 +90,8 @@ Slice S7b adds the first executors in `graphyard-collect::executors`
 (PLAN.md 6.3): `http_page_probe` (the probe under the total deadline, five
 timing and status points, two failure points on the warning path) and
 `unifi_device_traffic` (legacy and UniFi OS login with redacted error
-summaries, CSRF header and cookies, automatic redirects, the device and
+summaries, CSRF header and cookies, controller-origin redirects, a shared byte
+budget and total deadline, the device and
 interface lookup, receive/transmit rate points). Executors deliver their
 points through a `MetricSink` (InfluxDB write and registry touch, wired up in
 S8) and return the Python `(status, ingested, skipped, message)` tuple as a

@@ -221,3 +221,151 @@ def test_settings_reject_invalid_throttle_limits(name, value, valid):
     assert (result.returncode == 0) == valid
     if not valid:
         assert name in result.stderr
+
+
+@pytest.mark.parametrize("url", ["graphyard:login", "admin:login"])
+@pytest.mark.parametrize("scope", ["pair", "address"])
+def test_concurrent_logins_reserve_before_password_check(
+    settings, monkeypatch, url, scope
+):
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Event, Lock
+    from django.test import Client
+    from django.db import connections
+
+    settings.LOGIN_FAILURE_LIMIT = 1 if scope == "pair" else 10
+    settings.LOGIN_ADDRESS_FAILURE_LIMIT = 1 if scope == "address" else 50
+    entered, release, completed = Event(), Event(), Event()
+    lock = Lock()
+    checks = []
+
+    def password_backend(self, request, **kwargs):
+        with lock:
+            checks.append(kwargs["username"])
+        entered.set()
+        assert release.wait(10)
+        return None
+
+    monkeypatch.setattr(ModelBackend, "authenticate", password_backend)
+
+    def attempt(name):
+        try:
+            result = Client().post(
+                reverse(url), {"username": name, "password": "invented"}
+            )
+            completed.set()
+            return result.status_code
+        finally:
+            connections.close_all()
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        first = pool.submit(attempt, "synthetic")
+        assert entered.wait(5)
+        second = pool.submit(attempt, "synthetic" if scope == "pair" else "another")
+        try:
+            assert completed.wait(5), "concurrent request reached the password backend"
+            assert len(checks) == 1
+        finally:
+            release.set()
+        assert first.result(timeout=5) == second.result(timeout=5) == 200
+
+
+def test_success_keeps_other_pending_reservations(settings):
+    from django.test import RequestFactory
+    from graphyard.login_throttle import _reserve, _settle, _keys, _count, is_locked
+
+    request = RequestFactory().post("/")
+    first, second = _reserve(request, "synthetic"), _reserve(request, "synthetic")
+    assert is_locked(request, "synthetic")
+    _settle(first, success=True)
+    pair = _keys(request, "synthetic")[0]
+    assert _count(pair) == 1
+    third = _reserve(request, "synthetic")
+    assert is_locked(request, "synthetic")
+    _settle(second, success=False)
+    _settle(third, success=False)
+    assert _count(pair) == 2
+
+
+def test_old_settlement_cannot_release_a_new_window(settings, monkeypatch):
+    import time
+    from django.test import RequestFactory
+    from graphyard.login_throttle import _reserve, _settle, _keys, _count
+
+    settings.LOGIN_FAILURE_WINDOW_S = 10
+    start = time.time()
+    monkeypatch.setattr(time, "time", lambda: start)
+    request = RequestFactory().post("/")
+    old = _reserve(request, "synthetic")
+    monkeypatch.setattr(time, "time", lambda: start + 11)
+    new = _reserve(request, "synthetic")
+    _settle(old, success=True)
+    assert _count(_keys(request, "synthetic")[0]) == 1
+    _settle(new, success=False)
+    assert _count(_keys(request, "synthetic")[0]) == 1
+
+
+def test_disabled_admission_reaches_password_backend(settings, monkeypatch):
+    from django.contrib.auth import authenticate
+    from django.test import RequestFactory
+
+    settings.LOGIN_FAILURE_LIMIT = 0
+    calls = []
+    monkeypatch.setattr(
+        ModelBackend, "authenticate", lambda *a, **kw: calls.append(kw) or None
+    )
+    for _ in range(3):
+        assert (
+            authenticate(
+                RequestFactory().post("/"), username="synthetic", password="invented"
+            )
+            is None
+        )
+    assert len(calls) == 3
+
+
+def test_async_backend_uses_the_same_admission(settings, monkeypatch):
+    import asyncio
+    from django.contrib.auth import aauthenticate
+    from django.test import RequestFactory
+
+    settings.LOGIN_FAILURE_LIMIT = 1
+    calls = []
+    monkeypatch.setattr(
+        ModelBackend, "authenticate", lambda *a, **kw: calls.append(kw) or None
+    )
+
+    async def forbidden(*args, **kwargs):
+        pytest.fail("inherited async password path bypassed the throttle")
+
+    monkeypatch.setattr(ModelBackend, "aauthenticate", forbidden)
+
+    async def attempt():
+        for _ in range(2):
+            assert (
+                await aauthenticate(
+                    RequestFactory().post("/"),
+                    username="synthetic",
+                    password="invented",
+                )
+                is None
+            )
+
+    asyncio.run(attempt())
+    assert len(calls) == 1
+
+
+def test_password_backend_error_releases_without_counting(settings, monkeypatch):
+    from django.contrib.auth import authenticate
+    from django.test import RequestFactory
+    from graphyard.login_throttle import _keys, _count
+
+    request = RequestFactory().post("/")
+
+    def broken(*args, **kwargs):
+        raise RuntimeError("synthetic backend outage")
+
+    monkeypatch.setattr(ModelBackend, "authenticate", broken)
+    with pytest.raises(RuntimeError, match="synthetic backend outage"):
+        authenticate(request, username="synthetic", password="invented")
+    assert all(_count(key) == 0 for key in _keys(request, "synthetic"))

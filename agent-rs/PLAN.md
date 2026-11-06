@@ -1045,10 +1045,12 @@ executor: `Config` (a `SpecConfigError` of a typed knob, raised before the
 required-field checks in both executors) or `Raised` (the page probe's
 warning-path sink failure, which the runner turns into `collector raised
 <class>: <message>`). The page probe uses `run_with_deadline` +
-`run_page_probe` of S6, UniFi `send_following_redirects` (the login `POST`
-carries httpx's compact `json.dumps(ensure_ascii=False)` body with
-`Content-Type` and `Content-Length`; `client.post`/`client.get` read the
-whole body before the status is looked at). UniFi bodies are decoded like
+`run_page_probe` of S6. Since round 49, UniFi uses `send_unifi_request`
+with controller-origin redirects and a shared collection byte/deadline budget
+(the login `POST` carries httpx's compact `json.dumps(ensure_ascii=False)`
+body with `Content-Type` and `Content-Length`). Response bodies are streamed
+under that budget before status/JSON handling; identity encoding is required.
+UniFi bodies are parsed like
 `resp.json()`, including `json.loads`' 4300-digit integer limit (which
 the HTTP layer's `decode_json` applies since S7a); `resp.text` for the summaries is UTF-8 with
 replacement characters (P2 for other declared charsets, 2.3). Points carry
@@ -2103,3 +2105,11 @@ fallback logins and redirects. Identity encoding is required to bound predecode
 allocation. `tests/test_unifi_boundaries.py` and the Rust UniFi executor tests
 use synthetic origins, oversized bodies and dripping responses; existing UniFi
 fixtures retain same-origin/legacy/UniFi-OS parity. No deployment performed.
+
+Round 49 decoder output budgets: each Rust decoding stage writes through a
+bounded standard Write sink. Compressed intermediate output is capped too; no
+post-decode truncation. JSON/page-probe response callers install the allowance
+before reading. Decoder tests pin high-ratio gzip/zlib/raw-deflate, stacked
+intermediate growth and normal split chunks. This intentional tighter allocation
+bound precedes Python's general post-decode check; accepted ordinary fixtures
+stay identical. Login admission is a Python web concern, not an agent change.

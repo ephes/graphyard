@@ -756,3 +756,28 @@ fn utf8_errors_and_bom_follow_json_loads() {
     write!(sink, "{err}").expect("display");
     assert!(!sink.is_empty());
 }
+
+#[tokio::test]
+async fn compressed_redirect_hop_reports_the_original_total_body_limit() {
+    let body = gzip(b"xx");
+    let server = Server::start(move |request| {
+        if request.target == "/first" {
+            response("302 Found", &[("Location", "/second")], b"abc")
+        } else {
+            response("200 OK", &[("Content-Encoding", "gzip")], &body)
+        }
+    })
+    .await;
+    let err = run_page_probe(
+        &default_client(),
+        &format!("{}/first", server.origin()),
+        4,
+        true,
+        &Deadline::none(),
+    )
+    .await
+    .unwrap_err();
+    assert_eq!(server.requests().len(), 2);
+    assert_eq!(err.kind, ErrorKind::LimitExceeded);
+    assert_eq!(err.message, "response body exceeded max_body_bytes=4");
+}
