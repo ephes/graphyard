@@ -44,7 +44,9 @@ from .token_scope import canonical_host_identifier
 
 logger = logging.getLogger(__name__)
 _subject_mapping_warning_keys: set[str] = set()
-_heartbeat_write_cache: dict[tuple[str, str, str, bool], float] = {}
+_heartbeat_write_cache: dict[str, tuple[tuple[str, str, bool], float]] = {}
+_heartbeat_write_lock = threading.Lock()
+_heartbeat_inflight: dict[str, tuple[int, object]] = {}
 
 
 @dataclass(frozen=True)
@@ -2056,20 +2058,57 @@ def record_heartbeat(
     success: bool = False,
     min_update_interval_seconds: int = 0,
 ) -> PipelineHeartbeat:
-    if min_update_interval_seconds > 0:
-        cache_key = (name, status, last_error, success)
-        now_monotonic = time.monotonic()
-        cache_ttl = float(max(0, min_update_interval_seconds))
-        last_write = _heartbeat_write_cache.get(cache_key)
-        if last_write is not None and now_monotonic - last_write < cache_ttl:
+    state = (status, last_error, success)
+    outer_transaction = connection.in_atomic_block
+    marker = object()
+    with _heartbeat_write_lock:
+        previous = _heartbeat_write_cache.get(name)
+        pending, _ = _heartbeat_inflight.get(name, (0, None))
+        if (
+            not outer_transaction
+            and not pending
+            and min_update_interval_seconds > 0
+            and previous is not None
+            and previous[0] == state
+            and time.monotonic() - previous[1] < min_update_interval_seconds
+        ):
             return PipelineHeartbeat(
-                name=name,
-                status=status,
-                last_error=last_error,
-                details=details or {},
+                name=name, status=status, last_error=last_error, details=details or {}
             )
-        _heartbeat_write_cache[cache_key] = now_monotonic
+        _heartbeat_write_cache.pop(name, None)
+        _heartbeat_inflight[name] = (pending + 1, None if pending else marker)
 
+    published = False
+    try:
+        heartbeat = _write_heartbeat(
+            name, status=status, last_error=last_error, details=details, success=success
+        )
+        published = True
+        if outer_transaction:
+            # A delayed outer commit must not install stale cached state.
+            transaction.on_commit(lambda: _heartbeat_write_cache.pop(name, None))
+        return heartbeat
+    finally:
+        with _heartbeat_write_lock:
+            pending, latest = _heartbeat_inflight[name]
+            if pending == 1:
+                del _heartbeat_inflight[name]
+                # Cache only an autocommit publication that never overlapped.
+                # Completion order cannot establish database commit order.
+                if published and not outer_transaction and latest is marker:
+                    _heartbeat_write_cache[name] = (state, time.monotonic())
+            else:
+                _heartbeat_inflight[name] = (pending - 1, latest)
+
+
+def _write_heartbeat(
+    name: str,
+    *,
+    status: str,
+    last_error: str,
+    details: dict | None,
+    success: bool,
+) -> PipelineHeartbeat:
     defaults = {
         "status": status,
         "last_error": last_error,
