@@ -27,7 +27,7 @@ Compared after every round, with only these masks:
 - the exit code (each round's ``expect_code``), stdout lines, and the
   operator log lines of PLAN.md 3.6 on stderr (``OPERATOR_LINE``; ``Metric
   collection spec … raised`` up to ``raised``; the ``CommandError`` line of
-  ``evaluate_conditions``);
+  either one-shot command);
 - the requests every fake received, in order: method, target, the headers
   of ``COMPARED_HEADERS`` and the body. Written lines are parsed: the
   timestamp is masked when it lies within the agent's run (a ``now()``
@@ -130,11 +130,17 @@ class Round:
 
 
 ROUNDS = (
-    Round("v2", {"INFLUX_API_MODE": "v2"}),
-    Round("v2 again", {"INFLUX_API_MODE": "v2"}),
-    Round("v3", {"INFLUX_API_MODE": "v3"}),
-    Round("auto, Flux 404", {"INFLUX_API_MODE": "auto"}, v2_missing=True),
-    Round("v2 without INFLUX_TOKEN", {"INFLUX_API_MODE": "v2", "INFLUX_TOKEN": ""}),
+    Round("v2", {"INFLUX_API_MODE": "v2"}, expect_code=1),
+    Round("v2 again", {"INFLUX_API_MODE": "v2"}, expect_code=1),
+    Round("v3", {"INFLUX_API_MODE": "v3"}, expect_code=1),
+    Round(
+        "auto, Flux 404", {"INFLUX_API_MODE": "auto"}, v2_missing=True, expect_code=1
+    ),
+    Round(
+        "v2 without INFLUX_TOKEN",
+        {"INFLUX_API_MODE": "v2", "INFLUX_TOKEN": ""},
+        expect_code=1,
+    ),
     Round(
         "evaluate-conditions",
         {"INFLUX_API_MODE": "v2"},

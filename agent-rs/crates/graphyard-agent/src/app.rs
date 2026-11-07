@@ -115,12 +115,15 @@ pub struct Agent<E, S, C> {
 }
 
 impl<E: SpecExecutors, S: ConditionSamples, C: Clock> Runner for Agent<E, S, C> {
-    async fn metrics(&mut self, due_only: bool) {
+    async fn metrics(&mut self, due_only: bool) -> bool {
         match run_metric_specs(&self.store, &self.executors, &self.clock, due_only).await {
-            Ok(run) => print_stdout(&format!(
-                "Metric specs: total={} failed={} warning={} ingested={} skipped={}",
-                run.total, run.failed, run.warning, run.ingested, run.skipped
-            )),
+            Ok(run) => {
+                print_stdout(&format!(
+                    "Metric specs: total={} failed={} warning={} ingested={} skipped={}",
+                    run.total, run.failed, run.warning, run.ingested, run.skipped
+                ));
+                run.failed == 0
+            }
             Err(err) => {
                 // `logger.exception` ends with the exception line; one line
                 // here (P2), then the command's stderr line (P1).
@@ -130,11 +133,12 @@ impl<E: SpecExecutors, S: ConditionSamples, C: Clock> Runner for Agent<E, S, C> 
                     escape_log_value(&err.to_string())
                 );
                 print_stderr(&format!("Metric collection failed: {err}"));
+                false
             }
         }
     }
 
-    async fn conditions(&mut self) {
+    async fn conditions(&mut self) -> bool {
         let run = run_conditions(
             &self.store,
             &self.samples,
@@ -144,10 +148,13 @@ impl<E: SpecExecutors, S: ConditionSamples, C: Clock> Runner for Agent<E, S, C> 
         )
         .await;
         match run {
-            Ok(run) => print_stdout(&format!(
-                "Condition eval: evaluated={} failed={}",
-                run.total, run.failed
-            )),
+            Ok(run) => {
+                print_stdout(&format!(
+                    "Condition eval: evaluated={} failed={}",
+                    run.total, run.failed
+                ));
+                run.failed == 0
+            }
             Err(err) => {
                 log::error!(
                     "Condition evaluation failed: {}: {}",
@@ -155,6 +162,7 @@ impl<E: SpecExecutors, S: ConditionSamples, C: Clock> Runner for Agent<E, S, C> 
                     escape_log_value(&err.to_string())
                 );
                 print_stderr(&format!("Condition eval failed: {err}"));
+                false
             }
         }
     }
@@ -319,20 +327,33 @@ where
     let ended = runtime.block_on(async move {
         let work = async {
             if loops.run_once {
-                scheduler::run_once(&mut agent, &loops).await;
+                let succeeded = scheduler::run_once(&mut agent, &loops).await;
+                if !succeeded {
+                    print_stderr("CommandError: One or more enabled agent loops failed.");
+                }
+                succeeded
             } else {
                 scheduler::run_forever(&mut agent, &loops).await;
+                true
             }
         };
         tokio::select! {
             biased;
-            signal = &mut shutdown => Some(signal),
-            () = work => None,
+            signal = &mut shutdown => (Some(signal), true),
+            succeeded = work => (None, succeeded),
         }
     });
     // The main task is gone: wait for the statement the DB thread runs.
     store.close();
-    finish(runtime, ended, ExitCode::SUCCESS)
+    finish(
+        runtime,
+        ended.0,
+        if ended.1 {
+            ExitCode::SUCCESS
+        } else {
+            ExitCode::FAILURE
+        },
+    )
 }
 
 /// The binary: parse, validate, start (PLAN.md 3.1); or the one-shot

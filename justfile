@@ -21,6 +21,11 @@ typecheck:
     uv run mypy --check-untyped-defs scripts/inventory_transport_probe.py scripts/inventory_sender_probe.py
     cd agent-rs && cargo check --workspace --all-targets --locked
 
+# Nonwriting Django schema checks against in-memory SQLite; no secrets needed.
+schema-check:
+    uv run --frozen python src/django/manage.py check --settings=config.settings.test
+    uv run --frozen python src/django/manage.py makemigrations --check --dry-run --settings=config.settings.test
+
 # Run all tests (Python suite incl. the Rust fixture drift test, then the Rust agent)
 test:
     uv run pytest

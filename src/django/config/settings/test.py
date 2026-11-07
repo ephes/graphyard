@@ -23,3 +23,9 @@ CACHES = {
         "LOCATION": "",
     },
 }
+
+# Test and schema-check commands never open the development/owner database.
+# PostgreSQL contract settings replace this explicitly with their disposable DB.
+DATABASES = {
+    "default": {**DATABASES["default"], "NAME": ":memory:"},  # noqa: F405
+}

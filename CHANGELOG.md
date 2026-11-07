@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Make Python and Rust agent `--run-once` exit nonzero after failed work or a
+  run exception. Both enabled loops still run; continuous retry behavior and
+  warning-only success are unchanged.
+
+- Require Django system and missing-migration checks in CI and expose
+  `just schema-check`, using test settings with in-memory SQLite and frozen
+  dependencies so checks never create migrations or touch an owner database.
+
 - Bound Influx Flux queries to 10 MiB decoded response data and 30 seconds per
   exchange, and writes to 64 KiB and 30 seconds, in Python and Rust. Error
   responses count too; over-budget writes report uncertain acceptance without

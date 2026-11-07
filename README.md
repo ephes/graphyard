@@ -711,6 +711,13 @@ just manage start_agent --disable-metrics
 just manage start_agent --disable-conditions
 ```
 
+`start_agent --run-once` runs every enabled loop before exiting. It exits 1 if
+any loop reports failed work or raises an exception, and 0 when all enabled
+loops succeed. Disabled loops do not affect status; warning-only outcomes are
+successful. Continuous mode keeps scheduling after failures. The Rust agent
+uses the same contract.
+
+
 A Rust port of the agent, `graphyard-agent`, lives in `agent-rs/` (contract:
 [`agent-rs/PLAN.md`](agent-rs/PLAN.md), build and test:
 [`agent-rs/README.md`](agent-rs/README.md), architecture, schema contract,
@@ -802,15 +809,26 @@ package is also outside the locked graph.
 just test
 just typecheck
 just lint
+just schema-check
 ```
 
-All three also run the Rust agent's checks (`just rs-lint`, `cargo check`,
+`just schema-check` uses frozen dependencies and `config.settings.test` with
+in-memory SQLite. It runs these same nonwriting checks as CI without secrets,
+owner database access or migration creation:
+
+```bash
+uv run --frozen python src/django/manage.py check --settings=config.settings.test
+uv run --frozen python src/django/manage.py makemigrations --check --dry-run --settings=config.settings.test
+```
+
+`just test`, `just typecheck` and `just lint` also run the Rust agent's checks (`just rs-lint`, `cargo check`,
 `just rs-test`); they need the pinned Rust toolchain (`agent-rs/README.md`).
 
 GitHub Actions (`.github/workflows/ci.yml`) runs the same lint, typecheck and test
-commands on every push and pull request (the Rust agent in its own `rust` job,
-which also runs `cargo deny`, and the Python/Rust parity harness
-`just rs-parity` in the `parity` job). It needs no secrets or InfluxDB.
+commands on every push and pull request. The `python` job also runs Django
+system and missing-migration checks; the Rust agent has its own `rust` job,
+including `cargo deny`. The Python/Rust parity harness runs as `just rs-parity`
+in the `parity` job. These checks need no secrets or InfluxDB.
 
 ## Influx + Grafana
 

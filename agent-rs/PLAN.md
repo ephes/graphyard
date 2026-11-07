@@ -322,7 +322,7 @@ that differs is a bug.
 | `--disable-metrics` | off | |
 | `--disable-ha` | off | deprecated alias of `--disable-metrics` |
 | `--disable-conditions` | off | |
-| `--run-once` | off | run the enabled loops once (`due_only=False`), exit 0 |
+| `--run-once` | off | run the enabled loops once (`due_only=False`), exit 0/1 |
 
 Validation order and messages (stderr `CommandError: <msg>`, exit 1):
 both loops disabled → `At least one loop must be enabled`; metrics enabled and
@@ -364,10 +364,13 @@ open runs off the runtime thread, so a SIGTERM or SIGINT while the startup
 waits on a locked database ends the agent as in D-1 (exit 0; the open or
 schema read in flight is abandoned, neither writes).
 
-Exit codes: 0 normal end (`--run-once`, SIGINT, SIGTERM), 1 `CommandError`,
-invalid environment value, schema/database failure, 2 usage error.
-`--run-once` exits 0 even when a run failed (Python catches every exception
-in `_run_metric_specs`/`_run_condition_eval`).
+Exit codes: 0 successful `--run-once`, SIGINT or SIGTERM; 1 failed enabled
+one-shot work, `CommandError`, invalid environment value or schema/database
+failure; 2 usage error. One-shot runs both enabled loops, collecting nonzero
+failed counters and run exceptions, then prints
+`CommandError: One or more enabled agent loops failed.` and exits 1 if needed.
+Warnings alone succeed. Continuous mode still isolates failures and retries
+on the normal schedule.
 
 ### 3.2 Scheduler loop (`start_agent.py:handle`, P1)
 
@@ -379,7 +382,8 @@ conditions with the `now` taken at the top of the iteration. Then sleep
 `max(0.2, min(1.0, min(next_metrics, next_conditions) - monotonic()))`. Both
 runs are sequential in one task; a slow metrics run delays conditions. The
 `--run-once` path calls metrics (`due_only=False`) then conditions. Pinned by
-Rust tests with an injected clock.
+Rust tests with an injected clock. Runner methods return success booleans;
+one-shot aggregates both, while continuous scheduling ignores the status.
 
 ### 3.3 Environment (django-environ semantics, P1)
 

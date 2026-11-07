@@ -240,13 +240,13 @@ fn run_once_calls_both_loops_and_writes_only_to_the_file() {
 }
 
 #[test]
-fn a_failed_run_is_reported_and_run_once_still_exits_0() {
+fn a_failed_run_is_reported_and_run_once_exits_1() {
     let db = TestDb::new();
     let output = agent(
         &["--run-once", "--disable-conditions", "--db", db_arg(&db)],
         &[],
     );
-    assert_eq!(output.status.code(), Some(0), "{output:?}");
+    assert_eq!(output.status.code(), Some(1), "{output:?}");
     assert_eq!(
         text(&output.stdout),
         "Starting graphyard-agent (metrics=True@60s, conditions=False@60s)\n"
@@ -255,11 +255,25 @@ fn a_failed_run_is_reported_and_run_once_still_exits_0() {
     assert!(
         stderr.ends_with(
             "Metric collection failed: ValueError: No matching enabled metric collection specs\n\
-         Metric collection failed: No matching enabled metric collection specs\n"
+         Metric collection failed: No matching enabled metric collection specs\n\
+         CommandError: One or more enabled agent loops failed.\n"
         ),
         "{stderr}"
     );
     assert_eq!(db.count("pipeline_heartbeat"), 0);
+}
+
+#[test]
+fn a_metric_run_error_does_not_skip_the_enabled_condition_loop() {
+    let db = TestDb::new();
+    let output = agent(&["--run-once", "--db", db_arg(&db)], &[]);
+    assert_eq!(output.status.code(), Some(1), "{output:?}");
+    assert!(text(&output.stdout).ends_with("Condition eval: evaluated=0 failed=0\n"));
+    assert_eq!(
+        db.text("pipeline_heartbeat", "condition_evaluator", "status"),
+        "ok"
+    );
+    assert!(text(&output.stderr).contains("No matching enabled metric collection specs"));
 }
 
 /// Start the loop, wait for its first conditions run, send `signal`.

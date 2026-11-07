@@ -18,9 +18,9 @@ use crate::cli::Loops;
 /// The two runs the loop schedules.
 pub trait Runner {
     /// `_run_metric_specs(due_only=...)`.
-    fn metrics(&mut self, due_only: bool) -> impl Future<Output = ()>;
+    fn metrics(&mut self, due_only: bool) -> impl Future<Output = bool>;
     /// `_run_condition_eval()`.
-    fn conditions(&mut self) -> impl Future<Output = ()>;
+    fn conditions(&mut self) -> impl Future<Output = bool>;
 }
 
 const MIN_SLEEP: Duration = Duration::from_millis(200);
@@ -45,13 +45,15 @@ fn reschedule(next: Instant, interval: Option<Duration>) -> Option<Instant> {
 }
 
 /// `_run_enabled_loops`: metrics (`due_only=False`) then conditions.
-pub async fn run_once<R: Runner>(runner: &mut R, loops: &Loops) {
+pub async fn run_once<R: Runner>(runner: &mut R, loops: &Loops) -> bool {
+    let mut succeeded = true;
     if loops.run_metrics {
-        runner.metrics(false).await;
+        succeeded &= runner.metrics(false).await;
     }
     if loops.run_conditions {
-        runner.conditions().await;
+        succeeded &= runner.conditions().await;
     }
+    succeeded
 }
 
 /// The endless loop; `None` is Python's `float("inf")`.
@@ -100,6 +102,8 @@ mod tests {
         calls: Vec<(&'static str, f64)>,
         metrics_cost: Duration,
         conditions_cost: Duration,
+        metrics_succeeded: bool,
+        conditions_succeeded: bool,
     }
 
     impl Recorder {
@@ -109,6 +113,8 @@ mod tests {
                 calls: Vec::new(),
                 metrics_cost: Duration::from_millis(metrics_cost),
                 conditions_cost: Duration::from_millis(conditions_cost),
+                metrics_succeeded: true,
+                conditions_succeeded: true,
             }
         }
 
@@ -118,15 +124,17 @@ mod tests {
     }
 
     impl Runner for Recorder {
-        async fn metrics(&mut self, due_only: bool) {
+        async fn metrics(&mut self, due_only: bool) -> bool {
             let name = if due_only { "metrics" } else { "metrics-all" };
             self.calls.push((name, self.at()));
             tokio::time::sleep(self.metrics_cost).await;
+            self.metrics_succeeded
         }
 
-        async fn conditions(&mut self) {
+        async fn conditions(&mut self) -> bool {
             self.calls.push(("conditions", self.at()));
             tokio::time::sleep(self.conditions_cost).await;
+            self.conditions_succeeded
         }
     }
 
@@ -237,5 +245,26 @@ mod tests {
         let mut recorder = Recorder::new(0, 0);
         run_once(&mut recorder, &loops(Some(60), None)).await;
         assert_eq!(rounded(&recorder.calls), [("metrics-all", 0.0)]);
+    }
+    #[tokio::test(start_paused = true)]
+    async fn failed_one_shot_runs_both_siblings_and_continuous_mode_keeps_running() {
+        for metrics in [false, true] {
+            for conditions in [false, true] {
+                let mut recorder = Recorder::new(0, 0);
+                recorder.metrics_succeeded = metrics;
+                recorder.conditions_succeeded = conditions;
+                assert_eq!(
+                    run_once(&mut recorder, &loops(Some(1), Some(1))).await,
+                    metrics && conditions
+                );
+                assert_eq!(
+                    rounded(&recorder.calls),
+                    [("metrics-all", 0.0), ("conditions", 0.0)]
+                );
+                recorder.calls.clear();
+                run_for(&mut recorder, &loops(Some(1), Some(1)), 2500).await;
+                assert_eq!(recorder.calls.len(), 6);
+            }
+        }
     }
 }

@@ -110,13 +110,13 @@ fn shutdown_waits_for_the_statement_the_db_thread_is_running() {
 }
 
 #[test]
-fn run_once_ends_without_a_signal() {
+fn failed_run_once_ends_without_a_signal() {
     let db = TestDb::new();
     common::insert_spec(&db, "unknown", "legacy_type", &json!({}));
     let code = run_agent(config(&db, HttpContext::new(), "1000"), || {
         Ok(std::future::pending::<Shutdown>())
     });
-    assert_eq!(code, ExitCode::SUCCESS);
+    assert_eq!(code, ExitCode::FAILURE);
     assert_eq!(
         db.text("pipeline_heartbeat", "metric_collectors", "status"),
         "critical"

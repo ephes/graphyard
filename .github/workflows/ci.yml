@@ -58,6 +58,10 @@ jobs:
         run: |
           uv run mypy
           uv run mypy --check-untyped-defs scripts/inventory_transport_probe.py scripts/inventory_sender_probe.py
+      - name: Django system and missing-migration checks (just schema-check)
+        run: |
+          uv run --frozen python src/django/manage.py check --settings=config.settings.test
+          uv run --frozen python src/django/manage.py makemigrations --check --dry-run --settings=config.settings.test
       - name: Tests (just test)
         run: uv run pytest -q
 
