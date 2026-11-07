@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Refuse existing local Grafana containers instead of forcibly removing them;
+  preserve loopback binding and persistent checkout data, with explicit cleanup.
+- Document local InfluxDB 2 database mapping and Grafana read credentials,
+  separate from Django's v2 token, with an authenticated write/query smoke test;
+  use an InfluxDB 2-compatible development password instead of `dev`.
+
 - Fence Python/Rust collector result publication against definition edits,
   disabling, deletion and replaced schedules, including explicit manual runs.
 - Exclude superseded collector outcomes from current run counts and heartbeats;

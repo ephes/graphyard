@@ -90,7 +90,7 @@ If `influxd` is missing on macOS:
 brew install influxdb
 ```
 
-On a fresh local InfluxDB 2 setup, complete one-time setup and copy the created token/org/bucket into `src/django/.env`.
+On a fresh local InfluxDB 2 setup, complete one-time setup and copy the created token/org/bucket into `src/django/.env`. Grafana uses separate v1-compatible read credentials and a database-to-bucket mapping; follow the [local v2 bootstrap and authenticated smoke test](docs/influx_grafana.md#local-influxdb-2-bootstrap) before expecting dashboard data.
 With local `influxdb3` started by Procfile (`--without-auth`), the defaults in `.env.example` are sufficient for development.
 `INFLUX_API_MODE=auto` (default) lets Graphyard query with Flux for InfluxDB 2 and automatically switch to SQL for InfluxDB 3 when needed in development.
 For production, prefer `INFLUX_API_MODE=v2` to keep query behavior pinned to the current InfluxDB v2 baseline.
@@ -101,7 +101,7 @@ For Grafana in the Procfile stack:
 - URL: `http://127.0.0.1:3000`
 - default login: `admin` / `admin`
 - dev startup resets Grafana admin password to `admin` for deterministic local login
-- datasource `Graphyard InfluxDB` is auto-provisioned
+- datasource `Graphyard InfluxDB` is auto-provisioned; InfluxDB 2 auth/mapping setup is a separate step
 - dashboard folders are auto-provisioned from filesystem structure:
   - folder `overview` with dashboard title `Graphyard Overview`
   - folder `host-infrastructure` with dashboard titles `Fractal`, `Macmini`, `Marina`, `Production`, and `Staging`
@@ -109,6 +109,17 @@ For Grafana in the Procfile stack:
   - folder `device-network` with dashboard titles `FRITZ!Box 7590 AX` and `USW Pro XG 8 PoE`
   - folder `service-http` with dashboard title `Graphyard HTTP Page Probes`
 - first run may take longer because Docker pulls the image
+
+The local launcher reserves the fixed Docker name `graphyard-grafana`. Docker
+refuses any existing container with that name, including one from this checkout;
+startup never stops or removes it. The name conflict diagnostic includes the
+existing container ID. Inspect it with `docker inspect graphyard-grafana` and
+stop it only after confirming ownership. A container started here uses `--rm`
+and is removed when stopped; `.dev/grafana` persists. For a stopped container
+left by an older launcher, remove that specific ID manually after inspection.
+Two checkouts cannot run this fixed-name/port stack concurrently: stop your own
+stack before starting another. Use a separately configured Grafana for parallel
+stacks.
 
 ## Ingest Token Workflow (Manual Rotation)
 

@@ -66,7 +66,7 @@ Graphyard includes Grafana provisioning:
 Important compatibility note:
 
 - Current provisioned dashboard queries are InfluxQL.
-- This is directly compatible with InfluxDB v2 datasource usage.
+- InfluxDB 2 requires a v1-compatible read authorization and a database/retention-policy (DBRP) mapping to the v2 bucket; a Django v2 token alone does not configure this.
 - If you standardize on InfluxDB v3, you need a different Grafana datasource/query setup (Flight SQL datasource and SQL-based panels).
 - The provisioned datasource URL is intentionally `http://graphyard-influxdb:8086`.
   Grafana must be able to resolve that hostname from inside its container:
@@ -120,7 +120,111 @@ Defaults for local Grafana login in this stack:
 - username: `admin`
 - password: `admin`
 
-If you use InfluxDB 3 locally (`influxdb3`), the app query path still works with `INFLUX_API_MODE=auto`, but Grafana dashboards may need manual datasource/panel adaptation because provisioning assumes InfluxQL.
+The launcher never removes an existing `graphyard-grafana` container. Docker
+refuses the name conflict; inspect the reported ID before manually stopping or
+removing your own instance. `--rm` cleans up the container started by the launcher
+on exit, while `.dev/grafana` persists. The fixed name and loopback port permit
+one local stack at a time across checkouts. See README for cleanup details.
+
+### Local InfluxDB 2 bootstrap
+
+Run these steps only against a local development instance. Start just InfluxDB
+first with `uvx honcho start influxdb` from the repo root (the Procfile prefers
+`influxd` when both v2 and v3 are installed). Complete one-time setup at
+`http://127.0.0.1:8086` with organization `graphyard` and bucket `graphyard`.
+Install the separate `influx` v2 CLI if necessary; the server binary `influxd`
+does not include it. Stop this InfluxDB process before later running `just dev`.
+
+Copy the setup token and these values into `src/django/.env` for Django:
+
+```dotenv
+INFLUX_URL=http://127.0.0.1:8086
+INFLUX_TOKEN=<local-v2-token>
+INFLUX_ORG=graphyard
+INFLUX_BUCKET=graphyard
+INFLUX_MEASUREMENT=graphyard_metrics
+INFLUX_API_MODE=v2
+```
+
+The setup token has administrative privileges; a bucket-scoped read/write token
+can replace it in Django after bootstrap. Grafana has a separate read-only
+identity. The launcher passes `GRAPHYARD_INFLUX_DB=graphyard`,
+`GRAPHYARD_INFLUX_USER=dev` and `GRAPHYARD_INFLUX_PASSWORD=graphyard-dev` to
+Grafana; it does not read Django's `.env`. These are local development credentials
+only. The old `dev` password is too short for InfluxDB 2.
+
+While the local server is running, prepare the mapping and v1 read credentials.
+In a terminal, export the setup token as `INFLUX_TOKEN` (do not commit it), then:
+
+```bash
+export INFLUX_HOST=http://127.0.0.1:8086
+export INFLUX_ORG=graphyard
+influx bucket list --name graphyard
+# Set this to the ID (not the name) in the preceding output:
+export GRAPHYARD_BUCKET_ID=<graphyard-bucket-id>
+influx v1 dbrp create --db graphyard --rp autogen \
+  --bucket-id "$GRAPHYARD_BUCKET_ID" --default
+influx v1 auth create --username dev --password graphyard-dev \
+  --read-bucket "$GRAPHYARD_BUCKET_ID"
+```
+
+These are one-time create commands, not reconciliation. For an existing setup,
+inspect `influx v1 dbrp list` and `influx v1 auth list` first; confirm the mapping
+is default for database `graphyard` and the `dev` authorization reads that exact
+bucket. To repair an existing dev password, use
+`influx v1 auth set-password --username dev --password graphyard-dev`.
+See the upstream [DBRP](https://docs.influxdata.com/influxdb/v2/reference/cli/influx/v1/dbrp/create/)
+and [v1 authorization](https://docs.influxdata.com/influxdb/v2/reference/cli/influx/v1/auth/create/)
+command references. The `autogen` default matters because panel queries do not
+supply a retention policy.
+
+Validate both identities before claiming dashboard readiness. From the repo root,
+write one synthetic point using Django's configured v2 writer (no application
+DB rows are needed):
+
+```bash
+uv run python src/django/manage.py shell <<'PYTHON'
+from django.utils import timezone
+from graphyard.influx import MetricPoint, write_points
+assert write_points([MetricPoint(
+    ts=timezone.now(), metric="local.bootstrap", value=1.0,
+    subject_type="host", subject_id="local_bootstrap", source_system="manual",
+    collector_service="bootstrap", collector_host="local_bootstrap",
+)]) == 1
+PYTHON
+```
+
+Then query through the same InfluxQL username/password/database that Grafana uses:
+
+```bash
+curl --fail-with-body --silent --show-error --user dev:graphyard-dev \
+  --request POST http://127.0.0.1:8086/query \
+  --data-urlencode 'db=graphyard' \
+  --data-urlencode 'q=SELECT "value" FROM "graphyard_metrics" WHERE "metric" = '\''local.bootstrap'\'' AND time > now() - 5m ORDER BY time DESC LIMIT 1' \
+  | uv run python -c 'import json,sys; r=json.load(sys.stdin)["results"]; assert all("error" not in x for x in r), r; assert r[0]["series"][0]["values"][0][1] == 1, r; print("InfluxQL read OK")'
+```
+
+Require `InfluxQL read OK`: a 200 response alone can contain an InfluxQL error,
+and an empty series does not prove the writer works. A 401 means the read
+credentials are missing/wrong; a database/retention-policy error or missing data
+calls for checking the DBRP mapping and Django bucket/measurement.
+
+Stop the standalone InfluxDB process and run `just dev`. Grafana's provisioned
+URL is `http://graphyard-influxdb:8086`; Docker's `host-gateway` alias must reach
+the host InfluxDB listener. If the preceding host query succeeds but Grafana
+cannot connect, check that container-to-host path and listener/firewall settings.
+In Grafana Explore, select `Graphyard InfluxDB` and run the same synthetic SELECT
+to validate the container path. Real dashboard panels additionally need the
+corresponding collector metrics and tags; the smoke point does not populate them.
+
+### Local InfluxDB 3 path
+
+The Procfile's `influxdb3 --without-auth` path is separate: use
+`INFLUX_API_MODE=auto` (or `v3`) and the example bucket/database for Django.
+Do not run the v2 setup/DBRP/auth commands against it. This repository's
+provisioned Grafana datasource and panels use InfluxQL; no ready-to-use v3
+Grafana configuration is supplied. Configure a compatible datasource and adapt
+panels separately before expecting dashboard data.
 
 ## Home Assistant Metrics Shape
 
