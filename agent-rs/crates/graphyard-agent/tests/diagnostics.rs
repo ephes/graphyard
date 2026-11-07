@@ -142,6 +142,7 @@ async fn condition_fault(stage: &str, fallback_fails: bool) {
     } else {
         "category=IntegrityError"
     }));
+    assert!(line.contains(&format!("failure_published={}", !fallback_fails)));
     assert!(!logs.join("\n").contains(MARKER));
     assert!(
         db.value("condition_definition", "b good", "last_evaluated")
@@ -250,4 +251,69 @@ async fn http_failure_keeps_status_but_hides_url_and_response_body() {
     assert!(!lines().join("\n").contains(MARKER));
     store.close();
     server.join().unwrap();
+}
+
+struct EditedFailure<'a>(&'a TestDb, &'a str);
+impl ConditionSamples for EditedFailure<'_> {
+    async fn query_condition_window(
+        &self,
+        query: &ConditionQuery<'_>,
+        now: chrono::DateTime<chrono::Utc>,
+    ) -> Result<Vec<MetricSample>, QueryError> {
+        if query.id != 1 {
+            return Ok(Vec::new());
+        }
+        match self.1 {
+            "deleted" => self
+                .0
+                .execute("DELETE FROM condition_definition WHERE id = 1"),
+            "edited" => self
+                .0
+                .execute("UPDATE condition_definition SET metric_name = 'changed' WHERE id = 1"),
+            "disabled" => self
+                .0
+                .execute("UPDATE condition_definition SET enabled = 0 WHERE id = 1"),
+            "superseded" => {
+                self.0
+                    .raw()
+                    .execute(
+                        "UPDATE condition_definition SET last_evaluated = ? WHERE id = 1",
+                        [now.format("%Y-%m-%d %H:%M:%S%.6f").to_string()],
+                    )
+                    .unwrap();
+            }
+            "unchanged" => {}
+            _ => unreachable!(),
+        }
+        Err(QueryError::Config(MARKER.into()))
+    }
+}
+#[tokio::test]
+async fn failure_diagnostic_reports_actual_publication() {
+    for change in ["deleted", "edited", "disabled", "superseded", "unchanged"] {
+        capture();
+        let db = TestDb::new();
+        conditions(&db);
+        let store = Store::open(db.path(), &settings(&[])).unwrap();
+        let result = run_conditions(
+            &store,
+            &EditedFailure(&db, change),
+            &SystemClock,
+            &BigInt::from(60),
+            None,
+        )
+        .await
+        .unwrap();
+        assert_eq!((result.total, result.failed), (2, 1));
+        let log = lines().join("\n");
+        assert!(
+            log.contains(&format!("failure_published={}", change == "unchanged")),
+            "{change}: {log}"
+        );
+        assert_ne!(
+            db.value("condition_definition", "b good", "last_evaluated"),
+            rusqlite::types::Value::Null
+        );
+        store.close();
+    }
 }

@@ -44,5 +44,29 @@ def test_condition_failure_reports_stage_safely_and_continues(
     assert events[0].category == (
         "RuntimeError" if stage == "evaluation" else "ValueError"
     )
+    assert (
+        f"failure_published={str(stage != 'failure_publication').lower()}"
+        in events[0].getMessage()
+    )
     assert not events[0].exc_info
     assert "invented-query-credential-marker" not in caplog.text
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("change", ["deleted", "edited", "superseded", "unchanged"])
+def test_failure_published_reports_actual_write(monkeypatch, caplog, change):
+    ConditionDefinition.objects.create(name="synthetic", metric_name="test.value")
+
+    def evaluate(item, now):
+        rows = ConditionDefinition.objects.filter(pk=item.pk)
+        if change == "deleted":
+            rows.delete()
+        elif change == "edited":
+            rows.update(metric_name="test.changed")
+        elif change == "superseded":
+            rows.update(last_evaluated=now)
+        raise ValueError("synthetic failure")
+
+    monkeypatch.setattr(services, "evaluate_condition", evaluate)
+    assert services.evaluate_conditions_once().failed == 1
+    assert f"failure_published={str(change == 'unchanged').lower()}" in caplog.text

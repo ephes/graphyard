@@ -240,9 +240,15 @@ Python and the shared condition/store fixtures.
 
 Due-only metric runs claim the observed `next_run_time` before invoking a
 collector. Recovery uses the shorter of the interval (at least one second) and
-300 seconds. Completion is conditional on the claim timestamp; a newer claimant
+300 seconds. Completion is conditional on the claim timestamp and captured name, enabled
+state, type, interval and stored config; a newer claimant or edited definition
 keeps its schedule and result. Expired long collectors may overlap a later slot.
-Explicit non-due/manual runs keep their existing behavior. Python and Rust share
+Explicit non-due/manual runs still execute every enabled spec regardless of due
+time, with completion fenced by the captured definition and original schedule.
+Superseded completions contribute no run counts, errors or heartbeat evidence;
+when none are accepted, the heartbeat is untouched. A fixed
+`Collection superseded spec_id=<id>` event retains execution diagnostics. Metrics
+already emitted during collection cannot be recalled. Python and Rust share
 claim/recovery/completion fixtures and run only synthetic collectors in tests.
 
 ### Evaluating conditions once
@@ -465,6 +471,8 @@ class or numeric HTTP status, never transport exception text, response bodies or
 URL queries/userinfo. The low-level HTTP errors still retain their library text
 internally; executors normalize it before returning an outcome. Collector HTTP
 logs contain only method/status. Condition ERROR events report condition ID,
-`evaluation`/`publication` stage, category and fallback publication success; later
+`evaluation`/`publication` stage, category and actual fallback publication success.
+`failure_published=false` covers superseded/deleted/disabled/edited rows as well
+as storage errors; later
 conditions run even if that fallback fails. See `tests/diagnostics.rs` and
 [TESTMAP](TESTMAP.md). No migration rewrites historical messages.

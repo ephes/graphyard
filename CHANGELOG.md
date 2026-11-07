@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Fence Python/Rust collector result publication against definition edits,
+  disabling, deletion and replaced schedules, including explicit manual runs.
+- Exclude superseded collector outcomes from current run counts and heartbeats;
+  retain a safe spec-ID diagnostic without replacing newer pipeline evidence.
+- Report condition `failure_published` from the actual database write outcome
+  in Python and Rust, including definition and attempt-watermark rejections.
+
 - Normalize Python/Rust collector errors before persistence to allowlisted types
   or numeric HTTP status; omit exception text, URL credentials and remote bodies
   from failure records and collector logs. Keep configuration validation messages.

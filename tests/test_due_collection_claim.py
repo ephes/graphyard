@@ -130,3 +130,94 @@ def test_claim_survives_process_exit_and_retries_at_deadline(monkeypatch):
     assert services.run_metric_collection_specs_once(due_only=True).failed == 1
     row.refresh_from_db()
     assert row.next_run_time == int(current[0].timestamp()) + 600
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("due_only", [False, True])
+@pytest.mark.parametrize(
+    "edit",
+    [
+        {"config": {"synthetic": "changed"}},
+        {"spec_type": MetricCollectionSpecType.HTTP_PAGE_PROBE},
+        {"interval_seconds": 900},
+        {"enabled": False},
+        {"name": "renamed"},
+        {"next_run_time": 9999999999},
+        None,
+    ],
+)
+def test_collection_definition_edit_rejects_completion(monkeypatch, due_only, edit):
+    row = spec()
+
+    def collect(item):
+        if edit is None:
+            MetricCollectionSpec.objects.filter(pk=row.pk).delete()
+        else:
+            MetricCollectionSpec.objects.filter(pk=row.pk).update(**edit)
+        return StatusLevel.CRITICAL, 2, 3, "synthetic old failure"
+
+    monkeypatch.setattr(services, "_run_single_metric_collection_spec", collect)
+    result = services.run_metric_collection_specs_once(due_only=due_only)
+    assert result.total == result.failed == result.ingested == result.skipped == 0
+    from graphyard.models import PipelineHeartbeat
+
+    assert not PipelineHeartbeat.objects.exists()
+    if edit is not None:
+        row.refresh_from_db()
+        assert row.last_run_at is None
+        assert row.last_error == ""
+        for field, value in edit.items():
+            assert getattr(row, field) == value
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("old_failed", [True, False])
+def test_superseded_collection_preserves_newer_heartbeat(monkeypatch, old_failed):
+    from graphyard.models import PipelineHeartbeat
+
+    spec()
+    now = datetime(2026, 3, 4, 12, tzinfo=UTC)
+    current = [now]
+    monkeypatch.setattr(services.timezone, "now", lambda: current[0])
+    calls = []
+
+    def collect(item):
+        calls.append(item.pk)
+        if len(calls) == 1:
+            current[0] += timedelta(seconds=300)
+            fresh = services.run_metric_collection_specs_once(due_only=True)
+            assert fresh.total == 1 and fresh.failed == int(not old_failed)
+            return (StatusLevel.CRITICAL if old_failed else StatusLevel.OK), 8, 9, "old"
+        return (StatusLevel.OK if old_failed else StatusLevel.CRITICAL), 1, 0, "new"
+
+    monkeypatch.setattr(services, "_run_single_metric_collection_spec", collect)
+    result = services.run_metric_collection_specs_once(due_only=True)
+    assert result.total == result.failed == result.ingested == result.skipped == 0
+    heartbeat = PipelineHeartbeat.objects.get(name="metric_collectors")
+    assert heartbeat.status == (StatusLevel.OK if old_failed else StatusLevel.CRITICAL)
+    assert heartbeat.details["total"] == 1
+    assert heartbeat.details["ingested"] == 1
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("due_only", [True, False])
+def test_unchanged_truthy_enabled_collection_settles(monkeypatch, due_only):
+    from django.db import connection
+
+    row = spec()
+    with connection.cursor() as cursor:
+        cursor.execute(
+            "UPDATE metric_collection_spec SET enabled = 2 WHERE id = %s", [row.pk]
+        )
+    now = datetime(2026, 3, 4, 12, tzinfo=UTC)
+    monkeypatch.setattr(services.timezone, "now", lambda: now)
+    monkeypatch.setattr(
+        services,
+        "_run_single_metric_collection_spec",
+        lambda _: (StatusLevel.OK, 1, 0, ""),
+    )
+    result = services.run_metric_collection_specs_once(due_only=due_only)
+    assert result.total == result.ingested == 1
+    row.refresh_from_db()
+    assert row.last_status == StatusLevel.OK and row.last_run_at == now
+    assert row.next_run_time == int(now.timestamp()) + 600

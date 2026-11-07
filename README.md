@@ -320,7 +320,9 @@ Previously stored errors are not rewritten by this change.
 
 Condition failures emit one ERROR event per condition in the web/agent logs:
 `Condition failure condition_id=<id> stage=evaluation|publication category=<type>`
-with `failure_published` indicating whether the fallback critical result was saved.
+with `failure_published` true only when the fallback critical result was actually
+saved. Deleted, disabled, reconfigured or newer/tied condition results report
+false, as do storage errors.
 Python also exposes ID/stage/category as log record fields. Raw query/SQL text,
 exception messages and model representations are excluded. Failed fallback writes
 do not stop later conditions; a heartbeat write failure still fails the whole run.
@@ -331,11 +333,17 @@ Due-only scheduler runs claim each selected slot with a conditional
 snapshot skips a lost claim. Claims expire after `min(max(1, interval_seconds),
 300)` seconds; a crash leaves the row eligible at that timestamp on the next tick.
 Successful and failed attempts schedule the next regular interval from their claim
-start. Completion only updates a row still carrying that claim timestamp, so a
-late old result cannot overwrite a newer claimant. No database lock spans network
-I/O. A collection lasting beyond its claim can overlap the next slot; this is a
+start. Completion only updates a row still carrying that claim timestamp and the
+captured name, enabled state, collector type, interval and stored config, so a
+late old result cannot overwrite a newer claimant or an edited definition. No
+database lock spans network I/O. A collection lasting beyond its claim can overlap the next slot; this is a
 bounded recovery lease, not an unlimited execution lock. Explicit non-due runs
-(including manual one-shot collection) continue to run every enabled spec.
+(including manual one-shot collection) continue to run every enabled spec,
+regardless of its due time, but completion still requires the captured definition and schedule. Deleted, disabled, edited or
+superseded collections contribute no counts, errors or heartbeat evidence; a run
+with no accepted completions leaves the heartbeat untouched. Execution diagnostics
+remain available, including fixed `Collection superseded spec_id=<id>` log events.
+Metrics already sent during collection cannot be recalled by this publication fence.
 
 Current supported `spec_type`:
 

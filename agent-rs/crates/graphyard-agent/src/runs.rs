@@ -206,10 +206,7 @@ pub async fn run_metric_specs<E: SpecExecutors, C: Clock>(
         } else {
             None
         };
-        run.total += 1;
         let outcome = run_single_spec(executors, &mut state, spec).await;
-        run.ingested += outcome.ingested;
-        run.skipped += outcome.skipped;
         let next_run_time = run_ts
             .checked_add(spec.interval_seconds.max(1))
             .ok_or(RunError::NextRunTimeOverflow)?;
@@ -220,11 +217,20 @@ pub async fn run_metric_specs<E: SpecExecutors, C: Clock>(
             last_error: outcome.message.clone(),
             next_run_time,
         };
-        if let Some(until) = claim_until {
-            store.finish_claimed_spec(update, until).await?;
-        } else {
-            store.update_spec_run(update).await?;
+        if !store
+            .finish_claimed_spec(
+                spec.clone(),
+                update,
+                claim_until.unwrap_or(spec.next_run_time),
+            )
+            .await?
+        {
+            log::info!("Collection superseded spec_id={}", spec.id);
+            continue;
         }
+        run.total += 1;
+        run.ingested += outcome.ingested;
+        run.skipped += outcome.skipped;
         match outcome.status {
             StatusLevel::Critical => {
                 run.failed += 1;
@@ -368,7 +374,7 @@ pub async fn run_conditions<S: ConditionSamples, C: Clock>(
                     attempted_at,
                 )
                 .await
-                .is_ok();
+                .unwrap_or(false);
             log::error!(
                 "Condition failure condition_id={} stage={} category={} failure_published={}",
                 condition.id,

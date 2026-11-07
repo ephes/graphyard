@@ -354,9 +354,16 @@ def _run_case(raw: sqlite3.Connection, case: dict[str, Any]) -> dict[str, Any]:
                     op["claim_until"],
                 )
             elif kind == "finish_claimed_spec":
+                spec = MetricCollectionSpec.objects.annotate(
+                    config_text=services.Cast("config", services.TextField())
+                ).get(pk=op["id"])
                 services._finish_due_collection_spec(
                     op["id"],
                     op["claim_until"],
+                    definition={
+                        field: getattr(spec, field)
+                        for field in services._COLLECTION_DEFINITION_FIELDS
+                    },
                     last_run_at=_now(op),
                     last_status=op["last_status"],
                     last_error=op["last_error"],

@@ -140,22 +140,19 @@ pub(crate) fn load_specs(
 pub(crate) fn update_spec_run(
     connection: &Connection,
     update: &SpecRunUpdate,
-    claim_until: Option<i64>,
 ) -> Result<(), StoreError> {
     let changed = connection.execute(
         "UPDATE metric_collection_spec SET last_run_at = ?, last_status = ?, last_error = ?, \
-         next_run_time = ? WHERE id = ? AND (? IS NULL OR next_run_time = ?)",
+         next_run_time = ? WHERE id = ?",
         params![
             now_text(update.last_run_at)?,
             update.last_status.as_str(),
             update.last_error,
             update.next_run_time,
             update.id,
-            claim_until,
-            claim_until,
         ],
     )?;
-    if changed == 0 && claim_until.is_none() {
+    if changed == 0 {
         return Err(StoreError::NotUpdated);
     }
     Ok(())
@@ -191,17 +188,31 @@ impl Store {
             .await
     }
 
-    /// Finish only while this claim still owns the scheduling timestamp.
+    /// Publish only for the captured definition and scheduling owner.
+    /// Manual runs use the originally observed schedule instead of a lease.
     ///
     /// # Errors
-    /// SQLite errors. Expired/replaced claims and deleted rows are no-ops.
+    /// SQLite errors. Superseded or deleted rows return false.
     pub async fn finish_claimed_spec(
         &self,
+        definition: SpecRow,
         update: SpecRunUpdate,
-        claim_until: i64,
-    ) -> Result<(), StoreError> {
-        self.call(move |connection| update_spec_run(connection, &update, Some(claim_until)))
-            .await
+        expected_schedule: i64,
+    ) -> Result<bool, StoreError> {
+        self.call(move |connection| {
+            Ok(connection.execute(
+                "UPDATE metric_collection_spec SET last_run_at = ?, last_status = ?, last_error = ?, \
+                 next_run_time = ? WHERE id = ? AND enabled AND next_run_time = ? \
+                 AND name = ? AND spec_type = ? \
+                 AND interval_seconds = ? AND config = ?",
+                params![
+                    now_text(update.last_run_at)?, update.last_status.as_str(),
+                    update.last_error, update.next_run_time, update.id, expected_schedule,
+                    definition.name,
+                    definition.spec_type, definition.interval_seconds, definition.config,
+                ],
+            )? == 1)
+        }).await
     }
 
     /// Load the enabled specs ordered by name; with `due_before`, only those
@@ -220,7 +231,7 @@ impl Store {
     /// # Errors
     /// [`StoreError::NotUpdated`] when the row is gone, SQLite errors.
     pub async fn update_spec_run(&self, update: SpecRunUpdate) -> Result<(), StoreError> {
-        self.call(move |connection| update_spec_run(connection, &update, None))
+        self.call(move |connection| update_spec_run(connection, &update))
             .await
     }
 }

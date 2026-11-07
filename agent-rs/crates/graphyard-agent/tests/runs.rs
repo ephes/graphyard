@@ -426,3 +426,168 @@ async fn a_claim_lost_after_loading_skips_collection_and_heartbeat() {
     assert_eq!(db.count("pipeline_heartbeat"), 0);
     store.close();
 }
+
+struct EditingCollector<'a> {
+    db: &'a TestDb,
+    edit: &'a str,
+}
+impl SpecExecutors for EditingCollector<'_> {
+    async fn execute(&self, _: SpecType, _: &str, _: &Value, _: &mut RunState) -> ExecutorResult {
+        self.db.execute(self.edit);
+        Ok(SpecOutcome::new(StatusLevel::Critical, 2, 3, "old failure"))
+    }
+}
+
+#[tokio::test]
+async fn definition_edits_and_deletion_reject_collection_completion() {
+    for due_only in [true, false] {
+        for edit in [
+            "UPDATE metric_collection_spec SET config = '{\"synthetic\":1}'",
+            "UPDATE metric_collection_spec SET spec_type = 'http_page_probe'",
+            "UPDATE metric_collection_spec SET interval_seconds = 900",
+            "UPDATE metric_collection_spec SET enabled = 0",
+            "UPDATE metric_collection_spec SET name = 'renamed'",
+            "UPDATE metric_collection_spec SET next_run_time = 9999999999",
+            "DELETE FROM metric_collection_spec",
+        ] {
+            let db = TestDb::new();
+            common::insert_spec(&db, "synthetic", "http_json_metric", &serde_json::json!({}));
+            let store = Store::open(db.path(), &settings(&[])).unwrap();
+            let clock = FixedClock("2026-10-21T08:15:30Z".parse().unwrap());
+            let result = run_metric_specs(
+                &store,
+                &EditingCollector { db: &db, edit },
+                &clock,
+                due_only,
+            )
+            .await
+            .unwrap();
+            assert_eq!(
+                result,
+                graphyard_core::MetricCollectionSpecRun::default(),
+                "{edit}"
+            );
+            assert_eq!(db.count("pipeline_heartbeat"), 0, "{edit}");
+            if !edit.starts_with("DELETE") {
+                assert_eq!(
+                    db.raw()
+                        .query_row("SELECT last_run_at FROM metric_collection_spec", [], |r| {
+                            r.get::<_, Option<String>>(0)
+                        })
+                        .unwrap(),
+                    None
+                );
+            }
+            store.close();
+        }
+    }
+}
+
+struct ReclaimedCollector<'a> {
+    store: &'a Store,
+    old_failed: bool,
+    now: DateTime<Utc>,
+}
+impl SpecExecutors for ReclaimedCollector<'_> {
+    async fn execute(&self, _: SpecType, _: &str, _: &Value, _: &mut RunState) -> ExecutorResult {
+        struct Fresh(bool);
+        impl SpecExecutors for Fresh {
+            async fn execute(
+                &self,
+                _: SpecType,
+                _: &str,
+                _: &Value,
+                _: &mut RunState,
+            ) -> ExecutorResult {
+                Ok(SpecOutcome::new(
+                    if self.0 {
+                        StatusLevel::Ok
+                    } else {
+                        StatusLevel::Critical
+                    },
+                    1,
+                    0,
+                    "new",
+                ))
+            }
+        }
+        let newer = FixedClock(self.now + chrono::Duration::seconds(300));
+        let run = run_metric_specs(self.store, &Fresh(self.old_failed), &newer, true)
+            .await
+            .unwrap();
+        assert_eq!(run.total, 1);
+        Ok(SpecOutcome::new(
+            if self.old_failed {
+                StatusLevel::Critical
+            } else {
+                StatusLevel::Ok
+            },
+            8,
+            9,
+            "old",
+        ))
+    }
+}
+#[tokio::test]
+async fn superseded_collection_cannot_replace_newer_heartbeat() {
+    for old_failed in [true, false] {
+        let db = TestDb::new();
+        common::insert_spec(&db, "synthetic", "http_json_metric", &serde_json::json!({}));
+        db.execute("UPDATE metric_collection_spec SET interval_seconds = 600");
+        let a = Store::open(db.path(), &settings(&[])).unwrap();
+        let b = Store::open(db.path(), &settings(&[])).unwrap();
+        let clock = FixedClock("2026-10-21T08:15:30Z".parse().unwrap());
+        let result = run_metric_specs(
+            &a,
+            &ReclaimedCollector {
+                store: &b,
+                old_failed,
+                now: clock.0,
+            },
+            &clock,
+            true,
+        )
+        .await
+        .unwrap();
+        assert_eq!(result, graphyard_core::MetricCollectionSpecRun::default());
+        let expected = if old_failed { "ok" } else { "critical" };
+        assert_eq!(
+            db.text("metric_collection_spec", "synthetic", "last_status"),
+            expected
+        );
+        assert_eq!(
+            db.text("pipeline_heartbeat", "metric_collectors", "status"),
+            expected
+        );
+        let details: Value =
+            serde_json::from_str(&db.text("pipeline_heartbeat", "metric_collectors", "details"))
+                .unwrap();
+        assert_eq!(details["ingested"], 1);
+        a.close();
+        b.close();
+    }
+}
+
+#[tokio::test]
+async fn unchanged_truthy_enabled_collection_settles() {
+    for due_only in [true, false] {
+        let db = TestDb::new();
+        common::insert_spec(&db, "synthetic", "http_json_metric", &serde_json::json!({}));
+        db.execute("UPDATE metric_collection_spec SET enabled = 2, interval_seconds = 600");
+        let store = Store::open(db.path(), &settings(&[])).unwrap();
+        let clock = FixedClock("2026-10-21T08:15:30Z".parse().unwrap());
+        let result = run_metric_specs(&store, &Faulty, &clock, due_only)
+            .await
+            .unwrap();
+        assert_eq!(result.total, 1);
+        assert_eq!(
+            db.text("metric_collection_spec", "synthetic", "last_status"),
+            "ok"
+        );
+        assert_eq!(
+            db.value("metric_collection_spec", "synthetic", "next_run_time"),
+            rusqlite::types::Value::Integer(clock.0.timestamp() + 600)
+        );
+        store.close();
+    }
+}

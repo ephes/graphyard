@@ -126,8 +126,8 @@ pub(crate) fn update_condition_success(
     connection: &Connection,
     id: i64,
     evaluation: &ConditionEvaluation,
-) -> Result<(), StoreError> {
-    connection.execute(
+) -> Result<bool, StoreError> {
+    Ok(connection.execute(
         "UPDATE condition_definition SET status = ?, message = ?, last_value = ?, \
          last_evaluated = ? WHERE id = ? AND (last_evaluated IS NULL OR last_evaluated < ?)",
         params![
@@ -138,8 +138,7 @@ pub(crate) fn update_condition_success(
             id,
             now_text(evaluation.evaluated_at)?,
         ],
-    )?;
-    Ok(())
+    )? == 1)
 }
 
 /// Publish a failure with the same attempt watermark, preserving last_value.
@@ -149,8 +148,8 @@ pub(crate) fn update_condition_failure(
     status: StatusLevel,
     message: &str,
     attempted_at: DateTime<Utc>,
-) -> Result<(), StoreError> {
-    connection.execute(
+) -> Result<bool, StoreError> {
+    Ok(connection.execute(
         "UPDATE condition_definition SET status = ?, message = ?, last_evaluated = ? \
          WHERE id = ? AND (last_evaluated IS NULL OR last_evaluated < ?)",
         params![
@@ -160,8 +159,7 @@ pub(crate) fn update_condition_failure(
             id,
             now_text(attempted_at)?
         ],
-    )?;
-    Ok(())
+    )? == 1)
 }
 
 // Result fields and timestamps are intentionally excluded from the definition.
@@ -200,23 +198,25 @@ impl Store {
     /// Write a successful evaluation.
     ///
     /// # Errors
-    /// SQLite errors. Stale attempts and deleted rows are no-ops.
+    /// SQLite errors. Superseded, edited, disabled or deleted rows return false.
     pub async fn update_condition_success(
         &self,
         definition: ConditionRow,
         evaluation: ConditionEvaluation,
-    ) -> Result<(), StoreError> {
+    ) -> Result<bool, StoreError> {
         self.call(move |connection| {
             let tx =
                 connection.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
-            if load_conditions(&tx, Some(definition.id))?
+            let published = if load_conditions(&tx, Some(definition.id))?
                 .first()
                 .is_some_and(|current| same_definition(current, &definition))
             {
-                update_condition_success(&tx, definition.id, &evaluation)?;
-            }
+                update_condition_success(&tx, definition.id, &evaluation)?
+            } else {
+                false
+            };
             tx.commit()?;
-            Ok(())
+            Ok(published)
         })
         .await
     }
@@ -224,25 +224,27 @@ impl Store {
     /// Write a failed evaluation's status and message.
     ///
     /// # Errors
-    /// SQLite errors. Stale attempts and deleted rows are no-ops.
+    /// SQLite errors. Superseded, edited, disabled or deleted rows return false.
     pub async fn update_condition_failure(
         &self,
         definition: ConditionRow,
         status: StatusLevel,
         message: String,
         attempted_at: DateTime<Utc>,
-    ) -> Result<(), StoreError> {
+    ) -> Result<bool, StoreError> {
         self.call(move |connection| {
             let tx =
                 connection.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
-            if load_conditions(&tx, Some(definition.id))?
+            let published = if load_conditions(&tx, Some(definition.id))?
                 .first()
                 .is_some_and(|current| same_definition(current, &definition))
             {
-                update_condition_failure(&tx, definition.id, status, &message, attempted_at)?;
-            }
+                update_condition_failure(&tx, definition.id, status, &message, attempted_at)?
+            } else {
+                false
+            };
             tx.commit()?;
-            Ok(())
+            Ok(published)
         })
         .await
     }
