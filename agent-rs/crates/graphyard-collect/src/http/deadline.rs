@@ -16,7 +16,7 @@ use std::time::{Duration, Instant};
 
 use graphyard_core::pycompat::py_format_g;
 
-use super::client::{HttpClient, escape_log};
+use super::client::HttpClient;
 use super::error::{ErrorKind, HttpError};
 
 /// The deadline of one operation, for the checks Python makes inside the
@@ -94,14 +94,14 @@ pub fn abandoned_error(count: usize) -> HttpError {
 /// to the close wait and record the ones still running.
 ///
 /// `client` must be the client the operation uses; its lookups are the
-/// ones checked. `url` names the operation in the warning log line.
+/// ones checked. The URL is never included in warning logs.
 ///
 /// # Errors
 /// The operation's error, [`deadline_error`] at the deadline, or
 /// [`abandoned_error`] before starting.
 pub async fn run_with_deadline<T, F, Fut>(
     client: &HttpClient,
-    url: &str,
+    _url: &str,
     total_timeout_seconds: f64,
     operation: F,
 ) -> Result<T, HttpError>
@@ -131,10 +131,7 @@ where
         let _ = tokio::time::timeout(context.close_join, wait_all).await;
         for lookup in pending.into_iter().filter(|lookup| lookup.is_running()) {
             context.abandoned.add(lookup);
-            log::warn!(
-                "HTTP collector worker for {} still running after it was cancelled",
-                escape_log(url)
-            );
+            log::warn!("HTTP collector worker still running after cancellation");
         }
     }
     Err(deadline_error(total_timeout_seconds))

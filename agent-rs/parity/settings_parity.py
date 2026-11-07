@@ -24,6 +24,7 @@ DATABASES["default"]["NAME"] = os.environ["PARITY_DATABASE"]
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
+    "loggers": LOGGING["loggers"],
     "handlers": {
         "console": {
             "class": "logging.StreamHandler",

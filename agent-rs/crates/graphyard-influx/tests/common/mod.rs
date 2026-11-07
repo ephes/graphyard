@@ -101,15 +101,20 @@ pub fn expected_logs(case: &Value, server: &str) -> Vec<(String, String)> {
         .iter()
         .map(|line| {
             let line = line.as_array().expect("log line pair");
-            (
-                line[0].as_str().expect("level").to_owned(),
-                line[1]
-                    .as_str()
-                    .expect("message")
+            let message = line[1].as_str().expect("message");
+            let message = if message.starts_with("HTTP Request: ") {
+                let parts: Vec<_> = message.split_whitespace().collect();
+                format!(
+                    "Influx HTTP response: method={} status={}",
+                    parts[2], parts[5]
+                )
+            } else {
+                message
                     .replace("{server}", server)
                     .replace('\n', "\\n")
-                    .replace('\r', "\\r"),
-            )
+                    .replace('\r', "\\r")
+            };
+            (line[0].as_str().expect("level").to_owned(), message)
         })
         .collect()
 }

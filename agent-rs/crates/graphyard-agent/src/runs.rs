@@ -18,8 +18,8 @@ use serde_json::Value;
 
 use graphyard_collect::executors::{ExecutorError, ExecutorResult, RunState};
 use graphyard_core::conditions::{ConditionRule, evaluate_condition};
-use graphyard_core::logline::escape_log_value;
-use graphyard_core::pycompat::{int_digit_limit_error, json_loads, py_str_repr};
+use graphyard_core::diagnostics::{collector_failure, error_category};
+use graphyard_core::pycompat::{int_digit_limit_error, json_loads};
 use graphyard_core::{
     ConditionEvaluationRun, MetricCollectionSpecRun, MetricSample, SpecOutcome, SpecType,
     StatusLevel,
@@ -126,15 +126,6 @@ fn critical(message: impl Into<String>) -> SpecOutcome {
     SpecOutcome::new(StatusLevel::Critical, 0, 0, message)
 }
 
-/// The text of a panic payload.
-fn panic_message(payload: &(dyn std::any::Any + Send)) -> String {
-    payload
-        .downcast_ref::<&str>()
-        .map(|text| (*text).to_owned())
-        .or_else(|| payload.downcast_ref::<String>().cloned())
-        .unwrap_or_else(|| "panic".to_owned())
-}
-
 /// `_run_single_metric_collection_spec(spec)`: the executor's outcome, with
 /// every failure isolated as a `critical` outcome. A panicking executor is
 /// isolated like one that raises (class `panic`), so one bad spec can never
@@ -154,21 +145,19 @@ pub async fn run_single_spec<E: SpecExecutors>(
     let result = AssertUnwindSafe(executors.execute(spec_type, &spec.name, &config, run))
         .catch_unwind()
         .await;
-    let (class, message) = match result {
+    let class = match result {
         Ok(Ok(outcome)) => return outcome,
         Ok(Err(ExecutorError::Config(err))) => return critical(err.0),
-        Ok(Err(ExecutorError::Raised { class, message })) => (class, message),
-        Err(payload) => ("panic".to_owned(), panic_message(payload.as_ref())),
+        Ok(Err(ExecutorError::Raised { class, .. })) => class,
+        Err(_) => "panic".to_owned(),
     };
-    // Python logs `logger.exception(...)` with the traceback; one line here.
+    let category = error_category(&class);
     log::error!(
-        "Metric collection spec {} ({}) raised: {}: {}",
-        py_str_repr(&spec.name),
-        escape_log_value(&spec.spec_type),
-        escape_log_value(&class),
-        escape_log_value(&message)
+        "Collector failure spec_id={} category={}",
+        spec.id,
+        category
     );
-    critical(format!("collector raised {class}: {message}"))
+    critical(collector_failure(category))
 }
 
 fn count(value: u64) -> i64 {
@@ -291,15 +280,15 @@ pub async fn run_metric_specs<E: SpecExecutors, C: Clock>(
     Ok(run)
 }
 
-/// `evaluate_condition(condition)` with its own `now`; the error is
-/// `str(err)`.
+/// `evaluate_condition(condition)` with its own `now`; errors retain only a category.
 async fn evaluate<S: ConditionSamples>(
     condition: &ConditionRow,
     samples: &S,
     now: DateTime<Utc>,
     stale_warning_seconds: &BigInt,
-) -> Result<graphyard_core::ConditionEvaluation, String> {
-    let tags_filter = load_stored_json("tags_filter", &condition.tags_filter)?;
+) -> Result<graphyard_core::ConditionEvaluation, &'static str> {
+    let tags_filter =
+        load_stored_json("tags_filter", &condition.tags_filter).map_err(|_| "ValueError")?;
     let query = ConditionQuery {
         id: condition.id,
         name: &condition.name,
@@ -325,7 +314,10 @@ async fn evaluate<S: ConditionSamples>(
     let mut source = |now| samples.query_condition_window(&query, now);
     evaluate_condition(&rule, stale_warning_seconds, now, &mut source)
         .await
-        .map_err(|err| err.to_string())
+        .map_err(|err| match err {
+            graphyard_core::EvaluationError::Query(err) => err.python_class(),
+            graphyard_core::EvaluationError::Evaluation(err) => err.python_class(),
+        })
 }
 
 /// `evaluate_conditions_once(condition_id=...)`: the agent's runs pass
@@ -334,8 +326,8 @@ async fn evaluate<S: ConditionSamples>(
 /// id selects nothing.
 ///
 /// # Errors
-/// A failed load, a failed failure update (after a failed evaluation or
-/// success update) or a failed heartbeat; no heartbeat is written then.
+/// A failed load or heartbeat fails the run; per-condition publication failures
+/// are isolated and reported in safe diagnostics.
 pub async fn run_conditions<S: ConditionSamples, C: Clock>(
     store: &Store,
     samples: &S,
@@ -354,23 +346,36 @@ pub async fn run_conditions<S: ConditionSamples, C: Clock>(
     for condition in &conditions {
         run.total += 1;
         let attempted_at = clock.now();
-        let saved = match evaluate(condition, samples, attempted_at, stale_warning_seconds).await {
-            Ok(evaluation) => store
-                .update_condition_success(condition.clone(), evaluation)
-                .await
-                .map_err(|err| err.to_string()),
-            Err(message) => Err(message),
-        };
-        if let Err(message) = saved {
+        let (stage, saved) =
+            match evaluate(condition, samples, attempted_at, stale_warning_seconds).await {
+                Ok(evaluation) => (
+                    "publication",
+                    store
+                        .update_condition_success(condition.clone(), evaluation)
+                        .await
+                        .map_err(|err| err.python_class()),
+                ),
+                Err(category) => ("evaluation", Err(category)),
+            };
+        if let Err(category) = saved {
             run.failed += 1;
-            store
+            let category = error_category(category);
+            let failure_published = store
                 .update_condition_failure(
                     condition.clone(),
                     StatusLevel::Critical,
-                    format!("evaluation error: {message}"),
+                    format!("evaluation error: {category}"),
                     attempted_at,
                 )
-                .await?;
+                .await
+                .is_ok();
+            log::error!(
+                "Condition failure condition_id={} stage={} category={} failure_published={}",
+                condition.id,
+                stage,
+                category,
+                failure_published
+            );
         }
     }
     let ok = run.failed == 0;

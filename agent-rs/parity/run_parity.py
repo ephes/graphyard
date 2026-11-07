@@ -101,10 +101,11 @@ COMPARED_HEADERS = (
 )
 #: ``Content-Length`` of write and query bodies holds now-based values.
 INFLUX_UNCOMPARED_HEADERS = {"content-length"}
-#: Operator log lines of PLAN.md 3.6 compared on stderr.
+#: Operator failure/mapping lines compared on stderr. HTTP request/response
+#: chatter differs intentionally (Python suppresses it, Rust reports safe metadata).
 OPERATOR_LINE = re.compile(
-    r"^(HTTP Request: |Spec |Ignoring |Metric point validation failed |"
-    r"metrics_write_rejected |Metric collection spec .* raised|CommandError: )"
+    r"^(Spec |Ignoring |Metric point validation failed |"
+    r"metrics_write_rejected |Collector failure |Condition failure |CommandError: )"
 )
 PROCESS_TIMEOUT = 120.0
 
@@ -1105,8 +1106,6 @@ def operator_lines(stderr: str, tokens: list[tuple[str, str]]) -> list[str]:
     lines = []
     for line in stderr.splitlines():
         if OPERATOR_LINE.match(line):
-            if line.startswith("Metric collection spec "):
-                line = line[: line.index(" raised") + len(" raised")]
             lines.append(normalise(line, tokens))
     return lines
 

@@ -14,13 +14,14 @@
 //! [`RunState`] (the mappings' warn-once keys and compiled regexes). What Python lets escape the executor is an
 //! [`ExecutorError`]: a `SpecConfigError` of the typed knobs (the runner
 //! stores its message, `critical`) or another exception (the runner stores
-//! `collector raised <class>: <message>` and logs it, PLAN.md 3.4).
+//! bounded error metadata and logs only the category).
 
 pub mod home_assistant;
 pub mod http_json;
 pub mod page_probe;
 pub mod unifi;
 
+use graphyard_core::diagnostics::collector_failure;
 use std::fmt;
 use std::future::Future;
 
@@ -94,8 +95,7 @@ impl std::error::Error for SinkError {}
 pub enum ExecutorError {
     /// `SpecConfigError` of a typed knob: `critical`, its message.
     Config(SpecConfigError),
-    /// Any other exception: `critical`, `collector raised <class>:
-    /// <message>`, plus the runner's error log line.
+    /// Any other exception: `critical` with a safe category, plus the runner log.
     Raised { class: String, message: String },
 }
 
@@ -241,7 +241,7 @@ pub(crate) fn warning(skipped: u64, message: impl Into<String>) -> SpecOutcome {
 }
 
 /// `influx.write_points(points)` then `touch_registry_from_points(points)`;
-/// `ok, written, skipped, ""`, or `critical, 0, 0, str(err)` for the first
+/// `ok, written, skipped, ""`, or `critical, 0, 0, <safe metadata>` for the first
 /// failure (points already written stay written, as in Python).
 pub(crate) async fn write_and_touch<S: MetricSink>(
     sink: &S,
@@ -250,10 +250,10 @@ pub(crate) async fn write_and_touch<S: MetricSink>(
 ) -> SpecOutcome {
     let written = match sink.write_points(points).await {
         Ok(written) => written,
-        Err(err) => return critical(err.message),
+        Err(err) => return critical(collector_failure(&err.class)),
     };
     if let Err(err) = sink.touch_registry(points).await {
-        return critical(err.message);
+        return critical(collector_failure(&err.class));
     }
     SpecOutcome::new(StatusLevel::Ok, written, skipped, "")
 }

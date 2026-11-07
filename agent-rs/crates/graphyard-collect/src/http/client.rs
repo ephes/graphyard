@@ -334,7 +334,11 @@ impl Response {
             &self.url.to_string(),
             location.as_deref(),
         ) {
-            Some(message) => Err(HttpError::new(ErrorKind::HttpStatusError, message)),
+            Some(message) => {
+                let mut error = HttpError::new(ErrorKind::HttpStatusError, message);
+                error.status = Some(self.status);
+                Err(error)
+            }
             None => Ok(()),
         }
     }
@@ -543,12 +547,9 @@ impl HttpClient {
             _ => "HTTP/1.1",
         };
         log::info!(
-            "HTTP Request: {} {} \"{} {} {}\"",
+            "Collector HTTP response: method={} status={}",
             request.method.as_str(),
-            escape_log(&url.to_string()),
-            http_version,
-            status,
-            escape_log(&reason),
+            status
         );
         let encodings = header_text(&parts.headers, "content-encoding").unwrap_or_default();
         let mut response = Response {
@@ -725,9 +726,4 @@ pub(crate) fn check_scheme(url: &HttpxUrl) -> Result<bool, HttpError> {
             format!("Request URL has an unsupported protocol '{other}://'."),
         )),
     }
-}
-
-/// Escape `\n` and `\r` in a value interpolated into a log line (D-10).
-pub(crate) fn escape_log(value: &str) -> String {
-    value.replace('\n', "\\n").replace('\r', "\\r")
 }

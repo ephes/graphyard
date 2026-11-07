@@ -7,6 +7,7 @@
 //! deadline tests in `executors/tests`.
 
 use chrono::{DateTime, Utc};
+use graphyard_core::diagnostics::collector_failure;
 use serde_json::Value;
 
 use graphyard_core::model::{MetricPoint, SpecOutcome, StatusLevel, SubjectType, Tags};
@@ -154,10 +155,10 @@ pub async fn execute_http_page_probe<S: MetricSink>(
             // critical outcome, not an escaping exception.
             let written = match sink.write_points(&points).await {
                 Ok(written) => written,
-                Err(err) => return Ok(critical(err.message)),
+                Err(err) => return Ok(critical(collector_failure(&err.class))),
             };
             if let Err(err) = sink.touch_registry(&points).await {
-                return Ok(critical(err.message));
+                return Ok(critical(collector_failure(&err.class)));
             }
             if success {
                 Ok(SpecOutcome::new(StatusLevel::Ok, written, 0, ""))
@@ -183,10 +184,10 @@ pub async fn execute_http_page_probe<S: MetricSink>(
                 StatusLevel::Warning,
                 written,
                 0,
-                err.message,
+                err.safe_message(),
             ))
         }
-        Err(err) => Ok(critical(err.message)),
+        Err(err) => Ok(critical(err.safe_message())),
     }
 }
 

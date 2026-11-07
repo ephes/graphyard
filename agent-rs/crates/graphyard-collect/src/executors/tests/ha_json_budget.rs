@@ -51,12 +51,12 @@ async fn dripping_json_hits_the_total_deadline() {
     for (config, message, at_least) in [
         (
             json!({"request_timeout_seconds": 1, "total_timeout_seconds": 0.4}),
-            "HTTP collector exceeded total_timeout_seconds=0.4",
+            "collector failure: _PageProbeDeadlineExceeded",
             None,
         ),
         (
             json!({"request_timeout_seconds": 0.5}),
-            "HTTP collector exceeded total_timeout_seconds=1.5",
+            "collector failure: _PageProbeDeadlineExceeded",
             Some(Duration::from_millis(1400)),
         ),
     ] {
@@ -140,7 +140,7 @@ async fn ha_deadline_covers_headers_and_body() {
                     StatusLevel::Critical,
                     0,
                     0,
-                    "HTTP collector exceeded total_timeout_seconds=0.5"
+                    "collector failure: _PageProbeDeadlineExceeded"
                 ),
                 "{context}"
             );

@@ -36,6 +36,18 @@ owning the database schema. Only the agent process is replaced.
 
 ---
 
+## Current failure-privacy contract (round 58)
+
+The runtime contract in README supersedes the historical raw exception-message
+examples below. Collector outcomes/persistence normalize errors to an allowlisted
+class or numeric HTTP status, while required-field/typed config validation remains.
+Condition failure messages and ERROR events use safe categories; no exception text,
+SQL or model repr is logged by those failure boundaries. Collector request logs
+omit URLs and response reasons. The end-to-end parity gate compares safe
+failure/mapping events; request/response chatter is tested separately because
+Python suppresses it while Rust retains method/status. Low-level HTTP fixture
+errors still describe library text internally; their log expectations map to method/status summaries.
+
 ## 1. Live facts (read-only, 2026-10-21, `ssh root@macmini`)
 
 | Fact | Value |
@@ -301,7 +313,7 @@ that differs is a bug.
   servers and (UniFi) plain session cookies.
 - **D-15 Agent runtime corner cases** (S8). A panicking executor (a Rust
   bug; Python has no counterpart) is isolated like a raising one: the spec
-  turns `critical` with `collector raised panic: <message>`, the run goes
+  turns `critical` with `collector failure: panic`, the run goes
   on. An interval beyond `tokio::time::Instant`'s range (about 2^63
   seconds) never fires again; Python's float arithmetic does the same up to
   the float range and raises `OverflowError` after the first run beyond it.
@@ -443,8 +455,8 @@ InfluxDB configuration errors surface lazily, per write or query, as in
    `_run_single_metric_collection_spec` (unknown type →
    `critical`, `unsupported spec_type: <t>`; `SpecConfigError` → `critical`,
    its message; any other failure → `critical`,
-   `collector raised <Type>: <err>` plus an error log line
-   `Metric collection spec '<name>' (<type>) raised`); then update the spec
+   `collector failure: <allowlisted type>` plus an error log line
+   `Collector failure spec_id=<id> category=<type>`); then update the spec
    row (section 5.4) with `last_run_at=now`, `last_status`, `last_error`,
    `next_run_time = now_ts + max(1, interval_seconds)`. Counters: `total`,
    `failed` (critical), `warning`, `ingested`, `skipped`; error list entries
@@ -486,12 +498,13 @@ convert to SQLite INTEGER`. A panicking executor is isolated (D-15).
 Select `enabled = 1 ORDER BY name`. Per condition, sequentially:
 capture an attempt start time and pass it to `evaluate_condition` (section 7).
 Success updates `status, message, last_value, last_evaluated`; any exception →
-`failed += 1`, update `status='critical'`, `message='evaluation error: <err>'`
+`failed += 1`, update `status='critical'`, `message='evaluation error: <allowlisted type>'`
 and `last_evaluated` to the attempt start time, retaining `last_value`.
 Both writes require `last_evaluated IS NULL OR last_evaluated < attempt_start`;
-stale/tied attempts and deleted rows are no-ops. If a failure write itself fails,
-the run aborts (`Condition evaluation failed`,
-stderr `Condition eval failed: <err>`, no heartbeat). Heartbeat
+stale/tied attempts and deleted rows are no-ops. Even if the fallback failure
+write fails, following conditions run. One ERROR event records condition ID,
+stage (`evaluation` or `publication`), allowlisted category and `failure_published`.
+No raw exception/query text enters that event or failure message. Heartbeat
 `condition_evaluator`: `ok`/`""`/success when nothing failed, else
 `warning`/`"<n> condition(s) failed"`/no success; details
 `{"evaluated": <total>, "failed": <failed>}`. stdout
@@ -508,9 +521,8 @@ Log records go to stderr as the bare message (production `LOGGING` has a root
 `StreamHandler` without formatter, level INFO). Operator-relevant lines (P1
 text up to the interpolated exception text; D-10 escaping):
 
-- httpx's request line, emitted by Rust for every collector request and every
-  v3 SQL request: `HTTP Request: <METHOD> <url> "HTTP/1.1 <code> <reason>"`
-  (InfluxDB v2 traffic goes through urllib3 in Python and is not logged);
+- Collector HTTP logs contain method and numeric status only; Python suppresses
+  HTTP client request logs. Influx response logs also contain only method/status;
 - subject/metric mapping warnings of `_resolve_subject_mapping` and
   `_resolve_home_assistant_metric_mapping` (warn-once keys as in Python),
   `Spec <name> failed subject resolution for entity_id=<id>`;
@@ -518,13 +530,13 @@ text up to the interpolated exception text; D-10 escaping):
   `Ignoring custom tag override for reserved key <k>`,
   `metrics_write_rejected category=normalization rejected_points=<r> written_points=<w> total_points=<t>`;
 - `Ignoring host_filter for non-host condition id=<id> name=<name>`;
-- `HTTP collector worker for <url> still running after it was cancelled`;
-- the SQLite pragma warnings of 3.3; `Metric collection failed`,
-  `Condition evaluation failed`, `Metric collection spec … raised` (one line
-  with the error instead of a traceback, P2). As implemented in S8 the line
-  ends like the traceback's last line: `Metric collection failed: <class>:
-  <err>`, `Condition evaluation failed: <class>: <err>`, `Metric collection
-  spec '<name>' (<type>) raised: <class>: <message>`.
+- `HTTP collector worker still running after cancellation` (no URL);
+- `Collector failure spec_id=<id> category=<allowlisted type>` for an escaping
+  collector error, without exception text or traceback;
+- `Condition failure condition_id=<id> stage=evaluation|publication category=<type>
+  failure_published=true|false`, once per failed condition;
+- the SQLite pragma warnings of 3.3 and whole-run failures (`Metric collection
+  failed`, `Condition evaluation failed`), outside the per-item boundaries.
 
 Rust adds three INFO lines at startup (version, schema check result with
 journal mode, effective intervals) and nothing per run beyond the above.
@@ -973,7 +985,7 @@ in the order the Python code checks them.
   deadline, `raise_for_status`, JSON. Non-object → `warning, 0, 1, "invalid
   JSON payload"`; normalisation `None` → `warning, 0, 1, "state payload not
   numeric or mapping failed"`; else write one point, touch the registry,
-  `ok, written, 0, ""`; any exception → `critical, 0, 0, str(err)`.
+  `ok, written, 0, ""`; any exception → critical with safe error metadata.
 - **`home_assistant_env_scan`** (`_execute_home_assistant_env_scan_spec`):
   GET `/api/states`; `entity_id_regex` compiled case-insensitive (invalid →
   `critical`, `invalid entity_id_regex: <err>`, P2 after the prefix);
@@ -1019,7 +1031,7 @@ in the order the Python code checks them.
   `http_method=get` + configured tags; `source_entity_id = url`. Non-success
   status → `warning, written, 0, "unexpected status code: <code>"`. Warning
   path (6.1 classification): 2 points (`status_code` 0, `success` 0),
-  `warning, written, 0, str(err)`. A write or registry failure inside that
+  `warning, written, 0, <safe error metadata>`. A write or registry failure inside that
   warning path is raised out of the `except` block and becomes `collector
   raised …` (P1 status, P2 text) — reproduced.
 - **`unifi_device_traffic`** (`_execute_unifi_device_traffic_spec`):
@@ -1047,8 +1059,8 @@ InfluxDB writer and the store into it in S8; a `SinkError` carries the
 Python class and `str(err)`). `ExecutorError` is what Python lets escape the
 executor: `Config` (a `SpecConfigError` of a typed knob, raised before the
 required-field checks in both executors) or `Raised` (the page probe's
-warning-path sink failure, which the runner turns into `collector raised
-<class>: <message>`). The page probe uses `run_with_deadline` +
+warning-path sink failure, which the runner turns into
+`collector failure: <allowlisted class>`). The page probe uses `run_with_deadline` +
 `run_page_probe` of S6. Since round 49, UniFi uses `send_unifi_request`
 with controller-origin redirects and a shared collection byte/deadline budget
 (the login `POST` carries httpx's compact `json.dumps(ensure_ascii=False)`
@@ -1075,7 +1087,7 @@ deadline, the body cap, the JSON path's `int()` error, normalisation errors
 that Python lets escape the mapping (`ValueError` of the default subject
 slug, `OverflowError` of a huge `value_multiplier` or of the timestamp's UTC
 conversion) and sink failures (a registry failure after a successful write
-keeps the points written) are `critical, 0, 0, str(err)`. Mapping warnings
+keeps the points written) are `critical, 0, 0, <safe error metadata>`. Mapping warnings
 are logged after each normalised state, so they follow the request's `HTTP
 Request:` line as in Python. Pinned by `ha_mapping.json`, `json_path.json`
 and the end-to-end scenarios of `ha_json_executors.json`, replayed against a
@@ -1255,7 +1267,7 @@ condition (S4b/S8; a closure `FnMut(now) -> Future<Result<Vec<MetricSample>,
 E>>` is one). `evaluate_condition(rule, stale_warning_seconds, now, source)`
 truncates `now` to microseconds, queries, then runs `evaluate_samples`;
 `EvaluationError` (`Query(E)` or the Python exception) displays as `str(err)`
-for the `evaluation error: …` message of 3.5. Time runs on Python's
+internally; section 3.5 persists only its safe category. Time runs on Python's
 microsecond timeline (`timestamp_micros`); `pycompat::py_timedelta_minutes`
 and `py_datetime_add` raise CPython's `OverflowError` texts (P2) for a
 `breach_minutes` beyond `timedelta`'s range or a window outside
@@ -1565,7 +1577,7 @@ As implemented in S9a: five rounds, each a `--run-once` of both agents at
 the same time with the same environment, varying `INFLUX_API_MODE` (`v2`,
 `v2`, `v3`, `auto` with the fake's Flux endpoint answering 404) and ending
 without `INFLUX_TOKEN` (the lazy configuration errors of 3.3, also on the
-page probe's warning path, `collector raised …`). The collector fakes script
+page probe's warning path, `collector failure: …`). The collector fakes script
 by request index per path; the fake InfluxDB keys its query scripts by the
 queried metric and advances one entry per answered query (Flux or SQL), so
 an `auto` round's 404 does not consume one. The UniFi fakes serve TLS with a

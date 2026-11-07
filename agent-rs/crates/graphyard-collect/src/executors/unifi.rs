@@ -13,6 +13,7 @@
 
 use std::sync::OnceLock;
 
+use graphyard_core::diagnostics::collector_failure;
 use num_traits::Zero as _;
 use regex::Regex;
 use serde_json::{Map, Value};
@@ -101,25 +102,24 @@ pub const TRANSMIT_METRIC: &str = "network_device.network_transmit_bytes_per_sec
 /// `_unifi_response_summary` keeps this many characters.
 const SUMMARY_CHARS: usize = 240;
 
-/// A failure inside the executor's `try` block: `str(err)` becomes the
-/// `critical` message.
+/// A failure inside the executor's `try` block, already normalized for persistence.
 struct Failure(String);
 
 impl From<HttpError> for Failure {
     fn from(err: HttpError) -> Self {
-        Self(err.message)
+        Self(err.safe_message())
     }
 }
 
 impl From<PyError> for Failure {
     fn from(err: PyError) -> Self {
-        Self(err.message)
+        Self(collector_failure(err.python_class()))
     }
 }
 
 impl From<SinkError> for Failure {
     fn from(err: SinkError) -> Self {
-        Self(err.message)
+        Self(collector_failure(&err.class))
     }
 }
 
@@ -233,7 +233,7 @@ pub async fn execute_unifi_device_traffic<S: MetricSink>(
         return Ok(critical(*message));
     }
 
-    // The `try` block: any exception is `critical, 0, 0, str(err)`.
+    // The `try` block: any exception is `critical, 0, 0, <safe metadata>`.
     Ok(collect(http, sink, &spec)
         .await
         .unwrap_or_else(|Failure(message)| critical(message)))
@@ -244,7 +244,6 @@ async fn collect<S: MetricSink>(
     sink: &S,
     spec: &UnifiSpec<'_>,
 ) -> Result<SpecOutcome, Failure> {
-    let redactions = [spec.username.as_str(), spec.password.as_str()];
     let client = HttpClient::new(
         http,
         &ClientOptions::new(spec.timeout_seconds, spec.verify_tls)
@@ -282,22 +281,17 @@ async fn collect<S: MetricSink>(
                     send_unifi_request(client, request, &mut remaining, spec.max_body_bytes)
                         .await?;
                 if !(200..300).contains(&response.status) {
-                    return Err(Failure(response_error(
-                        response.status,
-                        &body,
-                        &endpoint,
-                        &redactions,
-                    )));
+                    return Err(Failure(collector_failure("ValueError")));
                 }
                 let payload = response_json(&body)?;
                 deadline.check()?;
                 Ok(payload)
             }
             .await;
-            result.map_err(|Failure(message)| HttpError::new(ErrorKind::ValueError, message))
+            Ok(result)
         },
     )
-    .await?;
+    .await??;
 
     let Some(payload) = payload.as_object() else {
         return Ok(critical("device response is not an object"));
@@ -383,17 +377,12 @@ async fn login(
         attempts.push(("unifi_os", "/api/auth/login", "/proxy/network/api"));
     }
     if attempts.is_empty() {
-        return Err(Failure(format!(
-            "unsupported UniFi auth_mode: {}",
-            spec.auth_mode
-        )));
+        return Err(Failure(collector_failure("ValueError")));
     }
 
     let body = login_body(&spec.username, &spec.password);
     let content_length = body.len().to_string();
-    let redactions = [spec.username.as_str(), spec.password.as_str()];
-    let mut errors = Vec::new();
-    for (mode, login_path, api_prefix) in attempts {
+    for (_mode, login_path, api_prefix) in attempts {
         // `client.post(url, json=payload, headers=headers)`: the explicit
         // headers, then httpx's `Content-Length` for the JSON body.
         let request = client.build_request(
@@ -417,15 +406,8 @@ async fn login(
             }
             return Ok((api_prefix, headers));
         }
-        errors.push(format!(
-            "{mode} {}",
-            response_error(response.status, &response_body, login_path, &redactions)
-        ));
     }
-    Err(Failure(format!(
-        "UniFi login failed; attempts: {}",
-        errors.join("; ")
-    )))
+    Err(Failure(collector_failure("ValueError")))
 }
 
 /// The JSON body of `client.post(..., json={"username": …, "password": …,

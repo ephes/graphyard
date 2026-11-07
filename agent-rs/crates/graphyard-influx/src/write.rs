@@ -326,8 +326,10 @@ impl InfluxWriter {
             }
         })?;
         let status = response.status();
-        log::info!(target: "httpx", "HTTP Request: POST {url} \"{:?} {} {}\"",
-            response.version(), status.as_u16(), String::from_utf8_lossy(&crate::query::reason_phrase(&response)));
+        log::info!(
+            "Influx HTTP response: method=POST status={}",
+            status.as_u16()
+        );
         let headers: Vec<String> = response
             .headers()
             .iter()

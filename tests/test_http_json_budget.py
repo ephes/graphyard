@@ -55,7 +55,7 @@ def test_streaming_json_byte_budget(monkeypatch, oversize, compressed):
     assert len(captured) == (0 if oversize else 1)
     assert spec.last_status == (StatusLevel.CRITICAL if oversize else StatusLevel.OK)
     if oversize:
-        assert "max_body_bytes=64" in spec.last_error
+        assert "_PageProbeLimitExceeded" in spec.last_error
 
 
 @pytest.mark.django_db
@@ -85,7 +85,7 @@ def test_dripping_json_total_deadline(monkeypatch, config):
         assert elapsed >= 1.4
     assert result.failed == 1
     assert not captured
-    assert "total_timeout_seconds" in spec.last_error
+    assert "_PageProbeDeadlineExceeded" in spec.last_error
 
 
 @pytest.mark.django_db

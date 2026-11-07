@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Normalize Python/Rust collector errors before persistence to allowlisted types
+  or numeric HTTP status; omit exception text, URL credentials and remote bodies
+  from failure records and collector logs. Keep configuration validation messages.
+- Emit safe per-condition failure events with ID, evaluation/publication stage
+  and error category in both runtimes; continue after failed fallback publication.
+
 - Return structured HTTP 503 health evidence on database failures, stop dependent
   reads and report unknown counts rather than a generic server error.
 - Treat missing or implausibly future heartbeat success as at least warning;

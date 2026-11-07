@@ -90,7 +90,14 @@ fn check_common(case: &Value, server: &Server, error: Option<&HttpError>) {
         .as_array()
         .expect("log")
         .iter()
-        .map(|line| localise(line.as_str().expect("log line"), &origin))
+        .map(|line| {
+            let line = localise(line.as_str().expect("log line"), &origin);
+            let parts: Vec<_> = line.split_whitespace().collect();
+            format!(
+                "Collector HTTP response: method={} status={}",
+                parts[2], parts[5]
+            )
+        })
         .collect();
     assert_eq!(logs::lines(), expected_log, "log of {name}");
     match (case.get("error"), error) {

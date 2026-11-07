@@ -142,8 +142,9 @@ UniFi device traffic specs log in to the local controller and emit canonical
 The default `auth_mode=auto` tries the classic Network Application path
 (`POST /api/login`, then `/api/s/<site>/stat/device`) and falls back to the
 UniFi OS path (`POST /api/auth/login`, then
-`/proxy/network/api/s/<site>/stat/device`). Collector failures include the
-endpoint, HTTP status, and a short response summary in `last_error`.
+`/proxy/network/api/s/<site>/stat/device`). Collector failures retain bounded error categories in `last_error` (login/device
+refusals are `ValueError`); remote response bodies and credential-bearing URLs
+are omitted. See README's collector diagnostics contract.
 
 HTTP page probe specs fetch public pages with `GET` from the Graphyard agent host
 and emit bounded service-subject metrics:

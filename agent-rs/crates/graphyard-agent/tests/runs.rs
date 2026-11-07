@@ -246,11 +246,11 @@ async fn a_panicking_executor_is_isolated() {
     let spec = "metric_collection_spec";
     assert_eq!(
         db.text(spec, "a panicking", "last_error"),
-        "collector raised panic: index out of bounds"
+        "collector failure: panic"
     );
     assert_eq!(
         db.text(spec, "b formatted panic", "last_error"),
-        "collector raised panic: formatted 42"
+        "collector failure: panic"
     );
     assert_eq!(db.text(spec, "c good", "last_status"), "ok");
     assert_eq!(

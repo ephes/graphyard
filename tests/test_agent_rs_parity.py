@@ -190,7 +190,8 @@ def test_operator_lines_keep_the_documented_lines_only():
         [
             "graphyard-agent 0.1.0 (abc)",
             'HTTP Request: GET http://127.0.0.1:4711/x "HTTP/1.1 200 OK"',
-            "Metric collection spec 'p' (http_page_probe) raised",
+            "Collector failure spec_id=1 category=RuntimeError",
+            "Condition failure condition_id=2 stage=publication category=IntegrityError failure_published=false",
             "Traceback (most recent call last):",
             "Metric collection spec 'p' (http_page_probe) raised: E: boom",
             "Ignoring host_filter for non-host condition id=7 name=n",
@@ -200,9 +201,8 @@ def test_operator_lines_keep_the_documented_lines_only():
         ]
     )
     assert run_parity.operator_lines(stderr, [("127.0.0.1:4711", "<http>")]) == [
-        'HTTP Request: GET http://<http>/x "HTTP/1.1 200 OK"',
-        "Metric collection spec 'p' (http_page_probe) raised",
-        "Metric collection spec 'p' (http_page_probe) raised",
+        "Collector failure spec_id=1 category=RuntimeError",
+        "Condition failure condition_id=2 stage=publication category=IntegrityError failure_published=false",
         "Ignoring host_filter for non-host condition id=7 name=n",
         "Spec s missing config.subject_mapping; using default entity_name_slug mapping",
         "CommandError: 2 condition evaluation(s) failed.",

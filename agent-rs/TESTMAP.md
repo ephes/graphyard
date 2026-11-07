@@ -265,3 +265,12 @@ before reading. Decoder tests pin high-ratio gzip/zlib/raw-deflate, stacked
 intermediate growth and normal split chunks. This intentional tighter allocation
 bound precedes Python's general post-decode check; accepted ordinary fixtures
 stay identical. Login admission is a Python web concern, not an agent change.
+
+## Safe failure diagnostics
+
+- `graphyard-agent/tests/diagnostics.rs`: production run boundaries with synthetic
+  collector/query faults and SQLite publication triggers; safe persisted messages,
+  one condition ID/stage/category event and continuation after failed fallback.
+  Real loopback HTTP 503 includes invented URL credentials/body/reason markers.
+- Python counterparts: `tests/test_collector_error_privacy.py` and
+  `tests/test_condition_failure_diagnostics.py`; health output and logs are checked.

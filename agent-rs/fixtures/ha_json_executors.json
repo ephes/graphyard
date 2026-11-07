@@ -422,7 +422,7 @@
     "critical",
     0,
     0,
-    "Client error '404 Not Found' for url 'http://fixture.test/api/states/sensor.office_temperature'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+    "collector HTTP error: status=404"
    ],
    "requests": [
     {
@@ -461,7 +461,7 @@
     "critical",
     0,
     0,
-    "Redirect response '302 Found' for url 'http://fixture.test/api/states/sensor.office_temperature'\nRedirect location: '/elsewhere'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/302"
+    "collector HTTP error: status=302"
    ],
    "requests": [
     {
@@ -495,7 +495,7 @@
     "critical",
     0,
     0,
-    "Expecting value: line 1 column 11 (char 10)"
+    "collector failure: JSONDecodeError"
    ],
    "outcome_p2_prefix": "",
    "requests": [
@@ -530,7 +530,7 @@
     "critical",
     0,
     0,
-    "response body exceeded max_body_bytes=146"
+    "collector failure: _PageProbeLimitExceeded"
    ],
    "requests": [
     {
@@ -662,7 +662,7 @@
     "critical",
     0,
     0,
-    "response body exceeded max_body_bytes=146"
+    "collector failure: _PageProbeLimitExceeded"
    ],
    "requests": [
     {
@@ -696,7 +696,7 @@
     "critical",
     0,
     0,
-    "influx write failed"
+    "collector failure: RuntimeError"
    ],
    "requests": [
     {
@@ -760,7 +760,7 @@
     "critical",
     0,
     0,
-    "database is locked"
+    "collector failure: RuntimeError"
    ],
    "requests": [
     {
@@ -853,7 +853,7 @@
     "critical",
     0,
     0,
-    "Invalid subject_id '': expected lowercase snake_case identifier"
+    "collector failure: ValueError"
    ],
    "requests": [
     {
@@ -918,7 +918,7 @@
     "critical",
     0,
     0,
-    "Invalid port: ':1'"
+    "collector failure: InvalidURL"
    ],
    "requests": [],
    "written": null,
@@ -2150,7 +2150,7 @@
     "critical",
     0,
     0,
-    "Invalid subject_id '': expected lowercase snake_case identifier"
+    "collector failure: ValueError"
    ],
    "requests": [
     {
@@ -2184,7 +2184,7 @@
     "critical",
     0,
     0,
-    "write failed"
+    "collector failure: RuntimeError"
    ],
    "requests": [
     {
@@ -2276,7 +2276,7 @@
     "critical",
     0,
     0,
-    "Server error '503 Service Unavailable' for url 'http://fixture.test/api/states'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/503"
+    "collector HTTP error: status=503"
    ],
    "requests": [
     {
@@ -3744,7 +3744,7 @@
     "critical",
     0,
     0,
-    "Server error '500 Internal Server Error' for url 'http://fixture.test/health'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/500"
+    "collector HTTP error: status=500"
    ],
    "requests": [
     {
@@ -4074,7 +4074,7 @@
     "critical",
     0,
     0,
-    "Exceeds the limit (4300 digits) for integer string conversion: value has 4301 digits; use sys.set_int_max_str_digits() to increase the limit"
+    "collector failure: ValueError"
    ],
    "requests": [
     {
@@ -4108,7 +4108,7 @@
     "critical",
     0,
     0,
-    "Exceeds the limit (4300 digits) for integer string conversion: value has 4301 digits; use sys.set_int_max_str_digits() to increase the limit"
+    "collector failure: ValueError"
    ],
    "requests": [
     {
@@ -4170,7 +4170,7 @@
     "critical",
     0,
     0,
-    "Invalid port: ':1'"
+    "collector failure: InvalidURL"
    ],
    "requests": [],
    "written": null,
@@ -4195,7 +4195,7 @@
     "critical",
     0,
     0,
-    "(400)\nReason: Bad Request\n"
+    "collector failure: RuntimeError"
    ],
    "requests": [
     {
@@ -4250,7 +4250,7 @@
     "critical",
     0,
     0,
-    "Invalid subject_id '': expected lowercase snake_case identifier"
+    "collector failure: RuntimeError"
    ],
    "requests": [
     {

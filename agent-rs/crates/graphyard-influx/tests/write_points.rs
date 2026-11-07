@@ -421,7 +421,16 @@ async fn run_case(writer: &InfluxWriter, case: &Value) {
                 .unwrap_or(&record["message"])
                 .as_str()
                 .expect("message");
-            (s(record, "level").to_owned(), message.to_owned())
+            let message = if message.starts_with("HTTP Request: ") {
+                let parts: Vec<_> = message.split_whitespace().collect();
+                format!(
+                    "Influx HTTP response: method={} status={}",
+                    parts[2], parts[5]
+                )
+            } else {
+                message.to_owned()
+            };
+            (s(record, "level").to_owned(), message)
         })
         .collect();
     let records: Vec<(String, String)> = records

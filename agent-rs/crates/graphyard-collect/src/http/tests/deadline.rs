@@ -274,7 +274,10 @@ async fn lookup_finishing_after_the_deadline_never_reaches_the_server() {
         ..StubLookup::loopback()
     });
     let context = HttpContext::new().with_lookup(lookup.clone());
-    let url = format!("http://slow.test:{}/", server.port());
+    let url = format!(
+        "http://user:invented-url-marker@slow.test:{}/?key=invented-url-marker",
+        server.port()
+    );
     logs::capture();
     let started = Instant::now();
     let result = probe_with_deadline(&context, &url, 2.0, 0.3).await;
@@ -287,9 +290,7 @@ async fn lookup_finishing_after_the_deadline_never_reaches_the_server() {
     assert_eq!(context.live_abandoned(), 1);
     assert_eq!(
         logs::lines(),
-        [format!(
-            "HTTP collector worker for {url} still running after it was cancelled"
-        )]
+        ["HTTP collector worker still running after cancellation"]
     );
     let give_up = Instant::now() + Duration::from_secs(4);
     while context.live_abandoned() > 0 && Instant::now() < give_up {

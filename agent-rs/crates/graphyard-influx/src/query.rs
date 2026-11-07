@@ -157,10 +157,8 @@ impl QueryClient {
             .map_err(|err| transport_error(&err, &target, timeout))?;
         let status = response.status();
         log::info!(
-            "HTTP Request: POST {url} \"{:?} {} {}\"",
-            response.version(),
-            status.as_u16(),
-            String::from_utf8_lossy(&reason_phrase(&response))
+            "Influx HTTP response: method=POST status={}",
+            status.as_u16()
         );
         if !status.is_success() {
             let reason = latin1(&reason_phrase(&response));
@@ -255,10 +253,8 @@ impl QueryClient {
             .map_err(|err| sql_failed(httpx_error_class(&err)))?;
         let status = response.status();
         log::info!(
-            "HTTP Request: POST {url} \"{:?} {} {}\"",
-            response.version(),
-            status.as_u16(),
-            String::from_utf8_lossy(&reason_phrase(&response))
+            "Influx HTTP response: method=POST status={}",
+            status.as_u16()
         );
         if status == StatusCode::NOT_FOUND {
             return Err(QueryError::config(

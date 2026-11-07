@@ -206,10 +206,7 @@ fn run_once_calls_both_loops_and_writes_only_to_the_file() {
     );
     let stderr = text(&output.stderr);
     assert!(
-        stderr.contains(&format!(
-            "HTTP Request: GET {} \"HTTP/1.1 200 OK\"\n",
-            server.url("/value")
-        )),
+        stderr.contains("Collector HTTP response: method=GET status=200\n"),
         "{stderr}"
     );
     // The query reached the fake InfluxDB, no write request did.

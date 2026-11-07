@@ -111,7 +111,7 @@ def test_whole_collection_body_budget(monkeypatch, stage):
 
     outcome, write = run(monkeypatch, handler, max_body_bytes=128)
     assert outcome[0] == "critical"
-    assert "max_body_bytes=128" in outcome[3]
+    assert "_PageProbeLimitExceeded" in outcome[3]
     write.assert_not_called()
 
 
@@ -131,7 +131,7 @@ def test_collection_deadline_includes_fallback(monkeypatch):
         monkeypatch, handler, auth_mode="auto", total_timeout_seconds=0.06
     )
     assert outcome[0] == "critical"
-    assert "total_timeout_seconds" in outcome[3]
+    assert "_PageProbeDeadlineExceeded" in outcome[3]
     write.assert_not_called()
     assert len(seen) == 2
 
@@ -167,6 +167,6 @@ def test_collection_deadline_also_covers_device_read(monkeypatch):
         monkeypatch, handler, auth_mode="auto", total_timeout_seconds=0.05
     )
     assert outcome[0] == "critical"
-    assert "total_timeout_seconds" in outcome[3]
+    assert "_PageProbeDeadlineExceeded" in outcome[3]
     assert len(seen) == 3
     write.assert_not_called()

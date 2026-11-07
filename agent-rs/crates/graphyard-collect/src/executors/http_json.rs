@@ -3,6 +3,7 @@
 //! redirects, body cap, total deadline), pick one value with the metric
 //! path and write it as one point.
 
+use graphyard_core::diagnostics::collector_failure;
 use serde_json::Value;
 
 use graphyard_core::json_path::resolve_json_path;
@@ -95,14 +96,14 @@ pub async fn execute_http_json_metric<S: MetricSink>(
     let client = HttpClient::new(http, &options);
     let payload = match read_json_with_deadline(&client, &url, knobs).await {
         Ok(payload) => payload,
-        Err(err) => return Ok(critical(err.message)),
+        Err(err) => return Ok(critical(err.safe_message())),
     };
     drop(client);
 
     let raw_value = match resolve_json_path(&payload, &metric_path) {
         Ok(Some(raw_value)) => raw_value,
         Ok(None) => return Ok(warning(1, format!("metric_path not found: {metric_path}"))),
-        Err(err) => return Ok(critical(err.message)),
+        Err(err) => return Ok(critical(collector_failure(err.python_class()))),
     };
     let Ok(metric_value) = parse_finite_float(raw_value) else {
         return Ok(warning(1, "metric value is not a finite number"));

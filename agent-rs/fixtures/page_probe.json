@@ -3479,7 +3479,7 @@
     "warning",
     2,
     0,
-    "response body exceeded max_body_bytes=4"
+    "collector failure: _PageProbeLimitExceeded"
    ],
    "p2": false,
    "requests": [
@@ -3633,7 +3633,7 @@
     "warning",
     2,
     0,
-    "response body exceeded max_body_bytes=64"
+    "collector failure: _PageProbeLimitExceeded"
    ],
    "p2": false,
    "requests": [
@@ -3794,7 +3794,7 @@
     "warning",
     2,
     0,
-    "response body exceeded max_body_bytes=4"
+    "collector failure: _PageProbeLimitExceeded"
    ],
    "p2": false,
    "requests": [
@@ -4194,7 +4194,7 @@
     "warning",
     2,
     0,
-    "Exceeded maximum allowed redirects."
+    "collector failure: TooManyRedirects"
    ],
    "p2": false,
    "requests": [
@@ -4587,7 +4587,7 @@
     "warning",
     2,
     0,
-    "Invalid URL in location header: Invalid port: ':1'."
+    "collector failure: RemoteProtocolError"
    ],
    "p2": false,
    "requests": [
@@ -4727,7 +4727,7 @@
     "critical",
     0,
     0,
-    "Invalid port: ':1'"
+    "collector failure: InvalidURL"
    ],
    "p2": false,
    "requests": [],
@@ -4933,7 +4933,7 @@
     "critical",
     0,
     0,
-    "influx write failed"
+    "collector failure: RuntimeError"
    ],
    "p2": false,
    "requests": [
@@ -5099,7 +5099,7 @@
     "critical",
     0,
     0,
-    "registry failed"
+    "collector failure: RuntimeError"
    ],
    "p2": false,
    "requests": [

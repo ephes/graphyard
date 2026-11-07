@@ -5,6 +5,7 @@
 //! section 9.2).
 
 pub mod conditions;
+pub mod diagnostics;
 #[cfg(test)]
 mod fixture;
 pub mod home_assistant;

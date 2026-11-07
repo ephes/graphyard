@@ -99,7 +99,7 @@ def test_unexpected_collector_exception_is_isolated(
     crashing.refresh_from_db()
     good.refresh_from_db()
     assert crashing.last_status == StatusLevel.CRITICAL
-    assert crashing.last_error == "collector raised RuntimeError: collector bug"
+    assert crashing.last_error == "collector failure: RuntimeError"
     assert crashing.next_run_time > 0
     assert good.last_status == StatusLevel.OK
 
@@ -228,7 +228,7 @@ def test_page_probe_body_cap_records_failure(db, monkeypatch):
         "service.http_page_success": 0.0,
     }
     spec.refresh_from_db()
-    assert "max_body_bytes=4" in spec.last_error
+    assert "_PageProbeLimitExceeded" in spec.last_error
 
 
 def _mock_transport_client(monkeypatch, handler) -> None:
@@ -262,7 +262,7 @@ def test_page_probe_redirect_body_counts_toward_cap(db, monkeypatch):
         "service.http_page_success": 0.0,
     }
     spec.refresh_from_db()
-    assert "max_body_bytes=4" in spec.last_error
+    assert "_PageProbeLimitExceeded" in spec.last_error
 
 
 def test_page_probe_follows_redirects_with_real_client(db, monkeypatch):
