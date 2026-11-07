@@ -274,3 +274,17 @@ stay identical. Login admission is a Python web concern, not an agent change.
   Real loopback HTTP 503 includes invented URL credentials/body/reason markers.
 - Python counterparts: `tests/test_collector_error_privacy.py` and
   `tests/test_condition_failure_diagnostics.py`; health output and logs are checked.
+
+## Real AgentSink publication failures
+
+`graphyard-agent/tests/collectors.rs` covers the real HTTP JSON executor and
+Influx/Store adapter through the metrics run, independently of the fake-sink
+executor fixtures and successful shadow-file isolation tests:
+
+- HTTP rejection and disconnect after a complete write: one outbound attempt,
+  critical spec bookkeeping, no registry rows for that spec, successful sibling.
+- Acknowledged write followed by a targeted registry INSERT failure: atomic
+  registry rollback, critical bookkeeping, no immediate replay, successful
+  sibling and recovery in a later invocation after removing the trigger.
+
+All endpoints and data are synthetic; no production Influx or host is needed.

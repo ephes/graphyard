@@ -476,3 +476,27 @@ logs contain only method/status. Condition ERROR events report condition ID,
 as storage errors; later
 conditions run even if that fallback fails. See `tests/diagnostics.rs` and
 [TESTMAP](TESTMAP.md). No migration rewrites historical messages.
+
+## Collector publication boundary
+
+`AgentSink` sends each batch to Influx before touching the SQLite registry.
+An HTTP rejection or a disconnect after receiving the write fails that spec,
+leaves its registry rows untouched and does not retry the write within that
+invocation. Later independent specs still run. A disconnect can leave remote
+acceptance uncertain.
+
+If Influx acknowledges the write but registry bookkeeping fails, the spec is
+critical with zero reported ingested points even though Influx already accepted
+them. The registry transaction rolls back in full; the remote write cannot be
+rolled back and is not repeated within that invocation. A later scheduled or
+explicit invocation may send those points again: this is not exactly-once
+delivery across retries. Recovery belongs to the existing scheduler/operator,
+without a new sink retry policy.
+
+`crates/graphyard-agent/tests/collectors.rs` exercises these boundaries through
+`run_metric_specs`, the real HTTP JSON executor, `AgentSink`, `InfluxWriter` and
+`Store`, using a synthetic loopback Influx endpoint and temporary SQLite schema.
+It covers HTTP rejection, disconnect, a targeted service-registry INSERT trigger
+(after subject/host creation), sibling isolation and recovery after trigger
+removal. Run it with `cargo test -p graphyard-agent --test collectors --locked`
+from `agent-rs/`.

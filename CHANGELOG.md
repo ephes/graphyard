@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Cover real Rust collector publication failures with synthetic Influx rejection,
+  disconnect and SQLite registry-trigger tests; document write-before-registry,
+  atomic bookkeeping rollback and the partial-success boundary without replay
+  within an invocation or an exactly-once promise across retries.
+
 - Fence Python/Rust collector result publication against definition edits,
   disabling, deletion and replaced schedules, including explicit manual runs.
 - Exclude superseded collector outcomes from current run counts and heartbeats;
