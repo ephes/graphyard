@@ -367,17 +367,21 @@ _CONDITION_DEFINITION_FIELDS = (
 
 def _publish_condition_result(
     condition_id: int, attempted_at: datetime, *, definition: dict, **fields
-) -> None:
+) -> bool:
     """Publish only if no equally new or newer attempt has already finished.
 
     Failed attempts advance the watermark too, retaining the previous value.
     Deleted conditions and superseded publications are harmless no-ops.
     """
-    ConditionDefinition.objects.alias(
-        tags_filter_text=Cast("tags_filter", TextField())
-    ).filter(pk=condition_id, enabled=True).filter(**definition).filter(
-        Q(last_evaluated__isnull=True) | Q(last_evaluated__lt=attempted_at)
-    ).update(last_evaluated=attempted_at, **fields)
+    return bool(
+        ConditionDefinition.objects.alias(
+            tags_filter_text=Cast("tags_filter", TextField())
+        )
+        .filter(pk=condition_id, enabled=True)
+        .filter(**definition)
+        .filter(Q(last_evaluated__isnull=True) | Q(last_evaluated__lt=attempted_at))
+        .update(last_evaluated=attempted_at, **fields)
+    )
 
 
 def evaluate_conditions_once(
@@ -416,14 +420,13 @@ def evaluate_conditions_once(
             category = error_category(err)
             failure_published = False
             try:
-                _publish_condition_result(
+                failure_published = _publish_condition_result(
                     condition.pk,
                     attempted_at,
                     definition=definition,
                     status=StatusLevel.CRITICAL,
                     message=f"evaluation error: {category}",
                 )
-                failure_published = True
             except Exception:  # noqa: BLE001
                 # A failed fallback publication must not stop later conditions.
                 pass
@@ -2099,9 +2102,23 @@ def _claim_due_collection_spec(
     )
 
 
-def _finish_due_collection_spec(spec_id: int, claim_until: int, **fields) -> None:
-    MetricCollectionSpec.objects.filter(pk=spec_id, next_run_time=claim_until).update(
-        **fields
+_COLLECTION_DEFINITION_FIELDS = (
+    "name",
+    "spec_type",
+    "interval_seconds",
+    "config_text",
+)
+
+
+def _finish_due_collection_spec(
+    spec_id: int, expected_schedule: int, *, definition: dict, **fields
+) -> bool:
+    """Publish only for the captured definition and scheduling owner."""
+    return bool(
+        MetricCollectionSpec.objects.alias(config_text=Cast("config", TextField()))
+        .filter(pk=spec_id, enabled=True, next_run_time=expected_schedule)
+        .filter(**definition)
+        .update(**fields)
     )
 
 
@@ -2113,7 +2130,9 @@ def run_metric_collection_specs_once(
     now = timezone.now()
     now_ts = int(now.timestamp())
 
-    queryset = MetricCollectionSpec.objects.filter(enabled=True)
+    queryset = MetricCollectionSpec.objects.annotate(
+        config_text=Cast("config", TextField())
+    ).filter(enabled=True)
     if due_only:
         queryset = queryset.filter(next_run_time__lte=now_ts)
 
@@ -2133,6 +2152,10 @@ def run_metric_collection_specs_once(
     error_messages: list[str] = []
 
     for spec in specs:
+        definition = {
+            field: getattr(spec, field) for field in _COLLECTION_DEFINITION_FIELDS
+        }
+        expected_schedule = spec.next_run_time
         run_at = timezone.now() if due_only else now
         run_ts = int(run_at.timestamp())
         interval = max(1, int(spec.interval_seconds))
@@ -2144,36 +2167,23 @@ def run_metric_collection_specs_once(
             claim_until,
         ):
             continue
-        total += 1
         status, item_ingested, item_skipped, error_msg = (
             _run_single_metric_collection_spec(spec)
         )
+        if not _finish_due_collection_spec(
+            spec.pk,
+            claim_until if due_only else expected_schedule,
+            definition=definition,
+            last_run_at=run_at,
+            last_status=status,
+            last_error=error_msg,
+            next_run_time=run_ts + interval,
+        ):
+            logger.info("Collection superseded spec_id=%s", spec.pk)
+            continue
+        total += 1
         ingested += item_ingested
         skipped += item_skipped
-
-        if due_only:
-            # A lease may expire during I/O. A newer claimant owns completion.
-            _finish_due_collection_spec(
-                spec.pk,
-                claim_until,
-                last_run_at=run_at,
-                last_status=status,
-                last_error=error_msg,
-                next_run_time=run_ts + interval,
-            )
-        else:
-            spec.last_run_at = now
-            spec.last_status = status
-            spec.last_error = error_msg
-            spec.next_run_time = now_ts + interval
-            spec.save(
-                update_fields=[
-                    "last_run_at",
-                    "last_status",
-                    "last_error",
-                    "next_run_time",
-                ]
-            )
 
         if status == StatusLevel.CRITICAL:
             failed += 1

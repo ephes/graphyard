@@ -248,9 +248,9 @@ def _metric_scenarios() -> list[dict[str, Any]]:
             "scripts": {},
         },
         {
-            # A spec deleted after the load: its save matches no row and the
-            # run aborts without a heartbeat (the earlier rows stay written).
-            "name": "spec_deleted_during_run_aborts",
+            # A spec deleted after load is superseded; only accepted results
+            # contribute to the heartbeat.
+            "name": "spec_deleted_during_run_is_superseded",
             "kind": "metrics",
             "due_only": False,
             "seed": {

@@ -152,6 +152,13 @@ async fn run_case(case: &Value) {
             .map(|_| None),
         "finish_claimed_spec" => store
             .finish_claimed_spec(
+                store
+                    .load_specs(None)
+                    .await
+                    .unwrap()
+                    .into_iter()
+                    .find(|s| s.id == op["id"].as_i64().unwrap())
+                    .unwrap(),
                 SpecRunUpdate {
                     id: op["id"].as_i64().unwrap(),
                     last_run_at: at,
@@ -162,7 +169,7 @@ async fn run_case(case: &Value) {
                 op["claim_until"].as_i64().unwrap(),
             )
             .await
-            .map(|()| None),
+            .map(|_| None),
         "load_conditions" => store
             .load_conditions(op["condition_id"].as_i64())
             .await
@@ -178,7 +185,7 @@ async fn run_case(case: &Value) {
                 },
             )
             .await
-            .map(|()| None),
+            .map(|_| None),
         "update_condition_failure" => store
             .update_condition_failure(
                 definition.unwrap(),
@@ -187,7 +194,7 @@ async fn run_case(case: &Value) {
                 at,
             )
             .await
-            .map(|()| None),
+            .map(|_| None),
         "record_heartbeat" => store
             .record_heartbeat(
                 HeartbeatRecord {

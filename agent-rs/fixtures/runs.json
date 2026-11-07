@@ -952,7 +952,7 @@
    }
   },
   {
-   "name": "spec_deleted_during_run_aborts",
+   "name": "spec_deleted_during_run_is_superseded",
    "kind": "metrics",
    "due_only": false,
    "seed": {
@@ -1009,9 +1009,12 @@
      ]
     }
    },
-   "error": {
-    "class": "NotUpdated",
-    "message": "Save with update_fields did not affect any rows."
+   "result": {
+    "total": 1,
+    "failed": 0,
+    "warning": 0,
+    "ingested": 1,
+    "skipped": 0
    },
    "after": {
     "metric_collection_spec": [
@@ -1031,7 +1034,17 @@
      }
     ],
     "condition_definition": [],
-    "pipeline_heartbeat": []
+    "pipeline_heartbeat": [
+     {
+      "id": 1,
+      "name": "metric_collectors",
+      "status": "ok",
+      "last_success": "2026-10-21 08:15:30.123456",
+      "last_error": "",
+      "details": "{\"total\": 1, \"failed\": 0, \"warning\": 0, \"ingested\": 1, \"skipped\": 0}",
+      "updated_at": "2026-10-21 08:15:30.123456"
+     }
+    ]
    }
   },
   {
