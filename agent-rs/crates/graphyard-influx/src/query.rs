@@ -30,7 +30,8 @@ use crate::flux::{flux_query, flux_request_body, flux_samples, parse_annotated_c
 use crate::sql::{sql_query, sql_samples};
 use crate::window::{ConditionQuery, QueryRange, condition_window};
 use crate::write::{
-    Target, USER_AGENT_VALUE, build_client, quote_plus, transport_error, urllib3_url,
+    Target, USER_AGENT_VALUE, bounded_body, budget_error, build_client, quote_plus,
+    transport_error, urllib3_url,
 };
 
 /// `influx.SQL_QUERY_MAX_BODY_BYTES`: the decoded v3 response cap.
@@ -48,6 +49,8 @@ pub struct QueryClient {
     mode: InfluxApiMode,
     sql_total_timeout: Duration,
     sql_max_body_bytes: usize,
+    flux_total_timeout: Duration,
+    flux_max_body_bytes: usize,
 }
 
 impl QueryClient {
@@ -58,6 +61,8 @@ impl QueryClient {
             mode: settings.influx_api_mode(),
             sql_total_timeout: SQL_QUERY_TOTAL_TIMEOUT,
             sql_max_body_bytes: SQL_QUERY_MAX_BODY_BYTES,
+            flux_total_timeout: Duration::from_secs(30),
+            flux_max_body_bytes: 10 * 1024 * 1024,
         }
     }
 
@@ -67,6 +72,13 @@ impl QueryClient {
     pub fn with_sql_limits(mut self, total_timeout: Duration, max_body_bytes: usize) -> Self {
         self.sql_total_timeout = total_timeout;
         self.sql_max_body_bytes = max_body_bytes;
+        self
+    }
+
+    /// Override Flux transfer budgets for synthetic tests.
+    pub fn with_flux_limits(mut self, total_timeout: Duration, max_body_bytes: usize) -> Self {
+        self.flux_total_timeout = total_timeout;
+        self.flux_max_body_bytes = max_body_bytes;
         self
     }
 
@@ -106,6 +118,12 @@ impl QueryClient {
     /// `_query_range_v2_flux` through `influx._build_client()` and
     /// `QueryApi.query`.
     async fn query_v2(&self, range: &QueryRange) -> Result<Vec<MetricSample>, QueryError> {
+        tokio::time::timeout(self.flux_total_timeout, self.query_v2_exchange(range))
+            .await
+            .unwrap_or_else(|_| Err(budget_error("Flux", "total deadline", &[]).into()))
+    }
+
+    async fn query_v2_exchange(&self, range: &QueryRange) -> Result<Vec<MetricSample>, QueryError> {
         let settings = &self.settings;
         let flux = flux_query(range, &settings.influx_bucket, &settings.influx_measurement);
         let config =
@@ -126,7 +144,7 @@ impl QueryClient {
         // deflate response anyway; reqwest decodes too when the header is set
         // explicitly.
         let request = client
-            .post(url)
+            .post(url.clone())
             .header(ACCEPT_ENCODING, "identity")
             .header(ACCEPT, "application/json")
             .header(CONTENT_TYPE, "application/json")
@@ -138,24 +156,31 @@ impl QueryClient {
             .await
             .map_err(|err| transport_error(&err, &target, timeout))?;
         let status = response.status();
+        log::info!(
+            "HTTP Request: POST {url} \"{:?} {} {}\"",
+            response.version(),
+            status.as_u16(),
+            String::from_utf8_lossy(&reason_phrase(&response))
+        );
         if !status.is_success() {
             let reason = latin1(&reason_phrase(&response));
             let headers = response.headers().clone();
             // `ApiException` reads the body; a broken read raises urllib3's
             // error instead (and is no 404 for the auto fallback).
-            let body = response
-                .bytes()
-                .await
-                .map_err(|err| transport_error(&err, &target, timeout))?;
+            let body =
+                bounded_body(response, self.flux_max_body_bytes, "Flux", &target, timeout).await?;
             return Err(QueryError::Api {
                 status: status.as_u16(),
-                message: api_exception_text(status, &reason, &headers, &body),
+                message: api_exception_text(
+                    status,
+                    &reason,
+                    &headers,
+                    &body[..body.len().min(crate::write::ERROR_DIAGNOSTIC_BYTES)],
+                ),
             });
         }
-        let body = response
-            .bytes()
-            .await
-            .map_err(|err| transport_error(&err, &target, timeout))?;
+        let body =
+            bounded_body(response, self.flux_max_body_bytes, "Flux", &target, timeout).await?;
         let records = parse_annotated_csv(&body)?;
         flux_samples(&records, &range.metric)
     }
@@ -354,7 +379,7 @@ fn latin1_header(value: &str) -> Result<HeaderValue, QueryError> {
 }
 
 /// The reason phrase of the status line as received.
-fn reason_phrase(response: &reqwest::Response) -> Vec<u8> {
+pub(crate) fn reason_phrase(response: &reqwest::Response) -> Vec<u8> {
     match response.extensions().get::<hyper::ext::ReasonPhrase>() {
         Some(reason) => reason.as_bytes().to_vec(),
         None => response

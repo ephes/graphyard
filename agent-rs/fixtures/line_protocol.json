@@ -658,16 +658,12 @@
        "identity"
       ],
       [
-       "Content-Length",
-       "219"
+       "Accept",
+       "application/json"
       ],
       [
        "Content-Type",
        "text/plain"
-      ],
-      [
-       "Accept",
-       "application/json"
       ],
       [
        "Authorization",
@@ -676,12 +672,21 @@
       [
        "User-Agent",
        "influxdb-client-python/1.50.0"
+      ],
+      [
+       "Content-Length",
+       "219"
       ]
      ],
      "body": "graphyard_metrics,collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,subject_id=macmini,subject_type=host value=0.5 1792570530123456000"
     }
    ],
-   "logs": []
+   "logs": [
+    {
+     "level": "INFO",
+     "message": "HTTP Request: POST {server}/api/v2/write?org=graphyard&bucket=graphyard&precision=ns \"HTTP/1.1 204 No Content\""
+    }
+   ]
   },
   {
    "name": "batch skips invalid point (test_write_points_skips_invalid_points_in_batch)",
@@ -736,16 +741,12 @@
        "identity"
       ],
       [
-       "Content-Length",
-       "219"
+       "Accept",
+       "application/json"
       ],
       [
        "Content-Type",
        "text/plain"
-      ],
-      [
-       "Accept",
-       "application/json"
       ],
       [
        "Authorization",
@@ -754,6 +755,10 @@
       [
        "User-Agent",
        "influxdb-client-python/1.50.0"
+      ],
+      [
+       "Content-Length",
+       "219"
       ]
      ],
      "body": "graphyard_metrics,collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,subject_id=macmini,subject_type=host value=0.3 1792570530123456000"
@@ -763,6 +768,10 @@
     {
      "level": "ERROR",
      "message": "Metric point validation failed metric=host.cpu_usage subject_type=not_a_subject_type subject_id=macmini: Unknown subject_type 'not_a_subject_type'; expected one of ['environment_sensor', 'host', 'network_device', 'service']"
+    },
+    {
+     "level": "INFO",
+     "message": "HTTP Request: POST {server}/api/v2/write?org=graphyard&bucket=graphyard&precision=ns \"HTTP/1.1 204 No Content\""
     },
     {
      "level": "WARNING",
@@ -823,16 +832,12 @@
        "identity"
       ],
       [
-       "Content-Length",
-       "219"
+       "Accept",
+       "application/json"
       ],
       [
        "Content-Type",
        "text/plain"
-      ],
-      [
-       "Accept",
-       "application/json"
       ],
       [
        "Authorization",
@@ -841,6 +846,10 @@
       [
        "User-Agent",
        "influxdb-client-python/1.50.0"
+      ],
+      [
+       "Content-Length",
+       "219"
       ]
      ],
      "body": "graphyard_metrics,collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,subject_id=macmini,subject_type=host value=0.5 1792570530123456000"
@@ -850,6 +859,10 @@
     {
      "level": "ERROR",
      "message": "Metric point validation failed metric=host.cpu_usage subject_type=host subject_id=macmini: metric value must be finite, got nan"
+    },
+    {
+     "level": "INFO",
+     "message": "HTTP Request: POST {server}/api/v2/write?org=graphyard&bucket=graphyard&precision=ns \"HTTP/1.1 204 No Content\""
     },
     {
      "level": "WARNING",
@@ -986,16 +999,12 @@
        "identity"
       ],
       [
-       "Content-Length",
-       "219"
+       "Accept",
+       "application/json"
       ],
       [
        "Content-Type",
        "text/plain"
-      ],
-      [
-       "Accept",
-       "application/json"
       ],
       [
        "Authorization",
@@ -1004,6 +1013,10 @@
       [
        "User-Agent",
        "influxdb-client-python/1.50.0"
+      ],
+      [
+       "Content-Length",
+       "219"
       ]
      ],
      "body": "graphyard_metrics,collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,subject_id=macmini,subject_type=host value=0.5 1792570530123456000"
@@ -1014,6 +1027,10 @@
      "level": "ERROR",
      "message": "Metric point validation failed metric=first\nforged subject_type=bad\r subject_id=x\ny: Unknown subject_type 'bad\\r'; expected one of ['environment_sensor', 'host', 'network_device', 'service']",
      "d10_message": "Metric point validation failed metric=first\\nforged subject_type=bad\\r subject_id=x\\ny: Unknown subject_type 'bad\\r'; expected one of ['environment_sensor', 'host', 'network_device', 'service']"
+    },
+    {
+     "level": "INFO",
+     "message": "HTTP Request: POST {server}/api/v2/write?org=graphyard&bucket=graphyard&precision=ns \"HTTP/1.1 204 No Content\""
     },
     {
      "level": "WARNING",
@@ -1098,16 +1115,12 @@
        "identity"
       ],
       [
-       "Content-Length",
-       "776"
+       "Accept",
+       "application/json"
       ],
       [
        "Content-Type",
        "text/plain"
-      ],
-      [
-       "Accept",
-       "application/json"
       ],
       [
        "Authorization",
@@ -1116,12 +1129,21 @@
       [
        "User-Agent",
        "influxdb-client-python/1.50.0"
+      ],
+      [
+       "Content-Length",
+       "776"
       ]
      ],
      "body": "graphyard_metrics,collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,subject_id=macmini,subject_type=host value=0.5 1792570530123456000\ngraphyard_metrics,collector_host=macmini,collector_service=graphyard-agent,entity_id=sensor.office_temperature,metric=ha.sensor.office_temperature,source_entity_id=sensor.office_temperature,source_instance=ha-main,source_system=homeassistant,subject_id=office_temperature,subject_type=environment_sensor,unit=\u00b0C value=22.4 1792570530123456000\ngraphyard_metrics,collector_host=macmini,collector_service=vector,host=macmini,metric=host.load,source_instance=vector-macmini,source_system=vector,subject_id=macmini,subject_type=host value=1 1792570530123456000"
     }
    ],
-   "logs": []
+   "logs": [
+    {
+     "level": "INFO",
+     "message": "HTTP Request: POST {server}/api/v2/write?org=graphyard&bucket=graphyard&precision=ns \"HTTP/1.1 204 No Content\""
+    }
+   ]
   },
   {
    "name": "dimension tags",
@@ -1176,16 +1198,12 @@
        "identity"
       ],
       [
-       "Content-Length",
-       "501"
+       "Accept",
+       "application/json"
       ],
       [
        "Content-Type",
        "text/plain"
-      ],
-      [
-       "Accept",
-       "application/json"
       ],
       [
        "Authorization",
@@ -1194,12 +1212,21 @@
       [
        "User-Agent",
        "influxdb-client-python/1.50.0"
+      ],
+      [
+       "Content-Length",
+       "501"
       ]
      ],
      "body": "graphyard_metrics,collector_host=macmini,collector_service=vector,metric=host.cpu_usage,service=Web\\,\\ App,source_entity_id=https://example.com/a\\ b?x\\=1\\,y,source_instance=vector-macmini,source_system=vector,subject_id=page_probe,subject_type=service value=0.5 1792570530123456000\ngraphyard_metrics,collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,subject_id=macmini,subject_type=host value=0.5 1792570530123456000"
     }
    ],
-   "logs": []
+   "logs": [
+    {
+     "level": "INFO",
+     "message": "HTTP Request: POST {server}/api/v2/write?org=graphyard&bucket=graphyard&precision=ns \"HTTP/1.1 204 No Content\""
+    }
+   ]
   },
   {
    "name": "custom tags: reserved keys ignored, escaping, empty dropped",
@@ -1280,16 +1307,12 @@
        "identity"
       ],
       [
-       "Content-Length",
-       "288"
+       "Accept",
+       "application/json"
       ],
       [
        "Content-Type",
        "text/plain"
-      ],
-      [
-       "Accept",
-       "application/json"
       ],
       [
        "Authorization",
@@ -1298,6 +1321,10 @@
       [
        "User-Agent",
        "influxdb-client-python/1.50.0"
+      ],
+      [
+       "Content-Length",
+       "288"
       ]
      ],
      "body": "graphyard_metrics,Zebra=1,collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,spec_name=My\\ Spec\\,\\ v\\=2,subject_id=macmini,subject_type=host,tab\\tkey=new\\nline,trailing=dir\\  value=0.5 1792570530123456000"
@@ -1319,6 +1346,10 @@
     {
      "level": "WARNING",
      "message": "Ignoring custom tag override for reserved key subject_id"
+    },
+    {
+     "level": "INFO",
+     "message": "HTTP Request: POST {server}/api/v2/write?org=graphyard&bucket=graphyard&precision=ns \"HTTP/1.1 204 No Content\""
     }
    ]
   },
@@ -1404,16 +1435,12 @@
        "identity"
       ],
       [
-       "Content-Length",
-       "439"
+       "Accept",
+       "application/json"
       ],
       [
        "Content-Type",
        "text/plain"
-      ],
-      [
-       "Accept",
-       "application/json"
       ],
       [
        "Authorization",
@@ -1422,6 +1449,10 @@
       [
        "User-Agent",
        "influxdb-client-python/1.50.0"
+      ],
+      [
+       "Content-Length",
+       "439"
       ]
      ],
      "body": "graphyard_metrics,collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,subject_id=macmini,subject_type=host value=0.5 1792570530123456000\ngraphyard_metrics,collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,subject_id=macmini,subject_type=host value=0.5 1792570530123456000"
@@ -1443,6 +1474,10 @@
     {
      "level": "WARNING",
      "message": "Ignoring custom tag override for reserved key service"
+    },
+    {
+     "level": "INFO",
+     "message": "HTTP Request: POST {server}/api/v2/write?org=graphyard&bucket=graphyard&precision=ns \"HTTP/1.1 204 No Content\""
     },
     {
      "level": "WARNING",
@@ -1563,16 +1598,12 @@
        "identity"
       ],
       [
-       "Content-Length",
-       "1332"
+       "Accept",
+       "application/json"
       ],
       [
        "Content-Type",
        "text/plain"
-      ],
-      [
-       "Accept",
-       "application/json"
       ],
       [
        "Authorization",
@@ -1581,12 +1612,21 @@
       [
        "User-Agent",
        "influxdb-client-python/1.50.0"
+      ],
+      [
+       "Content-Length",
+       "1332"
       ]
      ],
      "body": "graphyard_metrics,collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,subject_id=macmini,subject_type=host value=21 1792570530123456000\ngraphyard_metrics,collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,subject_id=macmini,subject_type=host value=1e+16 1792570530123456000\ngraphyard_metrics,collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,subject_id=macmini,subject_type=host value=-0 1792570530123456000\ngraphyard_metrics,collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,subject_id=macmini,subject_type=host value=1.5e-07 1792570530123456000\ngraphyard_metrics,collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,subject_id=macmini,subject_type=host value=123456789 1792570530123456000\ngraphyard_metrics,collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,subject_id=macmini,subject_type=host value=5e-324 1792570530123456000"
     }
    ],
-   "logs": []
+   "logs": [
+    {
+     "level": "INFO",
+     "message": "HTTP Request: POST {server}/api/v2/write?org=graphyard&bucket=graphyard&precision=ns \"HTTP/1.1 204 No Content\""
+    }
+   ]
   },
   {
    "name": "timestamps",
@@ -1656,16 +1696,12 @@
        "identity"
       ],
       [
-       "Content-Length",
-       "649"
+       "Accept",
+       "application/json"
       ],
       [
        "Content-Type",
        "text/plain"
-      ],
-      [
-       "Accept",
-       "application/json"
       ],
       [
        "Authorization",
@@ -1674,12 +1710,21 @@
       [
        "User-Agent",
        "influxdb-client-python/1.50.0"
+      ],
+      [
+       "Content-Length",
+       "649"
       ]
      ],
      "body": "graphyard_metrics,collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,subject_id=macmini,subject_type=host value=0.5 -1000\ngraphyard_metrics,collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,subject_id=macmini,subject_type=host value=0.5 253402300799999999000\ngraphyard_metrics,collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,subject_id=macmini,subject_type=host value=0.5 -62135596800000000000"
     }
    ],
-   "logs": []
+   "logs": [
+    {
+     "level": "INFO",
+     "message": "HTTP Request: POST {server}/api/v2/write?org=graphyard&bucket=graphyard&precision=ns \"HTTP/1.1 204 No Content\""
+    }
+   ]
   },
   {
    "name": "measurement escaping",
@@ -1720,16 +1765,12 @@
        "identity"
       ],
       [
-       "Content-Length",
-       "221"
+       "Accept",
+       "application/json"
       ],
       [
        "Content-Type",
        "text/plain"
-      ],
-      [
-       "Accept",
-       "application/json"
       ],
       [
        "Authorization",
@@ -1738,12 +1779,21 @@
       [
        "User-Agent",
        "influxdb-client-python/1.50.0"
+      ],
+      [
+       "Content-Length",
+       "221"
       ]
      ],
      "body": "my\\ metrics\\,x=1\\tz,collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,subject_id=macmini,subject_type=host value=0.5 1792570530123456000"
     }
    ],
-   "logs": []
+   "logs": [
+    {
+     "level": "INFO",
+     "message": "HTTP Request: POST {server}/api/v2/write?org=graphyard&bucket=graphyard&precision=ns \"HTTP/1.1 204 No Content\""
+    }
+   ]
   },
   {
    "name": "measurement starting with hash",
@@ -1784,16 +1834,12 @@
        "identity"
       ],
       [
-       "Content-Length",
-       "204"
+       "Accept",
+       "application/json"
       ],
       [
        "Content-Type",
        "text/plain"
-      ],
-      [
-       "Accept",
-       "application/json"
       ],
       [
        "Authorization",
@@ -1802,12 +1848,21 @@
       [
        "User-Agent",
        "influxdb-client-python/1.50.0"
+      ],
+      [
+       "Content-Length",
+       "204"
       ]
      ],
      "body": "#m,collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,subject_id=macmini,subject_type=host value=0.5 1792570530123456000"
     }
    ],
-   "logs": []
+   "logs": [
+    {
+     "level": "INFO",
+     "message": "HTTP Request: POST {server}/api/v2/write?org=graphyard&bucket=graphyard&precision=ns \"HTTP/1.1 204 No Content\""
+    }
+   ]
   },
   {
    "name": "empty measurement",
@@ -1848,16 +1903,12 @@
        "identity"
       ],
       [
-       "Content-Length",
-       "202"
+       "Accept",
+       "application/json"
       ],
       [
        "Content-Type",
        "text/plain"
-      ],
-      [
-       "Accept",
-       "application/json"
       ],
       [
        "Authorization",
@@ -1866,12 +1917,21 @@
       [
        "User-Agent",
        "influxdb-client-python/1.50.0"
+      ],
+      [
+       "Content-Length",
+       "202"
       ]
      ],
      "body": ",collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,subject_id=macmini,subject_type=host value=0.5 1792570530123456000"
     }
    ],
-   "logs": []
+   "logs": [
+    {
+     "level": "INFO",
+     "message": "HTTP Request: POST {server}/api/v2/write?org=graphyard&bucket=graphyard&precision=ns \"HTTP/1.1 204 No Content\""
+    }
+   ]
   },
   {
    "name": "org and bucket query encoding",
@@ -1912,16 +1972,12 @@
        "identity"
       ],
       [
-       "Content-Length",
-       "219"
+       "Accept",
+       "application/json"
       ],
       [
        "Content-Type",
        "text/plain"
-      ],
-      [
-       "Accept",
-       "application/json"
       ],
       [
        "Authorization",
@@ -1930,12 +1986,21 @@
       [
        "User-Agent",
        "influxdb-client-python/1.50.0"
+      ],
+      [
+       "Content-Length",
+       "219"
       ]
      ],
      "body": "graphyard_metrics,collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,subject_id=macmini,subject_type=host value=0.5 1792570530123456000"
     }
    ],
-   "logs": []
+   "logs": [
+    {
+     "level": "INFO",
+     "message": "HTTP Request: POST {server}/api/v2/write?org=my+org~%2A%2F%C3%BC%2B%26&bucket=b%26c%3Dd+e%25&precision=ns \"HTTP/1.1 204 No Content\""
+    }
+   ]
   },
   {
    "name": "empty bucket",
@@ -1976,16 +2041,12 @@
        "identity"
       ],
       [
-       "Content-Length",
-       "219"
+       "Accept",
+       "application/json"
       ],
       [
        "Content-Type",
        "text/plain"
-      ],
-      [
-       "Accept",
-       "application/json"
       ],
       [
        "Authorization",
@@ -1994,12 +2055,21 @@
       [
        "User-Agent",
        "influxdb-client-python/1.50.0"
+      ],
+      [
+       "Content-Length",
+       "219"
       ]
      ],
      "body": "graphyard_metrics,collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,subject_id=macmini,subject_type=host value=0.5 1792570530123456000"
     }
    ],
-   "logs": []
+   "logs": [
+    {
+     "level": "INFO",
+     "message": "HTTP Request: POST {server}/api/v2/write?org=graphyard&bucket=&precision=ns \"HTTP/1.1 204 No Content\""
+    }
+   ]
   },
   {
    "name": "url with trailing slash",
@@ -2039,16 +2109,12 @@
        "identity"
       ],
       [
-       "Content-Length",
-       "219"
+       "Accept",
+       "application/json"
       ],
       [
        "Content-Type",
        "text/plain"
-      ],
-      [
-       "Accept",
-       "application/json"
       ],
       [
        "Authorization",
@@ -2057,12 +2123,21 @@
       [
        "User-Agent",
        "influxdb-client-python/1.50.0"
+      ],
+      [
+       "Content-Length",
+       "219"
       ]
      ],
      "body": "graphyard_metrics,collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,subject_id=macmini,subject_type=host value=0.5 1792570530123456000"
     }
    ],
-   "logs": []
+   "logs": [
+    {
+     "level": "INFO",
+     "message": "HTTP Request: POST {server}/api/v2/write?org=graphyard&bucket=graphyard&precision=ns \"HTTP/1.1 204 No Content\""
+    }
+   ]
   },
   {
    "name": "url with path prefix",
@@ -2102,16 +2177,12 @@
        "identity"
       ],
       [
-       "Content-Length",
-       "219"
+       "Accept",
+       "application/json"
       ],
       [
        "Content-Type",
        "text/plain"
-      ],
-      [
-       "Accept",
-       "application/json"
       ],
       [
        "Authorization",
@@ -2120,12 +2191,21 @@
       [
        "User-Agent",
        "influxdb-client-python/1.50.0"
+      ],
+      [
+       "Content-Length",
+       "219"
       ]
      ],
      "body": "graphyard_metrics,collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,subject_id=macmini,subject_type=host value=0.5 1792570530123456000"
     }
    ],
-   "logs": []
+   "logs": [
+    {
+     "level": "INFO",
+     "message": "HTTP Request: POST {server}/influx/api/v2/write?org=graphyard&bucket=graphyard&precision=ns \"HTTP/1.1 204 No Content\""
+    }
+   ]
   },
   {
    "name": "url without scheme",
@@ -2165,16 +2245,12 @@
        "identity"
       ],
       [
-       "Content-Length",
-       "219"
+       "Accept",
+       "application/json"
       ],
       [
        "Content-Type",
        "text/plain"
-      ],
-      [
-       "Accept",
-       "application/json"
       ],
       [
        "Authorization",
@@ -2183,12 +2259,21 @@
       [
        "User-Agent",
        "influxdb-client-python/1.50.0"
+      ],
+      [
+       "Content-Length",
+       "219"
       ]
      ],
      "body": "graphyard_metrics,collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,subject_id=macmini,subject_type=host value=0.5 1792570530123456000"
     }
    ],
-   "logs": []
+   "logs": [
+    {
+     "level": "INFO",
+     "message": "HTTP Request: POST {server}/api/v2/write?org=graphyard&bucket=graphyard&precision=ns \"HTTP/1.1 204 No Content\""
+    }
+   ]
   },
   {
    "name": "token kept verbatim",
@@ -2228,16 +2313,12 @@
        "identity"
       ],
       [
-       "Content-Length",
-       "219"
+       "Accept",
+       "application/json"
       ],
       [
        "Content-Type",
        "text/plain"
-      ],
-      [
-       "Accept",
-       "application/json"
       ],
       [
        "Authorization",
@@ -2246,12 +2327,21 @@
       [
        "User-Agent",
        "influxdb-client-python/1.50.0"
+      ],
+      [
+       "Content-Length",
+       "219"
       ]
      ],
      "body": "graphyard_metrics,collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,subject_id=macmini,subject_type=host value=0.5 1792570530123456000"
     }
    ],
-   "logs": []
+   "logs": [
+    {
+     "level": "INFO",
+     "message": "HTTP Request: POST {server}/api/v2/write?org=graphyard&bucket=graphyard&precision=ns \"HTTP/1.1 204 No Content\""
+    }
+   ]
   },
   {
    "name": "mode v2 explicit",
@@ -2292,16 +2382,12 @@
        "identity"
       ],
       [
-       "Content-Length",
-       "219"
+       "Accept",
+       "application/json"
       ],
       [
        "Content-Type",
        "text/plain"
-      ],
-      [
-       "Accept",
-       "application/json"
       ],
       [
        "Authorization",
@@ -2310,12 +2396,21 @@
       [
        "User-Agent",
        "influxdb-client-python/1.50.0"
+      ],
+      [
+       "Content-Length",
+       "219"
       ]
      ],
      "body": "graphyard_metrics,collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,subject_id=macmini,subject_type=host value=0.5 1792570530123456000"
     }
    ],
-   "logs": []
+   "logs": [
+    {
+     "level": "INFO",
+     "message": "HTTP Request: POST {server}/api/v2/write?org=graphyard&bucket=graphyard&precision=ns \"HTTP/1.1 204 No Content\""
+    }
+   ]
   },
   {
    "name": "unknown mode is v2",
@@ -2356,16 +2451,12 @@
        "identity"
       ],
       [
-       "Content-Length",
-       "219"
+       "Accept",
+       "application/json"
       ],
       [
        "Content-Type",
        "text/plain"
-      ],
-      [
-       "Accept",
-       "application/json"
       ],
       [
        "Authorization",
@@ -2374,12 +2465,21 @@
       [
        "User-Agent",
        "influxdb-client-python/1.50.0"
+      ],
+      [
+       "Content-Length",
+       "219"
       ]
      ],
      "body": "graphyard_metrics,collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,subject_id=macmini,subject_type=host value=0.5 1792570530123456000"
     }
    ],
-   "logs": []
+   "logs": [
+    {
+     "level": "INFO",
+     "message": "HTTP Request: POST {server}/api/v2/write?org=graphyard&bucket=graphyard&precision=ns \"HTTP/1.1 204 No Content\""
+    }
+   ]
   },
   {
    "name": "v3 defaults token, writes the empty org",
@@ -2418,16 +2518,12 @@
        "identity"
       ],
       [
-       "Content-Length",
-       "219"
+       "Accept",
+       "application/json"
       ],
       [
        "Content-Type",
        "text/plain"
-      ],
-      [
-       "Accept",
-       "application/json"
       ],
       [
        "Authorization",
@@ -2436,12 +2532,21 @@
       [
        "User-Agent",
        "influxdb-client-python/1.50.0"
+      ],
+      [
+       "Content-Length",
+       "219"
       ]
      ],
      "body": "graphyard_metrics,collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,subject_id=macmini,subject_type=host value=0.5 1792570530123456000"
     }
    ],
-   "logs": []
+   "logs": [
+    {
+     "level": "INFO",
+     "message": "HTTP Request: POST {server}/api/v2/write?org=&bucket=graphyard&precision=ns \"HTTP/1.1 204 No Content\""
+    }
+   ]
   },
   {
    "name": "v3 upper case mode, bucket set",
@@ -2481,16 +2586,12 @@
        "identity"
       ],
       [
-       "Content-Length",
-       "219"
+       "Accept",
+       "application/json"
       ],
       [
        "Content-Type",
        "text/plain"
-      ],
-      [
-       "Accept",
-       "application/json"
       ],
       [
        "Authorization",
@@ -2499,12 +2600,21 @@
       [
        "User-Agent",
        "influxdb-client-python/1.50.0"
+      ],
+      [
+       "Content-Length",
+       "219"
       ]
      ],
      "body": "graphyard_metrics,collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,subject_id=macmini,subject_type=host value=0.5 1792570530123456000"
     }
    ],
-   "logs": []
+   "logs": [
+    {
+     "level": "INFO",
+     "message": "HTTP Request: POST {server}/api/v2/write?org=&bucket=b3&precision=ns \"HTTP/1.1 204 No Content\""
+    }
+   ]
   },
   {
    "name": "v3 keeps explicit token and org",
@@ -2545,16 +2655,12 @@
        "identity"
       ],
       [
-       "Content-Length",
-       "219"
+       "Accept",
+       "application/json"
       ],
       [
        "Content-Type",
        "text/plain"
-      ],
-      [
-       "Accept",
-       "application/json"
       ],
       [
        "Authorization",
@@ -2563,12 +2669,21 @@
       [
        "User-Agent",
        "influxdb-client-python/1.50.0"
+      ],
+      [
+       "Content-Length",
+       "219"
       ]
      ],
      "body": "graphyard_metrics,collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,subject_id=macmini,subject_type=host value=0.5 1792570530123456000"
     }
    ],
-   "logs": []
+   "logs": [
+    {
+     "level": "INFO",
+     "message": "HTTP Request: POST {server}/api/v2/write?org=org3&bucket=graphyard&precision=ns \"HTTP/1.1 204 No Content\""
+    }
+   ]
   },
   {
    "name": "missing url",
@@ -2836,16 +2951,12 @@
        "identity"
       ],
       [
-       "Content-Length",
-       "219"
+       "Accept",
+       "application/json"
       ],
       [
        "Content-Type",
        "text/plain"
-      ],
-      [
-       "Accept",
-       "application/json"
       ],
       [
        "Authorization",
@@ -2854,12 +2965,21 @@
       [
        "User-Agent",
        "influxdb-client-python/1.50.0"
+      ],
+      [
+       "Content-Length",
+       "219"
       ]
      ],
      "body": "graphyard_metrics,collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,subject_id=macmini,subject_type=host value=0.5 1792570530123456000"
     }
    ],
-   "logs": []
+   "logs": [
+    {
+     "level": "INFO",
+     "message": "HTTP Request: POST {server}/api/v2/write?org=graphyard&bucket=graphyard&precision=ns \"HTTP/1.1 200 OK\""
+    }
+   ]
   },
   {
    "name": "status 400 raises, rejected count not logged",
@@ -2926,16 +3046,12 @@
        "identity"
       ],
       [
-       "Content-Length",
-       "219"
+       "Accept",
+       "application/json"
       ],
       [
        "Content-Type",
        "text/plain"
-      ],
-      [
-       "Accept",
-       "application/json"
       ],
       [
        "Authorization",
@@ -2944,6 +3060,10 @@
       [
        "User-Agent",
        "influxdb-client-python/1.50.0"
+      ],
+      [
+       "Content-Length",
+       "219"
       ]
      ],
      "body": "graphyard_metrics,collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,subject_id=macmini,subject_type=host value=0.5 1792570530123456000"
@@ -2953,6 +3073,10 @@
     {
      "level": "ERROR",
      "message": "Metric point validation failed metric=host.cpu_usage subject_type=not_a_subject_type subject_id=macmini: Unknown subject_type 'not_a_subject_type'; expected one of ['environment_sensor', 'host', 'network_device', 'service']"
+    },
+    {
+     "level": "INFO",
+     "message": "HTTP Request: POST {server}/api/v2/write?org=graphyard&bucket=graphyard&precision=ns \"HTTP/1.1 400 Bad Request\""
     }
    ]
   },
@@ -3000,16 +3124,12 @@
        "identity"
       ],
       [
-       "Content-Length",
-       "219"
+       "Accept",
+       "application/json"
       ],
       [
        "Content-Type",
        "text/plain"
-      ],
-      [
-       "Accept",
-       "application/json"
       ],
       [
        "Authorization",
@@ -3018,12 +3138,21 @@
       [
        "User-Agent",
        "influxdb-client-python/1.50.0"
+      ],
+      [
+       "Content-Length",
+       "219"
       ]
      ],
      "body": "graphyard_metrics,collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,subject_id=macmini,subject_type=host value=0.5 1792570530123456000"
     }
    ],
-   "logs": []
+   "logs": [
+    {
+     "level": "INFO",
+     "message": "HTTP Request: POST {server}/api/v2/write?org=graphyard&bucket=graphyard&precision=ns \"HTTP/1.1 401 Unauthorized\""
+    }
+   ]
   },
   {
    "name": "redirect is not followed",
@@ -3075,16 +3204,12 @@
        "identity"
       ],
       [
-       "Content-Length",
-       "219"
+       "Accept",
+       "application/json"
       ],
       [
        "Content-Type",
        "text/plain"
-      ],
-      [
-       "Accept",
-       "application/json"
       ],
       [
        "Authorization",
@@ -3093,12 +3218,21 @@
       [
        "User-Agent",
        "influxdb-client-python/1.50.0"
+      ],
+      [
+       "Content-Length",
+       "219"
       ]
      ],
      "body": "graphyard_metrics,collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,subject_id=macmini,subject_type=host value=0.5 1792570530123456000"
     }
    ],
-   "logs": []
+   "logs": [
+    {
+     "level": "INFO",
+     "message": "HTTP Request: POST {server}/api/v2/write?org=graphyard&bucket=graphyard&precision=ns \"HTTP/1.1 307 Temporary Redirect\""
+    }
+   ]
   },
   {
    "name": "status 500 raises",
@@ -3144,16 +3278,12 @@
        "identity"
       ],
       [
-       "Content-Length",
-       "219"
+       "Accept",
+       "application/json"
       ],
       [
        "Content-Type",
        "text/plain"
-      ],
-      [
-       "Accept",
-       "application/json"
       ],
       [
        "Authorization",
@@ -3162,12 +3292,96 @@
       [
        "User-Agent",
        "influxdb-client-python/1.50.0"
+      ],
+      [
+       "Content-Length",
+       "219"
       ]
      ],
      "body": "graphyard_metrics,collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,subject_id=macmini,subject_type=host value=0.5 1792570530123456000"
     }
    ],
-   "logs": []
+   "logs": [
+    {
+     "level": "INFO",
+     "message": "HTTP Request: POST {server}/api/v2/write?org=graphyard&bucket=graphyard&precision=ns \"HTTP/1.1 500 Internal Server Error\""
+    }
+   ]
+  },
+  {
+   "name": "write noncanonical reason",
+   "env": {
+    "INFLUX_URL": "{server}",
+    "INFLUX_TOKEN": "t0k",
+    "INFLUX_ORG": "graphyard"
+   },
+   "respond": {
+    "status": 500,
+    "reason": "Backend Down",
+    "body": "boom"
+   },
+   "points": [
+    {
+     "ts": "2026-10-21T08:15:30.123456+00:00",
+     "metric": "host.cpu_usage",
+     "value": "0.5",
+     "subject_type": "host",
+     "subject_id": "macmini",
+     "source_system": "vector",
+     "collector_service": "vector",
+     "collector_host": "macmini",
+     "source_instance": "vector-macmini",
+     "source_entity_id": null,
+     "host": null,
+     "service": null,
+     "tags": null
+    }
+   ],
+   "result": {
+    "error": {
+     "class": "ApiException",
+     "p2": true
+    }
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "path": "/api/v2/write?org=graphyard&bucket=graphyard&precision=ns",
+     "headers": [
+      [
+       "Accept-Encoding",
+       "identity"
+      ],
+      [
+       "Accept",
+       "application/json"
+      ],
+      [
+       "Content-Type",
+       "text/plain"
+      ],
+      [
+       "Authorization",
+       "Token t0k"
+      ],
+      [
+       "User-Agent",
+       "influxdb-client-python/1.50.0"
+      ],
+      [
+       "Content-Length",
+       "219"
+      ]
+     ],
+     "body": "graphyard_metrics,collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,subject_id=macmini,subject_type=host value=0.5 1792570530123456000"
+    }
+   ],
+   "logs": [
+    {
+     "level": "INFO",
+     "message": "HTTP Request: POST {server}/api/v2/write?org=graphyard&bucket=graphyard&precision=ns \"HTTP/1.1 500 Backend Down\""
+    }
+   ]
   },
   {
    "name": "timeout zero means none",
@@ -3208,16 +3422,12 @@
        "identity"
       ],
       [
-       "Content-Length",
-       "219"
+       "Accept",
+       "application/json"
       ],
       [
        "Content-Type",
        "text/plain"
-      ],
-      [
-       "Accept",
-       "application/json"
       ],
       [
        "Authorization",
@@ -3226,12 +3436,21 @@
       [
        "User-Agent",
        "influxdb-client-python/1.50.0"
+      ],
+      [
+       "Content-Length",
+       "219"
       ]
      ],
      "body": "graphyard_metrics,collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,subject_id=macmini,subject_type=host value=0.5 1792570530123456000"
     }
    ],
-   "logs": []
+   "logs": [
+    {
+     "level": "INFO",
+     "message": "HTTP Request: POST {server}/api/v2/write?org=graphyard&bucket=graphyard&precision=ns \"HTTP/1.1 204 No Content\""
+    }
+   ]
   },
   {
    "name": "small timeout",
@@ -3272,16 +3491,12 @@
        "identity"
       ],
       [
-       "Content-Length",
-       "219"
+       "Accept",
+       "application/json"
       ],
       [
        "Content-Type",
        "text/plain"
-      ],
-      [
-       "Accept",
-       "application/json"
       ],
       [
        "Authorization",
@@ -3290,12 +3505,21 @@
       [
        "User-Agent",
        "influxdb-client-python/1.50.0"
+      ],
+      [
+       "Content-Length",
+       "219"
       ]
      ],
      "body": "graphyard_metrics,collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,subject_id=macmini,subject_type=host value=0.5 1792570530123456000"
     }
    ],
-   "logs": []
+   "logs": [
+    {
+     "level": "INFO",
+     "message": "HTTP Request: POST {server}/api/v2/write?org=graphyard&bucket=graphyard&precision=ns \"HTTP/1.1 204 No Content\""
+    }
+   ]
   },
   {
    "name": "negative timeout",
@@ -3558,6 +3782,10 @@
     {
      "level": "ERROR",
      "message": "Metric point validation failed metric=host.cpu_usage subject_type=not_a_subject_type subject_id=macmini: Unknown subject_type 'not_a_subject_type'; expected one of ['environment_sensor', 'host', 'network_device', 'service']"
+    },
+    {
+     "level": "INFO",
+     "message": "HTTP Request: POST {raw}/api/v2/write?org=graphyard&bucket=graphyard&precision=ns \"HTTP/1.1 200 OK\""
     }
    ]
   },
@@ -3596,7 +3824,12 @@
     }
    },
    "requests": [],
-   "logs": []
+   "logs": [
+    {
+     "level": "INFO",
+     "message": "HTTP Request: POST {raw}/api/v2/write?org=graphyard&bucket=graphyard&precision=ns \"HTTP/1.1 200 OK\""
+    }
+   ]
   },
   {
    "name": "slow body within the read timeout",
@@ -3633,7 +3866,12 @@
     }
    },
    "requests": [],
-   "logs": []
+   "logs": [
+    {
+     "level": "INFO",
+     "message": "HTTP Request: POST {raw}/api/v2/write?org=graphyard&bucket=graphyard&precision=ns \"HTTP/1.1 400 Bad Request\""
+    }
+   ]
   },
   {
    "name": "2xx body that is not UTF-8",
@@ -3669,7 +3907,12 @@
     }
    },
    "requests": [],
-   "logs": []
+   "logs": [
+    {
+     "level": "INFO",
+     "message": "HTTP Request: POST {raw}/api/v2/write?org=graphyard&bucket=graphyard&precision=ns \"HTTP/1.1 200 OK\""
+    }
+   ]
   }
  ]
 }

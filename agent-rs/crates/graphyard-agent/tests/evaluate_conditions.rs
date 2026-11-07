@@ -88,8 +88,15 @@ fn a_run_without_failures_reports_the_summary_and_exits_0() {
         text(&output.stdout),
         "Condition evaluation completed (3).\n"
     );
-    // No start line, no startup log lines; v2 queries are not logged.
-    assert_eq!(text(&output.stderr), "");
+    // No startup lines; one bounded v2 transfer log per query.
+    assert_eq!(
+        text(&output.stderr),
+        format!(
+            "HTTP Request: POST {} \"HTTP/1.1 200 OK\"\n",
+            server.url("/api/v2/query?org=o")
+        )
+        .repeat(3)
+    );
     // One query per enabled condition, ordered by name.
     assert_eq!(server.requests(), ["POST /api/v2/query?org=o"; 3]);
     for name in ["a cpu", "b cpu", "d cpu"] {

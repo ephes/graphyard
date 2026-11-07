@@ -4,17 +4,33 @@ import asyncio
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 import json
+from io import BytesIO
 import logging
 import math
 import re
+import socket
+import ssl
 import time
 from typing import TYPE_CHECKING, Any
+from urllib.parse import urlencode
 
 from django.conf import settings
 import httpx
 from influxdb_client import InfluxDBClient, Point
-from influxdb_client.client.write_api import SYNCHRONOUS
+from influxdb_client.client.flux_csv_parser import FluxCsvParser, FluxSerializationMode
 from influxdb_client.rest import ApiException
+from urllib3 import Timeout
+from urllib3.exceptions import (
+    ConnectTimeoutError,
+    LocationParseError,
+    NameResolutionError,
+    NewConnectionError,
+    ProtocolError,
+    ReadTimeoutError,
+    URLSchemeUnknown,
+)
+from urllib3.response import HTTPResponse
+from urllib3.util import parse_url
 
 from .models import SubjectType
 
@@ -24,6 +40,10 @@ if TYPE_CHECKING:
 
 class InfluxConfigurationError(RuntimeError):
     pass
+
+
+class InfluxTransferError(RuntimeError):
+    """A response exceeded a transfer budget, after possible submission."""
 
 
 logger = logging.getLogger(__name__)
@@ -232,6 +252,155 @@ def _build_client() -> InfluxDBClient:
     )
 
 
+# Independent of inactivity timeouts. Both successful and error bodies count.
+FLUX_QUERY_MAX_BODY_BYTES = 10 * 1024 * 1024
+FLUX_QUERY_TOTAL_TIMEOUT_SECONDS = 30.0
+WRITE_MAX_BODY_BYTES = 64 * 1024
+WRITE_TOTAL_TIMEOUT_SECONDS = 30.0
+ERROR_DIAGNOSTIC_BYTES = 1024
+
+
+async def _v2_exchange(
+    path: str, params: dict[str, str], body: bytes, *, write: bool = False
+) -> bytes:
+    # Keep lazy configuration validation and v3 development defaults.
+    with _build_client() as config:
+        token = config.token
+        host = config.url.removesuffix("/")
+    limit = WRITE_MAX_BODY_BYTES if write else FLUX_QUERY_MAX_BODY_BYTES
+    total = WRITE_TOTAL_TIMEOUT_SECONDS if write else FLUX_QUERY_TOTAL_TIMEOUT_SECONDS
+    label = "write" if write else "Flux"
+    operation_timeout = settings.INFLUX_TIMEOUT_MS / 1000 or None
+    Timeout(total=operation_timeout)  # preserve client timeout validation
+    if operation_timeout is not None and operation_timeout * 1e9 >= 2**63:
+        raise OverflowError("timestamp out of range for platform time_t")
+    deadline = time.monotonic() + total
+    parsed = parse_url(f"{host}/api/v2/{path}?{urlencode(params)}")
+    if parsed.scheme and parsed.scheme not in {"http", "https"}:
+        raise URLSchemeUnknown(parsed.scheme)
+    if not parsed.host:
+        raise LocationParseError("No host specified.")
+    url = parsed.url if parsed.scheme else "http://" + parsed.url
+    diagnostic = bytearray()
+    try:
+        async with asyncio.timeout(total):
+            async with httpx.AsyncClient(
+                timeout=operation_timeout,
+                trust_env=False,
+            ) as client:
+                client.headers.clear()
+                async with client.stream(
+                    "POST",
+                    url,
+                    content=body,
+                    headers={
+                        "Accept-Encoding": "identity",
+                        "Accept": "application/json",
+                        "Content-Type": "text/plain" if write else "application/json",
+                        "Authorization": f"Token {token}",
+                        "User-Agent": "influxdb-client-python/1.50.0",
+                    },
+                ) as response:
+                    result = bytearray()
+                    async for chunk in response.aiter_bytes():
+                        diagnostic.extend(
+                            chunk[: ERROR_DIAGNOSTIC_BYTES - len(diagnostic)]
+                        )
+                        if time.monotonic() >= deadline:
+                            raise TimeoutError
+                        if len(result) + len(chunk) > limit:
+                            raise InfluxTransferError(
+                                f"InfluxDB {label} response exceeded decoded byte limit"
+                            )
+                        result.extend(chunk)
+                    if time.monotonic() >= deadline:
+                        raise TimeoutError
+                    if not response.is_success:
+                        # Preserve 404 fallback only after a complete bounded read.
+                        raise ApiException(
+                            http_resp=HTTPResponse(
+                                status=response.status_code,
+                                reason=response.reason_phrase,
+                                body=bytes(result[:ERROR_DIAGNOSTIC_BYTES]),
+                                headers=dict(response.headers),
+                            )
+                        )
+                    if write:
+                        bytes(result).decode("utf-8")
+                    return bytes(result)
+    except (TimeoutError, httpx.HTTPError, InfluxTransferError) as err:
+        if isinstance(err, TimeoutError):
+            message = f"InfluxDB {label} response exceeded total deadline"
+        elif isinstance(err, InfluxTransferError):
+            message = str(err)
+        else:
+            message = f"InfluxDB {label} request failed: {type(err).__name__}"
+        if write:
+            if not isinstance(err, (httpx.ConnectError, httpx.ConnectTimeout)):
+                message += "; write acceptance uncertain; not retried"
+            if diagnostic:
+                message += ": " + bytes(diagnostic).decode("utf-8", errors="replace")
+        if isinstance(err, httpx.ConnectTimeout):
+            raise ConnectTimeoutError(message) from err
+        if isinstance(err, httpx.ConnectError):
+            cause: BaseException | None = err
+            while cause is not None:
+                if isinstance(cause, ssl.SSLError):
+                    raise ApiException(
+                        status=0, reason="SSLError\nTLS handshake failed"
+                    ) from err
+                if isinstance(cause, socket.gaierror):
+                    raise NameResolutionError(parsed.host, None, cause) from err  # type: ignore[arg-type]
+                cause = cause.__cause__
+            raise NewConnectionError(None, message) from err  # type: ignore[arg-type]
+        if isinstance(err, httpx.TimeoutException):
+            raise ReadTimeoutError(None, None, message) from err  # type: ignore[arg-type]
+        if isinstance(err, httpx.HTTPError):
+            raise ProtocolError(message) from err
+        raise InfluxTransferError(message) from err
+
+
+def _query_flux_tables(flux: str):
+    payload = {
+        "extern": {"imports": [], "body": []},
+        "query": flux,
+        "dialect": {
+            "header": True,
+            "delimiter": ",",
+            "annotations": ["datatype", "group", "default"],
+            "commentPrefix": "#",
+            "dateTimeFormat": "RFC3339",
+        },
+    }
+    body = asyncio.run(
+        _v2_exchange(
+            "query", {"org": settings.INFLUX_ORG}, json.dumps(payload).encode()
+        )
+    )
+    # Use the client library's annotated CSV parser on the bounded response.
+    parser = FluxCsvParser(
+        HTTPResponse(body=BytesIO(body), preload_content=False),
+        serialization_mode=FluxSerializationMode.tables,
+    )
+    list(parser.generator())
+    return parser.table_list()
+
+
+def _write_batch(points: list[Point]) -> None:
+    asyncio.run(
+        _v2_exchange(
+            "write",
+            {
+                "org": settings.INFLUX_ORG,
+                "bucket": settings.INFLUX_BUCKET,
+                "precision": "ns",
+            },
+            "\n".join(p.to_line_protocol() for p in points).encode(),
+            write=True,
+        )
+    )
+
+
 def _ensure_utc(ts: datetime) -> datetime:
     if ts.tzinfo is None:
         return ts.replace(tzinfo=UTC)
@@ -320,13 +489,7 @@ def write_points(points: list[MetricPoint]) -> int:
             )
         return 0
 
-    with _build_client() as client:
-        write_api = client.write_api(write_options=SYNCHRONOUS)
-        write_api.write(
-            bucket=settings.INFLUX_BUCKET,
-            org=settings.INFLUX_ORG,
-            record=influx_points,
-        )
+    _write_batch(influx_points)
 
     if rejected_points:
         logger.warning(
@@ -450,8 +613,7 @@ def _query_range_v2_flux(
     )
 
     samples: list[MetricSample] = []
-    with _build_client() as client:
-        tables = client.query_api().query(query=flux, org=settings.INFLUX_ORG)
+    tables = _query_flux_tables(flux)
 
     for table in tables:
         for record in table.records:

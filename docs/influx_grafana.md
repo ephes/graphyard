@@ -226,3 +226,21 @@ Restore order:
 3. Restart `graphyard-web.service`
 4. Restart `graphyard-agent.service` (or run `manage.py start_agent --run-once` for a one-shot validation pass)
 5. Verify `GET /v1/health` reports expected pipeline status
+
+## Transfer limits
+
+Python and Rust bound each Flux query exchange to 30 seconds and 10 MiB of
+decoded response data, including error bodies. Each write exchange has a
+30-second deadline and a 64 KiB decoded response cap; error diagnostics
+retain at most 1 KiB. These fixed limits also apply when `INFLUX_TIMEOUT_MS=0`
+disables the inactivity timeout. The deadline covers connect, upload, headers
+and body reads. Clients close over-budget responses and do not retry writes:
+InfluxDB may already have accepted a batch, so check the stored data before a
+manual retry. Pre-request configuration failures are reported separately.
+
+Auto mode falls back to SQL only after a complete, within-budget Flux 404.
+An oversized, truncated or timed-out 404 is a query failure. Condition evaluation
+continues to report a failed query safely and preserves the last known value.
+Python uses httpx streaming with the Influx library's annotated CSV parser and
+point serializer; Rust uses reqwest streaming. Both retain existing request
+payloads and authentication. HTTP request log lines now include v2 transfers.

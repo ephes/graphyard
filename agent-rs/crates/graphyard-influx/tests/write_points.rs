@@ -49,7 +49,7 @@ struct Capture;
 
 impl log::Log for Capture {
     fn enabled(&self, metadata: &log::Metadata<'_>) -> bool {
-        metadata.target().starts_with("graphyard_influx")
+        metadata.target().starts_with("graphyard_influx") || metadata.target() == "httpx"
     }
 
     fn log(&self, record: &log::Record<'_>) {
@@ -94,6 +94,7 @@ struct Recorded {
 #[derive(Clone, Default)]
 struct Respond {
     status: u16,
+    reason: Option<String>,
     headers: Vec<(String, String)>,
     body: String,
 }
@@ -105,6 +106,10 @@ impl Respond {
                 .get("status")
                 .and_then(Value::as_u64)
                 .map_or(204, |status| u16::try_from(status).expect("status")),
+            reason: value
+                .get("reason")
+                .and_then(Value::as_str)
+                .map(str::to_owned),
             headers: value.get("headers").and_then(Value::as_array).map_or_else(
                 Vec::new,
                 |pairs| {
@@ -183,11 +188,16 @@ async fn recorder(respond: Respond) -> Recorder {
                         for (name, value) in &respond.headers {
                             response = response.header(name, value);
                         }
-                        Ok::<_, Infallible>(
-                            response
-                                .body(Full::new(Bytes::from(respond.body.clone())))
-                                .expect("response"),
-                        )
+                        let mut response = response
+                            .body(Full::new(Bytes::from(respond.body.clone())))
+                            .expect("response");
+                        if let Some(reason) = &respond.reason {
+                            response.extensions_mut().insert(
+                                hyper::ext::ReasonPhrase::try_from(reason.as_bytes())
+                                    .expect("reason"),
+                            );
+                        }
+                        Ok::<_, Infallible>(response)
                     }
                 });
                 let _ = http1::Builder::new()
@@ -417,6 +427,14 @@ async fn run_case(writer: &InfluxWriter, case: &Value) {
     let records: Vec<(String, String)> = records
         .into_iter()
         .filter(|(_, message)| !message.starts_with("SyntaxWarning: "))
+        .map(|(level, message)| {
+            (
+                level,
+                message
+                    .replace(&format!("http://{}", recorder.addr), "{server}")
+                    .replace(&format!("http://{raw_addr}"), "{raw}"),
+            )
+        })
         .collect();
     assert_eq!(records, expected_records, "{name}");
 }
@@ -436,6 +454,7 @@ async fn write_points_replays_the_python_client() {
 async fn hash_measurement_warns_once() {
     let writer = InfluxWriter::new().expect("client");
     let recorder = recorder(Respond {
+        reason: None,
         status: 204,
         ..Respond::default()
     })
@@ -547,12 +566,13 @@ async fn transport_errors_use_the_urllib3_forms() {
     assert_eq!(
         err.to_string(),
         format!(
-            "HTTPConnectionPool(host='127.0.0.1', port={}): Read timed out. (read timeout=0.15)",
+            "HTTPConnectionPool(host='127.0.0.1', port={}): Read timed out. (read timeout=0.15); write acceptance uncertain; not retried",
             stall.port()
         )
     );
 
     let recorder = recorder(Respond {
+        reason: None,
         status: 400,
         headers: vec![("Content-Type".to_owned(), "application/json".to_owned())],
         body: "{\"code\":\"invalid\"}".to_owned(),

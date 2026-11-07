@@ -64,23 +64,11 @@ def test_query_range_v2_flux_uses_safe_bracket_access_for_tag_keys(
 
     captured: dict[str, str] = {}
 
-    class _FakeQueryApi:
-        def query(self, query: str, org: str):
-            captured["query"] = query
-            captured["org"] = org
-            return []
+    def query_tables(query):
+        captured["query"] = query
+        return []
 
-    class _FakeClient:
-        def __enter__(self):
-            return self
-
-        def __exit__(self, exc_type, exc, tb) -> None:
-            del exc_type, exc, tb
-
-        def query_api(self) -> _FakeQueryApi:
-            return _FakeQueryApi()
-
-    monkeypatch.setattr(influx, "_build_client", lambda: _FakeClient())
+    monkeypatch.setattr(influx, "_query_flux_tables", query_tables)
 
     start = datetime.now(UTC) - timedelta(minutes=5)
     stop = datetime.now(UTC)
@@ -194,23 +182,10 @@ def test_query_range_v3_sql_selects_and_returns_dimension_columns(
 def test_write_points_skips_invalid_points_in_batch(monkeypatch):
     captured: dict[str, int] = {"written": 0}
 
-    class _FakeWriteApi:
-        def write(self, bucket: str, org: str, record):
-            del bucket, org
-            captured["written"] = len(record)
+    def write_batch(points):
+        captured["written"] = len(points)
 
-    class _FakeClient:
-        def __enter__(self):
-            return self
-
-        def __exit__(self, exc_type, exc, tb) -> None:
-            del exc_type, exc, tb
-
-        def write_api(self, write_options):
-            del write_options
-            return _FakeWriteApi()
-
-    monkeypatch.setattr(influx, "_build_client", lambda: _FakeClient())
+    monkeypatch.setattr(influx, "_write_batch", write_batch)
 
     points = [
         influx.MetricPoint(
@@ -265,23 +240,10 @@ def test_normalize_metric_point_rejects_non_finite_value(value):
 def test_write_points_does_not_count_non_finite_points(monkeypatch, caplog):
     captured: dict[str, int] = {"written": 0}
 
-    class _FakeWriteApi:
-        def write(self, bucket: str, org: str, record):
-            del bucket, org
-            captured["written"] = len(record)
+    def write_batch(points):
+        captured["written"] = len(points)
 
-    class _FakeClient:
-        def __enter__(self):
-            return self
-
-        def __exit__(self, exc_type, exc, tb) -> None:
-            del exc_type, exc, tb
-
-        def write_api(self, write_options):
-            del write_options
-            return _FakeWriteApi()
-
-    monkeypatch.setattr(influx, "_build_client", lambda: _FakeClient())
+    monkeypatch.setattr(influx, "_write_batch", write_batch)
 
     def _point(value: float) -> influx.MetricPoint:
         return influx.MetricPoint(

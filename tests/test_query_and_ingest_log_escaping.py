@@ -1,5 +1,4 @@
 from datetime import UTC, datetime
-from types import SimpleNamespace
 
 import pytest
 
@@ -15,19 +14,9 @@ def test_flux_interpolation_literal_in_query(monkeypatch, settings, value, escap
     settings.INFLUX_MEASUREMENT = value
     captured = []
 
-    class Client:
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *args):
-            pass
-
-        def query_api(self):
-            return SimpleNamespace(
-                query=lambda **kw: captured.append(kw["query"]) or []
-            )
-
-    monkeypatch.setattr(influx, "_build_client", Client)
+    monkeypatch.setattr(
+        influx, "_query_flux_tables", lambda flux: captured.append(flux) or []
+    )
     now = datetime.now(UTC)
     influx._query_range_v2_flux(
         value, now, now, host=value, service=value, tags={value: value}

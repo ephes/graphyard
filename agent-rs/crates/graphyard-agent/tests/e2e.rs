@@ -567,7 +567,11 @@ fn evaluate_conditions_writes_the_condition_rows_and_the_heartbeat() {
     );
     assert_eq!(
         text(&output.stderr),
-        "Ignoring host_filter for non-host condition id=2 name=svc\n"
+        format!(
+            "HTTP Request: POST {} \"HTTP/1.1 200 OK\"\nIgnoring host_filter for non-host condition id=2 name=svc\nHTTP Request: POST {} \"HTTP/1.1 200 OK\"\n",
+            fake.url("/api/v2/query?org=graphyard"),
+            fake.url("/api/v2/query?org=graphyard")
+        )
     );
     let targets: Vec<String> = fake.requests().into_iter().map(|r| r.target).collect();
     assert_eq!(targets, ["/api/v2/query?org=graphyard"; 2]);
