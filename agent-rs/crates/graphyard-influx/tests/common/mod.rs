@@ -351,6 +351,15 @@ pub fn client_for(case: &Value, server: &FakeInflux) -> QueryClient {
                 usize::try_from(n).expect("cap")
             });
         client = client.with_sql_limits(total, cap);
+        let total = patch
+            .get("FLUX_QUERY_TOTAL_TIMEOUT_SECONDS")
+            .and_then(Value::as_f64)
+            .map_or(Duration::from_secs(30), Duration::from_secs_f64);
+        let cap = patch
+            .get("FLUX_QUERY_MAX_BODY_BYTES")
+            .and_then(Value::as_u64)
+            .map_or(10 * 1024 * 1024, |n| usize::try_from(n).expect("cap"));
+        client = client.with_flux_limits(total, cap);
     }
     client
 }

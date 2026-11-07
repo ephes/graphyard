@@ -1115,28 +1115,30 @@ org falls back to the bucket: an empty org is sent as `org=`), encoded like
 identity`, `Content-Type: text/plain`, `Accept: application/json`,
 `Authorization: Token <token>` (v3: `dev-influxdb3-token` when empty),
 `User-Agent: influxdb-client-python/1.50.0` (kept like the collectors'
-httpx agent, 6.1); one fresh connection per call, no redirects followed (a
-3xx is an `ApiException`), no proxy from the environment. The timeout
-`urllib3.Timeout(total=ms/1000)` is not a deadline for the whole exchange:
-it bounds the connect, and every later socket read waits at most what is
-left of it (an inactivity timeout, so a slowly dripping body completes);
-Rust uses the full value for the connect and for every read (the connect
-time is not subtracted, P2). The response body is read in full and decoded
-as UTF-8 before the status counts, so a truncated (`ProtocolError`) or
-stalled (`ReadTimeoutError`) 2xx body fails the write, and a TLS failure is
-the client's `ApiException` with status 0 (`Reason: SSLError`). `0` means
-no timeout, a negative
-value is urllib3's `ValueError` (`Attempted to set total timeout to …`), an
-overflowing division or a value beyond CPython's nanosecond clock is its
-`OverflowError`; these and the configuration errors come before any
-connection. Order of effects: validation and reserved-key log lines, then
-(only when a valid point exists) the configuration check, the request, and
-the `metrics_write_rejected` warning only after a successful write or
-instead of it when every point was rejected. Transport failures carry the
-urllib3 class names (`NewConnectionError` with `[Errno N] <strerror>`,
-`NameResolutionError`, `ConnectTimeoutError`, `ReadTimeoutError`,
-`ProtocolError`, `UnicodeDecodeError`; texts P2). A measurement starting with `#`
-logs the client's `SyntaxWarning` once per process (P2).
+httpx agent, 6.1); one fresh connection per call, no redirects followed
+(a 3xx is an `ApiException`), no proxy from the environment.
+
+Python now uses public httpx streaming interfaces, retaining Influx point/CSV
+serialization; Rust uses reqwest streaming. `INFLUX_TIMEOUT_MS` is the inactivity
+timeout; independently, writes have a 30 s whole-exchange deadline and 64 KiB
+decoded response cap, including success and error bodies. Error diagnostics for both Flux and writes
+retain at most 1 KiB. A truncated or stalled 2xx response fails the write with
+uncertain acceptance; neither implementation retries it. Configuration/connect
+failures occur before submission. A timeout of `0` disables only the inactivity
+timeout; negative values and unrepresentable durations retain the prior
+validation errors before connection. Transport details remain P2: Python maps
+httpx connection, timeout and protocol failures to public urllib3 exception
+categories with safe category text; Rust retains its existing detailed errors. DNS, TLS
+handshake and connect-timeout failures retain NameResolutionError, ApiException
+(status 0 / SSLError) and ConnectTimeoutError respectively. Transfer budget
+failures use InfluxTransferError, distinct from configuration errors.
+HTTP request log lines now include v2 transfers.
+
+Order of effects: validation and reserved-key log lines, then (only when a valid
+point exists) the configuration check, the request, and the
+`metrics_write_rejected` warning only after a successful write or instead of it
+when every point was rejected. A measurement starting with `#` logs the client's
+`SyntaxWarning` once per process (P2).
 
 ### 6.5 InfluxDB queries (`influx.py:query_range`, `query_condition_window`, P1)
 
@@ -1159,15 +1161,17 @@ logs the client's `SyntaxWarning` once per process (P2).
   `POST <INFLUX_URL minus one trailing "/">/api/v2/query?org=<quote_plus(org)>`,
   headers `Accept: application/json`, `Accept-Encoding: identity` (a gzip or
   deflate response is still decoded, as urllib3 does),
-  `Content-Type: application/json`, `Authorization: Token <token>` (Latin-1
-  as `http.client` encodes it), `User-Agent: influxdb-client-python/1.50.0`;
+  `Content-Type: application/json`, `Authorization: Token <token>`,
+  `User-Agent: influxdb-client-python/1.50.0`;
   body `json.dumps` with default separators and `ensure_ascii`:
   `{"extern": {"imports": [], "body": []}, "query": …, "dialect": {"header":
   true, "delimiter": ",", "annotations": ["datatype", "group", "default"],
   "commentPrefix": "#", "dateTimeFormat": "RFC3339"}}`. No retries, no
   redirects (a 3xx is an `ApiException`), no environment proxy. Timeout from
-  `INFLUX_TIMEOUT_MS` as urllib3 applies `Timeout(total=ms/1000)` (connect and
-  per read): 0 means none, a negative value is urllib3's `ValueError`
+  `INFLUX_TIMEOUT_MS` per operation, plus a 30 s whole-exchange deadline and
+  10 MiB decoded body cap for both success and error bodies. Only a complete,
+  within-budget 404 permits auto fallback. Zero disables the inactivity timeout
+  only; a negative value is urllib3's `ValueError`
   (`Attempted to set total timeout to -0.005, …`), above the C time range
   `OverflowError` (P2 text). A non-2xx response is `ApiException` (status,
   reason, `HTTPHeaderDict` and body repr; header names lower-cased in Rust,

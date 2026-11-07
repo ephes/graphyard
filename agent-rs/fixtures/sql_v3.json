@@ -3499,6 +3499,10 @@
    "logs": [
     [
      "INFO",
+     "HTTP Request: POST http://{server}/api/v2/query?org=graphyard \"HTTP/1.1 404 Not Found\""
+    ],
+    [
+     "INFO",
      "HTTP Request: POST http://{server}/api/v3/query_sql \"HTTP/1.1 200 OK\""
     ]
    ],
@@ -3610,6 +3614,10 @@
    "logs": [
     [
      "INFO",
+     "HTTP Request: POST http://{server}/api/v2/query?org=graphyard \"HTTP/1.1 404 Not Found\""
+    ],
+    [
+     "INFO",
      "HTTP Request: POST http://{server}/api/v3/query_sql \"HTTP/1.1 404 Not Found\""
     ]
    ],
@@ -3665,7 +3673,12 @@
      "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
     }
    ],
-   "logs": [],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v2/query?org=graphyard \"HTTP/1.1 500 Internal Server Error\""
+    ]
+   ],
    "error": {
     "class": "ApiException",
     "p2": true
@@ -3723,7 +3736,12 @@
      "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
     }
    ],
-   "logs": [],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v2/query?org=graphyard \"HTTP/1.1 200 OK\""
+    ]
+   ],
    "samples": [
     {
      "ts": "2026-10-21T11:30:00+00:00",
@@ -3814,7 +3832,12 @@
      "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
     }
    ],
-   "logs": [],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v2/query?org=graphyard \"HTTP/1.1 200 OK\""
+    ]
+   ],
    "error": {
     "class": "InfluxConfigurationError",
     "message": "InfluxDB query sample must be a finite number"
@@ -3887,7 +3910,12 @@
      "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
     }
    ],
-   "logs": [],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v2/query?org=graphyard \"HTTP/1.1 404 Not Found\""
+    ]
+   ],
    "error": {
     "class": "ProtocolError",
     "p2": true

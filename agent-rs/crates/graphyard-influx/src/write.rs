@@ -11,14 +11,10 @@
 //! `User-Agent`, the lines joined with `\n` as body. One request per call,
 //! a fresh connection (the Python client is closed after each call), no
 //! retries, no redirects, no proxy from the environment. The timeout
-//! `urllib3.Timeout(total=T)` bounds the connect by `T` and then every socket
-//! read by what is left of `T` (an inactivity timeout, not a deadline for the
-//! response); Rust uses `T` for the connect and for every read (the connect
-//! time is not subtracted, P2). The response body is always read in full and
-//! decoded as UTF-8 (`RESTResponse`), so a truncated or stalled body fails
-//! the write even after a 2xx status. A 2xx answer is success, anything else
-//! the client's `ApiException`; a TLS failure is the `ApiException` with
-//! status 0 the client raises for urllib3's `SSLError`.
+//! is an inactivity timeout. Independently, the whole write exchange is
+//! limited to 30 seconds and 64 KiB decoded response data. Over-budget writes
+//! have uncertain acceptance and are never replayed. Error diagnostics are
+//! limited to 1 KiB. Ordinary 2xx responses succeed after the bounded read.
 //!
 //! The order of effects is Python's: validation and reserved-key log
 //! records first, then the configuration check (only when something is to
@@ -51,6 +47,12 @@ use crate::config::{InfluxClientConfig, InfluxConfigurationError, RequestTimeout
 /// The `User-Agent` of `influxdb-client` 1.50.0, kept for a zero-change
 /// cutover like the collectors' `python-httpx/0.28.1` (PLAN.md 6.1).
 pub const USER_AGENT_VALUE: &str = "influxdb-client-python/1.50.0";
+
+/// Maximum decoded response bytes, including successful writes.
+pub const WRITE_MAX_BODY_BYTES: usize = 64 * 1024;
+/// Whole-exchange deadline, independent of inactivity timeouts.
+pub const WRITE_TOTAL_TIMEOUT: Duration = Duration::from_secs(30);
+pub(crate) const ERROR_DIAGNOSTIC_BYTES: usize = 1024;
 
 /// The write path of the v2 API.
 pub const WRITE_PATH: &str = "/api/v2/write";
@@ -176,6 +178,8 @@ pub(crate) fn build_client(timeout: Option<Duration>) -> Result<reqwest::Client,
 pub struct InfluxWriter {
     clients: Mutex<Option<(Option<Duration>, reqwest::Client)>>,
     file: Option<Mutex<File>>,
+    total_timeout: Duration,
+    max_body_bytes: usize,
 }
 
 impl InfluxWriter {
@@ -190,6 +194,8 @@ impl InfluxWriter {
         Ok(Self {
             clients: Mutex::new(Some((timeout, client))),
             file: None,
+            total_timeout: WRITE_TOTAL_TIMEOUT,
+            max_body_bytes: WRITE_MAX_BODY_BYTES,
         })
     }
 
@@ -206,7 +212,16 @@ impl InfluxWriter {
         Ok(Self {
             clients: Mutex::new(None),
             file: Some(Mutex::new(file)),
+            total_timeout: WRITE_TOTAL_TIMEOUT,
+            max_body_bytes: WRITE_MAX_BODY_BYTES,
         })
+    }
+
+    /// Override transfer budgets for synthetic tests.
+    pub fn with_response_limits(mut self, total_timeout: Duration, max_body_bytes: usize) -> Self {
+        self.total_timeout = total_timeout;
+        self.max_body_bytes = max_body_bytes;
+        self
     }
 
     /// The client for `timeout`, built when it differs from the cached one.
@@ -271,6 +286,20 @@ impl InfluxWriter {
         settings: &Settings,
         prepared: &PreparedWrite,
     ) -> Result<(), WriteError> {
+        tokio::time::timeout(
+            self.total_timeout,
+            self.post_exchange(config, settings, prepared),
+        )
+        .await
+        .unwrap_or_else(|_| Err(budget_error("write", "total deadline", &[])))
+    }
+
+    async fn post_exchange(
+        &self,
+        config: &InfluxClientConfig,
+        settings: &Settings,
+        prepared: &PreparedWrite,
+    ) -> Result<(), WriteError> {
         let timeout = config.request_timeout().map_err(WriteError::Timeout)?;
         let url = write_url(&config.host, &settings.influx_org, &settings.influx_bucket)?;
         let target = Target::of(&url);
@@ -288,11 +317,17 @@ impl InfluxWriter {
             .header(AUTHORIZATION, authorization(&config.token)?)
             .header(USER_AGENT, USER_AGENT_VALUE)
             .body(prepared.body());
-        let response = request
-            .send()
-            .await
-            .map_err(|err| transport_error(&err, &target, timeout))?;
+        let response = request.send().await.map_err(|err| {
+            let error = transport_error(&err, &target, timeout);
+            if err.is_connect() {
+                error
+            } else {
+                uncertain_write(error)
+            }
+        })?;
         let status = response.status();
+        log::info!(target: "httpx", "HTTP Request: POST {url} \"{:?} {} {}\"",
+            response.version(), status.as_u16(), String::from_utf8_lossy(&crate::query::reason_phrase(&response)));
         let headers: Vec<String> = response
             .headers()
             .iter()
@@ -305,10 +340,7 @@ impl InfluxWriter {
             })
             .collect();
         // `preload_content=True`: the whole body is read, then decoded.
-        let body = response
-            .bytes()
-            .await
-            .map_err(|err| transport_error(&err, &target, timeout))?;
+        let body = bounded_body(response, self.max_body_bytes, "write", &target, timeout).await?;
         let body = String::from_utf8(body.to_vec()).map_err(|err| WriteError::Transport {
             class: "UnicodeDecodeError",
             message: format!("'utf-8' codec can't decode the response body: {err}"),
@@ -318,9 +350,68 @@ impl InfluxWriter {
         }
         Err(WriteError::Api {
             status: status.as_u16(),
-            message: api_exception_text(status, &headers, &body),
+            message: api_exception_text(
+                status,
+                &headers,
+                &body[..body.floor_char_boundary(ERROR_DIAGNOSTIC_BYTES.min(body.len()))],
+            ),
         })
     }
+}
+
+fn uncertain_write(mut error: WriteError) -> WriteError {
+    let message = match &mut error {
+        WriteError::Transport { message, .. } | WriteError::Api { message, .. } => message,
+        _ => return error,
+    };
+    message.push_str("; write acceptance uncertain; not retried");
+    error
+}
+
+pub(crate) fn budget_error(label: &str, budget: &str, diagnostic: &[u8]) -> WriteError {
+    let mut message = format!("InfluxDB {label} response exceeded {budget}");
+    if label == "write" {
+        message.push_str("; write acceptance uncertain; not retried");
+        if !diagnostic.is_empty() {
+            message.push_str(": ");
+            message.push_str(&String::from_utf8_lossy(
+                &diagnostic[..diagnostic.len().min(ERROR_DIAGNOSTIC_BYTES)],
+            ));
+        }
+    }
+    WriteError::Transport {
+        class: "InfluxTransferError",
+        message,
+    }
+}
+
+pub(crate) async fn bounded_body(
+    mut response: reqwest::Response,
+    limit: usize,
+    label: &str,
+    target: &Target,
+    timeout: Option<RequestTimeout>,
+) -> Result<Vec<u8>, WriteError> {
+    let mut body = Vec::new();
+    while let Some(chunk) = response.chunk().await.map_err(|err| {
+        let error = transport_error(&err, target, timeout);
+        if label == "write" {
+            uncertain_write(error)
+        } else {
+            error
+        }
+    })? {
+        if chunk.len() > limit.saturating_sub(body.len()) {
+            body.extend_from_slice(
+                &chunk[..chunk
+                    .len()
+                    .min(ERROR_DIAGNOSTIC_BYTES.saturating_sub(body.len()))],
+            );
+            return Err(budget_error(label, "decoded byte limit", &body));
+        }
+        body.extend_from_slice(&chunk);
+    }
+    Ok(body)
 }
 
 /// `Authorization: Token <token>` as the write request carries it. A value

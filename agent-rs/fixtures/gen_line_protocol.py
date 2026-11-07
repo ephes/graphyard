@@ -170,7 +170,7 @@ class _Recorder(BaseHTTPRequestHandler):
         )
         status = int(_Recorder.respond.get("status", 204))
         payload = str(_Recorder.respond.get("body", "")).encode("utf-8")
-        self.send_response(status)
+        self.send_response(status, _Recorder.respond.get("reason"))
         for name, value in _Recorder.respond.get("headers", []):
             self.send_header(name, value)
         self.send_header("Content-Length", str(len(payload)))
@@ -532,6 +532,12 @@ WRITES: list[tuple[str, dict[str, str], list[dict[str, Any]], dict[str, Any]]] =
         {"status": 307, "headers": [["Location", "/elsewhere"]], "body": ""},
     ),
     ("status 500 raises", V2, [_p()], {"status": 500, "body": "boom"}),
+    (
+        "write noncanonical reason",
+        V2,
+        [_p()],
+        {"status": 500, "reason": "Backend Down", "body": "boom"},
+    ),
     ("timeout zero means none", {**V2, "INFLUX_TIMEOUT_MS": "0"}, [_p()], {}),
     ("small timeout", {**V2, "INFLUX_TIMEOUT_MS": "1500"}, [_p()], {}),
     ("negative timeout", {**V2, "INFLUX_TIMEOUT_MS": "-5"}, [_p()], {}),
@@ -644,6 +650,10 @@ def _write(
     logger.addHandler(capture)
     previous_level = logger.level
     logger.setLevel(logging.DEBUG)
+    http_logger = logging.getLogger("httpx")
+    http_level = http_logger.level
+    http_logger.setLevel(logging.INFO)
+    http_logger.addHandler(capture)
     result: dict[str, Any]
     try:
         with override_settings(**_settings(env, servers)), warnings.catch_warnings():
@@ -659,6 +669,15 @@ def _write(
     finally:
         logger.removeHandler(capture)
         logger.setLevel(previous_level)
+        http_logger.removeHandler(capture)
+        http_logger.setLevel(http_level)
+    for record in capture.records:
+        for field in ("message", "d10_message"):
+            if field in record:
+                for placeholder in ("{server}", "{closed}", "{stall}", "{raw}"):
+                    record[field] = record[field].replace(
+                        servers.url(placeholder), placeholder
+                    )
     return {
         "result": result,
         "requests": list(_Recorder.requests),

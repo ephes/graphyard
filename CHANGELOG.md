@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Bound Influx Flux queries to 10 MiB decoded response data and 30 seconds per
+  exchange, and writes to 64 KiB and 30 seconds, in Python and Rust. Error
+  responses count too; over-budget writes report uncertain acceptance without
+  replay. Error diagnostics retain at most 1 KiB.
+
 - Confine Python/Rust UniFi login and session redirects to the controller
   origin, refusing downgrades. Bound all response bodies across a collection
   by one byte allowance and total deadline; require identity encoding.

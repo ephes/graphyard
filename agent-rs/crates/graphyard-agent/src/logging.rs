@@ -11,7 +11,7 @@ use log::{Level, LevelFilter, Log, Metadata, Record};
 struct StderrLogger;
 
 fn level_for(target: &str) -> Level {
-    if target.starts_with("graphyard") {
+    if target.starts_with("graphyard") || target == "httpx" {
         Level::Info
     } else {
         Level::Warn

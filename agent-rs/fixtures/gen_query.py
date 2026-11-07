@@ -692,22 +692,9 @@ def _window_case(case: dict[str, Any]) -> dict[str, Any]:
 def _flux_text(metric: str, start: datetime, stop: datetime, **kwargs: Any) -> str:
     captured: list[str] = []
 
-    class _Client:
-        def __enter__(self) -> _Client:
-            return self
-
-        def __exit__(self, *args: object) -> None:
-            pass
-
-        def query_api(self) -> Any:
-            class _Api:
-                def query(self, query: str, org: str) -> list[Any]:
-                    captured.append(query)
-                    return []
-
-            return _Api()
-
-    with mock.patch.object(influx, "_build_client", _Client):
+    with mock.patch.object(
+        influx, "_query_flux_tables", lambda flux: captured.append(flux) or []
+    ):
         influx._query_range_v2_flux(metric, start, stop, **kwargs)
     return captured[0]
 
@@ -1336,6 +1323,45 @@ V2_ERROR_CASES: list[dict[str, Any]] = [
         "settings": {"INFLUX_TIMEOUT_MS": 10**400},
     },
 ]
+
+V2_ERROR_CASES.extend(
+    [
+        {
+            "name": "noncanonical_reason",
+            "responses": [
+                {"status": 404, "reason": "Nope", "headers": [], "body": "missing"}
+            ],
+        },
+        {
+            "name": "flux_oversize",
+            "responses": [_ok("123456")],
+            "patch": {"FLUX_QUERY_MAX_BODY_BYTES": 5},
+        },
+        {
+            "name": "flux_oversize_decoded",
+            "responses": [_ok("x" * 1000, gzip=True)],
+            "patch": {"FLUX_QUERY_MAX_BODY_BYTES": 100},
+        },
+        {
+            "name": "flux_oversize_404_no_fallback",
+            "settings": {"INFLUX_API_MODE": "auto"},
+            "responses": [
+                {"status": 404, "reason": "Not Found", "headers": [], "body": "123456"}
+            ],
+            "patch": {"FLUX_QUERY_MAX_BODY_BYTES": 5},
+        },
+        {
+            "name": "flux_deadline_headers",
+            "responses": [_ok("", header_delay=1.5)],
+            "patch": {"FLUX_QUERY_TOTAL_TIMEOUT_SECONDS": 0.3},
+        },
+        {
+            "name": "flux_deadline_drip",
+            "responses": [_ok("x" * 40, drip=True, chunk_delay=0.05)],
+            "patch": {"FLUX_QUERY_TOTAL_TIMEOUT_SECONDS": 0.3},
+        },
+    ]
+)
 
 for _case in V2_ERROR_CASES:
     _case.setdefault("settings", {})

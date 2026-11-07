@@ -1226,7 +1226,12 @@
      "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
     }
    ],
-   "logs": [],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v2/query?org=graphyard \"HTTP/1.1 200 OK\""
+    ]
+   ],
    "samples": []
   },
   {
@@ -1281,7 +1286,12 @@
      "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
     }
    ],
-   "logs": [],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v2/query?org=graphyard \"HTTP/1.1 200 OK\""
+    ]
+   ],
    "samples": []
   },
   {
@@ -1336,7 +1346,12 @@
      "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
     }
    ],
-   "logs": [],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v2/query?org=graphyard \"HTTP/1.1 200 OK\""
+    ]
+   ],
    "samples": [
     {
      "ts": "2026-10-21T11:30:00+00:00",
@@ -1426,7 +1441,12 @@
      "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
     }
    ],
-   "logs": [],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v2/query?org=graphyard \"HTTP/1.1 200 OK\""
+    ]
+   ],
    "samples": [
     {
      "ts": "2026-10-21T11:30:00+00:00",
@@ -1533,7 +1553,12 @@
      "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
     }
    ],
-   "logs": [],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v2/query?org=graphyard \"HTTP/1.1 200 OK\""
+    ]
+   ],
    "samples": [
     {
      "ts": "2026-10-21T11:30:00+00:00",
@@ -1644,7 +1669,12 @@
      "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
     }
    ],
-   "logs": [],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v2/query?org=graphyard \"HTTP/1.1 200 OK\""
+    ]
+   ],
    "samples": [
     {
      "ts": "2026-10-21T11:30:00+00:00",
@@ -1734,7 +1764,12 @@
      "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
     }
    ],
-   "logs": [],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v2/query?org=graphyard \"HTTP/1.1 200 OK\""
+    ]
+   ],
    "error": {
     "class": "ValueError",
     "message": "invalid literal for int() with base 10: ''"
@@ -1792,7 +1827,12 @@
      "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
     }
    ],
-   "logs": [],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v2/query?org=graphyard \"HTTP/1.1 200 OK\""
+    ]
+   ],
    "samples": [
     {
      "ts": "2026-10-21T11:32:00+00:00",
@@ -1863,7 +1903,12 @@
      "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
     }
    ],
-   "logs": [],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v2/query?org=graphyard \"HTTP/1.1 200 OK\""
+    ]
+   ],
    "samples": [
     {
      "ts": "2026-10-21T11:30:00+00:00",
@@ -1969,7 +2014,12 @@
      "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
     }
    ],
-   "logs": [],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v2/query?org=graphyard \"HTTP/1.1 200 OK\""
+    ]
+   ],
    "samples": [
     {
      "ts": "2026-10-21T11:30:00+00:00",
@@ -2040,7 +2090,12 @@
      "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
     }
    ],
-   "logs": [],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v2/query?org=graphyard \"HTTP/1.1 200 OK\""
+    ]
+   ],
    "samples": [
     {
      "ts": "2026-10-21T11:30:00+00:00",
@@ -2111,7 +2166,12 @@
      "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
     }
    ],
-   "logs": [],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v2/query?org=graphyard \"HTTP/1.1 200 OK\""
+    ]
+   ],
    "error": {
     "class": "InfluxConfigurationError",
     "message": "InfluxDB query sample must be a finite number"
@@ -2169,7 +2229,12 @@
      "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
     }
    ],
-   "logs": [],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v2/query?org=graphyard \"HTTP/1.1 200 OK\""
+    ]
+   ],
    "error": {
     "class": "InfluxConfigurationError",
     "message": "InfluxDB query sample must be a finite number"
@@ -2227,7 +2292,12 @@
      "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
     }
    ],
-   "logs": [],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v2/query?org=graphyard \"HTTP/1.1 200 OK\""
+    ]
+   ],
    "error": {
     "class": "InfluxConfigurationError",
     "message": "InfluxDB query sample must be a finite number"
@@ -2285,7 +2355,12 @@
      "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
     }
    ],
-   "logs": [],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v2/query?org=graphyard \"HTTP/1.1 200 OK\""
+    ]
+   ],
    "error": {
     "class": "InfluxConfigurationError",
     "message": "InfluxDB query sample must be a finite number"
@@ -2343,7 +2418,12 @@
      "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
     }
    ],
-   "logs": [],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v2/query?org=graphyard \"HTTP/1.1 200 OK\""
+    ]
+   ],
    "error": {
     "class": "InfluxConfigurationError",
     "message": "InfluxDB query sample must be a finite number"
@@ -2401,7 +2481,12 @@
      "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
     }
    ],
-   "logs": [],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v2/query?org=graphyard \"HTTP/1.1 200 OK\""
+    ]
+   ],
    "error": {
     "class": "InfluxConfigurationError",
     "message": "InfluxDB query sample must be a finite number"
@@ -2459,7 +2544,12 @@
      "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
     }
    ],
-   "logs": [],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v2/query?org=graphyard \"HTTP/1.1 200 OK\""
+    ]
+   ],
    "error": {
     "class": "AttributeError",
     "message": "'str' object has no attribute 'tzinfo'"
@@ -2517,7 +2607,12 @@
      "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
     }
    ],
-   "logs": [],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v2/query?org=graphyard \"HTTP/1.1 200 OK\""
+    ]
+   ],
    "error": {
     "class": "OverflowError",
     "message": "date value out of range"
@@ -2575,7 +2670,12 @@
      "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
     }
    ],
-   "logs": [],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v2/query?org=graphyard \"HTTP/1.1 200 OK\""
+    ]
+   ],
    "error": {
     "class": "KeyError",
     "message": "'_value'"
@@ -2633,7 +2733,12 @@
      "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
     }
    ],
-   "logs": [],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v2/query?org=graphyard \"HTTP/1.1 200 OK\""
+    ]
+   ],
    "error": {
     "class": "KeyError",
     "message": "'_time'"
@@ -2691,7 +2796,12 @@
      "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
     }
    ],
-   "logs": [],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v2/query?org=graphyard \"HTTP/1.1 200 OK\""
+    ]
+   ],
    "error": {
     "class": "ValueError",
     "message": "could not convert string to float: '1,5'"
@@ -2749,7 +2859,12 @@
      "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
     }
    ],
-   "logs": [],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v2/query?org=graphyard \"HTTP/1.1 200 OK\""
+    ]
+   ],
    "error": {
     "class": "ValueError",
     "message": "invalid literal for int() with base 10: '1.5'"
@@ -2807,7 +2922,12 @@
      "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
     }
    ],
-   "logs": [],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v2/query?org=graphyard \"HTTP/1.1 200 OK\""
+    ]
+   ],
    "error": {
     "class": "ValueError",
     "message": "Invalid isoformat string: 'yesterday'"
@@ -2865,7 +2985,12 @@
      "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
     }
    ],
-   "logs": [],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v2/query?org=graphyard \"HTTP/1.1 200 OK\""
+    ]
+   ],
    "error": {
     "class": "ValueError",
     "message": "invalid literal for int() with base 10: 'x'"
@@ -2923,7 +3048,12 @@
      "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
     }
    ],
-   "logs": [],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v2/query?org=graphyard \"HTTP/1.1 200 OK\""
+    ]
+   ],
    "error": {
     "class": "Error",
     "message": "Invalid base64-encoded string: number of data characters (5) cannot be 1 more than a multiple of 4"
@@ -2981,7 +3111,12 @@
      "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
     }
    ],
-   "logs": [],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v2/query?org=graphyard \"HTTP/1.1 200 OK\""
+    ]
+   ],
    "error": {
     "class": "FluxQueryException",
     "message": "('failed to initialize execute state: type error 3:1-3:30: \"x\" not found', '897')"
@@ -3039,7 +3174,12 @@
      "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
     }
    ],
-   "logs": [],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v2/query?org=graphyard \"HTTP/1.1 200 OK\""
+    ]
+   ],
    "error": {
     "class": "FluxQueryException",
     "message": "(\"'quoted' message\", '')"
@@ -3097,7 +3237,12 @@
      "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
     }
    ],
-   "logs": [],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v2/query?org=graphyard \"HTTP/1.1 200 OK\""
+    ]
+   ],
    "error": {
     "class": "FluxCsvParserException",
     "message": "Unable to parse CSV response. FluxTable definition was not found."
@@ -3155,7 +3300,12 @@
      "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
     }
    ],
-   "logs": [],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v2/query?org=graphyard \"HTTP/1.1 200 OK\""
+    ]
+   ],
    "error": {
     "class": "IndexError",
     "message": "list index out of range"
@@ -3213,7 +3363,12 @@
      "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
     }
    ],
-   "logs": [],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v2/query?org=graphyard \"HTTP/1.1 200 OK\""
+    ]
+   ],
    "samples": [
     {
      "ts": "2026-10-21T11:31:00+00:00",
@@ -3284,7 +3439,12 @@
      "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
     }
    ],
-   "logs": [],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v2/query?org=graphyard \"HTTP/1.1 200 OK\""
+    ]
+   ],
    "error": {
     "class": "IndexError",
     "message": "list index out of range"
@@ -3342,7 +3502,12 @@
      "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
     }
    ],
-   "logs": [],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v2/query?org=graphyard \"HTTP/1.1 200 OK\""
+    ]
+   ],
    "error": {
     "class": "IndexError",
     "message": "list index out of range"
@@ -3400,7 +3565,12 @@
      "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
     }
    ],
-   "logs": [],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v2/query?org=graphyard \"HTTP/1.1 200 OK\""
+    ]
+   ],
    "error": {
     "class": "IndexError",
     "message": "list index out of range"
@@ -3458,7 +3628,12 @@
      "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
     }
    ],
-   "logs": [],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v2/query?org=graphyard \"HTTP/1.1 200 OK\""
+    ]
+   ],
    "error": {
     "class": "IndexError",
     "message": "list index out of range"
@@ -3516,7 +3691,12 @@
      "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
     }
    ],
-   "logs": [],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v2/query?org=graphyard \"HTTP/1.1 200 OK\""
+    ]
+   ],
    "samples": [
     {
      "ts": "2026-10-21T11:30:00+00:00",
@@ -3589,7 +3769,12 @@
      "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
     }
    ],
-   "logs": [],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v2/query?org=graphyard \"HTTP/1.1 200 OK\""
+    ]
+   ],
    "samples": [
     {
      "ts": "2026-10-21T11:30:00+00:00",
@@ -3683,7 +3868,12 @@
      "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
     }
    ],
-   "logs": [],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v2/query?org=graphyard \"HTTP/1.1 200 OK\""
+    ]
+   ],
    "samples": [
     {
      "ts": "2026-10-21T11:30:00+00:00",
@@ -3754,7 +3944,12 @@
      "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
     }
    ],
-   "logs": [],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v2/query?org=graphyard \"HTTP/1.1 200 OK\""
+    ]
+   ],
    "samples": [
     {
      "ts": "2026-10-21T11:30:00+00:00",
@@ -3825,7 +4020,12 @@
      "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
     }
    ],
-   "logs": [],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v2/query?org=graphyard \"HTTP/1.1 200 OK\""
+    ]
+   ],
    "error": {
     "class": "UnicodeDecodeError",
     "p2": true
@@ -3892,7 +4092,12 @@
      "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"m\\\" and r[\\\"host\\\"] == \\\"h\\\" and r[\\\"k\\\"] == \\\"v\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
     }
    ],
-   "logs": [],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v2/query?org=graphyard \"HTTP/1.1 200 OK\""
+    ]
+   ],
    "samples": []
   },
   {
@@ -3950,7 +4155,12 @@
      "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"temp\\u00e4\\ud83d\\ude00\\u2028\\u007f\\u0001\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
     }
    ],
-   "logs": [],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v2/query?org=my+org%2F%C3%A4%26%3D%2B~%2A \"HTTP/1.1 200 OK\""
+    ]
+   ],
    "samples": []
   },
   {
@@ -4006,7 +4216,12 @@
      "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
     }
    ],
-   "logs": [],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v2/query?org=graphyard \"HTTP/1.1 200 OK\""
+    ]
+   ],
    "samples": []
   },
   {
@@ -4062,7 +4277,12 @@
      "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
     }
    ],
-   "logs": [],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}//api/v2/query?org=graphyard \"HTTP/1.1 200 OK\""
+    ]
+   ],
    "samples": []
   },
   {
@@ -4118,7 +4338,12 @@
      "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
     }
    ],
-   "logs": [],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/influx/api/v2/query?org=graphyard \"HTTP/1.1 200 OK\""
+    ]
+   ],
    "samples": []
   },
   {
@@ -4173,7 +4398,12 @@
      "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
     }
    ],
-   "logs": [],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v2/query?org=graphyard \"HTTP/1.1 200 OK\""
+    ]
+   ],
    "samples": []
   }
  ],
@@ -4285,7 +4515,12 @@
      "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
     }
    ],
-   "logs": [],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v2/query?org=graphyard \"HTTP/1.1 404 Not Found\""
+    ]
+   ],
    "error": {
     "class": "ApiException",
     "p2": true
@@ -4338,7 +4573,12 @@
      "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
     }
    ],
-   "logs": [],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v2/query?org=graphyard \"HTTP/1.1 500 Internal Server Error\""
+    ]
+   ],
    "error": {
     "class": "ApiException",
     "p2": true
@@ -4396,7 +4636,12 @@
      "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
     }
    ],
-   "logs": [],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v2/query?org=graphyard \"HTTP/1.1 302 Found\""
+    ]
+   ],
    "error": {
     "class": "ApiException",
     "p2": true
@@ -4583,7 +4828,12 @@
      "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
     }
    ],
-   "logs": [],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v2/query?org=graphyard \"HTTP/1.1 200 OK\""
+    ]
+   ],
    "error": {
     "class": "ProtocolError",
     "p2": true
@@ -4637,7 +4887,12 @@
      "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
     }
    ],
-   "logs": [],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v2/query?org=graphyard \"HTTP/1.1 404 Not Found\""
+    ]
+   ],
    "error": {
     "class": "ProtocolError",
     "p2": true
@@ -4696,7 +4951,12 @@
      "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
     }
    ],
-   "logs": [],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v2/query?org=graphyard \"HTTP/1.1 200 OK\""
+    ]
+   ],
    "samples": [
     {
      "ts": "2026-10-21T11:30:00+00:00",
@@ -4769,7 +5029,12 @@
      "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
     }
    ],
-   "logs": [],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v2/query?org=graphyard \"HTTP/1.1 200 OK\""
+    ]
+   ],
    "samples": []
   },
   {
@@ -4806,6 +5071,388 @@
    "error": {
     "class": "OverflowError",
     "message": "integer division result too large for a float"
+   }
+  },
+  {
+   "name": "noncanonical_reason",
+   "responses": [
+    {
+     "status": 404,
+     "reason": "Nope",
+     "headers": [],
+     "body": "missing"
+    }
+   ],
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v2"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v2/query?org=graphyard",
+     "headers": [
+      [
+       "accept-encoding",
+       "identity"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Token test-token"
+      ],
+      [
+       "user-agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
+    }
+   ],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v2/query?org=graphyard \"HTTP/1.1 404 Nope\""
+    ]
+   ],
+   "error": {
+    "class": "ApiException",
+    "p2": true
+   }
+  },
+  {
+   "name": "flux_oversize",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "text/csv; charset=utf-8"
+      ]
+     ],
+     "body": "123456"
+    }
+   ],
+   "patch": {
+    "FLUX_QUERY_MAX_BODY_BYTES": 5
+   },
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v2"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v2/query?org=graphyard",
+     "headers": [
+      [
+       "accept-encoding",
+       "identity"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Token test-token"
+      ],
+      [
+       "user-agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
+    }
+   ],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v2/query?org=graphyard \"HTTP/1.1 200 OK\""
+    ]
+   ],
+   "error": {
+    "class": "InfluxTransferError",
+    "message": "InfluxDB Flux response exceeded decoded byte limit"
+   }
+  },
+  {
+   "name": "flux_oversize_decoded",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "text/csv; charset=utf-8"
+      ]
+     ],
+     "body": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+     "gzip": true
+    }
+   ],
+   "patch": {
+    "FLUX_QUERY_MAX_BODY_BYTES": 100
+   },
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v2"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v2/query?org=graphyard",
+     "headers": [
+      [
+       "accept-encoding",
+       "identity"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Token test-token"
+      ],
+      [
+       "user-agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
+    }
+   ],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v2/query?org=graphyard \"HTTP/1.1 200 OK\""
+    ]
+   ],
+   "error": {
+    "class": "InfluxTransferError",
+    "message": "InfluxDB Flux response exceeded decoded byte limit"
+   }
+  },
+  {
+   "name": "flux_oversize_404_no_fallback",
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "auto"
+   },
+   "responses": [
+    {
+     "status": 404,
+     "reason": "Not Found",
+     "headers": [],
+     "body": "123456"
+    }
+   ],
+   "patch": {
+    "FLUX_QUERY_MAX_BODY_BYTES": 5
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v2/query?org=graphyard",
+     "headers": [
+      [
+       "accept-encoding",
+       "identity"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Token test-token"
+      ],
+      [
+       "user-agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
+    }
+   ],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v2/query?org=graphyard \"HTTP/1.1 404 Not Found\""
+    ]
+   ],
+   "error": {
+    "class": "InfluxTransferError",
+    "message": "InfluxDB Flux response exceeded decoded byte limit"
+   }
+  },
+  {
+   "name": "flux_deadline_headers",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "text/csv; charset=utf-8"
+      ]
+     ],
+     "body": "",
+     "header_delay": 1.5
+    }
+   ],
+   "patch": {
+    "FLUX_QUERY_TOTAL_TIMEOUT_SECONDS": 0.3
+   },
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v2"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v2/query?org=graphyard",
+     "headers": [
+      [
+       "accept-encoding",
+       "identity"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Token test-token"
+      ],
+      [
+       "user-agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
+    }
+   ],
+   "logs": [],
+   "error": {
+    "class": "InfluxTransferError",
+    "message": "InfluxDB Flux response exceeded total deadline"
+   }
+  },
+  {
+   "name": "flux_deadline_drip",
+   "responses": [
+    {
+     "status": 200,
+     "reason": "OK",
+     "headers": [
+      [
+       "Content-Type",
+       "text/csv; charset=utf-8"
+      ]
+     ],
+     "body": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+     "drip": true,
+     "chunk_delay": 0.05
+    }
+   ],
+   "patch": {
+    "FLUX_QUERY_TOTAL_TIMEOUT_SECONDS": 0.3
+   },
+   "settings": {
+    "INFLUX_TOKEN": "test-token",
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_BUCKET": "graphyard",
+    "INFLUX_MEASUREMENT": "graphyard_metrics",
+    "INFLUX_TIMEOUT_MS": 10000,
+    "INFLUX_API_MODE": "v2"
+   },
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/v2/query?org=graphyard",
+     "headers": [
+      [
+       "accept-encoding",
+       "identity"
+      ],
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ],
+      [
+       "authorization",
+       "Token test-token"
+      ],
+      [
+       "user-agent",
+       "influxdb-client-python/1.50.0"
+      ]
+     ],
+     "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
+    }
+   ],
+   "logs": [
+    [
+     "INFO",
+     "HTTP Request: POST http://{server}/api/v2/query?org=graphyard \"HTTP/1.1 200 OK\""
+    ]
+   ],
+   "error": {
+    "class": "InfluxTransferError",
+    "message": "InfluxDB Flux response exceeded total deadline"
    }
   }
  ]

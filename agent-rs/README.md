@@ -442,3 +442,13 @@ it holds `graphyard-agent` (0755, 8958360 bytes) and `LICENSE` (0644), owned
 by root; `release_checks.py glibc-floor --max 2.35` passes on the extracted
 binary (newest symbol version `GLIBC_2.34`, libraries OK); the workflow's
 smoke test printed `graphyard-agent 0.2.0 (17a929f240ddf3f63fc7a2ae404dd3c041e93838)`.
+
+### Influx response budgets
+
+Flux exchanges have a 30 s total deadline and 10 MiB decoded response limit;
+writes have a 30 s deadline and 64 KiB decoded response limit, including error
+bodies. Error diagnostics retain at most 1 KiB. Limits are independent of the
+inactivity timeout and also cover success bodies. Budget failures close the
+response; writes report uncertain acceptance and are never replayed. Only a
+complete bounded Flux 404 permits auto-mode SQL fallback. See
+[Influx transfer limits](../docs/influx_grafana.md#transfer-limits).

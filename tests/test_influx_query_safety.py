@@ -58,21 +58,11 @@ def install_rows(monkeypatch, settings, backend, values):
         def get_time(self):
             return datetime.fromisoformat(self.values["time"])
 
-    class Client:
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *args):
-            pass
-
-        def query_api(self):
-            return SimpleNamespace(
-                query=lambda **kwargs: [
-                    SimpleNamespace(records=[Record(r) for r in rows])
-                ]
-            )
-
-    monkeypatch.setattr(influx, "_build_client", Client)
+    monkeypatch.setattr(
+        influx,
+        "_query_flux_tables",
+        lambda flux: [SimpleNamespace(records=[Record(r) for r in rows])],
+    )
 
 
 @pytest.mark.parametrize("backend", ["v2", "v3", "auto"])
