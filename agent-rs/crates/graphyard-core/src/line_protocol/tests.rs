@@ -45,6 +45,8 @@ fn to_line_protocol_matches_the_python_client() {
 fn expected_logs(case: &Value) -> Vec<LogEvent> {
     case.list_field("logs")
         .iter()
+        // The pure encoder does not perform HTTP; the writer tests these logs.
+        .filter(|record| !record.str_field("message").starts_with("HTTP Request: "))
         .map(|record| {
             let level = match record.str_field("level") {
                 "WARNING" => LogLevel::Warning,
