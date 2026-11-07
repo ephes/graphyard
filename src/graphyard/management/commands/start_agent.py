@@ -77,9 +77,10 @@ class Command(BaseCommand):
         )
 
         if run_once:
-            self._run_enabled_loops(
+            if not self._run_enabled_loops(
                 run_metrics=run_metrics, run_conditions=run_conditions
-            )
+            ):
+                raise CommandError("One or more enabled agent loops failed.")
             return
 
         now = time.monotonic()
@@ -109,13 +110,15 @@ class Command(BaseCommand):
                 self.style.WARNING("graphyard-agent interrupted, exiting")
             )
 
-    def _run_enabled_loops(self, *, run_metrics: bool, run_conditions: bool) -> None:
+    def _run_enabled_loops(self, *, run_metrics: bool, run_conditions: bool) -> bool:
+        succeeded = True
         if run_metrics:
-            self._run_metric_specs(due_only=False)
+            succeeded &= self._run_metric_specs(due_only=False)
         if run_conditions:
-            self._run_condition_eval()
+            succeeded &= self._run_condition_eval()
+        return succeeded
 
-    def _run_metric_specs(self, *, due_only: bool = True) -> None:
+    def _run_metric_specs(self, *, due_only: bool = True) -> bool:
         try:
             run = run_metric_collection_specs_once(due_only=due_only)
             self.stdout.write(
@@ -123,16 +126,20 @@ class Command(BaseCommand):
                 f"total={run.total} failed={run.failed} warning={run.warning} "
                 f"ingested={run.ingested} skipped={run.skipped}"
             )
+            return run.failed == 0
         except Exception as err:  # noqa: BLE001
             logger.exception("Metric collection failed")
             self.stderr.write(f"Metric collection failed: {err}")
+            return False
 
-    def _run_condition_eval(self) -> None:
+    def _run_condition_eval(self) -> bool:
         try:
             run = evaluate_conditions_once()
             self.stdout.write(
                 f"Condition eval: evaluated={run.total} failed={run.failed}"
             )
+            return run.failed == 0
         except Exception as err:  # noqa: BLE001
             logger.exception("Condition evaluation failed")
             self.stderr.write(f"Condition eval failed: {err}")
+            return False

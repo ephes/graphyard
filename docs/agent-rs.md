@@ -91,9 +91,11 @@ graphyard-agent evaluate-conditions --db db.sqlite3                   # manage.p
 The flags of `manage.py start_agent` are unchanged (`--metrics-interval`,
 `--condition-interval`, `--disable-metrics`/`--disable-ha`,
 `--disable-conditions`, `--run-once`). The settings come from the unit's
-`EnvironmentFile`. Exit codes: 0 normal end (`--run-once`, SIGINT, SIGTERM),
-1 `CommandError`, invalid environment, database or schema failure, 2 usage
-error. `--influx-write-file PATH` is the shadow mode: every batch the agent
+`EnvironmentFile`. Exit codes: 0 successful `--run-once`, SIGINT or SIGTERM;
+1 failed enabled one-shot work, `CommandError`, invalid environment, database
+or schema failure; 2 usage error. One-shot runs every enabled loop before
+reporting failure; warnings alone succeed. Continuous mode keeps scheduling
+after failures. `--influx-write-file PATH` is the shadow mode: every batch the agent
 would write to InfluxDB is appended to `PATH` as line protocol after a
 `# write <utc> points=<n>` comment line; queries still go to InfluxDB.
 

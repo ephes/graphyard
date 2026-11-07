@@ -318,7 +318,7 @@ fn run_once_writes_the_rows_and_lines_of_every_collector_family() {
     );
 
     let after = Utc::now().timestamp();
-    assert_eq!(output.status.code(), Some(0), "{output:?}");
+    assert_eq!(output.status.code(), Some(1), "{output:?}");
     assert_eq!(
         text(&output.stdout),
         "Starting graphyard-agent (metrics=True@60s, conditions=True@60s)\n\

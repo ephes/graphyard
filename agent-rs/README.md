@@ -206,7 +206,7 @@ the Rust ones. `just rs-parity` runs separately (CI job `parity`).
 
 ```bash
 graphyard-agent --db /opt/apps/graphyard/site/src/django/db.sqlite3        # the loop
-graphyard-agent --run-once --db db.sqlite3                                 # both runs once, exit 0
+graphyard-agent --run-once --db db.sqlite3                                 # both runs once, exit 0/1
 graphyard-agent --check-schema --db db.sqlite3                             # read-only, exit 0/1
 graphyard-agent --run-once --influx-write-file /tmp/writes.lp --db copy.sqlite3   # shadow: no InfluxDB writes
 graphyard-agent --version
@@ -226,8 +226,8 @@ stdout carries the start line, `Metric specs: ...`, `Condition eval: ...` and
 the log records as bare messages (INFO and above from the agent's crates,
 warnings from libraries), `CommandError: ...` and the `Metric collection
 failed: ...` / `Condition eval failed: ...` lines. Exit codes: 0 for
-`--run-once` (also after a failed run), SIGINT and SIGTERM; 1 for a
-`CommandError`, an invalid environment value, a missing database or a failed
+a successful `--run-once`, SIGINT and SIGTERM; 1 if an enabled one-shot loop
+reports failed work or a run error, or for a `CommandError`, an invalid environment value, a missing database or a failed
 schema check; 2 for a usage error. `--influx-write-file PATH` appends every
 batch the agent would write as `# write <utc> points=<n>` followed by its
 line protocol and counts it as written; queries still go to InfluxDB.
@@ -452,3 +452,8 @@ inactivity timeout and also cover success bodies. Budget failures close the
 response; writes report uncertain acceptance and are never replayed. Only a
 complete bounded Flux 404 permits auto-mode SQL fallback. See
 [Influx transfer limits](../docs/influx_grafana.md#transfer-limits).
+
+Both one-shot loops run before failure status is returned; disabled loops are
+ignored and warning-only outcomes succeed. Continuous mode still isolates errors
+and keeps scheduling. The parity corpus deliberately includes failed work and
+therefore expects exit 1 for each agent one-shot round.
