@@ -747,7 +747,16 @@ Nyxmon can poll:
 
 Status values are always `ok|warning|critical`. Heartbeat projection takes the
 worse of stored status and age-derived status, preserving the recorded error and
-details. Python heartbeat throttling suppresses only repeats of the last committed
+details. Missing success evidence has at least warning severity. Success timestamps
+more than 60 seconds in the future also warn with an unknown (`null`) age;
+smaller clock skew is tolerated with age zero. Stored critical severity remains.
+If the database probe, heartbeat/count reads or session lookup fails, health
+returns HTTP 503 with overall/database `critical`, pipeline `warning` with unknown
+success/age, and `null` condition counts. It stops database reads immediately,
+discards partial evidence and uses a status-only payload if authentication cannot
+be established. Database exception text is never included. Other health responses
+retain HTTP 200, including stale/critical pipeline evidence.
+Python heartbeat throttling suppresses only repeats of the last committed
 state per name; transitions and retries after failed/rolled-back writes publish.
 The retained Python agent uses this writer too; Rust writes every heartbeat and
 needs no throttle correction.

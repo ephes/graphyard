@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Return structured HTTP 503 health evidence on database failures, stop dependent
+  reads and report unknown counts rather than a generic server error.
+- Treat missing or implausibly future heartbeat success as at least warning;
+  tolerate up to 60 seconds of clock skew without negative ages.
+
 - Make Python and Rust agent `--run-once` exit nonzero after failed work or a
   run exception. Both enabled loops still run; continuous retry behavior and
   warning-only success are unchanged.
