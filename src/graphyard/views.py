@@ -716,14 +716,29 @@ def _heartbeat_component(name: str, now: datetime) -> dict[str, object]:
 
     if heartbeat.last_success is None:
         return {
-            "status": heartbeat.status,
+            "status": max(
+                (heartbeat.status, StatusLevel.WARNING), key=_component_status_rank
+            ),
             "message": heartbeat.last_error or "No successful run yet",
             "last_success": None,
             "age_seconds": None,
             "details": heartbeat.details,
         }
 
-    age_seconds = int((now - heartbeat.last_success).total_seconds())
+    # Allow small clock differences, but never advertise implausible success.
+    if heartbeat.last_success > now + timedelta(seconds=60):
+        return {
+            "status": max(
+                (heartbeat.status, StatusLevel.WARNING), key=_component_status_rank
+            ),
+            "message": (heartbeat.last_error + "; " if heartbeat.last_error else "")
+            + "Success timestamp is in the future",
+            "last_success": heartbeat.last_success.isoformat(),
+            "age_seconds": None,
+            "details": heartbeat.details,
+        }
+
+    age_seconds = max(0, int((now - heartbeat.last_success).total_seconds()))
     age_status = StatusLevel.OK
     if age_seconds >= settings.HEARTBEAT_CRITICAL_SECONDS:
         age_status = StatusLevel.CRITICAL
@@ -770,13 +785,40 @@ def health(request: HttpRequest) -> JsonResponse:
     now = timezone.now()
 
     database_component: dict[str, object]
+    pipeline_names = ("metric_ingest", "metric_collectors", "condition_evaluator")
+    detailed = False
     try:
         with connection.cursor() as cursor:
             cursor.execute("SELECT 1")
             cursor.fetchone()
+        pipelines = {name: _heartbeat_component(name, now) for name in pipeline_names}
+        condition_counts = {
+            status: ConditionDefinition.objects.filter(
+                enabled=True, status=status
+            ).count()
+            for status in (StatusLevel.OK, StatusLevel.WARNING, StatusLevel.CRITICAL)
+        }
+        conditions = {"total": sum(condition_counts.values()), **condition_counts}
+        # Lazy session authentication can also require the failed database.
+        detailed = request.user.is_authenticated
         database_component = {"status": StatusLevel.OK, "message": "ok"}
-    except Exception as err:  # noqa: BLE001
-        database_component = {"status": StatusLevel.CRITICAL, "message": str(err)}
+    except DatabaseError:
+        database_component = {
+            "status": StatusLevel.CRITICAL,
+            "message": "Database unavailable",
+        }
+        # Discard partial evidence and do not perform any more dependent reads.
+        pipelines = {
+            name: {
+                "status": StatusLevel.WARNING,
+                "message": "Database unavailable",
+                "last_success": None,
+                "age_seconds": None,
+                "details": {},
+            }
+            for name in pipeline_names
+        }
+        conditions = dict.fromkeys(("total", "ok", "warning", "critical"))
 
     influx_component: dict[str, object]
     try:
@@ -794,12 +836,6 @@ def health(request: HttpRequest) -> JsonResponse:
     except Exception as err:  # noqa: BLE001
         influx_component = {"status": StatusLevel.CRITICAL, "message": str(err)}
 
-    pipelines = {
-        "metric_ingest": _heartbeat_component("metric_ingest", now),
-        "metric_collectors": _heartbeat_component("metric_collectors", now),
-        "condition_evaluator": _heartbeat_component("condition_evaluator", now),
-    }
-
     status_values: list[str] = [
         str(database_component["status"]),
         str(influx_component["status"]),
@@ -809,24 +845,12 @@ def health(request: HttpRequest) -> JsonResponse:
     ]
     overall = max(status_values, key=_component_status_rank)
 
-    condition_counts = {
-        StatusLevel.OK: ConditionDefinition.objects.filter(
-            enabled=True, status=StatusLevel.OK
-        ).count(),
-        StatusLevel.WARNING: ConditionDefinition.objects.filter(
-            enabled=True, status=StatusLevel.WARNING
-        ).count(),
-        StatusLevel.CRITICAL: ConditionDefinition.objects.filter(
-            enabled=True, status=StatusLevel.CRITICAL
-        ).count(),
-    }
-
     components: dict[str, object] = {
         "database": database_component,
         "influxdb": influx_component,
         "pipelines": pipelines,
     }
-    if not request.user.is_authenticated:
+    if not detailed:
         components = _public_health_components(
             database_component, influx_component, pipelines
         )
@@ -836,13 +860,9 @@ def health(request: HttpRequest) -> JsonResponse:
             "status": overall,
             "checked_at": now.isoformat(),
             "components": components,
-            "conditions": {
-                "total": sum(condition_counts.values()),
-                "ok": condition_counts[StatusLevel.OK],
-                "warning": condition_counts[StatusLevel.WARNING],
-                "critical": condition_counts[StatusLevel.CRITICAL],
-            },
-        }
+            "conditions": conditions,
+        },
+        status=503 if database_component["status"] == StatusLevel.CRITICAL else 200,
     )
 
 

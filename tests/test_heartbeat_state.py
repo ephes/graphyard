@@ -200,3 +200,54 @@ def test_commit_order_may_differ_from_completion_order(monkeypatch):
         second.result(timeout=5)
     assert stored == ["critical", "ok"]
     assert "synthetic" not in services._heartbeat_write_cache
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("stored", ["ok", "warning", "critical"])
+@pytest.mark.parametrize("offset", [None, 61, 86400])
+def test_invalid_success_cannot_establish_health(stored, offset):
+    now = timezone.now()
+    PipelineHeartbeat.objects.create(
+        name="synthetic",
+        status=stored,
+        last_success=None if offset is None else now + timedelta(seconds=offset),
+    )
+    result = _heartbeat_component("synthetic", now)
+    assert result["status"] == ("critical" if stored == "critical" else "warning")
+    assert result["age_seconds"] is None
+    assert result["message"] == (
+        "No successful run yet"
+        if offset is None
+        else "Success timestamp is in the future"
+    )
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("offset", [0, 1, 60])
+def test_small_future_skew_is_tolerated_without_negative_age(offset):
+    now = timezone.now()
+    PipelineHeartbeat.objects.create(
+        name="synthetic",
+        status="ok",
+        last_success=now + timedelta(seconds=offset),
+    )
+    result = _heartbeat_component("synthetic", now)
+    assert result["status"] == "ok"
+    assert result["age_seconds"] == 0
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("offset", [None, 61])
+def test_invalid_success_preserves_recorded_failure(offset):
+    now = timezone.now()
+    PipelineHeartbeat.objects.create(
+        name="synthetic",
+        status="critical",
+        last_error="recorded failure",
+        last_success=None if offset is None else now + timedelta(seconds=offset),
+    )
+    result = _heartbeat_component("synthetic", now)
+    assert result["status"] == "critical"
+    assert "recorded failure" in result["message"]
+    if offset is not None:
+        assert "Success timestamp is in the future" in result["message"]
