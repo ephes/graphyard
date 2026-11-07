@@ -292,7 +292,18 @@ async fn executor_scenarios_match_python() {
             .as_array()
             .expect("log")
             .iter()
-            .map(|line| localise(line.as_str().expect("log line")))
+            .map(|line| {
+                let line = localise(line.as_str().expect("log line"));
+                if line.starts_with("HTTP Request: ") {
+                    let parts: Vec<_> = line.split_whitespace().collect();
+                    format!(
+                        "Collector HTTP response: method={} status={}",
+                        parts[2], parts[5]
+                    )
+                } else {
+                    line
+                }
+            })
             .collect();
         assert_eq!(logs::lines(), expected_log, "{name}: log");
     }

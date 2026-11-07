@@ -80,7 +80,7 @@ fn assert_deadline_failure(
     assert_eq!(outcome.status, StatusLevel::Warning);
     assert_eq!(outcome.ingested, 2);
     assert!(
-        outcome.message.contains("total_timeout_seconds"),
+        outcome.message.contains("_PageProbeDeadlineExceeded"),
         "{outcome:?}"
     );
     assert_eq!(written_values(sink), failure_points());
@@ -115,7 +115,7 @@ async fn deadline_bounds_dripping_headers() {
     assert_deadline_failure(&result, &sink, started.elapsed(), 1.5);
     assert_eq!(
         result.expect("outcome").message,
-        "HTTP collector exceeded total_timeout_seconds=1.5"
+        "collector failure: _PageProbeDeadlineExceeded"
     );
 }
 
@@ -209,7 +209,7 @@ async fn abandoned_lookups_cap_new_probes() {
         .with_lookup(lookup.clone())
         .with_limits(Duration::from_millis(50), 2);
     let config = json!({
-        "url": "https://example.invalid/",
+        "url": "https://user:invented-url-marker@example.invalid/?key=invented-url-marker",
         "subject_id": "dripping_site",
         "total_timeout_seconds": 0.1,
     });
@@ -220,14 +220,12 @@ async fn abandoned_lookups_cap_new_probes() {
         assert_eq!(outcome.status, StatusLevel::Warning);
         assert_eq!(
             outcome.message,
-            "HTTP collector exceeded total_timeout_seconds=0.1"
+            "collector failure: _PageProbeDeadlineExceeded"
         );
         assert_eq!(written_values(&sink), failure_points());
         assert_eq!(
             logs::lines(),
-            [
-                "HTTP collector worker for https://example.invalid/ still running after it was cancelled"
-            ]
+            ["HTTP collector worker still running after cancellation"]
         );
     }
     assert_eq!(lookup.calls.load(Ordering::SeqCst), 2);
@@ -240,7 +238,7 @@ async fn abandoned_lookups_cap_new_probes() {
     assert_eq!(outcome.status, StatusLevel::Warning);
     assert_eq!(
         outcome.message,
-        "2 earlier HTTP collectors are still running past total_timeout_seconds; not starting another"
+        "collector failure: _PageProbeDeadlineExceeded"
     );
     assert_eq!(written_values(&sink), failure_points());
     assert_eq!(lookup.calls.load(Ordering::SeqCst), 2, "no third lookup");
@@ -254,12 +252,9 @@ async fn urls_httpcore_rejects_take_the_warning_path() {
     let cases = [
         (
             "ftp://probe.test/",
-            "Request URL has an unsupported protocol 'ftp://'.",
+            "collector failure: UnsupportedProtocol",
         ),
-        (
-            "probe.test/",
-            "Request URL is missing an 'http://' or 'https://' protocol.",
-        ),
+        ("probe.test/", "collector failure: UnsupportedProtocol"),
     ];
     for (url, message) in cases {
         let config = json!({"url": url, "subject_id": "example_site"});
@@ -287,6 +282,9 @@ async fn connection_failures_take_the_warning_path() {
     let (result, sink) = probe(&HttpContext::new(), &config).await;
     let outcome = result.expect("outcome");
     assert_eq!(outcome.status, StatusLevel::Warning);
-    assert!(outcome.message.starts_with("[Errno "), "{outcome:?}");
+    assert!(
+        outcome.message == "collector failure: ConnectError",
+        "{outcome:?}"
+    );
     assert_eq!(written_values(&sink), failure_points());
 }

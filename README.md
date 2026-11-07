@@ -304,9 +304,27 @@ file, including specs whose stored row is otherwise unchanged):
 
 Each spec runs in isolation. If a spec fails at run time, for example because it
 was saved before validation existed, it gets `last_status=critical` with the
-error in `last_error`. Its `next_run_time` still advances and the remaining specs
+error category in `last_error`. Its `next_run_time` still advances and the remaining specs
 keep running. The run is reflected in the `metric_collectors` heartbeat on
 `/v1/health`: `warning` when some specs failed, `critical` only when all did.
+
+Collector exception messages are normalized before persistence in both runtimes:
+`collector failure: <allowlisted type>` (unknown types become `Exception`), or
+`collector HTTP error: status=<code>` for HTTP status exceptions. Required-field
+and typed configuration validation messages stay useful. Body limits and total
+deadlines use `_PageProbeLimitExceeded` and `_PageProbeDeadlineExceeded` types.
+No exception messages, tracebacks, response bodies, URL queries or userinfo enter
+these failure records or run summaries. Abandoned-worker warnings use fixed text. Python suppresses HTTP client's request
+logs; Rust HTTP response logs contain only method and numeric status.
+Previously stored errors are not rewritten by this change.
+
+Condition failures emit one ERROR event per condition in the web/agent logs:
+`Condition failure condition_id=<id> stage=evaluation|publication category=<type>`
+with `failure_published` indicating whether the fallback critical result was saved.
+Python also exposes ID/stage/category as log record fields. Raw query/SQL text,
+exception messages and model representations are excluded. Failed fallback writes
+do not stop later conditions; a heartbeat write failure still fails the whole run.
+Persisted condition failure messages use the same safe category.
 
 Due-only scheduler runs claim each selected slot with a conditional
 `next_run_time` update **before** any collection. Another runner with the same
@@ -528,8 +546,8 @@ Network Application flow (`POST /api/login`, then `/api/s/<site>/stat/device`)
 and falls back to the UniFi OS flow (`POST /api/auth/login`, then
 `/proxy/network/api/s/<site>/stat/device`). Set `auth_mode` to `legacy` or
 `unifi_os` only when an installation needs to pin one flow.
-Login and device-fetch failures record the endpoint, HTTP status, and a short
-non-secret response summary in the spec `last_error`.
+Login/device refusals record `collector failure: ValueError`; response bodies
+and URLs are never retained as failure messages.
 
 Collected points are written by the long-running agent to InfluxDB and update host/service registry metadata.
 `host_id`/`service_id` remain supported for migration compatibility.

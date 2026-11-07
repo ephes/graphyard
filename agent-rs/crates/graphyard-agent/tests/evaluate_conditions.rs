@@ -91,11 +91,9 @@ fn a_run_without_failures_reports_the_summary_and_exits_0() {
     // No startup lines; one bounded v2 transfer log per query.
     assert_eq!(
         text(&output.stderr),
-        format!(
-            "HTTP Request: POST {} \"HTTP/1.1 200 OK\"\n",
-            server.url("/api/v2/query?org=o")
-        )
-        .repeat(3)
+        "Influx HTTP response: method=POST status=200\n"
+            .to_owned()
+            .repeat(3)
     );
     // One query per enabled condition, ordered by name.
     assert_eq!(server.requests(), ["POST /api/v2/query?org=o"; 3]);
@@ -128,11 +126,14 @@ fn failed_conditions_report_a_command_error_and_exit_1() {
     );
     assert_eq!(
         text(&output.stderr),
-        "CommandError: 3 condition evaluation(s) failed.\n"
+        "Condition failure condition_id=2 stage=evaluation category=InfluxConfigurationError failure_published=true\n\
+         Condition failure condition_id=1 stage=evaluation category=InfluxConfigurationError failure_published=true\n\
+         Condition failure condition_id=4 stage=evaluation category=InfluxConfigurationError failure_published=true\n\
+         CommandError: 3 condition evaluation(s) failed.\n"
     );
     assert_eq!(
         db.text("condition_definition", "a cpu", "message"),
-        "evaluation error: Influx setting missing: INFLUX_URL is required"
+        "evaluation error: InfluxConfigurationError"
     );
     assert_eq!(
         db.text("condition_definition", "a cpu", "status"),

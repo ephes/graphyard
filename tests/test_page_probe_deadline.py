@@ -129,7 +129,7 @@ def _assert_deadline_failure(
     }
     spec.refresh_from_db()
     assert spec.last_status == StatusLevel.WARNING
-    assert "total_timeout_seconds" in spec.last_error
+    assert "_PageProbeDeadlineExceeded" in spec.last_error
 
 
 def test_page_probe_deadline_bounds_dripping_headers(db, monkeypatch):
@@ -319,7 +319,7 @@ class _BlockingPageProbeClient:
         raise httpx.ConnectError("released")
 
 
-def test_page_probe_caps_abandoned_workers(db, monkeypatch):
+def test_page_probe_caps_abandoned_workers(db, monkeypatch, caplog):
     monkeypatch.setattr("graphyard.services._PAGE_PROBE_CLOSE_JOIN_SECONDS", 0.05)
     monkeypatch.setattr("graphyard.services._PAGE_PROBE_MAX_ABANDONED_WORKERS", 2)
     release = threading.Event()
@@ -329,12 +329,24 @@ def test_page_probe_caps_abandoned_workers(db, monkeypatch):
         lambda **kwargs: _BlockingPageProbeClient(release, sends),
     )
     points = _capture_points(monkeypatch)
-    spec = _create_spec("https://example.invalid/", total_timeout_seconds=0.1)
+    spec = _create_spec(
+        "https://user:invented-url-marker@example.invalid/?key=invented-url-marker",
+        total_timeout_seconds=0.1,
+    )
     try:
         for _ in range(2):
             run_metric_collection_specs_once(due_only=False)
         assert len(sends) == 2
         assert len(_page_probe_workers()) == 2
+        assert "invented-url-marker" not in caplog.text
+        assert (
+            sum(
+                r.getMessage()
+                == "HTTP collector worker still running after cancellation"
+                for r in caplog.records
+            )
+            == 2
+        )
 
         points.clear()
         started = time.monotonic()
@@ -346,7 +358,7 @@ def test_page_probe_caps_abandoned_workers(db, monkeypatch):
         assert result.warning == 1
         assert _metric_values(points)["service.http_page_success"] == 0.0
         spec.refresh_from_db()
-        assert "still running" in spec.last_error
+        assert "_PageProbeDeadlineExceeded" in spec.last_error
     finally:
         release.set()
         for thread in _page_probe_workers():

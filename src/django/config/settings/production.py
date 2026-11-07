@@ -35,6 +35,7 @@ ADMIN_URL = env("DJANGO_ADMIN_URL", default="hidden_admin/")  # noqa
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
+    "loggers": LOGGING["loggers"],
     "handlers": {
         "console": {
             "class": "logging.StreamHandler",

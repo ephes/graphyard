@@ -462,7 +462,7 @@ async fn ws_urls_are_plain_http_requests() {
     assert_eq!(server.requests()[0].line(), "GET /socket");
     assert_eq!(
         logs::lines(),
-        [format!("HTTP Request: GET {url} \"HTTP/1.1 200 OK\"")]
+        ["Collector HTTP response: method=GET status=200".to_owned()]
     );
 }
 
@@ -507,10 +507,10 @@ async fn status_line_details_reach_log_and_errors() {
     assert_eq!(
         logs::lines(),
         [
-            format!("HTTP Request: GET {origin}/custom \"HTTP/1.1 404 Nope\""),
-            format!("HTTP Request: GET {origin}/empty \"HTTP/1.1 404 \""),
-            format!("HTTP Request: GET {origin}/other \"HTTP/1.1 413 Payload Too Large\""),
-            format!("HTTP Request: GET {origin}/http10 \"HTTP/1.0 200 OK\""),
+            "Collector HTTP response: method=GET status=404".to_owned(),
+            "Collector HTTP response: method=GET status=404".to_owned(),
+            "Collector HTTP response: method=GET status=413".to_owned(),
+            "Collector HTTP response: method=GET status=200".to_owned(),
         ]
     );
 }

@@ -19,6 +19,7 @@ from django.db import OperationalError, connection, transaction
 from django.utils import timezone
 
 from . import influx
+from .diagnostics import collector_failure, error_category
 from .spec_config import (
     DEFAULT_PAGE_PROBE_MAX_BODY_BYTES,
     SpecConfigError,
@@ -398,8 +399,10 @@ def evaluate_conditions_once(
             field: getattr(condition, field) for field in _CONDITION_DEFINITION_FIELDS
         }
         attempted_at = timezone.now()
+        stage = "evaluation"
         try:
             result = evaluate_condition(condition, now=attempted_at)
+            stage = "publication"
             _publish_condition_result(
                 condition.pk,
                 attempted_at,
@@ -410,12 +413,31 @@ def evaluate_conditions_once(
             )
         except Exception as err:  # noqa: BLE001
             failed += 1
-            _publish_condition_result(
+            category = error_category(err)
+            failure_published = False
+            try:
+                _publish_condition_result(
+                    condition.pk,
+                    attempted_at,
+                    definition=definition,
+                    status=StatusLevel.CRITICAL,
+                    message=f"evaluation error: {category}",
+                )
+                failure_published = True
+            except Exception:  # noqa: BLE001
+                # A failed fallback publication must not stop later conditions.
+                pass
+            logger.error(
+                "Condition failure condition_id=%s stage=%s category=%s failure_published=%s",
                 condition.pk,
-                attempted_at,
-                definition=definition,
-                status=StatusLevel.CRITICAL,
-                message=f"evaluation error: {err}",
+                stage,
+                category,
+                str(failure_published).lower(),
+                extra={
+                    "condition_id": condition.pk,
+                    "stage": stage,
+                    "category": category,
+                },
             )
 
     heartbeat_status = StatusLevel.OK if failed == 0 else StatusLevel.WARNING
@@ -867,7 +889,7 @@ def _execute_home_assistant_sensor_spec(
         touch_registry_from_points([point])
         return StatusLevel.OK, written, 0, ""
     except Exception as err:  # noqa: BLE001
-        return StatusLevel.CRITICAL, 0, 0, str(err)
+        return StatusLevel.CRITICAL, 0, 0, collector_failure(err)
 
 
 def _execute_home_assistant_env_scan_spec(
@@ -976,7 +998,7 @@ def _execute_home_assistant_env_scan_spec(
         touch_registry_from_points(points)
         return StatusLevel.OK, written, skipped, ""
     except Exception as err:  # noqa: BLE001
-        return StatusLevel.CRITICAL, 0, 0, str(err)
+        return StatusLevel.CRITICAL, 0, 0, collector_failure(err)
 
 
 def _execute_http_json_metric_spec(
@@ -1089,7 +1111,7 @@ def _execute_http_json_metric_spec(
         touch_registry_from_points([point])
         return StatusLevel.OK, written, 0, ""
     except Exception as err:  # noqa: BLE001
-        return StatusLevel.CRITICAL, 0, 0, str(err)
+        return StatusLevel.CRITICAL, 0, 0, collector_failure(err)
 
 
 def _build_http_page_probe_point(
@@ -1372,15 +1394,12 @@ def _run_http_with_deadline(
         try:
             client.close()
         except Exception:  # noqa: BLE001 - best effort, the deadline wins
-            logger.debug("closing a timed-out page probe client failed", exc_info=True)
+            logger.debug("closing a timed-out page probe client failed")
         worker.join(timeout=_PAGE_PROBE_CLOSE_JOIN_SECONDS)
         if worker.is_alive():
             with _abandoned_page_probe_workers_lock:
                 _abandoned_page_probe_workers.add(worker)
-            logger.warning(
-                "HTTP collector worker for %s still running after it was cancelled",
-                url,
-            )
+            logger.warning("HTTP collector worker still running after cancellation")
         raise _PageProbeDeadlineExceeded(
             f"HTTP collector exceeded total_timeout_seconds={total_timeout_seconds:g}"
         )
@@ -1519,9 +1538,9 @@ def _execute_http_page_probe_spec(
         ]
         written = influx.write_points(points)
         touch_registry_from_points(points)
-        return StatusLevel.WARNING, written, 0, str(err)
+        return StatusLevel.WARNING, written, 0, collector_failure(err)
     except Exception as err:  # noqa: BLE001
-        return StatusLevel.CRITICAL, 0, 0, str(err)
+        return StatusLevel.CRITICAL, 0, 0, collector_failure(err)
 
 
 def _find_unifi_device(
@@ -2026,7 +2045,7 @@ def _execute_unifi_device_traffic_spec(
         touch_registry_from_points(points)
         return StatusLevel.OK, written, skipped, ""
     except Exception as err:  # noqa: BLE001
-        return StatusLevel.CRITICAL, 0, 0, str(err)
+        return StatusLevel.CRITICAL, 0, 0, collector_failure(err)
 
 
 def _run_single_metric_collection_spec(
@@ -2042,14 +2061,14 @@ def _run_single_metric_collection_spec(
     except Exception as err:
         # Isolate collectors: one spec's bug or malformed config must not stop
         # the specs after it, or keep its own schedule stuck on "due".
-        logger.exception(
-            "Metric collection spec %r (%s) raised", spec.name, spec.spec_type
+        logger.error(
+            "Collector failure spec_id=%s category=%s", spec.pk, error_category(err)
         )
         return (
             StatusLevel.CRITICAL,
             0,
             0,
-            f"collector raised {type(err).__name__}: {err}",
+            collector_failure(err),
         )
 
 

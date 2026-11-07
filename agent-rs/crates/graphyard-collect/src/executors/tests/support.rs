@@ -288,7 +288,18 @@ pub(super) async fn replay(case: &Value, origin: &str, run: Run) {
         .as_array()
         .expect("log")
         .iter()
-        .map(|line| localise.text(line.as_str().expect("log line")))
+        .map(|line| {
+            let line = localise.text(line.as_str().expect("log line"));
+            if line.starts_with("HTTP Request: ") {
+                let parts: Vec<_> = line.split_whitespace().collect();
+                format!(
+                    "Collector HTTP response: method={} status={}",
+                    parts[2], parts[5]
+                )
+            } else {
+                line
+            }
+        })
         .collect();
     assert_eq!(logs::lines(), expected_log, "log of {name}");
 }

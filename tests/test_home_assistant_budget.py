@@ -130,9 +130,9 @@ def test_ha_budgets_and_next_spec(monkeypatch, spec_type, mode, total_timeout):
         assert result.failed == 1
         assert not written
         assert spec.last_error == (
-            f"response body exceeded max_body_bytes={limit}"
+            "collector failure: _PageProbeLimitExceeded"
             if mode in {"bytes", "gzip"}
-            else f"HTTP collector exceeded total_timeout_seconds={total_timeout or 30}"
+            else "collector failure: _PageProbeDeadlineExceeded"
         )
 
 

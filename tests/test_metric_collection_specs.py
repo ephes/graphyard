@@ -574,7 +574,7 @@ def test_http_page_probe_spec_timeout_records_failure_metrics(db, monkeypatch):
 
     spec.refresh_from_db()
     assert spec.last_status == StatusLevel.WARNING
-    assert "probe timed out" in spec.last_error
+    assert "ReadTimeout" in spec.last_error
 
 
 def test_home_assistant_env_scan_collects_temp_and_humidity(db, monkeypatch):
@@ -825,7 +825,7 @@ def test_unifi_device_traffic_spec_falls_back_to_unifi_os_auth(db, monkeypatch):
     assert spec.last_error == ""
 
 
-def test_unifi_device_traffic_spec_reports_login_response_body(db, monkeypatch):
+def test_unifi_device_traffic_spec_omits_login_response_body(db, monkeypatch):
     spec = MetricCollectionSpec.objects.create(
         name="unifi usw traffic",
         spec_type=MetricCollectionSpecType.UNIFI_DEVICE_TRAFFIC,
@@ -861,8 +861,8 @@ def test_unifi_device_traffic_spec_reports_login_response_body(db, monkeypatch):
     assert result.failed == 1
     spec.refresh_from_db()
     assert spec.last_status == StatusLevel.CRITICAL
-    assert "/api/login returned HTTP 400" in spec.last_error
-    assert "api.err.Invalid" in spec.last_error
+    assert spec.last_error == "collector failure: ValueError"
+    assert "api.err.Invalid" not in spec.last_error
 
 
 def test_unifi_device_traffic_spec_redacts_login_response_body(db, monkeypatch):
@@ -902,7 +902,7 @@ def test_unifi_device_traffic_spec_redacts_login_response_body(db, monkeypatch):
     spec.refresh_from_db()
     assert "homeassistant" not in spec.last_error
     assert "secret" not in spec.last_error
-    assert "<redacted>" in spec.last_error
+    assert spec.last_error == "collector failure: ValueError"
 
 
 def test_unifi_device_traffic_spec_keeps_short_values_from_over_redacting(
@@ -942,9 +942,9 @@ def test_unifi_device_traffic_spec_keeps_short_values_from_over_redacting(
 
     assert result.failed == 1
     spec.refresh_from_db()
-    assert "api.err.Invalid" in spec.last_error
+    assert "api.err.Invalid" not in spec.last_error
     assert "secret" not in spec.last_error
-    assert '"password":"<redacted>"' in spec.last_error
+    assert spec.last_error == "collector failure: ValueError"
 
 
 def test_http_json_metric_spec_skips_non_finite_value(db, monkeypatch):

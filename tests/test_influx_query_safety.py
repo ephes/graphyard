@@ -89,7 +89,7 @@ def test_nonfinite_query_evidence_is_an_evaluation_error(
     assert run.failed == 1
     assert condition.status == StatusLevel.CRITICAL
     assert "evaluation error" in condition.message
-    assert "finite" in condition.message
+    assert condition.message == "evaluation error: InfluxConfigurationError"
     assert condition.last_evaluated == NOW
     assert condition.last_value == 20.0
 

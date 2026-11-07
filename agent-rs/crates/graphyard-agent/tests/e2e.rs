@@ -327,18 +327,9 @@ fn run_once_writes_the_rows_and_lines_of_every_collector_family() {
     );
     let stderr = text(&output.stderr);
     for line in [
-        format!(
-            "HTTP Request: GET {} \"HTTP/1.1 200 OK\"",
-            fake.url("/value")
-        ),
-        format!(
-            "HTTP Request: GET {} \"HTTP/1.1 200 OK\"",
-            fake.url("/page")
-        ),
-        format!(
-            "HTTP Request: GET {} \"HTTP/1.1 200 OK\"",
-            fake.url("/api/states/sensor.living_room_temp")
-        ),
+        "Collector HTTP response: method=GET status=200".to_owned(),
+        "Collector HTTP response: method=GET status=200".to_owned(),
+        "Collector HTTP response: method=GET status=200".to_owned(),
         "Spec c ha missing config.subject_mapping; using default entity_name_slug mapping"
             .to_owned(),
         "Ignoring host_filter for non-host condition id=2 name=svc".to_owned(),
@@ -567,11 +558,7 @@ fn evaluate_conditions_writes_the_condition_rows_and_the_heartbeat() {
     );
     assert_eq!(
         text(&output.stderr),
-        format!(
-            "HTTP Request: POST {} \"HTTP/1.1 200 OK\"\nIgnoring host_filter for non-host condition id=2 name=svc\nHTTP Request: POST {} \"HTTP/1.1 200 OK\"\n",
-            fake.url("/api/v2/query?org=graphyard"),
-            fake.url("/api/v2/query?org=graphyard")
-        )
+        "Influx HTTP response: method=POST status=200\nIgnoring host_filter for non-host condition id=2 name=svc\nInflux HTTP response: method=POST status=200\n"
     );
     let targets: Vec<String> = fake.requests().into_iter().map(|r| r.target).collect();
     assert_eq!(targets, ["/api/v2/query?org=graphyard"; 2]);

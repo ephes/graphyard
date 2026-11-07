@@ -8,6 +8,7 @@
 
 use std::collections::HashSet;
 
+use graphyard_core::diagnostics::collector_failure;
 use serde_json::Value;
 
 use graphyard_core::home_assistant::{HaSpec, normalize_state, regex_search};
@@ -89,7 +90,7 @@ pub async fn execute_home_assistant_sensor<S: MetricSink>(
     let url = format!("{base_url}/api/states/{entity_id}");
     let payload = match read_json_with_deadline(&client, &url, knobs).await {
         Ok(payload) => payload,
-        Err(err) => return Ok(critical(err.message)),
+        Err(err) => return Ok(critical(err.safe_message())),
     };
     drop(client);
     let Value::Object(state) = &payload else {
@@ -107,7 +108,7 @@ pub async fn execute_home_assistant_sensor<S: MetricSink>(
     match point {
         Ok(Some(point)) => Ok(write_and_touch(sink, &[point], 0).await),
         Ok(None) => Ok(warning(1, "state payload not numeric or mapping failed")),
-        Err(err) => Ok(critical(err.message)),
+        Err(err) => Ok(critical(collector_failure(err.python_class()))),
     }
 }
 
@@ -160,7 +161,7 @@ pub async fn execute_home_assistant_env_scan<S: MetricSink>(
     let url = format!("{base_url}/api/states");
     let payload = match read_json_with_deadline(&client, &url, knobs).await {
         Ok(payload) => payload,
-        Err(err) => return Ok(critical(err.message)),
+        Err(err) => return Ok(critical(err.safe_message())),
     };
     drop(client);
     let Value::Array(items) = &payload else {
@@ -193,7 +194,7 @@ pub async fn execute_home_assistant_env_scan<S: MetricSink>(
         } else {
             match regex_search(&entity_pattern, entity_id) {
                 Ok(found) => found,
-                Err(err) => return Ok(critical(err.message)),
+                Err(err) => return Ok(critical(collector_failure(err.python_class()))),
             }
         };
         if !include {
@@ -211,7 +212,7 @@ pub async fn execute_home_assistant_env_scan<S: MetricSink>(
         match point {
             Ok(Some(point)) => points.push(point),
             Ok(None) => skipped += 1,
-            Err(err) => return Ok(critical(err.message)),
+            Err(err) => return Ok(critical(collector_failure(err.python_class()))),
         }
     }
     if points.is_empty() {

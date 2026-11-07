@@ -212,3 +212,14 @@ for _name, _value, _minimum in (
 ):
     if _value < _minimum:
         raise ImproperlyConfigured(f"{_name} must be at least {_minimum}, got {_value}")
+
+
+# HTTP client request/debug logs can include credential-bearing URL queries.
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "loggers": {
+        "httpx": {"level": "WARNING"},
+        "httpcore": {"level": "WARNING"},
+    },
+}

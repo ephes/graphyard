@@ -230,7 +230,10 @@ async fn transport_failures_are_critical() {
         .await
         .expect("outcome");
     assert_eq!(outcome.status, StatusLevel::Critical);
-    assert!(outcome.message.starts_with("[Errno "), "{outcome:?}");
+    assert!(
+        outcome.message == "collector failure: ConnectError",
+        "{outcome:?}"
+    );
     assert!(sink.calls.borrow().is_empty());
 }
 
@@ -308,7 +311,7 @@ async fn all_unifi_response_bodies_share_one_budget() {
                 .unwrap();
         assert_eq!(outcome.status, StatusLevel::Critical, "{stage}");
         assert!(
-            outcome.message.contains("max_body_bytes=128"),
+            outcome.message.contains("_PageProbeLimitExceeded"),
             "{outcome:?}"
         );
         assert!(sink.calls.borrow().is_empty());
@@ -335,7 +338,7 @@ async fn continuously_arriving_unifi_body_hits_collection_deadline() {
         .unwrap();
     assert!(start.elapsed() < Duration::from_secs(2));
     assert!(
-        outcome.message.contains("total_timeout_seconds=0.05"),
+        outcome.message.contains("_PageProbeDeadlineExceeded"),
         "{outcome:?}"
     );
     assert!(sink.calls.borrow().is_empty());

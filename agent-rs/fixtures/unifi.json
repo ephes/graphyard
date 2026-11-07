@@ -5969,7 +5969,7 @@
     "critical",
     0,
     0,
-    "UniFi login failed; attempts: legacy /api/login returned HTTP 400: {\"meta\":{\"rc\":\"error\",\"msg\":\"api.err.Invalid\"},\"data\":[]}"
+    "collector failure: ValueError"
    ],
    "p2": false,
    "requests": [
@@ -6037,7 +6037,7 @@
     "critical",
     0,
     0,
-    "UniFi login failed; attempts: legacy /api/login returned HTTP 200: {\"meta\":{\"rc\":\"error\",\"msg\":\"api.err.LoginRequired\"}}; unifi_os /api/auth/login returned HTTP 401: {\"username\":\"<redacted>\",\"password\":\"<redacted>\"}"
+    "collector failure: ValueError"
    ],
    "p2": false,
    "requests": [
@@ -6119,7 +6119,7 @@
     "critical",
     0,
     0,
-    "UniFi login failed; attempts: legacy /api/login returned HTTP 400: {\"msg\":\"api.err.Invalid\",\"username\":\"a\",\"password\":\"<redacted>\"}"
+    "collector failure: ValueError"
    ],
    "p2": false,
    "requests": [
@@ -6181,7 +6181,7 @@
     "critical",
     0,
     0,
-    "UniFi login failed; attempts: legacy /api/login returned HTTP 403"
+    "collector failure: ValueError"
    ],
    "p2": false,
    "requests": [
@@ -6235,7 +6235,7 @@
     "critical",
     0,
     0,
-    "unsupported UniFi auth_mode: token"
+    "collector failure: ValueError"
    ],
    "p2": false,
    "requests": [],
@@ -7815,7 +7815,7 @@
     "critical",
     0,
     0,
-    "Exceeded maximum allowed redirects."
+    "collector failure: TooManyRedirects"
    ],
    "p2": false,
    "requests": [
@@ -8203,7 +8203,7 @@
     "critical",
     0,
     0,
-    "/api/s/default/stat/device returned HTTP 401: {\"meta\":{\"rc\":\"error\",\"msg\":\"api.err.LoginRequired\"},\"user\":\"<redacted>\"}"
+    "collector failure: ValueError"
    ],
    "p2": false,
    "requests": [
@@ -8283,7 +8283,7 @@
     "critical",
     0,
     0,
-    "/api/s/default/stat/device returned HTTP 302"
+    "collector failure: ValueError"
    ],
    "p2": false,
    "requests": [
@@ -8363,7 +8363,7 @@
     "critical",
     0,
     0,
-    "Expecting value: line 1 column 1 (char 0)"
+    "collector failure: JSONDecodeError"
    ],
    "p2": true,
    "requests": [
@@ -9247,7 +9247,7 @@
     "critical",
     0,
     0,
-    "port_name 'missing' not found on device"
+    "collector failure: ValueError"
    ],
    "p2": false,
    "requests": [
@@ -9560,7 +9560,7 @@
     "critical",
     0,
     0,
-    "influx write failed"
+    "collector failure: RuntimeError"
    ],
    "p2": false,
    "requests": [
@@ -9748,7 +9748,7 @@
     "critical",
     0,
     0,
-    "registry failed"
+    "collector failure: RuntimeError"
    ],
    "p2": false,
    "requests": [
@@ -10323,7 +10323,7 @@
     "critical",
     0,
     0,
-    "Invalid port: ':1'"
+    "collector failure: InvalidURL"
    ],
    "p2": false,
    "requests": [],

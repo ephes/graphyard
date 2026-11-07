@@ -1,6 +1,6 @@
 //! Errors of the HTTP layer in Python's exception classes (PLAN.md 6.1).
 //!
-//! The executors store `str(err)` as the spec's `last_error`, and the page
+//! Executors store safe type/status metadata as the spec's `last_error`; the page
 //! probe decides warning versus critical by the class (`except
 //! (httpx.HTTPError, _PageProbeLimitExceeded, _PageProbeDeadlineExceeded)`).
 //! [`ErrorKind`] names the class, [`HttpError::message`] is `str(err)`.
@@ -112,6 +112,7 @@ impl ErrorKind {
 pub struct HttpError {
     pub kind: ErrorKind,
     pub message: String,
+    pub status: Option<u16>,
 }
 
 impl HttpError {
@@ -119,6 +120,25 @@ impl HttpError {
         Self {
             kind,
             message: message.into(),
+            status: None,
+        }
+    }
+
+    /// Safe collector persistence metadata, independent of URLs and remote bodies.
+    pub fn safe_message(&self) -> String {
+        if self.kind == ErrorKind::ValueError
+            && matches!(
+                self.message.as_str(),
+                "UniFi redirect outside controller origin refused"
+                    | "UniFi compressed response refused"
+                    | "UniFi controller URL must be absolute HTTP or HTTPS"
+            )
+        {
+            return self.message.clone();
+        }
+        match self.status {
+            Some(status) => format!("collector HTTP error: status={status}"),
+            None => graphyard_core::diagnostics::collector_failure(self.kind.python_class()),
         }
     }
 

@@ -179,7 +179,7 @@ async fn an_unexpected_collector_exception_is_isolated() {
     assert_eq!(setup.db.text(spec, "a crashing", "last_status"), "critical");
     assert_eq!(
         setup.db.text(spec, "a crashing", "last_error"),
-        "collector raised RuntimeError: collector bug"
+        "collector failure: RuntimeError"
     );
     assert!(matches!(
         setup.db.value(spec, "a crashing", "next_run_time"),
@@ -223,7 +223,7 @@ async fn the_spec_after_one_that_hits_its_deadline_still_runs() {
     let spec = "metric_collection_spec";
     assert_eq!(
         setup.db.text(spec, "a stalled", "last_error"),
-        "HTTP collector exceeded total_timeout_seconds=0.5"
+        "collector failure: _PageProbeDeadlineExceeded"
     );
     assert_eq!(setup.db.text(spec, "b good", "last_status"), "ok");
     drop(silent);

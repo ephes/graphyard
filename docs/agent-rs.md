@@ -63,9 +63,9 @@ Every difference between the two implementations has a class (PLAN.md 2.3):
   (measurement, tags, field, timestamp), Flux and SQL query texts, statuses,
   counts, graphyard-authored messages, CLI flags, exit codes, stdout lines,
   environment parsing;
-- **P2 equivalent**: messages derived from library exceptions (connect
-  failures, timeouts, JSON decode positions), measured durations, other log
-  lines;
+- **P2 equivalent**: internal library exception text, measured durations and
+  other log lines. Persisted collector/condition failures now use the P1 bounded
+  type/status contract in README; raw exception text is not persisted.
 - **P3 intentional divergence**: the exhaustive list D-1 to D-15 in PLAN.md
   2.4. The operationally visible ones: SIGTERM ends the agent at the next
   await point with exit 0 (D-1); a database without the required schema stops

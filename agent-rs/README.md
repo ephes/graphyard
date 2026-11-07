@@ -81,7 +81,7 @@ request headers, auth and a cookie jar; connections as httpcore opens them
 (`getaddrinfo` through libc on the blocking pool, every address in turn, the
 timeout per connect, TLS handshake and socket read/write); httpx's URL model
 (`HttpxUrl`: `urlparse`, the redirect join, request target and `Host`), its
-`raise_for_status` texts, decoders and exception classes; the total deadline
+`raise_for_status` texts internally, decoders and exception classes; the total deadline
 with the abandoned-lookup cap (`run_with_deadline`), the JSON reader, the
 page-probe redirect loop and automatic redirects. Pinned by
 `http_errors.json` and fake-server tests; the executors follow in S7a/S7b.
@@ -260,7 +260,7 @@ selects nothing). stdout `Condition evaluation completed (<total>).` and
 exit 0, or `Condition evaluation completed with failures
 (<failed>/<total>).`, stderr `CommandError: <failed> condition evaluation(s)
 failed.` and exit 1. A failure outside a condition (loading the conditions,
-a failure update, the heartbeat) exits 1 with one stderr line `Condition
+the heartbeat) exits 1 with one stderr line `Condition
 evaluation failed: <class>: <error>` where Python prints a traceback; a
 missing database or a failed schema check exits 1 as at the agent's startup
 (D-2); a usage error exits 2. `--condition-id` is Python's `int()` like the
@@ -457,3 +457,14 @@ Both one-shot loops run before failure status is returned; disabled loops are
 ignored and warning-only outcomes succeed. Continuous mode still isolates errors
 and keeps scheduling. The parity corpus deliberately includes failed work and
 therefore expects exit 1 for each agent one-shot round.
+
+## Failure diagnostics
+
+Collector persistence follows README's bounded error contract: safe allowlisted
+class or numeric HTTP status, never transport exception text, response bodies or
+URL queries/userinfo. The low-level HTTP errors still retain their library text
+internally; executors normalize it before returning an outcome. Collector HTTP
+logs contain only method/status. Condition ERROR events report condition ID,
+`evaluation`/`publication` stage, category and fallback publication success; later
+conditions run even if that fallback fails. See `tests/diagnostics.rs` and
+[TESTMAP](TESTMAP.md). No migration rewrites historical messages.
