@@ -41,8 +41,9 @@ against the system CA store (D-12), reads only the process environment (no
 Django migrations own the schema; the Rust agent runs no DDL. At startup (and
 with `--check-schema`) it checks that every column of the six agent tables
 exists and that `django_migrations` contains
-`graphyard.0013_inventory_single_enabled_credential`, the conservative migration
-floor (its data preflight is not attributable to one model by the classifier), and exits 1 with one line naming every missing table, column and
+`graphyard.0015_alter_conditiondefinition_breach_minutes_and_more`, the conservative
+migration floor (the last migration touching an agent model, including field
+validators). It exits 1 with one line naming every missing table, column and
 migration otherwise (D-2). Extra columns are accepted.
 
 The rule for Python changes: `tests/test_agent_rs_schema_contract.py`
@@ -251,3 +252,14 @@ for the isolated, pipe-gated regression harness and exact recovery assertions.
 Those process journeys cover the initial persisted claim. Live renewal and
 replacement fencing are checked separately by `tests/lease.rs`; renewed-lease
 process-death coverage is not claimed.
+
+## Condition duration admission
+
+Python and Rust require `window_minutes` and `breach_minutes` in the inclusive
+range 1–10,080 (one week), before querying samples. Historical invalid rows
+produce a failed evaluation with critical `evaluation error: ValueError`; their
+configuration and last value remain intact for explicit operator correction.
+A breach may be longer than the window: lookback includes the full breach and
+carry-forward anchor. See [Condition Evaluation](../README.md#condition-evaluation)
+and [Response privacy](../README.md#response-privacy) for configuration and web
+response storage policy.

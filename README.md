@@ -642,6 +642,17 @@ Security note: metric collection `config` values are stored in SQLite and may co
 (for example `access_token`, `bearer_token`, `basic_password`). Django admin masks known secret
 keys for existing specs, but secrets are still plaintext at rest in the DB for MVP.
 
+## Response privacy
+
+Authenticated `GET /v1/conditions`, `GET /v1/conditions/<id>` and the owner
+host/service index use Django's private, no-store, no-cache response policy
+with immediate expiry. Browsers and intermediary caches must not store those
+authenticated representations or reuse them after logout. This HTTP policy
+cannot erase copies saved separately by a user or a page already displayed.
+Anonymous condition responses retain the public id, name, status and evaluation
+time (plus list summary); messages, configuration and values remain private.
+Logout restores this public projection and the index requires login.
+
 ## Condition Evaluation
 
 Create conditions in Django admin (`ConditionDefinition`) using:
@@ -651,9 +662,18 @@ Create conditions in Django admin (`ConditionDefinition`) using:
 - legacy `host_filter` (host-subject compatibility)
 - operator (`gt|gte|lt|lte`)
 - warning/critical thresholds (finite numbers; either threshold may be empty)
-- breach duration window
+- lookback window and breach duration: each 1–10,080 whole minutes (one week)
 - optional staleness allowance (`stale_after_seconds`) and `alert_when_stale`
   (see "Intermittent sources" below)
+
+Both Python and Rust reject out-of-range stored durations before querying Influx.
+An invalid historical definition stays enabled and unchanged, reports critical
+`evaluation error: ValueError`, preserves its last value, and counts as a failed
+evaluation. Review and correct its window/breach fields explicitly in admin or
+with the seed command; migration does not rewrite definitions. Breach duration
+may exceed the configured lookback window: the query still expands to include
+the breach interval plus its carry-forward anchor. The one-week ceiling bounds
+these two configured intervals; the existing staleness allowance is unchanged.
 
 Run evaluator once:
 

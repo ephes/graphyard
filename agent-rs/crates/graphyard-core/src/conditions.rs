@@ -35,6 +35,17 @@ use crate::pycompat::{
     PyError, py_datetime_add, py_float_repr, py_timedelta_minutes, py_total_seconds,
 };
 
+/// Inclusive practical ceiling shared with Python's condition_duration module.
+pub const MAX_CONDITION_MINUTES: i64 = 10080;
+pub const DURATION_ERROR: &str = "Must be an integer between 1 and 10080 minutes.";
+
+pub fn validate_condition_duration(value: i64) -> Result<(), PyError> {
+    if !(1..=MAX_CONDITION_MINUTES).contains(&value) {
+        return Err(PyError::value_error(DURATION_ERROR));
+    }
+    Ok(())
+}
+
 /// The fields of a `ConditionDefinition` that the evaluation reads (the
 /// query filters belong to the [`SampleSource`]).
 #[derive(Clone, Debug, PartialEq)]
@@ -122,6 +133,7 @@ pub async fn evaluate_condition<S: SampleSource>(
     now: DateTime<Utc>,
     source: &mut S,
 ) -> Result<ConditionEvaluation, EvaluationError<S::Error>> {
+    validate_condition_duration(rule.breach_minutes).map_err(EvaluationError::Evaluation)?;
     let now_micros = now.timestamp_micros();
     let now = micros_to_datetime(now_micros);
     let samples = source
@@ -140,6 +152,7 @@ pub fn evaluate_samples(
     now: DateTime<Utc>,
     stale_warning_seconds: &BigInt,
 ) -> Result<ConditionEvaluation, PyError> {
+    validate_condition_duration(rule.breach_minutes)?;
     let now_micros = now.timestamp_micros();
     let evaluated_at = micros_to_datetime(now_micros);
     let evaluation = |status, message, last_value| ConditionEvaluation {

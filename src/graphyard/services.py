@@ -19,6 +19,7 @@ from django.db import OperationalError, connection, transaction
 from django.utils import timezone
 
 from . import influx
+from .condition_duration import validate_condition_duration
 from .diagnostics import collector_failure, error_category
 from .spec_config import (
     DEFAULT_PAGE_PROBE_MAX_BODY_BYTES,
@@ -283,6 +284,8 @@ def evaluate_condition(
     several series, the message names the series that decided the status and
     ``last_value`` comes from that series.
     """
+    validate_condition_duration(condition.window_minutes)
+    validate_condition_duration(condition.breach_minutes)
     now_utc = (now or datetime.now(UTC)).astimezone(UTC)
     samples = influx.query_condition_window(condition, now=now_utc)
 

@@ -12,8 +12,10 @@ from django.db import DatabaseError, OperationalError, transaction
 from django.db.models import F
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, render
+from django.utils.cache import add_never_cache_headers
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_GET, require_POST
 
 from .auth import (
@@ -733,7 +735,7 @@ def metrics_ingest(request: HttpRequest) -> JsonResponse:
 def conditions_list(request: HttpRequest) -> JsonResponse:
     detailed = request.user.is_authenticated
     conditions = list(ConditionDefinition.objects.filter(enabled=True).order_by("id"))
-    return JsonResponse(
+    response = JsonResponse(
         {
             "conditions": [
                 _serialize_condition(item, detailed=detailed) for item in conditions
@@ -741,6 +743,9 @@ def conditions_list(request: HttpRequest) -> JsonResponse:
             "summary": _summarize_conditions(conditions),
         }
     )
+    if detailed:
+        add_never_cache_headers(response)
+    return response
 
 
 @require_GET
@@ -769,7 +774,9 @@ def condition_detail(request: HttpRequest, condition_id: int) -> JsonResponse:
     }
     payload["last_value"] = condition.last_value
 
-    return JsonResponse(payload)
+    response = JsonResponse(payload)
+    add_never_cache_headers(response)
+    return response
 
 
 def _component_status_rank(status: str) -> int:
@@ -943,6 +950,7 @@ def health(request: HttpRequest) -> JsonResponse:
     )
 
 
+@never_cache
 @login_required
 def host_service_index(request: HttpRequest) -> HttpResponse:
     hosts = (

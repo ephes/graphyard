@@ -104,7 +104,7 @@ fn check_schema_reports_in_one_line() {
     assert_eq!(
         text(&output.stdout),
         "database schema satisfies the agent contract \
-         (graphyard.0013_inventory_single_enabled_credential, journal_mode=delete)\n"
+         (graphyard.0015_alter_conditiondefinition_breach_minutes_and_more, journal_mode=delete)\n"
     );
 
     db.execute(
@@ -117,7 +117,7 @@ fn check_schema_reports_in_one_line() {
         text(&output.stderr),
         "database schema is older than the agent contract; missing columns: \
          condition_definition.stale_after_seconds; missing migration: \
-         graphyard.0013_inventory_single_enabled_credential; run `manage.py migrate` before starting \
+         graphyard.0015_alter_conditiondefinition_breach_minutes_and_more; run `manage.py migrate` before starting \
          the agent\n"
     );
     // The same check fails the agent before its first run (D-2).

@@ -32,6 +32,7 @@ from urllib3.exceptions import (
 from urllib3.response import HTTPResponse
 from urllib3.util import parse_url
 
+from .condition_duration import validate_condition_duration
 from .models import SubjectType
 
 if TYPE_CHECKING:
@@ -924,6 +925,8 @@ def query_condition_window(
     *,
     now: datetime | None = None,
 ) -> list[MetricSample]:
+    validate_condition_duration(condition.window_minutes)
+    validate_condition_duration(condition.breach_minutes)
     now_utc = _ensure_utc(now or datetime.now(UTC))
     # Look back far enough to find the last sample before the breach window
     # (the carry-forward anchor, see services._is_breached_for_duration),

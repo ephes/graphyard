@@ -3,6 +3,7 @@
 
 use chrono::{DateTime, Utc};
 use graphyard_core::Tags;
+use graphyard_core::conditions::validate_condition_duration;
 use graphyard_core::logline::escape_log_value;
 use graphyard_core::normalize::normalize_subject_id;
 use graphyard_core::pycompat::{
@@ -120,7 +121,8 @@ fn minus_minutes(now: DateTime<Utc>, minutes: &BigInt) -> Result<DateTime<Utc>, 
 /// when a host filter is dropped.
 ///
 /// # Errors
-/// The exceptions Python raises on the way, in its order: `OverflowError`
+/// The exceptions Python raises on the way, in its order: `ValueError`
+/// for invalid durations, `OverflowError`
 /// of the lookback arithmetic, `AttributeError` for a `tags_filter` that is
 /// not an object, `ValueError` of `normalize_subject_id`.
 pub fn condition_window(
@@ -128,6 +130,8 @@ pub fn condition_window(
     stale_warning_seconds: &BigInt,
     now: DateTime<Utc>,
 ) -> Result<QueryRange, QueryError> {
+    validate_condition_duration(condition.window_minutes)?;
+    validate_condition_duration(condition.breach_minutes)?;
     let anchor_minutes = ceil_minutes(stale_warning_seconds)?;
     let stale_minutes = ceil_minutes(&condition.stale_limit_seconds(stale_warning_seconds))?;
     let lookback = [

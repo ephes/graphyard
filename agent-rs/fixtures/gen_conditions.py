@@ -216,10 +216,10 @@ def _case(
         try:
             result = services.evaluate_condition(condition, now=now)
         except Exception as exc:  # noqa: BLE001 - the error is the fixture
-            case["query_now"] = seen[0].isoformat()
+            case["query_now"] = seen[0].isoformat() if seen else None
             case["error"] = _encode_error(exc)
             return case
-    case["query_now"] = seen[0].isoformat()
+    case["query_now"] = seen[0].isoformat() if seen else None
     case["result"] = {
         "status": str(result.status),
         "message": result.message,
@@ -688,12 +688,12 @@ def _anchor_cases() -> list[dict[str, Any]]:
     return [
         _case(
             "anchor_exactly_at_carry_limit_is_used",
-            _condition(critical_threshold=None, breach_minutes=0),
+            _condition(critical_threshold=None, breach_minutes=1),
             [at(600)],
         ),
         _case(
             "anchor_one_microsecond_past_carry_limit_is_dropped",
-            _condition(critical_threshold=None, breach_minutes=0),
+            _condition(critical_threshold=None, breach_minutes=1),
             [at(600.000001)],
         ),
         _case(
@@ -1068,6 +1068,10 @@ def build_conditions() -> dict[str, Any]:
                 )
                 for age in (1190, 1201)
             ],
+            _case("maximum_breach_duration", _condition(breach_minutes=10080), []),
+            _case(
+                "first_oversized_breach_duration", _condition(breach_minutes=10081), []
+            ),
             *_coverage_cases(),
             *_overflow_cases(),
             *_series_cases(),

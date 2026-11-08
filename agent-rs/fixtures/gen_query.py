@@ -512,6 +512,13 @@ WINDOW_FIELDS = (
 
 WINDOW_CASES: list[dict[str, Any]] = [
     {"name": "defaults", "condition": {}},
+    {"name": "maximum_window", "condition": {"window_minutes": 10080}},
+    {
+        "name": "maximum_breach_extended_lookback",
+        "condition": {"window_minutes": 1, "breach_minutes": 10080},
+    },
+    {"name": "oversized_window", "condition": {"window_minutes": 10081}},
+    {"name": "oversized_breach", "condition": {"breach_minutes": 10081}},
     {"name": "whole_second_now", "condition": {}, "now": "whole"},
     # test_condition_evaluation.py::test_query_condition_window_looks_back_far_enough_for_the_anchor
     {

@@ -6,11 +6,15 @@ import math
 
 from django.contrib.auth.hashers import check_password
 from django.core.exceptions import ValidationError
-from django.core.validators import RegexValidator
+from django.core.validators import MaxValueValidator, MinValueValidator, RegexValidator
 from django.conf import settings
 from django.db import models
 from django.utils import timezone
 
+from graphyard.condition_duration import (
+    MAX_CONDITION_MINUTES,
+    validate_condition_duration,
+)
 from graphyard.spec_config import validate_spec_config
 from graphyard.token_scope import validate_host_scope
 
@@ -302,8 +306,14 @@ class ConditionDefinition(models.Model):
     )
     warning_threshold = models.FloatField(blank=True, null=True)
     critical_threshold = models.FloatField(blank=True, null=True)
-    window_minutes = models.PositiveIntegerField(default=30)
-    breach_minutes = models.PositiveIntegerField(default=5)
+    window_minutes = models.PositiveIntegerField(
+        default=30,
+        validators=[MinValueValidator(1), MaxValueValidator(MAX_CONDITION_MINUTES)],
+    )
+    breach_minutes = models.PositiveIntegerField(
+        default=5,
+        validators=[MinValueValidator(1), MaxValueValidator(MAX_CONDITION_MINUTES)],
+    )
     # Staleness allowance for intermittent sources (for example a laptop that
     # sleeps). Null means the global CONDITION_DATA_STALE_WARNING_SECONDS.
     stale_after_seconds = models.PositiveIntegerField(
@@ -349,6 +359,11 @@ class ConditionDefinition(models.Model):
                 "ConditionDefinition requires warning_threshold or critical_threshold"
             )
         errors = {}
+        for field in ("window_minutes", "breach_minutes"):
+            try:
+                validate_condition_duration(getattr(self, field))
+            except ValueError as err:
+                errors[field] = str(err)
         for field in ("warning_threshold", "critical_threshold"):
             value = getattr(self, field)
             if value is not None:

@@ -9142,7 +9142,7 @@
     "operator": "gt",
     "warning_threshold": "60.0",
     "critical_threshold": null,
-    "breach_minutes": 0,
+    "breach_minutes": 1,
     "stale_after_seconds": null,
     "alert_when_stale": true
    },
@@ -9168,7 +9168,7 @@
    "query_now": "2026-03-04T12:00:00+00:00",
    "result": {
     "status": "warning",
-    "message": "ha.sensor.office_humidity gt 60.0 for 0m",
+    "message": "ha.sensor.office_humidity gt 60.0 for 1m",
     "last_value": "80.0",
     "evaluated_at": "2026-03-04T12:00:00+00:00"
    }
@@ -9180,7 +9180,7 @@
     "operator": "gt",
     "warning_threshold": "60.0",
     "critical_threshold": null,
-    "breach_minutes": 0,
+    "breach_minutes": 1,
     "stale_after_seconds": null,
     "alert_when_stale": true
    },
@@ -9710,12 +9710,10 @@
      "tags": {}
     }
    ],
-   "query_now": "2026-03-04T12:00:00+00:00",
-   "result": {
-    "status": "warning",
-    "message": "ha.sensor.office_humidity gt 60.0 for 0m",
-    "last_value": "80.0",
-    "evaluated_at": "2026-03-04T12:00:00+00:00"
+   "query_now": null,
+   "error": {
+    "class": "ValueError",
+    "message": "Must be an integer between 1 and 10080 minutes."
    }
   },
   {
@@ -9748,12 +9746,10 @@
      "tags": {}
     }
    ],
-   "query_now": "2026-03-04T12:00:00+00:00",
-   "result": {
-    "status": "warning",
-    "message": "ha.sensor.office_humidity gt 60.0 for 0m",
-    "last_value": "80.0",
-    "evaluated_at": "2026-03-04T12:00:00+00:00"
+   "query_now": null,
+   "error": {
+    "class": "ValueError",
+    "message": "Must be an integer between 1 and 10080 minutes."
    }
   },
   {
@@ -10371,6 +10367,48 @@
     "message": "ha.sensor.office_humidity gt 75.0 for 10m",
     "last_value": "80.0",
     "evaluated_at": "2026-03-04T12:00:00+00:00"
+   }
+  },
+  {
+   "name": "maximum_breach_duration",
+   "condition": {
+    "metric_name": "ha.sensor.office_humidity",
+    "operator": "gt",
+    "warning_threshold": "60.0",
+    "critical_threshold": "75.0",
+    "breach_minutes": 10080,
+    "stale_after_seconds": null,
+    "alert_when_stale": true
+   },
+   "stale_warning_seconds": 600,
+   "now": "2026-03-04T12:00:00+00:00",
+   "samples": [],
+   "query_now": "2026-03-04T12:00:00+00:00",
+   "result": {
+    "status": "warning",
+    "message": "No samples available in condition window",
+    "last_value": null,
+    "evaluated_at": "2026-03-04T12:00:00+00:00"
+   }
+  },
+  {
+   "name": "first_oversized_breach_duration",
+   "condition": {
+    "metric_name": "ha.sensor.office_humidity",
+    "operator": "gt",
+    "warning_threshold": "60.0",
+    "critical_threshold": "75.0",
+    "breach_minutes": 10081,
+    "stale_after_seconds": null,
+    "alert_when_stale": true
+   },
+   "stale_warning_seconds": 600,
+   "now": "2026-03-04T12:00:00+00:00",
+   "samples": [],
+   "query_now": null,
+   "error": {
+    "class": "ValueError",
+    "message": "Must be an integer between 1 and 10080 minutes."
    }
   },
   {
@@ -11518,10 +11556,10 @@
      "tags": {}
     }
    ],
-   "query_now": "2026-03-04T12:00:00+00:00",
+   "query_now": null,
    "error": {
-    "class": "OverflowError",
-    "p2": true
+    "class": "ValueError",
+    "message": "Must be an integer between 1 and 10080 minutes."
    }
   },
   {
@@ -11569,10 +11607,10 @@
      "tags": {}
     }
    ],
-   "query_now": "2026-03-04T12:00:00+00:00",
+   "query_now": null,
    "error": {
-    "class": "OverflowError",
-    "p2": true
+    "class": "ValueError",
+    "message": "Must be an integer between 1 and 10080 minutes."
    }
   },
   {
@@ -11620,10 +11658,10 @@
      "tags": {}
     }
    ],
-   "query_now": "2026-03-04T12:00:00+00:00",
+   "query_now": null,
    "error": {
-    "class": "OverflowError",
-    "p2": true
+    "class": "ValueError",
+    "message": "Must be an integer between 1 and 10080 minutes."
    }
   },
   {
@@ -11671,10 +11709,10 @@
      "tags": {}
     }
    ],
-   "query_now": "2026-03-04T12:00:00+00:00",
+   "query_now": null,
    "error": {
-    "class": "OverflowError",
-    "p2": true
+    "class": "ValueError",
+    "message": "Must be an integer between 1 and 10080 minutes."
    }
   },
   {
@@ -11722,12 +11760,10 @@
      "tags": {}
     }
    ],
-   "query_now": "2026-03-04T12:00:00+00:00",
-   "result": {
-    "status": "ok",
-    "message": "Condition is within thresholds",
-    "last_value": "80.0",
-    "evaluated_at": "2026-03-04T12:00:00+00:00"
+   "query_now": null,
+   "error": {
+    "class": "ValueError",
+    "message": "Must be an integer between 1 and 10080 minutes."
    }
   },
   {
@@ -11760,10 +11796,10 @@
      "tags": {}
     }
    ],
-   "query_now": "9999-12-31T23:59:30+00:00",
+   "query_now": null,
    "error": {
-    "class": "OverflowError",
-    "p2": true
+    "class": "ValueError",
+    "message": "Must be an integer between 1 and 10080 minutes."
    }
   },
   {
@@ -11811,12 +11847,10 @@
      "tags": {}
     }
    ],
-   "query_now": "2026-03-04T12:00:00+00:00",
-   "result": {
-    "status": "ok",
-    "message": "Condition is within thresholds",
-    "last_value": "80.0",
-    "evaluated_at": "2026-03-04T12:00:00+00:00"
+   "query_now": null,
+   "error": {
+    "class": "ValueError",
+    "message": "Must be an integer between 1 and 10080 minutes."
    }
   },
   {

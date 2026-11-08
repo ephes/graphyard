@@ -737,7 +737,7 @@ def test_old_evaluation_cannot_replace_new_result(monkeypatch, late_failure):
     from django.db import connections
     from graphyard import services
 
-    condition = _condition(breach_minutes=0)
+    condition = _condition(breach_minutes=1)
     condition.save()
     older = datetime(2026, 3, 4, 12, tzinfo=UTC)
     newer = older + timedelta(microseconds=1)
@@ -816,7 +816,7 @@ def test_unusable_anchor_preserves_initial_grace(monkeypatch, settings, anchor_a
 )
 @pytest.mark.parametrize("failure", [False, True])
 def test_definition_edit_fences_pending_publication(monkeypatch, edit, failure):
-    condition = _condition(breach_minutes=0)
+    condition = _condition(breach_minutes=1)
     condition.status = StatusLevel.WARNING
     condition.message = "retained evidence"
     condition.last_value = 17
@@ -841,7 +841,7 @@ def test_definition_edit_fences_pending_publication(monkeypatch, edit, failure):
 def test_noncanonical_stored_json_still_publishes(monkeypatch):
     from django.db import connection
 
-    condition = _condition(breach_minutes=0)
+    condition = _condition(breach_minutes=1)
     condition.save()
     with connection.cursor() as cursor:
         cursor.execute(

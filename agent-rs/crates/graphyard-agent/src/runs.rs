@@ -18,7 +18,7 @@ use num_bigint::BigInt;
 use serde_json::Value;
 
 use graphyard_collect::executors::{ExecutorError, ExecutorResult, RunState};
-use graphyard_core::conditions::{ConditionRule, evaluate_condition};
+use graphyard_core::conditions::{ConditionRule, evaluate_condition, validate_condition_duration};
 use graphyard_core::diagnostics::{collector_failure, error_category};
 use graphyard_core::pycompat::{int_digit_limit_error, json_loads};
 use graphyard_core::{
@@ -322,6 +322,8 @@ async fn evaluate<S: ConditionSamples>(
     now: DateTime<Utc>,
     stale_warning_seconds: &BigInt,
 ) -> Result<graphyard_core::ConditionEvaluation, &'static str> {
+    validate_condition_duration(condition.window_minutes).map_err(|_| "ValueError")?;
+    validate_condition_duration(condition.breach_minutes).map_err(|_| "ValueError")?;
     let tags_filter =
         load_stored_json("tags_filter", &condition.tags_filter).map_err(|_| "ValueError")?;
     let query = ConditionQuery {

@@ -147,7 +147,7 @@ ROUNDS = (
         {"INFLUX_API_MODE": "v2"},
         evaluate=True,
         expect_code=1,
-        expect_stdout="Condition evaluation completed with failures (2/15).\n",
+        expect_stdout="Condition evaluation completed with failures (4/18).\n",
     ),
     Round(
         "evaluate-conditions --condition-id, v3",
@@ -843,6 +843,30 @@ def build_corpus(http: HttpFake, https: HttpFake, influx: InfluxFake) -> Corpus:
             enabled=False,
         ),
     ]
+    conditions.extend(
+        [
+            Condition(
+                "synthetic zero window",
+                "synthetic.zero_window",
+                [CRITICAL] * len(ROUNDS),
+                window=0,
+            ),
+            Condition(
+                "synthetic oversized breach",
+                "synthetic.oversized_breach",
+                [CRITICAL] * len(ROUNDS),
+                breach=2_147_483_647,
+            ),
+            Condition(
+                "synthetic sparse extended breach",
+                "synthetic.sparse",
+                [CRITICAL] * len(ROUNDS),
+                [samples((30, 99.0), (330, 99.0), (630, 99.0))],
+                window=1,
+                breach=10,
+            ),
+        ]
+    )
     for condition in conditions:
         influx.queries.set(condition.metric, condition.samples)
     return Corpus(specs, conditions)
