@@ -1599,3 +1599,60 @@ def test_inventory_object_root_depth_precedes_materialization(monkeypatch):
     )
     with pytest.raises(ValueError, match="nesting limit"):
         inventory.decode_report(b'{"a":{"b":{"c":1}}}')
+
+
+@pytest.mark.parametrize("reverse_order", [False, True])
+@pytest.mark.parametrize("second_status", ["ok", "error"])
+@pytest.mark.parametrize("same_received", [False, True])
+def test_equal_time_inventory_uses_received_time_then_id(
+    client,
+    enrolled,
+    django_user_model,
+    monkeypatch,
+    reverse_order,
+    second_status,
+    same_received,
+):
+    from graphyard.inventory import host_state
+
+    observed = timezone.now() - timedelta(hours=1)
+    first, second = (
+        report(observed_at=observed.isoformat()),
+        report(observed_at=observed.isoformat()),
+    )
+    first["categories"]["packages"]["items"] = [{"name": "first", "version": "1"}]
+    second["categories"]["packages"]["items"] = [{"name": "second", "version": "2"}]
+    if reverse_order:
+        first, second = second, first
+    if second_status == "error":
+        second["categories"]["packages"] = {
+            "status": "error",
+            "items": [],
+            "error": "synthetic failure",
+        }
+    if same_received:
+        # Exercise the final unique tie-break even on coarse-clock backends.
+        now = timezone.now()
+        monkeypatch.setattr(timezone, "now", lambda: now)
+    assert send(client, enrolled, first).status_code == 200
+    assert send(client, enrolled, second).status_code == 200
+    latest, categories = host_state(enrolled[0])
+    assert str(latest.snapshot_id) == second["snapshot_id"]
+    packages = next(c for c in categories if c.name == "packages")
+    assert packages.latest_attempt_id == latest.pk
+    assert (
+        str(packages.latest_success.snapshot_id)
+        == (second if second_status == "ok" else first)["snapshot_id"]
+    )
+    # Reader links and downloads must point at the same source evidence.
+    user = django_user_model.objects.create_user(
+        username="synthetic-reader", password="synthetic"
+    )
+    client.force_login(user)
+    response = client.get(reverse("graphyard:inventory_detail", args=["studio"]))
+    assert response.status_code == 200
+    url = reverse(
+        "graphyard:inventory_download", args=["studio", second["snapshot_id"]]
+    )
+    assert url.encode() in response.content
+    assert client.get(url).json() == second
