@@ -296,3 +296,13 @@ interval, checks renewal with two stores, cancels an abandoned run and checks it
 persisted expiry, and refuses renewal/completion from a replaced or disabled
 claim. Python's existing shared fixtures still cover ordinary scheduling results;
 renewal is Rust-specific.
+
+## Fresh-process scheduling and publication recovery
+
+`graphyard-agent/tests/crash_journeys.rs` kills pipe-gated child processes after
+claim commit and after Influx acknowledgement, then restarts on the same scratch
+database. It checks persisted expiry, no false healthy/completed bookkeeping,
+exactly one eligible recovery execution and explicitly counted potentially
+repeated remote delivery. Missing claim persistence, premature recovery and
+registry-before-acceptance mutations each fail their oracle. All data and HTTP
+endpoints are synthetic; gates exist only in the test executable.

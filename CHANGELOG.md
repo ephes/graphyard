@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Cover actual process death after spec claim commit and acknowledged sink
+  acceptance with pipe-gated synthetic child processes and fresh restarts.
+- Assert persisted lease recovery without false healthy bookkeeping; document
+  and count potentially repeated delivery after uncertain local completion.
+
 - Renew Rust due-spec claims through collection and publication, fenced by the
   exact claim and captured definition; abandoned work retains bounded recovery.
 - Verify full/partial SBOM exports against pinned local CycloneDX 1.6 schemas

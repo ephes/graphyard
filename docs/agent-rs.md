@@ -237,3 +237,17 @@ agreed with the coordinator first (PLAN.md 8.4).
   and the shadow tool tests
   (`tests/test_agent_rs_shadow.py`, which run the three tools on two local
   databases with fake `systemctl`, `/proc` and `influx`).
+
+## Crash recovery boundary
+
+A persisted due-spec claim survives process death; its last renewed expiry is
+the earliest recovery admission. A claim is not evidence of a completed or
+healthy run. Influx acceptance precedes registry and spec-result publication,
+so a kill between these boundaries can leave accepted bytes with no matching
+healthy bookkeeping. A restarted agent waits for the lease, then may send the
+observation again. This uncertainty is intentional; local transactions cannot
+undo remote acceptance. See the [process-death contract](../agent-rs/README.md#process-death-and-uncertain-sink-acceptance)
+for the isolated, pipe-gated regression harness and exact recovery assertions.
+Those process journeys cover the initial persisted claim. Live renewal and
+replacement fencing are checked separately by `tests/lease.rs`; renewed-lease
+process-death coverage is not claimed.
