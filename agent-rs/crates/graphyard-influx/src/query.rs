@@ -238,8 +238,7 @@ impl QueryClient {
                 .map_err(|_| sql_failed("LocalProtocolError"))?;
             headers.insert(AUTHORIZATION, value);
         }
-        // httpx's spelling; reqwest still decodes the response.
-        headers.insert(ACCEPT_ENCODING, HeaderValue::from_static("gzip, deflate"));
+        headers.insert(ACCEPT_ENCODING, HeaderValue::from_static("identity"));
         headers.insert(USER_AGENT, HeaderValue::from_static(V3_USER_AGENT));
         headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
         let timeout = Duration::try_from_secs_f64(per_operation).ok();
@@ -267,6 +266,16 @@ impl QueryClient {
                 "InfluxDB SQL query failed: HTTP {}",
                 status.as_u16()
             ))
+            .into());
+        }
+        if let Some(encoding) = response.headers().get("content-encoding")
+            && !encoding.to_str().is_ok_and(|value| {
+                matches!(value.trim().to_ascii_lowercase().as_str(), "" | "identity")
+            })
+        {
+            return Err(QueryError::config(
+                "InfluxDB SQL query failed: unsupported response encoding",
+            )
             .into());
         }
         let mut body = Vec::new();
@@ -326,15 +335,19 @@ fn decode_sql_body(body: &[u8]) -> Result<Value, QueryError> {
 }
 
 /// A fresh reqwest client for one v3 query, like httpx's `AsyncClient`:
-/// HTTP/1.1, no redirects, no retries, no idle connections, gzip and deflate
-/// responses decoded, proxies from the environment (`trust_env`).
+/// HTTP/1.1, no redirects, retries, idle connections or decompression;
+/// proxies from the environment (`trust_env`).
 fn v3_client(timeout: Option<Duration>) -> Result<reqwest::Client, reqwest::Error> {
     crate::install_crypto_provider();
     let mut builder = reqwest::Client::builder()
         .http1_only()
         .redirect(reqwest::redirect::Policy::none())
         .retry(reqwest::retry::never())
-        .pool_max_idle_per_host(0);
+        .pool_max_idle_per_host(0)
+        .no_gzip()
+        .no_deflate()
+        .no_brotli()
+        .no_zstd();
     if let Some(timeout) = timeout {
         builder = builder.connect_timeout(timeout).read_timeout(timeout);
     }

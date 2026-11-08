@@ -154,7 +154,7 @@ def test_sql_oversize_stops_reading_and_closes(monkeypatch):
     assert stream.reads == 2
 
 
-def test_sql_size_limit_counts_decoded_bytes(monkeypatch):
+def test_sql_compressed_response_refused_before_decoding(monkeypatch):
     import gzip
 
     monkeypatch.setattr(influx, "SQL_QUERY_MAX_BODY_BYTES", 100)
@@ -163,9 +163,10 @@ def test_sql_size_limit_counts_decoded_bytes(monkeypatch):
         SQLStream([gzip.compress(b"[" + b" " * 1000 + b"]")]),
         encoding="gzip",
     )
-    with pytest.raises(influx.InfluxConfigurationError, match="byte limit"):
+    with pytest.raises(influx.InfluxConfigurationError, match="response encoding"):
         query_sql()
     assert stream.closed
+    assert stream.reads == 0
 
 
 @pytest.mark.parametrize("delay", [0.04, 1.0])
@@ -263,3 +264,31 @@ def test_sql_invalid_header_is_not_reported_as_invalid_json(monkeypatch, setting
         query_sql()
     assert str(caught.value) == "InfluxDB SQL query failed: UnicodeEncodeError"
     assert stream.reads == 0
+
+
+@pytest.mark.parametrize("encoding", ["br", "deflate", "gzip, identity", "private"])
+def test_sql_unsupported_encoding_refuses_without_reading(monkeypatch, encoding):
+    stream = install_stream(monkeypatch, SQLStream([b"[]"]), encoding=encoding)
+    with pytest.raises(
+        influx.InfluxConfigurationError, match="response encoding"
+    ) as err:
+        query_sql()
+    assert "private" not in str(err.value)
+    assert stream.closed and stream.reads == 0
+
+
+def test_sql_requests_identity_encoding(monkeypatch):
+    real_client = httpx.AsyncClient
+    requests = []
+
+    def handle(request):
+        requests.append(request)
+        return httpx.Response(200, json=[])
+
+    monkeypatch.setattr(
+        influx.httpx,
+        "AsyncClient",
+        lambda **kw: real_client(transport=httpx.MockTransport(handle), **kw),
+    )
+    assert query_sql() == []
+    assert requests[0].headers["Accept-Encoding"] == "identity"

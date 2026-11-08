@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Fail condition evaluation on malformed Flux/SQL row evidence; preserve the last
+  value instead of silently dropping corrupt samples. Truly empty results keep
+  their existing stale-data policy.
+- Require identity-encoded Python SQL responses and reject compressed replies
+  before body reads; retain the inclusive 10 MiB limit and total deadline.
+
 - Fence release-source policy replacement with a monotonic database generation,
   including empty registries and delayed older refreshes.
 - Revalidate current metric credentials, scope and binding under a token-row write

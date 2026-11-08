@@ -60,11 +60,10 @@ pub fn sql_query(range: &QueryRange, measurement: &str) -> Result<String, QueryE
     ))
 }
 
-/// `influx._parse_influx_ts(str(value))`: `Z` replaced by `+00:00`,
+/// `influx._parse_influx_ts(value)`: `Z` replaced by `+00:00`,
 /// `datetime.fromisoformat`, naive taken as UTC, converted to UTC.
 ///
-/// `Ok(None)` stands for the `ValueError` the row loop skips; the
-/// `OverflowError` of the conversion propagates.
+/// Invalid timestamps are rejected by the row loop.
 fn parse_influx_ts(raw: &str) -> Result<Option<DateTime<Utc>>, QueryError> {
     match py_fromisoformat(&raw.replace('Z', "+00:00")) {
         Err(err) if err.kind == PyErrorKind::ValueError => Ok(None),
@@ -93,8 +92,7 @@ const NON_TAG_COLUMNS: [&str; 12] = [
 ///
 /// # Errors
 /// `Invalid response from InfluxDB v3 query API` when the document is not a
-/// list; a non-finite or non-numeric value; the `OverflowError` of a time
-/// beyond the datetime range after the UTC conversion.
+/// list; missing or malformed row/time/value evidence.
 pub fn sql_samples(rows: &Value, metric_name: &str) -> Result<Vec<MetricSample>, QueryError> {
     let Value::Array(rows) = rows else {
         return Err(QueryError::config(
@@ -103,16 +101,18 @@ pub fn sql_samples(rows: &Value, metric_name: &str) -> Result<Vec<MetricSample>,
     };
     let mut samples = Vec::new();
     for row in rows {
+        let invalid_row = || QueryError::config("Invalid InfluxDB query row");
         let Value::Object(row) = row else {
-            continue;
+            return Err(invalid_row());
         };
         let present = |key: &str| row.get(key).filter(|value| !value.is_null());
-        let (Some(value), Some(time)) = (present("value"), present("time")) else {
-            continue;
+        let (Some(value), Some(Value::String(time))) = (present("value"), present("time")) else {
+            return Err(invalid_row());
         };
-        let Some(ts) = parse_influx_ts(&py_str(time))? else {
-            continue;
-        };
+        let invalid_time = || QueryError::config("Invalid InfluxDB query timestamp");
+        let ts = parse_influx_ts(time)
+            .map_err(|_| invalid_time())?
+            .ok_or_else(invalid_time)?;
         let value = sample_value(&py_str(value))?;
         let optional = |key: &str| present(key).map(py_str);
         let tags: Tags = row
