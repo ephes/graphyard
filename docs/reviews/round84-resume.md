@@ -84,3 +84,14 @@ completed successfully. No PostgreSQL contracts ran for this parked bundle.
 Local artifacts (outside the repo): `../b30-red.log`, `../b30-checks.log`,
 `../review-b30-r1b/result.json` and `../review-b30-r1b/events.jsonl`.
 Tool caches and review locks were redirected under the authorized workspace.
+
+## Finisher outcome (round 85)
+
+B30 reviewed by the Claude finisher (Opus): no Critical/Warning findings in one
+round. The duplicate-key hook runs only after the existing streaming budgets, and
+the cache middleware wraps login redirects, 404/405/422 and conditional requests.
+Lint, typecheck, schema-check, the full Python suite (1152 passed, 7 PostgreSQL
+oracles skipped), the serial Rust suite and offline parity, cargo-deny, the
+Python audit and the release build all passed outside the sandbox. The five Rust
+deadline tests passed too. They had failed only under sandbox/load, and these
+Rust files are unchanged. Merged to `main` with `--no-ff`. Not deployed.
