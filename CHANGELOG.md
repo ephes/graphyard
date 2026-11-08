@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Reject metric JSON/NDJSON integer decoder failures and duplicate object keys
+  with bounded parse errors and accurate NDJSON counts, before ingest writes.
+
 - Fence release-source policy replacement with a monotonic database generation,
   including empty registries and delayed older refreshes.
 - Revalidate current metric credentials, scope and binding under a token-row write

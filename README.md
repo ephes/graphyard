@@ -18,6 +18,11 @@ producer schedules.
 
 - `POST /v1/metrics` authenticated ingest (bearer token)
   - accepts JSON array payloads, object-with-`metrics` arrays, and NDJSON batches
+  - rejects duplicate object keys at every nesting level and integers beyond the
+    Python decoder limit with bounded HTTP 400 parse errors, before sink or token
+    usage/registry writes. Duplicate diagnostics give the object member position,
+    never the key or value; NDJSON rejection counters include all nonempty lines.
+    Repeated records in arrays remain supported.
 - `GET /v1/conditions`
 - `GET /v1/conditions/<id>`
 - `GET /v1/health`
