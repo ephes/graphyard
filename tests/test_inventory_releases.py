@@ -600,3 +600,32 @@ def test_slow_stream_exhausts_budget_preserves_success_and_continues(monkeypatch
     assert InventoryRelease.objects.get(pk="pypi:flask").version == "3.1"
     assert closed == [True]
     assert clock[0] == 76
+
+
+@pytest.mark.parametrize(
+    "replacement",
+    [
+        [],
+        [definition(project="flask")],
+        [{**definition(), "targets": [{"kind": "python", "name": "new-target"}]}],
+    ],
+)
+def test_delayed_policy_cannot_replace_newer_registry(monkeypatch, replacement):
+    """A starts first but reaches its policy transaction after B has applied."""
+    now = timezone.now()
+    calls = 0
+
+    def paused_start():
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            assert releases.refresh(replacement, force=True) == 0
+        return now
+
+    monkeypatch.setattr(releases.timezone, "now", paused_start)
+    monkeypatch.setattr(releases, "fetch", Mock(return_value="1.0"))
+    assert releases.refresh([definition()], force=True) == 0
+    enabled = list(InventoryRelease.objects.filter(enabled=True))
+    assert {row.source_id: row.definition for row in enabled} == releases.definitions(
+        replacement
+    )

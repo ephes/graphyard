@@ -528,3 +528,10 @@ Migration alias tests run 0012→0013 against two isolated databases on the sele
 backend. Default-database duplicates must not affect a clean secondary migration;
 secondary duplicates refuse without changing credentials, and explicit correction
 permits a retry that installs the constraint on that secondary database.
+
+Release registry refreshes reserve a monotonic database configuration generation
+before policy replacement. A delayed, superseded refresh cannot re-enable removed
+sources or restore old target mappings, even when the newer registry is empty.
+Policy replacement is atomic; network lookup results retain their separate
+attempt-time fence and never change enablement or targets. Superseded policy
+refreshes return without fetching. No database lock spans public-source I/O.

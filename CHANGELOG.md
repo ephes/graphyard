@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Fence release-source policy replacement with a monotonic database generation,
+  including empty registries and delayed older refreshes.
+- Revalidate current metric credentials, scope and binding under a token-row write
+  reservation through the sink call; serialize successful revocations and edits
+  after already-admitted writes without promising remote rollback. SQLite holds
+  its database-wide writer lock throughout the bounded sink call; admission
+  database failures return fixed-text 503 without a second heartbeat write.
+
 - Admit spec files through one nonblocking regular descriptor with a 2 MiB actual
   byte cap, explicit nesting bound and safe decoder errors before database work.
 - Refuse stale spec-apply updates and prune operations using captured definitions;
