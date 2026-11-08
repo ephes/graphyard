@@ -9,6 +9,13 @@
   their bodies, never buffer past the 16 MiB limit, and record over-nested JSON
   as a failure of that source only, continuing with the remaining sources.
 
+- Chunk Rust registry reads and last-seen updates at the SQLite connection's
+  variable limit, retaining one atomic transaction for the full batch.
+- Fence Rust heartbeat status/details against delayed and equal-time records;
+  retain the maximum successful observation time (first committed status wins ties).
+- Cover caller cancellation during real actor-owned registry transactions,
+  including complete commit, injected-error rollback and writer-lock release.
+
 - Reject duplicate inventory JSON members at every depth before storage, while
   preserving repeated array entries and existing report budgets.
 - Mark all inventory reader responses private and no-store, including raw reports,

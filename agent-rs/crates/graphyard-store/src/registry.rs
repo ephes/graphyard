@@ -7,7 +7,7 @@
 //! without a write when no row is missing and nothing changed or went stale
 //! (`last_seen_at` older than 60 s). Otherwise one `BEGIN IMMEDIATE`
 //! transaction reloads the rows, creates the missing ones like Django's
-//! `get_or_create` and runs at most one UPDATE per table for `last_seen_at`
+//! `get_or_create` and runs bounded UPDATE chunks per table for `last_seen_at`
 //! plus one per changed source system or re-parented service. Row images and
 //! statement sequences are pinned by the `registry_cases` of
 //! `fixtures/store_ops.json`.
@@ -231,6 +231,7 @@ fn distinct<'a>(values: impl Iterator<Item = &'a str>) -> Vec<&'a str> {
 /// the rows are narrowed to the batch's pairs), services. Django runs no
 /// query for an empty `__in` list (`EmptyResultSet`).
 fn load_rows(connection: &Connection, batch: &RegistryBatch) -> Result<RegistryRows, StoreError> {
+    let limit = variable_limit(connection)?;
     let candidates = batch
         .service_hosts
         .values()
@@ -245,12 +246,12 @@ fn load_rows(connection: &Connection, batch: &RegistryBatch) -> Result<RegistryR
             .filter(|host_id| !host_id.is_empty()),
     );
     let mut hosts = HashMap::new();
-    if !host_ids.is_empty() {
+    for host_ids in host_ids.chunks(limit) {
         let sql = format!(
             "{SELECT_HOSTS} WHERE host_id IN ({})",
             marks(host_ids.len())
         );
-        for host in query_rows(connection, &sql, params_from_iter(&host_ids), read_host)? {
+        for host in query_rows(connection, &sql, params_from_iter(host_ids), read_host)? {
             hosts.insert(host.host_id.clone(), host);
         }
     }
@@ -258,27 +259,32 @@ fn load_rows(connection: &Connection, batch: &RegistryBatch) -> Result<RegistryR
     let subject_types = distinct(batch.subjects.keys().map(|(kind, _)| kind.as_str()));
     let subject_ids = distinct(batch.subjects.keys().map(|(_, id)| id.as_str()));
     let mut subjects = HashMap::new();
-    if !subject_types.is_empty() {
-        let sql = format!(
-            "{SELECT_SUBJECTS} WHERE subject_type IN ({}) AND subject_id IN ({})",
-            marks(subject_types.len()),
-            marks(subject_ids.len())
-        );
-        let params = params_from_iter(subject_types.iter().chain(&subject_ids));
-        for subject in query_rows(connection, &sql, params, read_subject)? {
-            if batch.subjects.contains_key(&subject.key) {
-                subjects.insert(subject.key.clone(), subject);
+    // Partition both axes: retain the original cross-type load/conversion
+    // semantics while sharing the connection's parameter budget.
+    for subject_types in subject_types.chunks((limit / 2).max(1)) {
+        for subject_ids in subject_ids.chunks(limit.saturating_sub(subject_types.len()).max(1)) {
+            let sql = format!(
+                "{SELECT_SUBJECTS} WHERE subject_type IN ({}) AND subject_id IN ({})",
+                marks(subject_types.len()),
+                marks(subject_ids.len())
+            );
+            let params = params_from_iter(subject_types.iter().chain(subject_ids));
+            for subject in query_rows(connection, &sql, params, read_subject)? {
+                if batch.subjects.contains_key(&subject.key) {
+                    subjects.insert(subject.key.clone(), subject);
+                }
             }
         }
     }
 
     let mut services = HashMap::new();
-    if !batch.service_hosts.is_empty() {
+    let service_ids: Vec<_> = batch.service_hosts.keys().collect();
+    for service_ids in service_ids.chunks(limit) {
         let sql = format!(
             "{SELECT_SERVICES} WHERE service_id IN ({})",
-            marks(batch.service_hosts.len())
+            marks(service_ids.len())
         );
-        let params = params_from_iter(batch.service_hosts.keys());
+        let params = params_from_iter(service_ids);
         for service in query_rows(connection, &sql, params, read_service)? {
             services.insert(service.service_id.clone(), service);
         }
@@ -290,6 +296,13 @@ fn load_rows(connection: &Connection, batch: &RegistryBatch) -> Result<RegistryR
         hosts,
         services,
     })
+}
+
+fn variable_limit(connection: &Connection) -> Result<usize, StoreError> {
+    let limit = connection.limit(rusqlite::limits::Limit::SQLITE_LIMIT_VARIABLE_NUMBER)?;
+    // SQLite can be configured too low for even one registry INSERT; let its
+    // ordinary SQL error report that case, without a zero-sized chunks panic.
+    Ok(usize::try_from(limit).unwrap_or(1).max(1))
 }
 
 /// `_service_target_host`: the host of the last candidate, in batch order,
@@ -534,18 +547,19 @@ fn update_seen(
     ids: &[i64],
     now_text: &str,
 ) -> Result<(), StoreError> {
-    if ids.is_empty() {
-        return Ok(());
+    // The timestamp itself consumes one parameter in each UPDATE.
+    let capacity = variable_limit(connection)?.saturating_sub(1).max(1);
+    for ids in ids.chunks(capacity) {
+        let mut values: Vec<Value> = vec![Value::Text(now_text.to_owned())];
+        values.extend(ids.iter().copied().map(Value::Integer));
+        connection.execute(
+            &format!(
+                "UPDATE {table} SET last_seen_at = ? WHERE id IN ({})",
+                marks(ids.len())
+            ),
+            params_from_iter(values),
+        )?;
     }
-    let mut values: Vec<Value> = vec![Value::Text(now_text.to_owned())];
-    values.extend(ids.iter().copied().map(Value::Integer));
-    connection.execute(
-        &format!(
-            "UPDATE {table} SET last_seen_at = ? WHERE id IN ({})",
-            marks(ids.len())
-        ),
-        params_from_iter(values),
-    )?;
     Ok(())
 }
 
