@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+from contextlib import contextmanager
 import hashlib
 import hmac
 import io
@@ -17,7 +18,8 @@ from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.core.exceptions import RequestDataTooBig
-from django.db import OperationalError, transaction
+from django.db import connection, OperationalError, transaction
+from django.db.models import OuterRef, Subquery
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
@@ -307,25 +309,56 @@ def ingest(request):
         return JsonResponse({"error": "inventory storage unavailable"}, status=503)
 
 
-def host_state(host):
-    """Decode each distinct referenced report once, including on the detail page."""
-    latest_id = (
-        InventorySnapshot.objects.filter(host=host)
+@contextmanager
+def _read_snapshot():
+    # PostgreSQL READ COMMITTED gives each statement a different snapshot.
+    # Own the outer transaction so isolation is set before the first read.
+    postgres = connection.vendor == "postgresql"
+    with transaction.atomic(durable=postgres):
+        if postgres:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    "SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY"
+                )
+        yield
+
+
+def _host_states(hosts):
+    """Batch pointers and decode every distinct referenced report once."""
+    host_ids = [host.pk for host in hosts]
+    latest_query = (
+        InventorySnapshot.objects.filter(host_id=OuterRef("pk"))
         .order_by("-observed_at", "-received_at", "-pk")
-        .values_list("pk", flat=True)
-        .first()
+        .values("pk")[:1]
     )
-    categories = list(host.inventorycategory_set.order_by("name"))
-    identifiers = {latest_id} if latest_id else set()
+    latest_ids = dict(
+        InventoryHost.objects.filter(pk__in=host_ids)
+        .annotate(latest_id=Subquery(latest_query))
+        .values_list("pk", "latest_id")
+    )
+    categories = list(
+        InventoryCategory.objects.filter(host_id__in=host_ids).order_by("name")
+    )
+    identifiers = {pk for pk in latest_ids.values() if pk is not None}
     for category in categories:
         identifiers.update(
             pk for pk in (category.latest_attempt_id, category.latest_success_id) if pk
         )
-    snapshots = InventorySnapshot.objects.filter(host=host).in_bulk(identifiers)
+    snapshots = InventorySnapshot.objects.filter(host_id__in=host_ids).in_bulk(
+        identifiers
+    )
+    states = {host.pk: (snapshots.get(latest_ids.get(host.pk)), []) for host in hosts}
     for category in categories:
         category.latest_attempt = snapshots.get(category.latest_attempt_id)
         category.latest_success = snapshots.get(category.latest_success_id)
-    return snapshots.get(latest_id), categories
+        states[category.host_id][1].append(category)
+    return states
+
+
+def host_state(host):
+    """Materialize per-host report evidence in one short database snapshot."""
+    with _read_snapshot():
+        return _host_states([host])[host.pk]
 
 
 def host_summary(host, now, state=None):
@@ -366,12 +399,14 @@ def host_summary(host, now, state=None):
 
 def summaries(now=None):
     now = timezone.now() if now is None else now
-    return [
-        host_summary(host, now)
-        for host in InventoryHost.objects.filter(host__enabled=True)
-        .select_related("host")
-        .order_by("host__host_id")
-    ]
+    with _read_snapshot():
+        hosts = list(
+            InventoryHost.objects.filter(host__enabled=True)
+            .select_related("host")
+            .order_by("host__host_id")
+        )
+        states = _host_states(hosts)
+        return [host_summary(host, now, states[host.pk]) for host in hosts]
 
 
 @require_GET

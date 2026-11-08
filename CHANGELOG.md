@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Batch inventory summary pointers and reports across hosts, decoding each
+  referenced snapshot once. Materialize summaries and detail-page evidence in
+  one short database snapshot so concurrent ingestion/pruning cannot mix
+  generations or temporarily erase coverage. Preserve historical successes.
+
 - Fence release-source policy replacement with a monotonic database generation,
   including empty registries and delayed older refreshes.
 - Revalidate current metric credentials, scope and binding under a token-row write

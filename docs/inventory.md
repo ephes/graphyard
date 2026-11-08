@@ -546,3 +546,22 @@ sources or restore old target mappings, even when the newer registry is empty.
 Policy replacement is atomic; network lookup results retain their separate
 attempt-time fence and never change enablement or targets. Superseded policy
 refreshes return without fetching. No database lock spans public-source I/O.
+
+
+## Coherent inventory reads
+
+Fleet summaries batch the selected hosts' latest/category pointers and referenced
+reports rather than running three queries per host. Each distinct report is decoded
+once per projection, including shared attempt/success references. Detail and application
+pages use the same materialized evidence boundary. Historical successes remain visible
+when the newest category failed; partial evidence does not replace successful items.
+
+All pointer/report reads complete inside a short database snapshot before rendering or
+serialization. SQLite uses the configured `BEGIN IMMEDIATE` transaction, briefly reserving the
+database writer; concurrent ingests may return retryable HTTP 503 and succeed
+after the read completes. PostgreSQL uses an outermost read-only
+repeatable-read transaction. Projection callers must not nest PostgreSQL reads in an
+ordinary application transaction (Django's durable transaction guard refuses this).
+An ingest that rotates pointers and prunes reports concurrently cannot produce missing
+coverage in a previously complete generation. Empty hosts and disabled-host filtering
+retain their existing behavior.
