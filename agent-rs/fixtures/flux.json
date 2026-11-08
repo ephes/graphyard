@@ -135,6 +135,108 @@
    "flux": "from(bucket: \"graphyard\")\n  |> range(start: 2026-10-21T11:30:00.123456Z, stop: 2026-10-21T12:00:00.123456Z)\n  |> filter(fn: (r) => r._measurement == \"graphyard_metrics\" and r._field == \"value\" and r[\"metric\"] == \"host.filesystem_used_ratio\")\n  |> sort(columns: [\"_time\"], desc: false)"
   },
   {
+   "name": "maximum_window",
+   "condition": {
+    "id": 7,
+    "name": "disk",
+    "metric_name": "host.filesystem_used_ratio",
+    "host_filter": "",
+    "service_filter": "",
+    "subject_type_filter": "",
+    "subject_id_filter": "",
+    "tags_filter": {},
+    "window_minutes": 10080,
+    "breach_minutes": 5,
+    "stale_after_seconds": null
+   },
+   "stale_warning": "600",
+   "now": "2026-10-21T12:00:00.123456+00:00",
+   "logs": [],
+   "range": {
+    "metric": "host.filesystem_used_ratio",
+    "start": "2026-10-14T12:00:00.123456+00:00",
+    "stop": "2026-10-21T12:00:00.123456+00:00",
+    "host": null,
+    "service": null,
+    "tags": {}
+   },
+   "flux": "from(bucket: \"graphyard\")\n  |> range(start: 2026-10-14T12:00:00.123456Z, stop: 2026-10-21T12:00:00.123456Z)\n  |> filter(fn: (r) => r._measurement == \"graphyard_metrics\" and r._field == \"value\" and r[\"metric\"] == \"host.filesystem_used_ratio\")\n  |> sort(columns: [\"_time\"], desc: false)"
+  },
+  {
+   "name": "maximum_breach_extended_lookback",
+   "condition": {
+    "id": 7,
+    "name": "disk",
+    "metric_name": "host.filesystem_used_ratio",
+    "host_filter": "",
+    "service_filter": "",
+    "subject_type_filter": "",
+    "subject_id_filter": "",
+    "tags_filter": {},
+    "window_minutes": 1,
+    "breach_minutes": 10080,
+    "stale_after_seconds": null
+   },
+   "stale_warning": "600",
+   "now": "2026-10-21T12:00:00.123456+00:00",
+   "logs": [],
+   "range": {
+    "metric": "host.filesystem_used_ratio",
+    "start": "2026-10-14T11:50:00.123456+00:00",
+    "stop": "2026-10-21T12:00:00.123456+00:00",
+    "host": null,
+    "service": null,
+    "tags": {}
+   },
+   "flux": "from(bucket: \"graphyard\")\n  |> range(start: 2026-10-14T11:50:00.123456Z, stop: 2026-10-21T12:00:00.123456Z)\n  |> filter(fn: (r) => r._measurement == \"graphyard_metrics\" and r._field == \"value\" and r[\"metric\"] == \"host.filesystem_used_ratio\")\n  |> sort(columns: [\"_time\"], desc: false)"
+  },
+  {
+   "name": "oversized_window",
+   "condition": {
+    "id": 7,
+    "name": "disk",
+    "metric_name": "host.filesystem_used_ratio",
+    "host_filter": "",
+    "service_filter": "",
+    "subject_type_filter": "",
+    "subject_id_filter": "",
+    "tags_filter": {},
+    "window_minutes": 10081,
+    "breach_minutes": 5,
+    "stale_after_seconds": null
+   },
+   "stale_warning": "600",
+   "now": "2026-10-21T12:00:00.123456+00:00",
+   "error": {
+    "class": "ValueError",
+    "message": "Must be an integer between 1 and 10080 minutes."
+   },
+   "logs": []
+  },
+  {
+   "name": "oversized_breach",
+   "condition": {
+    "id": 7,
+    "name": "disk",
+    "metric_name": "host.filesystem_used_ratio",
+    "host_filter": "",
+    "service_filter": "",
+    "subject_type_filter": "",
+    "subject_id_filter": "",
+    "tags_filter": {},
+    "window_minutes": 30,
+    "breach_minutes": 10081,
+    "stale_after_seconds": null
+   },
+   "stale_warning": "600",
+   "now": "2026-10-21T12:00:00.123456+00:00",
+   "error": {
+    "class": "ValueError",
+    "message": "Must be an integer between 1 and 10080 minutes."
+   },
+   "logs": []
+  },
+  {
    "name": "whole_second_now",
    "condition": {
     "id": 7,
@@ -347,16 +449,11 @@
    },
    "stale_warning": "0",
    "now": "2026-10-21T12:00:00.123456+00:00",
-   "logs": [],
-   "range": {
-    "metric": "host.filesystem_used_ratio",
-    "start": "2026-10-21T12:00:00.123456+00:00",
-    "stop": "2026-10-21T12:00:00.123456+00:00",
-    "host": null,
-    "service": null,
-    "tags": {}
+   "error": {
+    "class": "ValueError",
+    "message": "Must be an integer between 1 and 10080 minutes."
    },
-   "flux": "from(bucket: \"graphyard\")\n  |> range(start: 2026-10-21T12:00:00.123456Z, stop: 2026-10-21T12:00:00.123456Z)\n  |> filter(fn: (r) => r._measurement == \"graphyard_metrics\" and r._field == \"value\" and r[\"metric\"] == \"host.filesystem_used_ratio\")\n  |> sort(columns: [\"_time\"], desc: false)"
+   "logs": []
   },
   {
    "name": "stale_global_negative",
@@ -375,16 +472,11 @@
    },
    "stale_warning": "-150",
    "now": "2026-10-21T12:00:00.123456+00:00",
-   "logs": [],
-   "range": {
-    "metric": "host.filesystem_used_ratio",
-    "start": "2026-10-21T12:00:00.123456+00:00",
-    "stop": "2026-10-21T12:00:00.123456+00:00",
-    "host": null,
-    "service": null,
-    "tags": {}
+   "error": {
+    "class": "ValueError",
+    "message": "Must be an integer between 1 and 10080 minutes."
    },
-   "flux": "from(bucket: \"graphyard\")\n  |> range(start: 2026-10-21T12:00:00.123456Z, stop: 2026-10-21T12:00:00.123456Z)\n  |> filter(fn: (r) => r._measurement == \"graphyard_metrics\" and r._field == \"value\" and r[\"metric\"] == \"host.filesystem_used_ratio\")\n  |> sort(columns: [\"_time\"], desc: false)"
+   "logs": []
   },
   {
    "name": "negative_columns",
@@ -403,16 +495,11 @@
    },
    "stale_warning": "-6000",
    "now": "2026-10-21T12:00:00.123456+00:00",
-   "logs": [],
-   "range": {
-    "metric": "host.filesystem_used_ratio",
-    "start": "2026-10-21T12:10:00.123456+00:00",
-    "stop": "2026-10-21T12:00:00.123456+00:00",
-    "host": null,
-    "service": null,
-    "tags": {}
+   "error": {
+    "class": "ValueError",
+    "message": "Must be an integer between 1 and 10080 minutes."
    },
-   "flux": "from(bucket: \"graphyard\")\n  |> range(start: 2026-10-21T12:10:00.123456Z, stop: 2026-10-21T12:00:00.123456Z)\n  |> filter(fn: (r) => r._measurement == \"graphyard_metrics\" and r._field == \"value\" and r[\"metric\"] == \"host.filesystem_used_ratio\")\n  |> sort(columns: [\"_time\"], desc: false)"
+   "logs": []
   },
   {
    "name": "large_lookback_in_range",
@@ -431,16 +518,11 @@
    },
    "stale_warning": "600",
    "now": "2026-10-21T12:00:00.123456+00:00",
-   "logs": [],
-   "range": {
-    "metric": "host.filesystem_used_ratio",
-    "start": "0125-06-25T01:20:00.123456+00:00",
-    "stop": "2026-10-21T12:00:00.123456+00:00",
-    "host": null,
-    "service": null,
-    "tags": {}
+   "error": {
+    "class": "ValueError",
+    "message": "Must be an integer between 1 and 10080 minutes."
    },
-   "flux": "from(bucket: \"graphyard\")\n  |> range(start: 0125-06-25T01:20:00.123456Z, stop: 2026-10-21T12:00:00.123456Z)\n  |> filter(fn: (r) => r._measurement == \"graphyard_metrics\" and r._field == \"value\" and r[\"metric\"] == \"host.filesystem_used_ratio\")\n  |> sort(columns: [\"_time\"], desc: false)"
+   "logs": []
   },
   {
    "name": "lookback_before_year_1",
@@ -460,8 +542,8 @@
    "stale_warning": "600",
    "now": "2026-10-21T12:00:00.123456+00:00",
    "error": {
-    "class": "OverflowError",
-    "message": "date value out of range"
+    "class": "ValueError",
+    "message": "Must be an integer between 1 and 10080 minutes."
    },
    "logs": []
   },
@@ -482,16 +564,11 @@
    },
    "stale_warning": "600",
    "now": "2026-10-21T12:00:00.123456+00:00",
-   "logs": [],
-   "range": {
-    "metric": "host.filesystem_used_ratio",
-    "start": "2026-10-21T11:45:00.123456+00:00",
-    "stop": "2026-10-21T12:00:00.123456+00:00",
-    "host": null,
-    "service": null,
-    "tags": {}
+   "error": {
+    "class": "ValueError",
+    "message": "Must be an integer between 1 and 10080 minutes."
    },
-   "flux": "from(bucket: \"graphyard\")\n  |> range(start: 2026-10-21T11:45:00.123456Z, stop: 2026-10-21T12:00:00.123456Z)\n  |> filter(fn: (r) => r._measurement == \"graphyard_metrics\" and r._field == \"value\" and r[\"metric\"] == \"host.filesystem_used_ratio\")\n  |> sort(columns: [\"_time\"], desc: false)"
+   "logs": []
   },
   {
    "name": "lookback_beyond_timedelta",

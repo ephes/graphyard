@@ -122,7 +122,11 @@ fn assert_case(case: &Value) {
     let outcome = ready(evaluate_condition(&rule, &stale, now, &mut source));
     assert_eq!(
         queried,
-        [datetime(case.str_field("query_now"))],
+        case["query_now"]
+            .as_str()
+            .map(datetime)
+            .into_iter()
+            .collect::<Vec<_>>(),
         "{name}: query now"
     );
 
@@ -273,31 +277,28 @@ fn fresh(value: f64) -> Vec<MetricSample> {
 }
 
 #[test]
-fn overflow_errors_carry_the_cpython_texts() {
-    // The fixture stores these library texts as P2 (class only); the Rust
-    // side renders the texts CPython 3.12 prints.
-    let stale = BigInt::from(600);
-    for (breach_minutes, message) in [
-        (
-            1_440_000_000_000,
-            "days=1000000000; must have magnitude <= 999999999",
-        ),
-        (
-            -1_440_000_001_440,
-            "days=-1000000001; must have magnitude <= 999999999",
-        ),
-        (1440 * (1 << 31), "Python int too large to convert to C int"),
-        (i64::MAX, "Python int too large to convert to C int"),
-        (1_439_999_999_999, "date value out of range"),
-        (1_200_000_000, "date value out of range"),
-    ] {
+fn invalid_durations_fail_before_source_entry() {
+    for breach_minutes in [0, -1, 10081, 2_147_483_647, i64::MAX] {
         let rule = ConditionRule {
             breach_minutes,
             ..humidity_rule()
         };
-        let err = evaluate_samples(&rule, &fresh(80.0), now(), &stale).expect_err(message);
-        assert_eq!(err.kind, PyErrorKind::OverflowError, "{breach_minutes}");
-        assert_eq!(err.message, message, "{breach_minutes}");
+        let mut source = |_: DateTime<Utc>| async {
+            panic!("invalid duration reached source");
+            #[allow(unreachable_code)]
+            Ok::<Vec<MetricSample>, String>(vec![])
+        };
+        let err = ready(evaluate_condition(
+            &rule,
+            &BigInt::from(600),
+            now(),
+            &mut source,
+        ))
+        .unwrap_err();
+        assert!(matches!(err, EvaluationError::Evaluation(_)));
+        let err = evaluate_samples(&rule, &fresh(80.0), now(), &BigInt::from(600)).unwrap_err();
+        assert_eq!(err.kind, PyErrorKind::ValueError);
+        assert_eq!(err.message, DURATION_ERROR);
     }
 }
 

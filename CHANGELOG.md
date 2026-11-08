@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Limit condition windows and breach durations to 1–10,080 minutes in admin,
+  seeding and both evaluators. Reject invalid historical definitions before
+  querying without rewriting them; preserve breach periods longer than windows.
+- Mark authenticated condition responses and the owner host/service index
+  private and no-store, preserving public status visibility after logout.
+
 - Reject metric JSON/NDJSON integer decoder failures and duplicate object keys
   with bounded parse errors and accurate NDJSON counts, before ingest writes.
 - Fail condition evaluation on malformed Flux/SQL row evidence; preserve the last

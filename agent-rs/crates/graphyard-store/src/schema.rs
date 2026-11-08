@@ -23,9 +23,11 @@ use crate::error::StoreError;
 
 /// The minimum Django migration the agent needs, `(app, name)`: the last
 /// graphyard migration that changes an agent table or has an unattributed
-/// operation (0013 has an inventory data preflight).
-pub const MIN_GRAPHYARD_MIGRATION: (&str, &str) =
-    ("graphyard", "0013_inventory_single_enabled_credential");
+/// operation (0015 changes condition field validators).
+pub const MIN_GRAPHYARD_MIGRATION: (&str, &str) = (
+    "graphyard",
+    "0015_alter_conditiondefinition_breach_minutes_and_more",
+);
 
 /// Every agent table with its columns in `PRAGMA table_info` order.
 pub const REQUIRED_COLUMNS: [(&str, &[&str]); 6] = [

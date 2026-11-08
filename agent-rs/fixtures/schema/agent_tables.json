@@ -1,7 +1,7 @@
 {
  "min_graphyard_migration": [
   "graphyard",
-  "0013_inventory_single_enabled_credential"
+  "0015_alter_conditiondefinition_breach_minutes_and_more"
  ],
  "tables": {
   "metric_collection_spec": [

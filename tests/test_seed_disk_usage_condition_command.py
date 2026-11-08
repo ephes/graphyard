@@ -129,20 +129,6 @@ def test_seed_disk_usage_condition_rejects_invalid_window_and_breach():
             "0",
         )
 
-    with pytest.raises(
-        CommandError,
-        match="--breach-minutes must be less than or equal to --window-minutes",
-    ):
-        call_command(
-            "seed_disk_usage_condition",
-            "--host",
-            "macmini",
-            "--window-minutes",
-            "5",
-            "--breach-minutes",
-            "6",
-        )
-
 
 @pytest.mark.django_db
 def test_seed_disk_usage_condition_different_scope_creates_new_condition():

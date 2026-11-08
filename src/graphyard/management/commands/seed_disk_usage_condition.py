@@ -116,10 +116,6 @@ class Command(BaseCommand):
             raise CommandError("--breach-minutes must be greater than 0")
         if stale_after_seconds is not None and stale_after_seconds <= 0:
             raise CommandError("--stale-after-seconds must be greater than 0")
-        if breach_minutes > window_minutes:
-            raise CommandError(
-                "--breach-minutes must be less than or equal to --window-minutes"
-            )
 
         _validate_threshold("warning-threshold", warning_threshold)
         _validate_threshold("critical-threshold", critical_threshold)

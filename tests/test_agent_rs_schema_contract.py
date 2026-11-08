@@ -148,8 +148,8 @@ def test_minimum_migration_is_the_last_one_touching_an_agent_model(
 
 def test_minimum_migration_of_the_real_migrations(rendered: dict[str, Any]) -> None:
     contract = rendered["schema/agent_tables.json"]
-    # 0013 has an unattributed RunPython preflight (agent-rs/PLAN.md 5.1).
+    # 0015 changes condition field validators (agent-rs/PLAN.md 5.1).
     assert contract["min_graphyard_migration"] == [
         "graphyard",
-        "0013_inventory_single_enabled_credential",
+        "0015_alter_conditiondefinition_breach_minutes_and_more",
     ]

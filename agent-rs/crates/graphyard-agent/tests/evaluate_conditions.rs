@@ -269,3 +269,41 @@ fn environment_and_usage_errors() {
     assert_eq!(output.status.code(), Some(2));
     assert_eq!(db.count("pipeline_heartbeat"), 0);
 }
+
+#[test]
+fn invalid_historical_durations_fail_before_query_without_rewriting_definitions() {
+    for field in ["window_minutes", "breach_minutes"] {
+        for value in [0_i64, 10081, 2_147_483_647] {
+            let server = FakeServer::start();
+            let db = TestDb::new();
+            condition(&db, 1, "synthetic", true);
+            db.raw()
+                .execute(
+                    &format!(
+                        "UPDATE condition_definition SET {field} = ?, last_value = 17 WHERE id = 1"
+                    ),
+                    [value],
+                )
+                .unwrap();
+            let env = influx_env(&server);
+            let output = evaluate(&db, &[], &pairs(&env));
+            assert_eq!(output.status.code(), Some(1), "{field}={value}: {output:?}");
+            assert!(server.requests().is_empty(), "{field}={value}");
+            assert_eq!(
+                db.text("condition_definition", "synthetic", "message"),
+                "evaluation error: ValueError"
+            );
+            let stored: (i64, i64, f64) = db
+                .raw()
+                .query_row(
+                    &format!(
+                        "SELECT {field}, enabled, last_value FROM condition_definition WHERE id = 1"
+                    ),
+                    [],
+                    |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+                )
+                .unwrap();
+            assert_eq!(stored, (value, 1, 17.0));
+        }
+    }
+}
