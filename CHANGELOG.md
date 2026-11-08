@@ -9,6 +9,10 @@
   their existing stale-data policy.
 - Require identity-encoded Python SQL responses and reject compressed replies
   before body reads; retain the inclusive 10 MiB limit and total deadline.
+- Batch inventory summary pointers and reports across hosts, decoding each
+  referenced snapshot once. Materialize summaries and detail-page evidence in
+  one short database snapshot so concurrent ingestion/pruning cannot mix
+  generations or temporarily erase coverage. Preserve historical successes.
 
 - Fence release-source policy replacement with a monotonic database generation,
   including empty registries and delayed older refreshes.
