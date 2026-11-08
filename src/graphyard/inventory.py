@@ -625,25 +625,38 @@ def version_list(request):
     from . import inventory_releases
 
     now = timezone.now()
-    sources = inventory_releases.registry()
     selected_host = request.GET.get("host", "")[:128]
     query = request.GET.get("q", "")[:100].strip()
     selected_status = request.GET.get("status", "")
-    hosts = (
-        InventoryHost.objects.select_related("host")
-        .filter(host__enabled=True)
-        .order_by("host__host_id")
-    )
-    rows = []
-    coverage = []
-    for host in hosts:
-        if selected_host and host.host.host_id != selected_host:
-            continue
-        host_rows, notes = inventory_releases.rows_for_host(host, sources, now)
-        coverage.extend({"host": host.host.host_id, "message": note} for note in notes)
-        for row in host_rows:
-            row["host"] = host.host.host_id
-            rows.append(row)
+    with _read_snapshot():
+        sources = inventory_releases.registry()
+        source_count = inventory_releases.InventoryRelease.objects.filter(
+            enabled=True
+        ).count()
+        host_query = (
+            InventoryHost.objects.select_related("host")
+            .filter(host__enabled=True)
+            .order_by("host__host_id")
+        )
+        hosts = list(host_query)  # Keep the full host selector in the same snapshot.
+        selected = (
+            list(host_query.filter(host__host_id=selected_host))
+            if selected_host
+            else hosts
+        )
+        states = _host_states(selected)
+        rows = []
+        coverage = []
+        for host in selected:
+            host_rows, notes = inventory_releases.rows_for_host(
+                host, sources, now, states[host.pk]
+            )
+            coverage.extend(
+                {"host": host.host.host_id, "message": note} for note in notes
+            )
+            for row in host_rows:
+                row["host"] = host.host.host_id
+                rows.append(row)
     counts = {
         key: sum(row["status"] == key for row in rows)
         for key in ("update", "equal", "ahead", "unknown")
@@ -680,8 +693,6 @@ def version_list(request):
             "selected_status": selected_status,
             "query": query,
             "params": params.urlencode(),
-            "source_count": inventory_releases.InventoryRelease.objects.filter(
-                enabled=True
-            ).count(),
+            "source_count": source_count,
         },
     )

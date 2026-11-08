@@ -425,6 +425,13 @@ the exact underlying observation and its timestamp.
 
 ## Weekly version comparison
 
+Version pages read the cached release registry, host selector and comparison
+rows in the same short database snapshot used by inventory summaries. Rendering
+runs after the transaction ends. Host/category evidence is batched with a constant
+number of queries; a selected host restricts evidence queries in SQL. Each
+referenced report is decoded once. Status counts remain scoped to the selected
+hosts before status/search filtering, with sorting before 50-row pagination.
+
 `/inventory/versions/` is a session-authenticated, paginated comparison of installed
 application/Python/Homebrew observations with explicit public release sources.
 It supports host, component/application and finding filters. Each row links the

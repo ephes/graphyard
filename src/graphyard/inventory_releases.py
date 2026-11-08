@@ -282,17 +282,15 @@ def compare(installed, release, observed_at, now, historical=False):
     return result
 
 
-def rows_for_host(host, sources, now):
+def rows_for_host(host, sources, now, state=None):
     """Keep individual package observations traceable to their exact snapshot."""
     from .inventory_applications import applications, source
     from .inventory_sbom import packages, Unavailable
 
-    categories = {
-        c.name: c
-        for c in host.inventorycategory_set.select_related(
-            "latest_attempt", "latest_success"
-        )
-    }
+    from .inventory import host_state
+
+    _, observations = host_state(host) if state is None else state
+    categories = {c.name: c for c in observations}
     snapshot, basis, apps = source(categories.get("applications"))
     rows = []
     notes = []

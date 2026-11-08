@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Read version comparisons and their cached release registry in one short database
+  snapshot, batching host/category evidence and restricting selected-host evidence
+  in SQL. Preserve counts, filtering and pagination; render after the transaction.
+
 - Reject duplicate inventory JSON members at every depth before storage, while
   preserving repeated array entries and existing report budgets.
 - Mark all inventory reader responses private and no-store, including raw reports,

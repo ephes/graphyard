@@ -95,3 +95,10 @@ oracles skipped), the serial Rust suite and offline parity, cargo-deny, the
 Python audit and the release build all passed outside the sandbox. The five Rust
 deadline tests passed too. They had failed only under sandbox/load, and these
 Rust files are unchanged. Merged to `main` with `--no-ff`. Not deployed.
+
+## B31 continuation
+
+The version-page bundle was subsequently implemented and parked after the same
+OAuth failure. See [the B31 resume note](round84-b31-resume.md) for regressions,
+local validation, the PostgreSQL sandbox blocker and the exact review baseline.
+B32 remains unstarted; re-verify it on current trunk after B31 is resolved.
