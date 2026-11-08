@@ -10,6 +10,7 @@
 use std::fmt;
 use std::future::Future;
 use std::panic::AssertUnwindSafe;
+use std::time::Duration;
 
 use chrono::{DateTime, SubsecRound, Utc};
 use futures_util::FutureExt as _;
@@ -192,9 +193,10 @@ pub async fn run_metric_specs<E: SpecExecutors, C: Clock>(
     for spec in &specs {
         let run_at = if due_only { clock.now() } else { now };
         let run_ts = run_at.timestamp();
-        let claim_until = if due_only {
+        let lease_seconds = spec.interval_seconds.clamp(3, 300);
+        let mut claim_until = if due_only {
             let until = run_ts
-                .checked_add(spec.interval_seconds.clamp(1, 300))
+                .checked_add(lease_seconds)
                 .ok_or(RunError::NextRunTimeOverflow)?;
             if !store
                 .claim_due_spec(spec.id, spec.next_run_time, run_ts, until)
@@ -206,7 +208,34 @@ pub async fn run_metric_specs<E: SpecExecutors, C: Clock>(
         } else {
             None
         };
-        let outcome = run_single_spec(executors, &mut state, spec).await;
+        let outcome = if let Some(until) = claim_until.as_mut() {
+            // Keep ownership through collection, the sink and registry publication.
+            // Dropping this run also drops renewal; recovery stays bounded.
+            let execution = run_single_spec(executors, &mut state, spec);
+            tokio::pin!(execution);
+            loop {
+                tokio::select! {
+                    biased;
+                    outcome = &mut execution => break Some(outcome),
+                    _ = tokio::time::sleep(Duration::from_secs((lease_seconds / 3) as u64)) => {
+                        let renewed = clock.now().timestamp()
+                            .checked_add(lease_seconds)
+                            .ok_or(RunError::NextRunTimeOverflow)?
+                            .max(until.checked_add(1).ok_or(RunError::NextRunTimeOverflow)?);
+                        if !store.renew_spec_claim(spec.clone(), *until, renewed).await? {
+                            break None;
+                        }
+                        *until = renewed;
+                    }
+                }
+            }
+        } else {
+            Some(run_single_spec(executors, &mut state, spec).await)
+        };
+        let Some(outcome) = outcome else {
+            log::info!("Collection superseded spec_id={}", spec.id);
+            continue;
+        };
         let next_run_time = run_ts
             .checked_add(spec.interval_seconds.max(1))
             .ok_or(RunError::NextRunTimeOverflow)?;

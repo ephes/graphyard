@@ -239,10 +239,16 @@ gap and the final carry against `CONDITION_DATA_STALE_WARNING_SECONDS`, matching
 Python and the shared condition/store fixtures.
 
 Due-only metric runs claim the observed `next_run_time` before invoking a
-collector. Recovery uses the shorter of the interval (at least one second) and
-300 seconds. Completion is conditional on the claim timestamp and captured name, enabled
-state, type, interval and stored config; a newer claimant or edited definition
-keeps its schedule and result. Expired long collectors may overlap a later slot.
+collector. Claims use a 3–300 second lease (the clamped interval), renewed every one third
+of that duration until the complete collector/sink/registry future returns.
+Renewal and completion compare the exact persisted claim and captured name,
+enabled state, type, interval and stored config. Lost ownership cancels the
+collector without publishing a result or heartbeat; renewal storage errors fail
+the run. Process death or a dropped run stops renewal; recovery waits until the
+last persisted claim expires. A process suspended beyond its lease, or database contention delaying renewal
+past expiry, can still lose ownership, and cancellation cannot recall a remotely accepted write.
+The Python scheduler retains its earlier nonrenewing lease; do not run the two
+schedulers together for the same specs.
 Explicit non-due/manual runs still execute every enabled spec regardless of due
 time, with completion fenced by the captured definition and original schedule.
 Superseded completions contribute no run counts, errors or heartbeat evidence;
