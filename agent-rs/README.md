@@ -506,3 +506,30 @@ It covers HTTP rejection, disconnect, a targeted service-registry INSERT trigger
 (after subject/host creation), sibling isolation and recovery after trigger
 removal. Run it with `cargo test -p graphyard-agent --test collectors --locked`
 from `agent-rs/`.
+
+### Process death and uncertain sink acceptance
+
+A process killed after its claim commits leaves that claim in SQLite. A fresh
+process skips the spec before the last persisted lease expires and may execute
+it once that timestamp is due; no heartbeat or completion is inferred from the
+claim alone. Renewals stop with the process.
+
+A kill after Influx acknowledges a batch but before registry publication leaves
+no completed/healthy bookkeeping for that attempt. After lease expiry, recovery
+can deliver the same observation again. Count the earlier accepted delivery as
+uncertain local completion, plus the independent recovery delivery; neither
+SQLite nor scheduler fencing rolls back the remote sink. This remains a
+potentially repeated-delivery boundary, with no automatic within-run replay and
+no exactly-once guarantee across process death.
+
+`crates/graphyard-agent/tests/crash_journeys.rs` starts fresh test processes using
+the production runner, HTTP JSON executor, AgentSink/InfluxWriter and Store.
+Pipe gates stop after committed claim admission or acknowledged remote acceptance;
+the parent kills and reaps the child, then starts new processes on the same
+scratch SQLite DB at synthetic times before/at expiry. A loopback accepting sink
+records complete requests and payloads; the fixed synthetic observation is
+byte-identical across the uncertain attempt and recovery. The tests require no healthy/completed rows before recovery,
+one eligible recovery delivery and no immediate second run at that same time.
+The process journeys cover the initial persisted lease; the separate
+`tests/lease.rs` checks live renewal, expiry and replacement fencing. These are
+test-only trait wrappers; no production pause flags were added.

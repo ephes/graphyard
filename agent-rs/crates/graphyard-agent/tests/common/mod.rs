@@ -185,6 +185,7 @@ pub fn assert_rows(actual: &[Vec<(String, SqlValue)>], expected: &[Value], conte
 pub struct FakeServer {
     pub addr: SocketAddr,
     pub requests: Arc<Mutex<Vec<String>>>,
+    bodies: Arc<Mutex<Vec<Vec<u8>>>>,
 }
 
 impl FakeServer {
@@ -193,6 +194,8 @@ impl FakeServer {
         let addr = listener.local_addr().unwrap();
         let requests = Arc::new(Mutex::new(Vec::new()));
         let recorded = requests.clone();
+        let bodies = Arc::new(Mutex::new(Vec::new()));
+        let received = bodies.clone();
         std::thread::spawn(move || {
             for stream in listener.incoming() {
                 let Ok(mut stream) = stream else { return };
@@ -214,7 +217,10 @@ impl FakeServer {
                     }
                 }
                 let mut body = vec![0; length];
-                let _ = reader.read_exact(&mut body);
+                if reader.read_exact(&mut body).is_err() {
+                    continue;
+                }
+                received.lock().unwrap().push(body);
                 let mut parts = request_line.split_whitespace();
                 let method = parts.next().unwrap_or_default().to_owned();
                 let target = parts.next().unwrap_or_default().to_owned();
@@ -234,11 +240,19 @@ impl FakeServer {
                 );
             }
         });
-        FakeServer { addr, requests }
+        FakeServer {
+            addr,
+            requests,
+            bodies,
+        }
     }
 
     pub fn url(&self, path: &str) -> String {
         format!("http://{}{path}", self.addr)
+    }
+
+    pub fn bodies(&self) -> Vec<Vec<u8>> {
+        self.bodies.lock().unwrap().clone()
     }
 
     pub fn requests(&self) -> Vec<String> {
