@@ -8,14 +8,15 @@ from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import RequestDataTooBig
 from django.db import connection
-from django.db import DatabaseError, OperationalError
+from django.db import DatabaseError, OperationalError, transaction
+from django.db.models import F
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_POST
 
-from .auth import authenticate_ingest_token
+from .auth import authenticate_ingest_token, extract_bearer_token
 from .influx import InfluxConfigurationError, MetricPoint, check_health as influx_health
 from .influx import normalize_metric_point, parse_finite_float, write_points
 from .models import (
@@ -420,54 +421,7 @@ def _summarize_conditions(conditions: list[ConditionDefinition]) -> dict[str, in
     return summary
 
 
-@csrf_exempt
-@require_POST
-def metrics_ingest(request: HttpRequest) -> JsonResponse:
-    token = authenticate_ingest_token(request)
-    if token is None:
-        logger.warning(
-            "metrics_ingest_rejected category=auth rejected_requests=1 rejected_count=1"
-        )
-        return _json_error("Missing or invalid bearer token", status=401)
-
-    if not token.bound_subject_id and settings.GRAPHYARD_REQUIRE_BOUND_INGEST_TOKENS:
-        return _reject_binding(
-            token, "This ingest token requires a subject/host binding"
-        )
-
-    status = 400
-    try:
-        try:
-            # Django reads at most DATA_UPLOAD_MAX_MEMORY_SIZE bytes here.
-            body = request.body
-        except RequestDataTooBig:
-            status = 413
-            raise MetricsPayloadValidationError(
-                "Payload too large", parse_rejected=1, total_metrics=0
-            ) from None
-        payload = _decode_metrics_ingest_body(body)
-    except MetricsPayloadValidationError as err:
-        logger.warning(
-            "metrics_ingest_rejected category=parse parse_rejected=%s normalization_rejected=0 rejected_count=%s total_metrics=%s reason=%s",
-            err.parse_rejected,
-            err.parse_rejected,
-            err.total_metrics,
-            err,
-        )
-        _record_heartbeat_safe(
-            "metric_ingest",
-            status=StatusLevel.WARNING,
-            last_error=str(err),
-            details={
-                "category": "parse",
-                "parse_rejected": err.parse_rejected,
-                "normalization_rejected": 0,
-                "rejected_count": err.parse_rejected,
-                "total_metrics": err.total_metrics,
-            },
-        )
-        return _json_error(str(err), status=status)
-
+def _reject_explicit_binding(token, payload):
     if token.bound_subject_id:
         # Check explicit identities before normalization can discard a legacy
         # host or reject inconsistent host/subject claims with a generic 400.
@@ -491,40 +445,19 @@ def metrics_ingest(request: HttpRequest) -> JsonResponse:
                             index=idx,
                         )
 
-    try:
-        points = _parse_metrics_payload(payload)
-    except ValueError as err:
-        parse_rejected = getattr(err, "parse_rejected", 1)
-        normalization_rejected = getattr(err, "normalization_rejected", 0)
-        rejected_count = parse_rejected + normalization_rejected
-        total_metrics = getattr(err, "total_metrics", 0)
-        category = (
-            "normalization"
-            if normalization_rejected and not parse_rejected
-            else "parse"
+    return None
+
+
+def _authorize_metric_points(token, payload, points):
+    """Validate the current token after acquiring its write-admission lock."""
+    if not token.bound_subject_id and settings.GRAPHYARD_REQUIRE_BOUND_INGEST_TOKENS:
+        return _reject_binding(
+            token, "This ingest token requires a subject/host binding"
         )
-        logger.warning(
-            "metrics_ingest_rejected category=%s parse_rejected=%s normalization_rejected=%s rejected_count=%s total_metrics=%s reason=%s",
-            category,
-            parse_rejected,
-            normalization_rejected,
-            rejected_count,
-            total_metrics,
-            err,
-        )
-        _record_heartbeat_safe(
-            "metric_ingest",
-            status=StatusLevel.WARNING,
-            last_error=str(err),
-            details={
-                "category": category,
-                "parse_rejected": parse_rejected,
-                "normalization_rejected": normalization_rejected,
-                "rejected_count": rejected_count,
-                "total_metrics": total_metrics,
-            },
-        )
-        return _json_error(str(err), status=400)
+
+    rejected = _reject_explicit_binding(token, payload)
+    if rejected is not None:
+        return rejected
 
     if token.bound_subject_id:
         binding = token.bound_subject_id
@@ -583,8 +516,123 @@ def metrics_ingest(request: HttpRequest) -> JsonResponse:
             status=403,
         )
 
+    return None
+
+
+@csrf_exempt
+@require_POST
+def metrics_ingest(request: HttpRequest) -> JsonResponse:
+    token = authenticate_ingest_token(request)
+    if token is None:
+        logger.warning(
+            "metrics_ingest_rejected category=auth rejected_requests=1 rejected_count=1"
+        )
+        return _json_error("Missing or invalid bearer token", status=401)
+
+    if not token.bound_subject_id and settings.GRAPHYARD_REQUIRE_BOUND_INGEST_TOKENS:
+        return _reject_binding(
+            token, "This ingest token requires a subject/host binding"
+        )
+
+    status = 400
     try:
-        written = write_points(points)
+        try:
+            # Django reads at most DATA_UPLOAD_MAX_MEMORY_SIZE bytes here.
+            body = request.body
+        except RequestDataTooBig:
+            status = 413
+            raise MetricsPayloadValidationError(
+                "Payload too large", parse_rejected=1, total_metrics=0
+            ) from None
+        payload = _decode_metrics_ingest_body(body)
+    except MetricsPayloadValidationError as err:
+        logger.warning(
+            "metrics_ingest_rejected category=parse parse_rejected=%s normalization_rejected=0 rejected_count=%s total_metrics=%s reason=%s",
+            err.parse_rejected,
+            err.parse_rejected,
+            err.total_metrics,
+            err,
+        )
+        _record_heartbeat_safe(
+            "metric_ingest",
+            status=StatusLevel.WARNING,
+            last_error=str(err),
+            details={
+                "category": "parse",
+                "parse_rejected": err.parse_rejected,
+                "normalization_rejected": 0,
+                "rejected_count": err.parse_rejected,
+                "total_metrics": err.total_metrics,
+            },
+        )
+        return _json_error(str(err), status=status)
+
+    rejected = _reject_explicit_binding(token, payload)
+    if rejected is not None:
+        return rejected
+
+    try:
+        points = _parse_metrics_payload(payload)
+    except ValueError as err:
+        parse_rejected = getattr(err, "parse_rejected", 1)
+        normalization_rejected = getattr(err, "normalization_rejected", 0)
+        rejected_count = parse_rejected + normalization_rejected
+        total_metrics = getattr(err, "total_metrics", 0)
+        category = (
+            "normalization"
+            if normalization_rejected and not parse_rejected
+            else "parse"
+        )
+        logger.warning(
+            "metrics_ingest_rejected category=%s parse_rejected=%s normalization_rejected=%s rejected_count=%s total_metrics=%s reason=%s",
+            category,
+            parse_rejected,
+            normalization_rejected,
+            rejected_count,
+            total_metrics,
+            err,
+        )
+        _record_heartbeat_safe(
+            "metric_ingest",
+            status=StatusLevel.WARNING,
+            last_error=str(err),
+            details={
+                "category": category,
+                "parse_rejected": parse_rejected,
+                "normalization_rejected": normalization_rejected,
+                "rejected_count": rejected_count,
+                "total_metrics": total_metrics,
+            },
+        )
+        return _json_error(str(err), status=400)
+
+    try:
+        with transaction.atomic():
+            # A no-op UPDATE reserves this token until the external write returns.
+            # Every revoke/scope/binding/hash writer uses the same database row;
+            # SQLite serializes writers even though select_for_update is a no-op.
+            IngestToken.objects.filter(pk=token.pk).update(enabled=F("enabled"))
+            current = IngestToken.objects.filter(pk=token.pk, enabled=True).first()
+            raw_token = extract_bearer_token(request)
+            if (
+                current is None
+                or raw_token is None
+                or not current.check_token(raw_token)
+            ):
+                return _json_error("Missing or invalid bearer token", status=401)
+            token = current
+            rejected = _authorize_metric_points(token, payload, points)
+            if rejected is not None:
+                return rejected
+            written = write_points(points)
+    except DatabaseError as err:
+        # Do not attempt another DB write while admission/commit is unavailable.
+        # The sink may have accepted bytes if commit failed after its return.
+        logger.warning(
+            "metrics_ingest_rejected category=admission error_type=%s",
+            type(err).__name__,
+        )
+        return _json_error("Metric database unavailable; retry later", status=503)
     except InfluxConfigurationError as err:
         _record_heartbeat_safe(
             "metric_ingest",

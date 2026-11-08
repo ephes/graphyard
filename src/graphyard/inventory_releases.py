@@ -7,11 +7,11 @@ from time import monotonic
 
 import httpx
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import F, Q
 from django.utils import timezone
 from packaging.version import InvalidVersion, Version
 
-from .models import InventoryRelease
+from .models import InventoryRelease, InventoryReleaseRegistry
 
 MAX_AGE = timedelta(days=8)
 REFRESH_AFTER = timedelta(days=6)
@@ -138,8 +138,20 @@ def fetch(client, definition):
 
 def refresh(data, force=False):
     registry = definitions(data)  # Validate completely before changing cache policy.
+    with transaction.atomic():
+        InventoryReleaseRegistry.objects.get_or_create(pk=1)
+        InventoryReleaseRegistry.objects.filter(pk=1).update(
+            generation=F("generation") + 1
+        )
+        generation = InventoryReleaseRegistry.objects.get(pk=1).generation
     started = timezone.now()
     with transaction.atomic():
+        # UPDATE both checks ownership and locks policy replacement on SQLite
+        # and row-locking databases. No wall-clock ordering is required.
+        if not InventoryReleaseRegistry.objects.filter(
+            pk=1, generation=generation
+        ).update(generation=F("generation")):
+            return 0
         InventoryRelease.objects.exclude(source_id__in=registry).update(enabled=False)
         for key, definition in registry.items():
             InventoryRelease.objects.update_or_create(

@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Fence release-source policy replacement with a monotonic database generation,
+  including empty registries and delayed older refreshes.
+- Revalidate current metric credentials, scope and binding under a token-row write
+  reservation through the sink call; serialize successful revocations and edits
+  after already-admitted writes without promising remote rollback. SQLite holds
+  its database-wide writer lock throughout the bounded sink call; admission
+  database failures return fixed-text 503 without a second heartbeat write.
+
 - Cover actual process death after spec claim commit and acknowledged sink
   acceptance with pipe-gated synthetic child processes and fresh restarts.
 - Assert persisted lease recovery without false healthy bookkeeping; document

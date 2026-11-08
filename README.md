@@ -128,6 +128,20 @@ Rotate a token for a host/service name:
 just manage create_ingest_token --name macmini --rotate
 ```
 
+Metric ingest revalidates the current token (credential, enablement, scope and
+binding) after parsing, under a database write reservation held until the Influx
+call returns. Revocation, rotation and admin/command scope or binding updates
+serialize on that token row: a successful change completes after any previously
+admitted write. A change committed before admission prevents the sink call.
+On SQLite this holds the **database-wide writer lock** for the entire bounded
+Influx call (up to 30 seconds): ingests for other tokens, inventory, scheduling
+and heartbeat writers also wait. This serialization trades write concurrency for
+revocation ordering; PostgreSQL locks only the token row. SQLite contention may
+fail with a retryable 503; a failed administrative update has not revoked the
+credential. Admission database failures return fixed-text 503 without attempting
+a heartbeat write or misreporting a sink failure. This transaction orders admission only: a remote
+write cannot be rolled back if its response or later bookkeeping fails.
+
 Rotation is atomic: either the new token exists and the previous one is revoked, or the command
 fails and nothing changed, so the previous token stays valid. Token names are unique, so the
 previous row is kept as history under the name `<name> (retired #<id>)` (revoked, with its
