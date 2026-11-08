@@ -44,9 +44,18 @@ MAX_DEPTH = 16
 STREAMING_JSON = ijson.get_backend("python")
 
 
+def _unique_object(pairs):
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError("duplicate inventory member")
+        result[key] = value
+    return result
+
+
 def decode_report(body):
     # Stream events first: no lists/dicts are materialized until both budgets
-    # pass. Object keys count too, including duplicate keys discarded by loads.
+    # pass. Object keys count too, including duplicates rejected by the decoder.
     depth = 0
     elements = 0
     wire_max_depth = MAX_DEPTH
@@ -68,7 +77,7 @@ def decode_report(body):
     except (ijson.JSONError, ArithmeticError):
         # Decimal rejects exponents outside its supported range.
         raise ValueError("invalid inventory JSON") from None
-    return json.loads(body)
+    return json.loads(body, object_pairs_hook=_unique_object)
 
 
 def canonical(report):

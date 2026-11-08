@@ -565,3 +565,8 @@ ordinary application transaction (Django's durable transaction guard refuses thi
 An ingest that rotates pointers and prunes reports concurrently cannot produce missing
 coverage in a previously complete generation. Empty hosts and disabled-host filtering
 retain their existing behavior.
+
+Inventory JSON rejects duplicate object names at every depth, including escaped
+equivalents, before storing reports or changing category pointers. Repeated array
+entries remain valid. All inventory reader HTML, JSON and SBOM responses carry
+`Cache-Control: private, no-store`, including errors and login redirects.

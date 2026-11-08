@@ -1026,3 +1026,8 @@ larger than its final payload. Normal compressed and split-chunk transfers remai
 supported. Limit failures retain the existing body-limit category. This tighter
 preallocation guard is Rust-specific; Python's general HTTP decoders still check
 decoded chunks afterward. UniFi uses the separate identity-only policy above.
+
+Inventory JSON rejects duplicate object names at every depth, including escaped
+equivalents, before storing reports or changing category pointers. Repeated array
+entries remain valid. All inventory reader HTML, JSON and SBOM responses carry
+`Cache-Control: private, no-store`, including errors and login redirects.
