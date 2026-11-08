@@ -539,3 +539,10 @@ integrity. Invalid component types, dangling references and swapped provenance
 are rejected by counterfactual tests; normalized duplicate packages remain refused.
 Run `uv run --frozen pytest tests/test_inventory_sbom.py` offline after dependencies
 are installed. This is contract coverage, not a new exporter format.
+
+Release registry refreshes reserve a monotonic database configuration generation
+before policy replacement. A delayed, superseded refresh cannot re-enable removed
+sources or restore old target mappings, even when the newer registry is empty.
+Policy replacement is atomic; network lookup results retain their separate
+attempt-time fence and never change enablement or targets. Superseded policy
+refreshes return without fetching. No database lock spans public-source I/O.

@@ -472,3 +472,9 @@ class InventoryRelease(models.Model):
     checked_at = models.DateTimeField(null=True)
     version = models.CharField(max_length=160, blank=True)
     error = models.CharField(max_length=80, blank=True)
+
+
+class InventoryReleaseRegistry(models.Model):
+    """Singleton monotonic generation for public release-source configuration."""
+
+    generation = models.PositiveBigIntegerField(default=0)
