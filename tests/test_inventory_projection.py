@@ -264,5 +264,23 @@ def _probe(db_path, projection, mode):
     connection.close()
 
 
+@pytest.mark.django_db(transaction=True)
+def test_postgres_projection_reads_one_repeatable_read_snapshot():
+    from django.db import connection
+
+    from graphyard.inventory import _read_snapshot
+
+    if connection.vendor != "postgresql":
+        pytest.skip("PostgreSQL isolation oracle; SQLite uses its configured mode")
+    with _read_snapshot():
+        with connection.cursor() as cursor:
+            cursor.execute("SHOW transaction_isolation")
+            isolation = cursor.fetchone()[0]
+            cursor.execute("SHOW transaction_read_only")
+            read_only = cursor.fetchone()[0]
+    assert (isolation, read_only) == ("repeatable read", "on")
+    assert not connection.in_atomic_block
+
+
 if __name__ == "__main__":
     _probe(*sys.argv[1:])
