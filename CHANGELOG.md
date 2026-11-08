@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Serialize inventory admission with credential rotation on the registered host
+  lock; cover simultaneous identical/conflicting snapshot retries and revocation
+  ordering with synthetic independent-connection tests.
+
 - Cover real Rust collector publication failures with synthetic Influx rejection,
   disconnect and SQLite registry-trigger tests; document write-before-registry,
   atomic bookkeeping rollback and the partial-success boundary without replay

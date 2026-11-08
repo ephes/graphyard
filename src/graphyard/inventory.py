@@ -26,6 +26,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_POST
 
 from .models import (
+    HostRegistry,
     InventoryCategory,
     InventoryCredential,
     InventoryHost,
@@ -211,6 +212,9 @@ def ingest(request):
             return JsonResponse({"error": "credential host mismatch"}, status=403)
         digest = hashlib.sha256(canonical(report)).hexdigest()
         with transaction.atomic(durable=True):
+            # Issuance/rotation locks this same row first. Holding it through
+            # commit orders revocation against the entire admitted ingest.
+            HostRegistry.objects.select_for_update().get(pk=credential.host.host_id)
             host = InventoryHost.objects.select_for_update().get(pk=credential.host_id)
             # Recheck revocation inside the write transaction.
             if not InventoryCredential.objects.filter(

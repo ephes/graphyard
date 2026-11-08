@@ -21,7 +21,10 @@ just manage create_inventory_credential --host studio
 just manage create_inventory_credential --host atlas --intermittent
 ```
 
-Issuance/rotation locks the registered host row for the whole transaction.
+Issuance/rotation and ingest admission lock the registered host row first, then
+access the inventory host, holding the lock through commit. The enabled-credential
+recheck under that lock is the admission point: an ingest admitted first commits
+before rotation; a rotation committed first makes the old credential fail with 401.
 SQLite uses the configured immediate transaction; PostgreSQL uses the row lock.
 A partial unique constraint allows at most one enabled inventory credential per
 host, including writes outside this command. A contended command either completes
@@ -513,8 +516,9 @@ PostgreSQL. For an isolated PostgreSQL test database (never a real service DB):
 GRAPHYARD_TEST_DATABASE_URL=postgres://graphyard_test@127.0.0.1:5432/graphyard_test \
   uv run --with 'psycopg[binary]==3.2.10' pytest -q \
   --ds=config.settings.postgres_contract \
-  tests/test_inventory_credential_lifecycle.py
+  tests/test_inventory_credential_lifecycle.py tests/test_inventory_admission.py
 ```
 
-CI runs this command against its own PostgreSQL 17 service. The normal suite still
+Run both files locally to check row-lock admission and retry identity on PostgreSQL.
+The normal suite still
 uses SQLite; the Rust agent's production store remains SQLite-only.
