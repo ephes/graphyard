@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Reject duplicate inventory JSON members at every depth before storage, while
+  preserving repeated array entries and existing report budgets.
+- Mark all inventory reader responses private and no-store, including raw reports,
+  version pages, SBOM errors and login redirects.
+
 - Limit condition windows and breach durations to 1–10,080 minutes in admin,
   seeding and both evaluators. Reject invalid historical definitions before
   querying without rewriting them; preserve breach periods longer than windows.

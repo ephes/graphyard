@@ -1656,3 +1656,106 @@ def test_equal_time_inventory_uses_received_time_then_id(
     )
     assert url.encode() in response.content
     assert client.get(url).json() == second
+
+
+@pytest.mark.parametrize(
+    "member", ["host", "snapshot_id", "categories", "packages", "name"]
+)
+@pytest.mark.parametrize("framed", [False, True])
+def test_duplicate_inventory_members_refused_before_writes(
+    client, enrolled, member, framed
+):
+    data = report()
+    raw = json.dumps(data)
+    # An escaped equivalent must collide with its ordinary spelling at any depth.
+    key = json.dumps(member)
+    escaped = '"\\u%04x%s"' % (ord(member[0]), member[1:])
+    raw = raw.replace(key + ":", escaped + ': "discarded", ' + key + ":", 1)
+    if framed:
+        raw = "[" + raw + "]"
+    response = send(client, enrolled, raw)
+    assert response.status_code == 400
+    assert response.json() == {"error": "invalid inventory report"}
+    assert not InventorySnapshot.objects.exists()
+    assert not InventoryCategory.objects.exists()
+    enrolled[1].refresh_from_db()
+    assert enrolled[1].enabled
+
+
+def test_repeated_inventory_array_entries_remain_valid(client, enrolled):
+    data = report()
+    data["categories"]["packages"]["items"] *= 2
+    assert send(client, enrolled, data).status_code == 200
+    assert InventorySnapshot.objects.get().report == data
+
+
+def test_inventory_response_cache_policy_including_errors(
+    client, enrolled, django_user_model
+):
+    data = report()
+    data["categories"]["applications"]["items"] = [
+        {
+            "id": "synthetic",
+            "status": "ok",
+            "items": {
+                "python": {
+                    "status": "ok",
+                    "items": [{"name": "example", "version": "1.2"}],
+                }
+            },
+        }
+    ]
+    assert send(client, enrolled, data).status_code == 200
+    client.force_login(django_user_model.objects.create_user(username="cache-reader"))
+    routes = [
+        (reverse("graphyard:inventory_index"), 200),
+        (reverse("graphyard:inventory_detail", args=["studio"]), 200),
+        (reverse("graphyard:inventory_applications", args=["studio"]), 200),
+        (reverse("graphyard:inventory_versions"), 200),
+        (
+            reverse(
+                "graphyard:inventory_download", args=["studio", data["snapshot_id"]]
+            ),
+            200,
+        ),
+        (
+            reverse(
+                "graphyard:inventory_python_sbom", args=["studio", data["snapshot_id"]]
+            )
+            + "?application=synthetic",
+            200,
+        ),
+        (
+            reverse(
+                "graphyard:inventory_python_sbom", args=["studio", data["snapshot_id"]]
+            ),
+            422,
+        ),
+        (reverse("graphyard:inventory_download", args=["studio", uuid4()]), 404),
+        (reverse("graphyard:inventory_detail", args=["missing"]), 404),
+        (reverse("graphyard:inventory_status"), 200),
+    ]
+    for route, code in routes:
+        for headers in (
+            {},
+            {
+                "HTTP_IF_NONE_MATCH": '"synthetic"',
+                "HTTP_IF_MODIFIED_SINCE": "Wed, 01 Jan 2031 00:00:00 GMT",
+            },
+        ):
+            response = client.get(route, **headers)
+            assert response.status_code == code
+            assert response["Cache-Control"] == "private, no-store"
+        response = client.post(route)
+        assert response.status_code == 405
+        assert response["Cache-Control"] == "private, no-store"
+    response = client.get(routes[4][0])
+    assert response["Content-Disposition"].startswith("attachment;")
+    client.logout()
+    for route, _ in routes:
+        response = client.get(route)
+        assert response.status_code in (302, 401)
+        assert response["Cache-Control"] == "private, no-store"
+    assert "private" not in client.get(reverse("graphyard:conditions_list")).get(
+        "Cache-Control", ""
+    )
