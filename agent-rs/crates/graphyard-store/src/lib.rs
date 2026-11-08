@@ -31,6 +31,9 @@ mod registry;
 mod rows;
 pub mod schema;
 mod specs;
+#[cfg(test)]
+#[path = "../tests/common/mod.rs"]
+mod test_common;
 
 pub use actor::Store;
 pub use conditions::ConditionRow;

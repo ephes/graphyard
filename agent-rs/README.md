@@ -123,6 +123,21 @@ subject, which reads the registry rows once per call and writes only missing,
 changed or stale (60 s) rows in one transaction, pinned by the
 `registry_cases` of `store_ops.json` including Django's statement sequence.
 
+Registry lookups and last-seen updates split large batches at the connection's
+SQLite variable limit. Subject type/ID pairs and encounter order stay distinct;
+all creation/update chunks share one transaction and roll back together. Once
+queued on the store actor, an operation completes even if its awaiting caller is
+canceled. The real registry cancellation test gates a transaction after subject
+and host creation, checks isolation through another connection, and verifies
+complete commit or complete rollback after an injected service failure.
+
+Rust heartbeat projection compares observation timestamps while holding the
+writer reservation. Older observations cannot replace current status, error,
+details or `updated_at`; equal times retain the first committed projection.
+Successful observations, including delayed/equal-time ones, retain the maximum
+`last_success` without changing a newer projection. Fresh transitions still
+publish normally. Independent store handles exercise reordered commits.
+
 The slice table is PLAN.md section 12; the test coverage per slice is
 [`TESTMAP.md`](TESTMAP.md).
 

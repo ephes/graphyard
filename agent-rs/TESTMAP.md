@@ -114,6 +114,10 @@ extracted binary.
 
 ## S3b — registry touch
 
+Round 85 adds connection-limit chunking/late-chunk rollback and real actor
+transaction cancellation oracles in `src/registry/tests.rs`, plus reordered
+independent-store heartbeat projection tests in `src/heartbeat.rs`.
+
 | Python behaviour / test | Rust counterpart | Status |
 | --- | --- | --- |
 | `services.py:touch_registry_from_points` without a bound subject (graphyard `4d5baf1`): batch collection (first-seen order, last source system, first host index, service candidates), the autocommit load (hosts, subject cross product, services; no query for an empty list), creates with `get_or_create`, the 60 s rule (NULL, exactly 60 s, just under, future, unparseable and offset values), source system changes, re-parenting by batch position, the update order, normalisation errors before any read, an out-of-range stored datetime failing the call, `IntegrityError` rolling the transaction back | `graphyard-store/tests/store_ops.rs::registry_touch_matches_the_django_orm` (row images, errors) and `graphyard-store/src/registry/tests.rs::every_registry_case_sends_the_django_statements` (also the statement sequence: verb, table, inside the transaction) against the `registry_cases` of `fixtures/store_ops.json` (`gen_store.py`) | done |
