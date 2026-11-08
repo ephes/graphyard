@@ -16,7 +16,11 @@ from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_POST
 
-from .auth import authenticate_ingest_token, extract_bearer_token
+from .auth import (
+    authenticate_ingest_token,
+    extract_bearer_token,
+    record_ingest_token_metadata,
+)
 from .influx import InfluxConfigurationError, MetricPoint, check_health as influx_health
 from .influx import normalize_metric_point, parse_finite_float, write_points
 from .models import (
@@ -135,9 +139,31 @@ def _parse_timestamp(value: str) -> datetime:
     return parsed
 
 
+def _unique_metrics_object(pairs):
+    result = {}
+    for position, (key, value) in enumerate(pairs, start=1):
+        if key in result:
+            raise MetricsPayloadValidationError(
+                f"Duplicate JSON object key at member {position}", parse_rejected=1
+            )
+        result[key] = value
+    return result
+
+
 def _load_metrics_json(text: str, *, total_metrics: int = 0) -> object:
     try:
-        return json.loads(text)
+        return json.loads(text, object_pairs_hook=_unique_metrics_object)
+    except json.JSONDecodeError:
+        raise
+    except MetricsPayloadValidationError as err:
+        err.total_metrics = total_metrics
+        raise
+    except ValueError:
+        raise MetricsPayloadValidationError(
+            "JSON integer exceeds the decoder limit",
+            parse_rejected=1,
+            total_metrics=total_metrics,
+        ) from None
     except RecursionError:
         # No exception chaining: the traceback is as deep as the payload.
         raise MetricsPayloadValidationError(
@@ -161,10 +187,12 @@ def _decode_metrics_ingest_body(body: bytes) -> object:
         ) from decode_err
     try:
         return _load_metrics_json(decoded)
-    except json.JSONDecodeError as json_err:
+    except (json.JSONDecodeError, MetricsPayloadValidationError) as json_err:
         # Vector batched payloads may be sent as newline-delimited JSON objects.
         lines = [line.strip() for line in decoded.splitlines() if line.strip()]
         if len(lines) < 2:
+            if isinstance(json_err, MetricsPayloadValidationError):
+                raise
             raise MetricsPayloadValidationError(
                 "Invalid JSON payload",
                 parse_rejected=1,
@@ -522,7 +550,7 @@ def _authorize_metric_points(token, payload, points):
 @csrf_exempt
 @require_POST
 def metrics_ingest(request: HttpRequest) -> JsonResponse:
-    token = authenticate_ingest_token(request)
+    token = authenticate_ingest_token(request, update_metadata=False)
     if token is None:
         logger.warning(
             "metrics_ingest_rejected category=auth rejected_requests=1 rejected_count=1"
@@ -624,6 +652,7 @@ def metrics_ingest(request: HttpRequest) -> JsonResponse:
             rejected = _authorize_metric_points(token, payload, points)
             if rejected is not None:
                 return rejected
+            record_ingest_token_metadata(token, raw_token)
             written = write_points(points)
     except DatabaseError as err:
         # Do not attempt another DB write while admission/commit is unavailable.

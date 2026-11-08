@@ -28,12 +28,13 @@ def extract_bearer_token(request: HttpRequest) -> Optional[str]:
     return token
 
 
-def authenticate_ingest_token(request: HttpRequest) -> Optional[IngestToken]:
+def authenticate_ingest_token(
+    request: HttpRequest, *, update_metadata: bool = True
+) -> Optional[IngestToken]:
     raw_token = extract_bearer_token(request)
     if raw_token is None:
         return None
 
-    now = timezone.now()
     enabled = IngestToken.objects.filter(enabled=True)
     fast_matches = list(
         enabled.filter(
@@ -49,33 +50,39 @@ def authenticate_ingest_token(request: HttpRequest) -> Optional[IngestToken]:
     candidates = fast_matches or enabled.exclude(fast_prefixes)
     for ingest_token in candidates:
         if ingest_token.check_token(raw_token):
-            update_fields: list[str] = []
-
-            if (
-                not ingest_token.uses_fast_token_hash()
-                or ingest_token.needs_fast_hash_prefix_upgrade()
-            ):
-                ingest_token.set_token(raw_token)
-                update_fields.append("token_hash")
-
-            if (
-                ingest_token.last_used_at is None
-                or now - ingest_token.last_used_at >= LAST_USED_UPDATE_INTERVAL
-            ):
-                ingest_token.last_used_at = now
-                update_fields.append("last_used_at")
-
-            if update_fields:
-                try:
-                    ingest_token.save(update_fields=update_fields)
-                except OperationalError as err:
-                    if "database is locked" not in str(err).lower():
-                        raise
-                    logger.warning(
-                        "Skipping ingest token metadata update due to SQLite lock: token=%s fields=%s",
-                        ingest_token.name,
-                        ",".join(update_fields),
-                    )
+            if update_metadata:
+                record_ingest_token_metadata(ingest_token, raw_token)
             return ingest_token
 
     return None
+
+
+def record_ingest_token_metadata(ingest_token: IngestToken, raw_token: str) -> None:
+    now = timezone.now()
+    update_fields: list[str] = []
+
+    if (
+        not ingest_token.uses_fast_token_hash()
+        or ingest_token.needs_fast_hash_prefix_upgrade()
+    ):
+        ingest_token.set_token(raw_token)
+        update_fields.append("token_hash")
+
+    if (
+        ingest_token.last_used_at is None
+        or now - ingest_token.last_used_at >= LAST_USED_UPDATE_INTERVAL
+    ):
+        ingest_token.last_used_at = now
+        update_fields.append("last_used_at")
+
+    if update_fields:
+        try:
+            ingest_token.save(update_fields=update_fields)
+        except OperationalError as err:
+            if "database is locked" not in str(err).lower():
+                raise
+            logger.warning(
+                "Skipping ingest token metadata update due to SQLite lock: token=%s fields=%s",
+                ingest_token.name,
+                ",".join(update_fields),
+            )
