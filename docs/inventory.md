@@ -105,9 +105,10 @@ retries therefore remain duplicates across this transition; changed content is 4
 Equal snapshot identity and canonical content is accepted without another write
 or refreshed timestamps. Reusing a retained snapshot identity with other content
 returns 409. The writer must preserve snapshot ID across retries. Delayed reports
-are stored but cannot replace newer category observations. Equal observation
-timestamps do not replace an existing category pointer; use a new actual scan time
-for a new observation. No server-side refresh of producer time is performed.
+are stored but cannot replace newer category observations. Host latest and category attempt/success pointers use the same descending order:
+observation time, then server receive time, then database row ID. Equal observation
+times therefore prefer the later receive time (or larger row ID if both clocks
+tie). Failed attempts still retain the last successful category. No server-side refresh of producer time is performed.
 
 A category error updates latest-attempt state while retaining the last successful
 category. An empty **successful** category records actual absence. Unsupported
@@ -516,9 +517,14 @@ PostgreSQL. For an isolated PostgreSQL test database (never a real service DB):
 GRAPHYARD_TEST_DATABASE_URL=postgres://graphyard_test@127.0.0.1:5432/graphyard_test \
   uv run --with 'psycopg[binary]==3.2.10' pytest -q \
   --ds=config.settings.postgres_contract \
-  tests/test_inventory_credential_lifecycle.py tests/test_inventory_admission.py
+  tests/test_inventory_credential_lifecycle.py tests/test_inventory_admission.py \
+  tests/test_inventory_migration_alias.py
 ```
 
-Run both files locally to check row-lock admission and retry identity on PostgreSQL.
-The normal suite still
-uses SQLite; the Rust agent's production store remains SQLite-only.
+Run these files locally to check row-lock admission and retry identity on PostgreSQL.
+The normal suite uses SQLite; the Rust agent's production store remains SQLite-only.
+
+Migration alias tests run 0012→0013 against two isolated databases on the selected
+backend. Default-database duplicates must not affect a clean secondary migration;
+secondary duplicates refuse without changing credentials, and explicit correction
+permits a retry that installs the constraint on that secondary database.

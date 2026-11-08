@@ -9,7 +9,9 @@ It ingests metrics into InfluxDB with canonical subject/source/collector dimensi
 See [push inventory](docs/inventory.md) for host-bound reporting, private inventory
 views and rollout prerequisites. Inventory admission and credential rotation
 serialize on the same registered host row; simultaneous snapshot retries preserve
-one immutable report, with SQLite contention returned as retryable HTTP 503. This pilot does not make remote logins or install
+one immutable report, with SQLite contention returned as retryable HTTP 503.
+Host latest and category pointers order reports by observation time, receive time,
+then row ID; failed categories keep their last successful evidence. This pilot does not make remote logins or install
 producer schedules.
 
 ## MVP Scope

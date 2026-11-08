@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Order inventory host latest and category pointers consistently by observation
+  time, receive time and row ID, including tied clocks and failed categories.
+- Cover inventory credential migration refusal, retry and constraint installation
+  on an isolated secondary database without changing either database's history.
+
 - Serialize inventory admission with credential rotation on the registered host
   lock; cover simultaneous identical/conflicting snapshot retries and revocation
   ordering with synthetic independent-connection tests.

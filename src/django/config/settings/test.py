@@ -29,3 +29,9 @@ CACHES = {
 DATABASES = {
     "default": {**DATABASES["default"], "NAME": ":memory:"},  # noqa: F405
 }
+
+# Independent migration-executor source-alias oracle; never an owner database.
+DATABASES["secondary"] = {
+    **DATABASES["default"],
+    "TEST": {"DEPENDENCIES": []},
+}

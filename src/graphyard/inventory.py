@@ -249,30 +249,35 @@ def ingest(request):
                     digest=digest,
                     report=report,
                 )
-                observed_times = dict(
-                    InventorySnapshot.objects.filter(host=host).values_list(
-                        "pk", "observed_at"
-                    )
-                )
+                # Use the same total order as host_state, including coarse clocks.
+                snapshot_order = (observed, snapshot.received_at, snapshot.pk)
+                observation_order = {
+                    pk: (time, received, pk)
+                    for pk, time, received in InventorySnapshot.objects.filter(
+                        host=host
+                    ).values_list("pk", "observed_at", "received_at")
+                }
                 for name, value in report["categories"].items():
                     category, _ = InventoryCategory.objects.get_or_create(
                         host=host, name=name
                     )
                     if (
                         category.latest_attempt_id is None
-                        or observed > observed_times[category.latest_attempt_id]
+                        or snapshot_order
+                        > observation_order[category.latest_attempt_id]
                     ):
                         category.latest_attempt = snapshot
                     if value["status"] == "ok" and (
                         category.latest_success_id is None
-                        or observed > observed_times[category.latest_success_id]
+                        or snapshot_order
+                        > observation_order[category.latest_success_id]
                     ):
                         category.latest_success = snapshot
                     category.save()
                 # Retain recent arrivals plus every referenced last-known category.
                 keep = list(
                     InventorySnapshot.objects.filter(host=host)
-                    .order_by("-received_at")
+                    .order_by("-received_at", "-pk")
                     .values_list("pk", flat=True)[:32]
                 )
                 for category in InventoryCategory.objects.filter(host=host):
@@ -306,7 +311,7 @@ def host_state(host):
     """Decode each distinct referenced report once, including on the detail page."""
     latest_id = (
         InventorySnapshot.objects.filter(host=host)
-        .order_by("-observed_at", "-received_at")
+        .order_by("-observed_at", "-received_at", "-pk")
         .values_list("pk", flat=True)
         .first()
     )
