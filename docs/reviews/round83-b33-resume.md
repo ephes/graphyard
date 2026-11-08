@@ -71,3 +71,11 @@ No PRs, remote branch deletion, Actions runs, deploys, releases, tags, host acce
 work-app writes or changes under `~/projects`. This feature-branch push is solely
 the owner's explicit unfinished-work parking exception. Use `[skip ci]` in the
 parking commit message to avoid starting paid workflows.
+
+## Finisher outcome (round 84)
+
+B33 reviewed by the Claude finisher (Opus): no Critical/Warning findings.
+Suggestion only: for a historical invalid row whose invalid value is submitted
+unchanged in admin, `clean()` may repeat the field validator's message. Full
+lint, typecheck, schema-check, Python and serial Rust suites and offline parity
+rerun outside the sandbox before the `--no-ff` merge to `main`. Not deployed.
