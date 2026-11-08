@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Admit spec files through one nonblocking regular descriptor with a 2 MiB actual
+  byte cap, explicit nesting bound and safe decoder errors before database work.
+- Refuse stale spec-apply updates and prune operations using captured definitions;
+  roll back conflicts and duplicate-create races with a clean retry error.
+
 - Order inventory host latest and category pointers consistently by observation
   time, receive time and row ID, including tied clocks and failed categories.
 - Cover inventory credential migration refusal, retry and constraint installation

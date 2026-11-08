@@ -288,8 +288,21 @@ The file may be either a JSON list of spec objects or an object with a
 just manage apply_metric_collection_specs --file /etc/graphyard/metric-collection-specs.json --prune
 ```
 
-Unreadable files (including directories and permission failures) and invalid UTF-8
-fail with a command error naming the source path before any rows are changed.
+Files are opened once without blocking and must resolve to a regular file;
+symlinks to regular files remain supported. Both declared size and actual reads
+are capped at 2 MiB (an exact-limit valid file is accepted); parsed JSON paths
+may traverse at most 64 edges from the document root. Unreadable, nonregular,
+oversized, invalid UTF-8/JSON or decoder-depth-exhausting inputs fail before any
+database query, with a bounded command error naming the path and omitting content.
+
+Apply compares the captured definition and update timestamp before writing.
+Concurrent edits, duplicate creates or recognized database contention produce a
+retry/conflict command error. Other database failures report a bounded storage
+error category. Both omit private database detail and success output; the entire
+apply, including prune, rolls back.
+Prune considers only rows captured at the start of the transaction; concurrent new
+rows are left for the next explicit reconciliation. An operator retry loads current
+definitions before applying the desired file again.
 
 Prune is opt-in and keyed only by `name`. Without `--prune`, unspecified specs
 are left untouched. With `--prune`, the command refuses an empty desired spec

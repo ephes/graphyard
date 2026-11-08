@@ -496,7 +496,7 @@ def test_apply_metric_collection_specs_rejects_unchanged_legacy_malformed_spec(
 @pytest.mark.django_db
 @pytest.mark.parametrize("failure", ["utf8", "directory", "permission"])
 def test_spec_file_read_errors_leave_rows_unchanged(tmp_path, monkeypatch, failure):
-    from pathlib import Path
+    import os
 
     spec = MetricCollectionSpec.objects.create(
         name="keep",
@@ -516,12 +516,12 @@ def test_spec_file_read_errors_leave_rows_unchanged(tmp_path, monkeypatch, failu
         path.write_text("[]", encoding="utf-8")
         calls = []
 
-        def denied(self, *args, **kwargs):
-            assert self == path
-            calls.append(self)
+        def denied(source, *args, **kwargs):
+            assert source == path
+            calls.append(source)
             raise PermissionError("private detail\n" + "x" * 10000)
 
-        monkeypatch.setattr(Path, "read_text", denied)
+        monkeypatch.setattr(os, "open", denied)
         detail = "permission denied"
     with pytest.raises(CommandError) as excinfo:
         call_command("apply_metric_collection_specs", "--file", str(path), "--prune")
