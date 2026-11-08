@@ -7,7 +7,9 @@ It ingests metrics into InfluxDB with canonical subject/source/collector dimensi
 ## Software inventory pilot
 
 See [push inventory](docs/inventory.md) for host-bound reporting, private inventory
-views and rollout prerequisites. This pilot does not make remote logins or install
+views and rollout prerequisites. Inventory admission and credential rotation
+serialize on the same registered host row; simultaneous snapshot retries preserve
+one immutable report, with SQLite contention returned as retryable HTTP 503. This pilot does not make remote logins or install
 producer schedules.
 
 ## MVP Scope
