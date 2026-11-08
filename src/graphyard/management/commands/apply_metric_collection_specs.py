@@ -1,19 +1,65 @@
 from __future__ import annotations
 
 import json
+import os
+import sqlite3
+import stat
 from pathlib import Path
 from typing import Any
 
 from django.core.exceptions import ValidationError
 from django.core.management.base import BaseCommand, CommandError
-from django.db import transaction
+from django.db import IntegrityError, OperationalError, transaction
+from django.utils import timezone
 
 from graphyard.models import MetricCollectionSpec, MetricCollectionSpecType
 
 
+MAX_SPEC_FILE_BYTES = 2 * 1024 * 1024
+MAX_SPEC_FILE_DEPTH = 64
+DEFINITION_FIELDS = ("enabled", "spec_type", "interval_seconds", "config")
+APPLY_CONFLICT = "Spec application conflicted; retry the command"
+
+
+def _retryable_storage_error(error: OperationalError) -> bool:
+    cause = error.__cause__
+    sqlite_code = getattr(cause, "sqlite_errorcode", None)
+    if isinstance(sqlite_code, int) and (sqlite_code & 0xFF) in (
+        sqlite3.SQLITE_BUSY,
+        sqlite3.SQLITE_LOCKED,
+    ):
+        return True
+    sqlstate = getattr(cause, "sqlstate", None) or getattr(cause, "pgcode", None)
+    return sqlstate in {"40001", "40P01", "55P03"}
+
+
+def _read_specs_file(path: Path) -> str:
+    descriptor = os.open(
+        path, os.O_RDONLY | getattr(os, "O_NONBLOCK", 0) | getattr(os, "O_BINARY", 0)
+    )
+    try:
+        metadata = os.fstat(descriptor)
+        if not stat.S_ISREG(metadata.st_mode):
+            detail = " (path is a directory)" if stat.S_ISDIR(metadata.st_mode) else ""
+            raise CommandError(f"Spec file must be a regular file{detail}: {path}")
+        if metadata.st_size > MAX_SPEC_FILE_BYTES:
+            raise CommandError(f"Spec file exceeds {MAX_SPEC_FILE_BYTES} bytes: {path}")
+        content = bytearray()
+        while len(content) <= MAX_SPEC_FILE_BYTES:
+            chunk = os.read(
+                descriptor, min(65536, MAX_SPEC_FILE_BYTES + 1 - len(content))
+            )
+            if not chunk:
+                return content.decode("utf-8")
+            content.extend(chunk)
+        raise CommandError(f"Spec file exceeds {MAX_SPEC_FILE_BYTES} bytes: {path}")
+    finally:
+        os.close(descriptor)
+
+
 def _load_specs_file(path: Path) -> list[dict[str, Any]]:
     try:
-        payload = json.loads(path.read_text(encoding="utf-8"))
+        payload = json.loads(_read_specs_file(path))
     except FileNotFoundError as err:
         raise CommandError(f"Spec file not found: {path}") from err
     except UnicodeDecodeError as err:
@@ -27,7 +73,21 @@ def _load_specs_file(path: Path) -> list[dict[str, Any]]:
             detail = "filesystem read failed"
         raise CommandError(f"Cannot read spec file {path}: {detail}") from err
     except json.JSONDecodeError as err:
-        raise CommandError(f"Invalid JSON in {path}: {err}") from err
+        raise CommandError(
+            f"Invalid JSON in {path} at line {err.lineno} column {err.colno}"
+        ) from err
+    except RecursionError as err:
+        raise CommandError(f"JSON nesting too deep in {path}") from err
+
+    pending = [(payload, 0)]
+    while pending:
+        value, depth = pending.pop()
+        if depth > MAX_SPEC_FILE_DEPTH:
+            raise CommandError(f"JSON nesting too deep in {path}")
+        if isinstance(value, dict):
+            pending.extend((item, depth + 1) for item in value.values())
+        elif isinstance(value, list):
+            pending.extend((item, depth + 1) for item in value)
 
     raw_specs: object
     if isinstance(payload, list):
@@ -133,70 +193,114 @@ class Command(BaseCommand):
 
         desired_names = {spec["name"] for spec in specs}
 
-        with transaction.atomic():
-            for desired in specs:
-                spec = MetricCollectionSpec.objects.filter(name=desired["name"]).first()
-                was_created = spec is None
+        try:
+            with transaction.atomic():
+                candidates = MetricCollectionSpec.objects.all()
+                if not prune:
+                    candidates = candidates.filter(name__in=desired_names)
+                # Capture definitions once. Prune only rows present in this snapshot;
+                # concurrent inserts are left for the next explicit reconciliation.
+                existing = {spec.name: spec for spec in candidates}
+                for desired in specs:
+                    spec = existing.get(desired["name"])
+                    was_created = spec is None
 
-                if was_created:
-                    spec = MetricCollectionSpec(
-                        name=desired["name"],
-                        enabled=desired["enabled"],
-                        spec_type=desired["spec_type"],
-                        interval_seconds=desired["interval_seconds"],
-                        config=desired["config"],
-                    )
-                    try:
-                        spec.full_clean()
-                    except ValidationError as err:
-                        raise CommandError(str(err)) from err
-                    spec.save()
-                    created += 1
-                    result_lines.append(f"created {spec.name}")
-                    continue
+                    if was_created:
+                        spec = MetricCollectionSpec(
+                            name=desired["name"],
+                            enabled=desired["enabled"],
+                            spec_type=desired["spec_type"],
+                            interval_seconds=desired["interval_seconds"],
+                            config=desired["config"],
+                        )
+                        try:
+                            spec.full_clean(validate_unique=False)
+                        except ValidationError as err:
+                            raise CommandError(str(err)) from err
+                        _, inserted = MetricCollectionSpec.objects.get_or_create(
+                            name=spec.name,
+                            defaults={
+                                field: getattr(spec, field)
+                                for field in DEFINITION_FIELDS
+                            },
+                        )
+                        if not inserted:
+                            raise CommandError(APPLY_CONFLICT)
+                        created += 1
+                        result_lines.append(f"created {spec.name}")
+                        continue
 
-                assert spec is not None
-                changed_fields: list[str] = []
-                for field_name in (
-                    "enabled",
-                    "spec_type",
-                    "interval_seconds",
-                    "config",
-                ):
-                    desired_value = desired[field_name]
-                    if getattr(spec, field_name) != desired_value:
-                        setattr(spec, field_name, desired_value)
-                        changed_fields.append(field_name)
+                    assert spec is not None
+                    expected = {
+                        "pk": spec.pk,
+                        "name": spec.name,
+                        "updated_at": spec.updated_at,
+                        **{field: getattr(spec, field) for field in DEFINITION_FIELDS},
+                    }
+                    current = MetricCollectionSpec.objects.filter(**expected)
+                    changed_fields: list[str] = []
+                    for field_name in DEFINITION_FIELDS:
+                        desired_value = desired[field_name]
+                        if getattr(spec, field_name) != desired_value:
+                            setattr(spec, field_name, desired_value)
+                            changed_fields.append(field_name)
 
-                if changed_fields:
-                    if spec.next_run_time != 0:
-                        spec.next_run_time = 0
-                        changed_fields.append("next_run_time")
-                    try:
-                        spec.full_clean()
-                    except ValidationError as err:
-                        raise CommandError(str(err)) from err
-                    spec.save(update_fields=changed_fields + ["updated_at"])
-                    updated += 1
-                    result_lines.append(f"updated {spec.name}")
-                else:
-                    # Re-validate rows saved before config validation existed so
-                    # an apply never reports a malformed legacy spec as accepted.
-                    try:
-                        spec.full_clean()
-                    except ValidationError as err:
-                        raise CommandError(str(err)) from err
-                    unchanged += 1
-                    result_lines.append(f"unchanged {spec.name}")
+                    if changed_fields:
+                        if spec.next_run_time != 0:
+                            spec.next_run_time = 0
+                            changed_fields.append("next_run_time")
+                        try:
+                            spec.full_clean(validate_unique=False)
+                        except ValidationError as err:
+                            raise CommandError(str(err)) from err
+                        values = {
+                            field: getattr(spec, field) for field in changed_fields
+                        }
+                        if current.update(**values, updated_at=timezone.now()) != 1:
+                            raise CommandError(APPLY_CONFLICT)
+                        updated += 1
+                        result_lines.append(f"updated {spec.name}")
+                    else:
+                        # Re-validate rows saved before config validation existed so
+                        # an apply never reports a malformed legacy spec as accepted.
+                        try:
+                            spec.full_clean(validate_unique=False)
+                        except ValidationError as err:
+                            raise CommandError(str(err)) from err
+                        # Retain the verified row until the operation commits.
+                        if not current.select_for_update().exists():
+                            raise CommandError(APPLY_CONFLICT)
+                        unchanged += 1
+                        result_lines.append(f"unchanged {spec.name}")
 
-            if prune:
-                for stale_spec in MetricCollectionSpec.objects.exclude(
-                    name__in=desired_names
-                ).order_by("name"):
-                    stale_name = stale_spec.name
-                    stale_spec.delete()
-                    deleted += 1
-                    result_lines.append(f"deleted {stale_name}")
+                if prune:
+                    for stale_name, stale_spec in sorted(existing.items()):
+                        if stale_name in desired_names:
+                            continue
+                        current = MetricCollectionSpec.objects.filter(
+                            pk=stale_spec.pk,
+                            name=stale_name,
+                            updated_at=stale_spec.updated_at,
+                            **{
+                                field: getattr(stale_spec, field)
+                                for field in DEFINITION_FIELDS
+                            },
+                        )
+                        if not current.select_for_update().exists():
+                            raise CommandError(APPLY_CONFLICT)
+                        current.delete()
+                        deleted += 1
+                        result_lines.append(f"deleted {stale_name}")
+
+        except (IntegrityError, OperationalError) as err:
+            if isinstance(err, OperationalError) and _retryable_storage_error(err):
+                raise CommandError(APPLY_CONFLICT) from err
+            category = (
+                "IntegrityError"
+                if isinstance(err, IntegrityError)
+                else "OperationalError"
+            )
+            raise CommandError(f"Spec application storage failure: {category}") from err
 
         # Keep this summary line's key=value shape stable; Ansible changed_when
         # logic in ops-library depends on created=/updated=/deleted= tokens here.
