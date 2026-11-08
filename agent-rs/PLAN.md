@@ -470,19 +470,28 @@ InfluxDB configuration errors surface lazily, per write or query, as in
 
 Due-only runs now atomically claim each observed scheduling timestamp before
 execution (`WHERE enabled AND next_run_time = observed AND next_run_time <= now`).
-Use the per-spec claim start time and advance the timestamp by
-`min(max(1, interval_seconds), 300)` seconds. A lost claim is skipped and not counted;
-a run with no won claims returns zero counters without a heartbeat. No lock spans
-collection. A crashed claimant becomes eligible at that timestamp; a normal
-success/failure schedules its regular interval from claim start. Completion writes
-only while `next_run_time` still equals the claim timestamp. Long collectors may
-overlap later slots after expiry. Non-due manual runs retain unconditional
-execution/completion and the shared run-start timestamp.
+Use the per-spec claim start time and advance the Rust claim by
+`min(max(3, interval_seconds), 300)` seconds. Renew it every one third of that
+lease while the collector/sink/registry future is live. Each renewal compares the
+exact last claim timestamp and captured name, enabled state, type, interval and
+config. Completion uses the most recent renewed timestamp and the same captured
+definition. A lost renewal cancels collection; a renewal storage error aborts the
+run. Neither publishes a healthy outcome. No database lock spans collection.
+A crash or dropped run stops renewal and becomes eligible at its last persisted
+expiry; normal success/failure schedules the regular interval from claim start.
+A process suspension or database contention delaying renewal past expiry can lose
+ownership; cancellation cannot recall accepted external writes. Python retains
+the nonrenewing 1–300 second lease; never run both schedulers on the same specs.
+Non-due manual runs retain unconditional execution and the shared run-start
+timestamp, with completion fenced by the originally observed schedule and
+captured definition. Superseded completions are not counted, and a run with no
+accepted completions leaves the heartbeat untouched.
 
-A failure outside a spec (database error, spec deleted during the run →
-0-row update, section 5.4) aborts the run: error log `Metric collection
-failed`, stderr `Metric collection failed: <err>`, no heartbeat, the loop
-continues.
+A store failure outside a spec (including claim, renewal or completion storage
+errors) aborts the run: error log `Metric collection failed`, stderr
+`Metric collection failed: <err>`, no heartbeat, the loop continues. A deleted
+spec is instead a superseded claim/completion: it is skipped, while accepted
+sibling outcomes can still contribute their heartbeat.
 
 As implemented in S8 (`graphyard-agent::runs`, pinned by `runs.json`): the
 executors receive the stored `config` decoded with
@@ -756,14 +765,16 @@ statement or transaction short) and closes the connection.
 
 ### 5.4 Writes per operation (P1, Django ORM as the oracle)
 
-- **Spec run result** — `UPDATE metric_collection_spec SET last_run_at=?,
+- **Legacy low-level spec result helper** (`update_spec_run`, retained for
+  direct store compatibility tests, not used by the Rust run loop) —
+  `UPDATE metric_collection_spec SET last_run_at=?,
   last_status=?, last_error=?, next_run_time=? WHERE id=?`. `updated_at` is
   **not** touched (`update_fields` excludes `auto_now` fields). 0 rows →
-  error `Save with update_fields did not affect any rows.`, which aborts the
-  run (3.4).
-- **Due claims/completion** — atomic conditional claim and timestamp-guarded
-  completion as described in 3.4; zero rows means skip/no-op. Explicit non-due
-  completion keeps the spec result update above.
+  error `Save with update_fields did not affect any rows.` returned to its caller.
+- **Run claims/renewal/completion** — atomic conditional claim and exact-claim
+  plus captured-definition guards as described in 3.4; zero rows means
+  superseded/skip. Explicit non-due completion uses the same definition guard
+  and the originally observed schedule, without claiming or renewing.
 - **Condition success** — `status, message, last_value, last_evaluated`;
   **condition failure** — `status, message, last_evaluated`, preserving value.
   Both use the captured attempt start time and the conditional watermark in 3.5;

@@ -347,14 +347,19 @@ Persisted condition failure messages use the same safe category.
 
 Due-only scheduler runs claim each selected slot with a conditional
 `next_run_time` update **before** any collection. Another runner with the same
-snapshot skips a lost claim. Claims expire after `min(max(1, interval_seconds),
-300)` seconds; a crash leaves the row eligible at that timestamp on the next tick.
-Successful and failed attempts schedule the next regular interval from their claim
-start. Completion only updates a row still carrying that claim timestamp and the
-captured name, enabled state, collector type, interval and stored config, so a
-late old result cannot overwrite a newer claimant or an edited definition. No
-database lock spans network I/O. A collection lasting beyond its claim can overlap the next slot; this is a
-bounded recovery lease, not an unlimited execution lock. Explicit non-due runs
+snapshot skips a lost claim. In the Rust agent, claims last `min(max(3, interval_seconds), 300)` seconds and
+renew every one third of that duration through collection, sink writes and
+registry publication. Renewal and completion compare the exact claim timestamp
+and captured definition, so an old owner cannot extend a replacement. Losing
+renewal ownership cancels the outstanding collector; a store failure fails the
+run. A crash or dropped run stops renewal, making the row eligible at its last
+persisted lease expiry. Successful and failed attempts schedule the next regular
+interval from their original claim start. No database lock spans network I/O.
+A process suspended beyond its lease, or database contention that delays renewal
+past expiry, can still lose ownership; cancellation cannot
+recall bytes already accepted by an external sink. Python retains its interval-based
+1–300 second recovery lease and can overlap long collectors; use the Rust agent
+for renewable ownership. Do not run both schedulers for the same specs. Explicit non-due runs
 (including manual one-shot collection) continue to run every enabled spec,
 regardless of its due time, but completion still requires the captured definition and schedule. Deleted, disabled, edited or
 superseded collections contribute no counts, errors or heartbeat evidence; a run

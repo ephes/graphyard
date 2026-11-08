@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Renew Rust due-spec claims through collection and publication, fenced by the
+  exact claim and captured definition; abandoned work retains bounded recovery.
+- Verify full/partial SBOM exports against pinned local CycloneDX 1.6 schemas
+  offline, with exact snapshot provenance and invalid-artifact counterfactuals.
+
 - Admit spec files through one nonblocking regular descriptor with a 2 MiB actual
   byte cap, explicit nesting bound and safe decoder errors before database work.
 - Refuse stale spec-apply updates and prune operations using captured definitions;

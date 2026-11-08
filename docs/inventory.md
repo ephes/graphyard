@@ -528,3 +528,14 @@ Migration alias tests run 0012→0013 against two isolated databases on the sele
 backend. Default-database duplicates must not affect a clean secondary migration;
 secondary duplicates refuse without changing credentials, and explicit correction
 permits a retry that installs the constraint on that secondary database.
+
+The SBOM contract tests validate both complete and partial application exports
+against the local CycloneDX 1.6 schemas bundled by `cyclonedx-python-lib` 11.12.0
+(pinned with hashes in `uv.lock`). Its public `JsonStrictValidator` resolves schema
+references from bundled resources without network access. The oracle additionally
+checks component references and every provenance property against the exact
+synthetic snapshot: JSON Schema alone does not enforce `bom-ref` referential
+integrity. Invalid component types, dangling references and swapped provenance
+are rejected by counterfactual tests; normalized duplicate packages remain refused.
+Run `uv run --frozen pytest tests/test_inventory_sbom.py` offline after dependencies
+are installed. This is contract coverage, not a new exporter format.

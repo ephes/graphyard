@@ -177,7 +177,7 @@ extracted binary.
 
 | Python behaviour / test | Rust counterpart | Status |
 | --- | --- | --- |
-| `services.py:run_metric_collection_specs_once` and `_run_single_metric_collection_spec`: warn-once reset, one `now`/`now_ts` per run, enabled and due selection ordered by name (a truthy `enabled = 2`), the empty cases (zero counters without a heartbeat, `No matching enabled metric collection specs`), unknown spec types, `SpecConfigError` and other exceptions (`collector raised <class>: <msg>`), due claims before I/O with bounded recovery and guarded completion; the non-due row update with `next_run_time = now_ts + max(1, interval)`, counters, the error list capped at five, the `metric_collectors` heartbeat (critical when all failed, warning, ok; `last_success` kept on failure), a spec deleted during the run (`NotUpdated` aborts without a heartbeat) | `graphyard-agent/tests/runs.rs::every_run_scenario_matches_python` against `fixtures/runs.json` (`gen_runs.py`: the Python runs with stubbed executors on a migrated database, all rows after) | done |
+| `services.py:run_metric_collection_specs_once` and `_run_single_metric_collection_spec`: warn-once reset, one `now`/`now_ts` per run, enabled and due selection ordered by name (a truthy `enabled = 2`), the empty cases (zero counters without a heartbeat, `No matching enabled metric collection specs`), unknown spec types, `SpecConfigError` and other exceptions (`collector raised <class>: <msg>`), due claims before I/O with bounded recovery and guarded completion; the non-due row update with `next_run_time = now_ts + max(1, interval)`, counters, the error list capped at five, the `metric_collectors` heartbeat (critical when all failed, warning, ok; `last_success` kept on failure), a deleted or superseded spec skipped without replacing sibling outcomes | `graphyard-agent/tests/runs.rs::every_run_scenario_matches_python` against `fixtures/runs.json` (`gen_runs.py`: the Python runs with stubbed executors on a migrated database, all rows after) | done |
 | `services.py:evaluate_conditions_once`: per-condition `now`, success and failure updates, `evaluation error: <err>`, the `condition_evaluator` heartbeat (`<n> condition(s) failed`, no success), no conditions, a condition deleted during the run (publication is ignored) | `runs.rs::every_run_scenario_matches_python` (`runs.json` condition scenarios with the real `evaluate_condition`) | done |
 | `test_condition_evaluation.py::test_evaluate_conditions_once_updates_condition_and_heartbeat` | `runs.json` "mixed_conditions", "all_conditions_ok_inserts_heartbeat" | done |
 | `test_metric_collection_spec_isolation.py::test_bad_spec_does_not_stop_later_specs`, `::test_unexpected_collector_exception_is_isolated` (with the real collectors, a fake JSON server, the shadow writer and the registry touch) | `graphyard-agent/tests/isolation.rs::a_bad_spec_does_not_stop_later_specs`, `::an_unexpected_collector_exception_is_isolated` | done |
@@ -288,3 +288,11 @@ executor fixtures and successful shadow-file isolation tests:
   sibling and recovery in a later invocation after removing the trigger.
 
 All endpoints and data are synthetic; no production Influx or host is needed.
+
+## Renewable Rust scheduling ownership
+
+`graphyard-agent/tests/lease.rs` defers a synthetic collector beyond a one-second
+interval, checks renewal with two stores, cancels an abandoned run and checks its
+persisted expiry, and refuses renewal/completion from a replaced or disabled
+claim. Python's existing shared fixtures still cover ordinary scheduling results;
+renewal is Rust-specific.

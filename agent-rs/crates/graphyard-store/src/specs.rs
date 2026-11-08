@@ -188,6 +188,36 @@ impl Store {
             .await
     }
 
+    /// Extend only the exact live claim and captured definition. A stale owner
+    /// cannot extend a replacement or continue work after an edit/disable.
+    ///
+    /// # Errors
+    /// SQLite errors. Superseded/deleted rows return false.
+    pub async fn renew_spec_claim(
+        &self,
+        definition: SpecRow,
+        expected_schedule: i64,
+        until: i64,
+    ) -> Result<bool, StoreError> {
+        self.call(move |connection| {
+            Ok(connection.execute(
+                "UPDATE metric_collection_spec SET next_run_time = ? \
+                 WHERE id = ? AND enabled AND next_run_time = ? \
+                 AND name = ? AND spec_type = ? AND interval_seconds = ? AND config = ?",
+                params![
+                    until,
+                    definition.id,
+                    expected_schedule,
+                    definition.name,
+                    definition.spec_type,
+                    definition.interval_seconds,
+                    definition.config
+                ],
+            )? == 1)
+        })
+        .await
+    }
+
     /// Publish only for the captured definition and scheduling owner.
     /// Manual runs use the originally observed schedule instead of a lease.
     ///
