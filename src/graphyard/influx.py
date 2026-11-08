@@ -617,15 +617,22 @@ def _query_range_v2_flux(
 
     for table in tables:
         for record in table.records:
-            value = record.get_value()
-            if value is None:
-                continue
-            record_time = record.get_time()
-            if record_time is None:
-                continue
+            try:
+                value = record.get_value()
+                record_time = record.get_time()
+            except KeyError:
+                raise InfluxConfigurationError("Invalid InfluxDB query row") from None
+            if value is None or not isinstance(record_time, datetime):
+                raise InfluxConfigurationError("Invalid InfluxDB query row")
+            try:
+                record_time = _ensure_utc(record_time)
+            except (ValueError, OverflowError):
+                raise InfluxConfigurationError(
+                    "Invalid InfluxDB query timestamp"
+                ) from None
             samples.append(
                 MetricSample(
-                    ts=_ensure_utc(record_time),
+                    ts=record_time,
                     value=_parse_query_value(value),
                     host=str(record.values.get("host", "")),
                     metric=str(record.values.get("metric", metric_name)),
@@ -734,7 +741,7 @@ async def _read_v3_sql_rows(payload: dict[str, str], headers: dict[str, str]) ->
                     "POST",
                     f"{settings.INFLUX_URL.rstrip('/')}/api/v3/query_sql",
                     json=payload,
-                    headers=headers,
+                    headers={**headers, "Accept-Encoding": "identity"},
                 ) as response:
                     if response.status_code == 404:
                         raise InfluxConfigurationError(
@@ -742,6 +749,12 @@ async def _read_v3_sql_rows(payload: dict[str, str], headers: dict[str, str]) ->
                             "Set INFLUX_API_MODE=v2 for InfluxDB 2."
                         )
                     response.raise_for_status()
+                    if response.headers.get(
+                        "Content-Encoding", ""
+                    ).strip().lower() not in ("", "identity"):
+                        raise InfluxConfigurationError(
+                            "InfluxDB SQL query failed: unsupported response encoding"
+                        )
                     body = bytearray()
                     async for chunk in response.aiter_bytes():
                         if time.monotonic() >= deadline:
@@ -831,17 +844,17 @@ def _query_range_v3_sql(
     samples: list[MetricSample] = []
     for row in raw_rows:
         if not isinstance(row, dict):
-            continue
+            raise InfluxConfigurationError("Invalid InfluxDB query row")
 
         row_value = row.get("value")
         row_time = row.get("time")
-        if row_value is None or row_time is None:
-            continue
+        if row_value is None or not isinstance(row_time, str):
+            raise InfluxConfigurationError("Invalid InfluxDB query row")
 
         try:
-            ts = _parse_influx_ts(str(row_time))
-        except (TypeError, ValueError):
-            continue
+            ts = _parse_influx_ts(row_time)
+        except (TypeError, ValueError, OverflowError):
+            raise InfluxConfigurationError("Invalid InfluxDB query timestamp") from None
 
         samples.append(
             MetricSample(

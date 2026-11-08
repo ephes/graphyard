@@ -703,14 +703,16 @@ relax this for intermittent sources:
 Conditions that set neither field behave exactly as before.
 
 Influx query samples must be finite numbers on both Flux and SQL backends. A
-NaN, infinity, or invalid numeric value rejects the whole query, including when
+NaN, infinity, invalid numeric value, non-object SQL row, or missing/invalid
+time or value rejects the whole query, including when
 other series are valid or the condition permits stale data. The evaluation run
 marks the condition `critical` with an evaluation error; the previous
-`last_value` and successful `last_evaluated` remain, rather than presenting an
-older valid sample as fresh evidence.
+`last_value` remains and `last_evaluated` records the failed attempt, rather
+than presenting an older valid sample as fresh evidence.
 
-InfluxDB 3 SQL evaluation responses are streamed with a fixed 10 MiB decoded
-body limit and a 30-second monotonic total deadline covering connection,
+InfluxDB 3 SQL requests require identity encoding; any other response encoding
+is rejected before body iteration or decompression. Responses are streamed with
+a fixed 10 MiB body limit and a 30-second monotonic total deadline covering connection,
 headers, and body reads. OS DNS resolution is an exception: cancellation stops
 the request, but Python's event-loop cleanup may wait for the resolver thread to
 finish. JSON decoding is size-bounded and its elapsed time is

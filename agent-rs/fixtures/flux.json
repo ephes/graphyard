@@ -1833,23 +1833,10 @@
      "HTTP Request: POST http://{server}/api/v2/query?org=graphyard \"HTTP/1.1 200 OK\""
     ]
    ],
-   "samples": [
-    {
-     "ts": "2026-10-21T11:32:00+00:00",
-     "value": 2.0,
-     "host": "",
-     "metric": "host.disk_usage",
-     "service": null,
-     "subject_type": null,
-     "subject_id": null,
-     "source_system": null,
-     "source_instance": null,
-     "source_entity_id": null,
-     "collector_service": null,
-     "collector_host": null,
-     "tags": {}
-    }
-   ]
+   "error": {
+    "class": "InfluxConfigurationError",
+    "message": "Invalid InfluxDB query row"
+   }
   },
   {
    "name": "typed_tag_values",
@@ -2551,8 +2538,8 @@
     ]
    ],
    "error": {
-    "class": "AttributeError",
-    "message": "'str' object has no attribute 'tzinfo'"
+    "class": "InfluxConfigurationError",
+    "message": "Invalid InfluxDB query row"
    }
   },
   {
@@ -2614,8 +2601,8 @@
     ]
    ],
    "error": {
-    "class": "OverflowError",
-    "message": "date value out of range"
+    "class": "InfluxConfigurationError",
+    "message": "Invalid InfluxDB query timestamp"
    }
   },
   {
@@ -2677,8 +2664,8 @@
     ]
    ],
    "error": {
-    "class": "KeyError",
-    "message": "'_value'"
+    "class": "InfluxConfigurationError",
+    "message": "Invalid InfluxDB query row"
    }
   },
   {
@@ -2740,8 +2727,8 @@
     ]
    ],
    "error": {
-    "class": "KeyError",
-    "message": "'_time'"
+    "class": "InfluxConfigurationError",
+    "message": "Invalid InfluxDB query row"
    }
   },
   {
@@ -3369,23 +3356,10 @@
      "HTTP Request: POST http://{server}/api/v2/query?org=graphyard \"HTTP/1.1 200 OK\""
     ]
    ],
-   "samples": [
-    {
-     "ts": "2026-10-21T11:31:00+00:00",
-     "value": 3.0,
-     "host": "",
-     "metric": "host.disk_usage",
-     "service": null,
-     "subject_type": null,
-     "subject_id": null,
-     "source_system": null,
-     "source_instance": null,
-     "source_entity_id": null,
-     "collector_service": null,
-     "collector_host": null,
-     "tags": {}
-    }
-   ]
+   "error": {
+    "class": "InfluxConfigurationError",
+    "message": "Invalid InfluxDB query row"
+   }
   },
   {
    "name": "short_data_row",

@@ -132,19 +132,6 @@ impl FluxValue {
             Self::DateTime(dt) => dt.to_string(),
         }
     }
-
-    /// `type(value).__name__`.
-    fn type_name(&self) -> &'static str {
-        match self {
-            Self::None => "NoneType",
-            Self::Str(_) => "str",
-            Self::Bool(_) => "bool",
-            Self::Int(_) => "int",
-            Self::Float(_) => "float",
-            Self::Bytes(_) => "bytes",
-            Self::DateTime(_) => "datetime",
-        }
-    }
 }
 
 /// A `FluxRecord`'s `values`: column label to value, in column order (a
@@ -429,33 +416,24 @@ const NON_TAG_COLUMNS: [&str; 18] = [
 /// The samples `_query_range_v2_flux` builds from the records.
 ///
 /// # Errors
-/// `KeyError` for a missing `_value`/`_time` column, `AttributeError` for a
-/// `_time` that is not a datetime, `OverflowError` from the UTC conversion,
-/// `InfluxConfigurationError` for a value that is not a finite number.
+/// `InfluxConfigurationError` for missing or malformed row/time/value evidence.
 pub fn flux_samples(
     records: &[FluxRecord],
     metric_name: &str,
 ) -> Result<Vec<MetricSample>, QueryError> {
     let mut samples = Vec::new();
     for record in records {
-        let value = record
-            .get("_value")
-            .ok_or_else(|| QueryError::python("KeyError", "'_value'"))?;
+        let invalid_row = || QueryError::config("Invalid InfluxDB query row");
+        let value = record.get("_value").ok_or_else(invalid_row)?;
         if *value == FluxValue::None {
-            continue;
+            return Err(invalid_row());
         }
-        let time = record
-            .get("_time")
-            .ok_or_else(|| QueryError::python("KeyError", "'_time'"))?;
+        let time = record.get("_time").ok_or_else(invalid_row)?;
         let ts = match time {
-            FluxValue::None => continue,
-            FluxValue::DateTime(dt) => dt.to_utc()?,
-            other => {
-                return Err(QueryError::python(
-                    "AttributeError",
-                    format!("'{}' object has no attribute 'tzinfo'", other.type_name()),
-                ));
-            }
+            FluxValue::DateTime(dt) => dt
+                .to_utc()
+                .map_err(|_| QueryError::config("Invalid InfluxDB query timestamp"))?,
+            _ => return Err(invalid_row()),
         };
         let value = sample_value(&value.py_str())?;
         let optional = |key: &str| match record.get(key) {
