@@ -20,68 +20,128 @@
   {
    "name": "Switch B",
    "mac": "aa:bb:cc:00:00:05"
+  },
+  {
+   "name": "Twin",
+   "mac": "aa:bb:cc:00:00:06"
+  },
+  {
+   "name": "Twin",
+   "mac": "aa:bb:cc:00:00:07"
+  },
+  {
+   "name": "Twin",
+   "mac": "AA:BB:CC:00:00:07"
   }
  ],
  "find_device": [
   {
    "device_name": "Switch A",
    "device_mac": "",
-   "index": 1
+   "index": 1,
+   "warning": ""
   },
   {
    "device_name": "  Switch B ",
    "device_mac": "",
-   "index": 2
+   "index": null,
+   "warning": "configured UniFi device is ambiguous; set a unique config.device_mac"
   },
   {
    "device_name": "",
    "device_mac": "AA:BB:CC:00:00:02",
-   "index": 2
+   "index": 2,
+   "warning": ""
   },
   {
    "device_name": "",
    "device_mac": " aa:bb:cc:00:00:03 ",
-   "index": 3
+   "index": 3,
+   "warning": ""
   },
   {
    "device_name": "missing",
    "device_mac": "aa:bb:cc:00:00:03",
-   "index": 3
+   "index": 3,
+   "warning": ""
   },
   {
    "device_name": "Switch B",
    "device_mac": "aa:bb:cc:00:00:01",
-   "index": 1
+   "index": 1,
+   "warning": ""
   },
   {
    "device_name": "7",
    "device_mac": "",
-   "index": 4
+   "index": 4,
+   "warning": ""
   },
   {
    "device_name": "None",
    "device_mac": "",
-   "index": null
+   "index": null,
+   "warning": "configured UniFi device not found"
   },
   {
    "device_name": "",
    "device_mac": "none",
-   "index": 4
+   "index": 4,
+   "warning": ""
   },
   {
    "device_name": "",
    "device_mac": "",
-   "index": null
+   "index": null,
+   "warning": "configured UniFi device not found"
   },
   {
    "device_name": "switch a",
    "device_mac": "",
-   "index": null
+   "index": null,
+   "warning": "configured UniFi device not found"
   },
   {
    "device_name": "missing",
    "device_mac": "missing",
-   "index": null
+   "index": null,
+   "warning": "configured UniFi device not found"
+  },
+  {
+   "device_name": "Twin",
+   "device_mac": "",
+   "index": null,
+   "warning": "configured UniFi device is ambiguous; set a unique config.device_mac"
+  },
+  {
+   "device_name": "Twin",
+   "device_mac": "aa:bb:cc:00:00:06",
+   "index": 6,
+   "warning": ""
+  },
+  {
+   "device_name": "Switch A",
+   "device_mac": "aa:bb:cc:00:00:06",
+   "index": 6,
+   "warning": ""
+  },
+  {
+   "device_name": "",
+   "device_mac": "aa:bb:cc:00:00:07",
+   "index": null,
+   "warning": "configured UniFi device is ambiguous; set a unique config.device_mac"
+  },
+  {
+   "device_name": "Switch A",
+   "device_mac": "aa:bb:cc:00:00:99",
+   "index": null,
+   "warning": "configured UniFi device not found"
+  },
+  {
+   "device_name": "Switch B",
+   "device_mac": "aa:bb:cc:00:00:05",
+   "index": 5,
+   "warning": ""
   }
  ],
  "interface_devices": {
@@ -8639,6 +8699,382 @@
     }
    ],
    "calls": [],
+   "log": [
+    "HTTP Request: POST http://probe.test/api/login \"HTTP/1.1 200 OK\"",
+    "HTTP Request: GET http://probe.test/api/s/default/stat/device \"HTTP/1.1 200 OK\""
+   ]
+  },
+  {
+   "name": "duplicate device name without a MAC is refused",
+   "spec_name": "unifi usw traffic",
+   "config": {
+    "base_url": "http://probe.test",
+    "username": "homeassistant",
+    "password": "secret",
+    "site_id": "default",
+    "device_name": "USW Pro XG 8 PoE",
+    "interface_selector": "uplink",
+    "subject_id": "usw_pro_xg_8_poe",
+    "service_id": "unifi",
+    "collector_host": "macmini",
+    "verify_tls": false
+   },
+   "routes": {
+    "/api/login": [
+     {
+      "status": 200,
+      "headers": [],
+      "body_hex": "7b226d657461223a207b227263223a20226f6b227d2c202264617461223a205b5d7d"
+     }
+    ],
+    "/api/s/default/stat/device": [
+     {
+      "status": 200,
+      "headers": [],
+      "body_hex": "7b226d657461223a207b227263223a20226f6b227d2c202264617461223a205b7b226e616d65223a20225553572050726f205847203820506f45222c20226d6163223a202237303a34393a41323a32313a35333a3435222c202275706c696e6b223a207b226e616d65223a202265746830222c2022706f72745f696478223a2031302c20227370656564223a2031303030302c202272785f62797465732d72223a2032323739302e33323633333634343932322c202274785f62797465732d72223a20393232342e3630393935393734383531327d2c2022706f72745f7461626c65223a205b7b22706f72745f696478223a2031302c20226e616d65223a20225346502b2032227d2c207b22706f72745f696478223a20332c20226e616d65223a2022506f72742033222c202272785f62797465732d72223a20352c202274785f62797465732d72223a2022362e35227d5d7d2c207b226e616d65223a20225553572050726f205847203820506f45222c20226d6163223a202237303a34393a41323a32313a35333a3939222c202275706c696e6b223a207b226e616d65223a202265746830222c2022706f72745f696478223a2031302c20227370656564223a2031303030302c202272785f62797465732d72223a20372c202274785f62797465732d72223a20387d2c2022706f72745f7461626c65223a205b7b22706f72745f696478223a2031302c20226e616d65223a20225346502b2032227d2c207b22706f72745f696478223a20332c20226e616d65223a2022506f72742033222c202272785f62797465732d72223a20352c202274785f62797465732d72223a2022362e35227d5d7d5d7d"
+     }
+    ]
+   },
+   "sink": {
+    "write_error": null,
+    "registry_error": null
+   },
+   "outcome": [
+    "warning",
+    0,
+    1,
+    "configured UniFi device is ambiguous; set a unique config.device_mac"
+   ],
+   "p2": false,
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/login",
+     "headers": [
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ],
+      [
+       "content-length",
+       "64"
+      ]
+     ],
+     "body": "{\"username\":\"homeassistant\",\"password\":\"secret\",\"remember\":true}"
+    },
+    {
+     "method": "GET",
+     "target": "/api/s/default/stat/device",
+     "headers": [
+      [
+       "accept",
+       "application/json"
+      ]
+     ],
+     "body": ""
+    }
+   ],
+   "calls": [],
+   "log": [
+    "HTTP Request: POST http://probe.test/api/login \"HTTP/1.1 200 OK\"",
+    "HTTP Request: GET http://probe.test/api/s/default/stat/device \"HTTP/1.1 200 OK\""
+   ]
+  },
+  {
+   "name": "configured MAC selects the later same-name device",
+   "spec_name": "unifi usw traffic",
+   "config": {
+    "base_url": "http://probe.test",
+    "username": "homeassistant",
+    "password": "secret",
+    "site_id": "default",
+    "device_name": "USW Pro XG 8 PoE",
+    "interface_selector": "uplink",
+    "subject_id": "usw_pro_xg_8_poe",
+    "service_id": "unifi",
+    "collector_host": "macmini",
+    "verify_tls": false,
+    "device_mac": "70:49:a2:21:53:99"
+   },
+   "routes": {
+    "/api/login": [
+     {
+      "status": 200,
+      "headers": [],
+      "body_hex": "7b226d657461223a207b227263223a20226f6b227d2c202264617461223a205b5d7d"
+     }
+    ],
+    "/api/s/default/stat/device": [
+     {
+      "status": 200,
+      "headers": [],
+      "body_hex": "7b226d657461223a207b227263223a20226f6b227d2c202264617461223a205b7b226e616d65223a20225553572050726f205847203820506f45222c20226d6163223a202237303a34393a41323a32313a35333a3435222c202275706c696e6b223a207b226e616d65223a202265746830222c2022706f72745f696478223a2031302c20227370656564223a2031303030302c202272785f62797465732d72223a2032323739302e33323633333634343932322c202274785f62797465732d72223a20393232342e3630393935393734383531327d2c2022706f72745f7461626c65223a205b7b22706f72745f696478223a2031302c20226e616d65223a20225346502b2032227d2c207b22706f72745f696478223a20332c20226e616d65223a2022506f72742033222c202272785f62797465732d72223a20352c202274785f62797465732d72223a2022362e35227d5d7d2c207b226e616d65223a20225553572050726f205847203820506f45222c20226d6163223a202237303a34393a41323a32313a35333a3939222c202275706c696e6b223a207b226e616d65223a202265746830222c2022706f72745f696478223a2031302c20227370656564223a2031303030302c202272785f62797465732d72223a20372c202274785f62797465732d72223a20387d2c2022706f72745f7461626c65223a205b7b22706f72745f696478223a2031302c20226e616d65223a20225346502b2032227d2c207b22706f72745f696478223a20332c20226e616d65223a2022506f72742033222c202272785f62797465732d72223a20352c202274785f62797465732d72223a2022362e35227d5d7d5d7d"
+     }
+    ]
+   },
+   "sink": {
+    "write_error": null,
+    "registry_error": null
+   },
+   "outcome": [
+    "ok",
+    2,
+    0,
+    ""
+   ],
+   "p2": false,
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/login",
+     "headers": [
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ],
+      [
+       "content-length",
+       "64"
+      ]
+     ],
+     "body": "{\"username\":\"homeassistant\",\"password\":\"secret\",\"remember\":true}"
+    },
+    {
+     "method": "GET",
+     "target": "/api/s/default/stat/device",
+     "headers": [
+      [
+       "accept",
+       "application/json"
+      ]
+     ],
+     "body": ""
+    }
+   ],
+   "calls": [
+    {
+     "call": "write",
+     "points": [
+      {
+       "metric": "network_device.network_receive_bytes_per_second",
+       "value": 7.0,
+       "subject_type": "network_device",
+       "subject_id": "usw_pro_xg_8_poe",
+       "source_system": "unifi",
+       "collector_service": "graphyard-agent",
+       "collector_host": "macmini",
+       "source_instance": "default",
+       "source_entity_id": "70:49:a2:21:53:99",
+       "host": null,
+       "service": "unifi",
+       "tags": [
+        [
+         "device_class",
+         "data_rate"
+        ],
+        [
+         "spec_name",
+         "unifi usw traffic"
+        ],
+        [
+         "traffic_scope",
+         "uplink"
+        ],
+        [
+         "interface",
+         "eth0"
+        ],
+        [
+         "port_idx",
+         "10"
+        ],
+        [
+         "port_name",
+         "SFP+ 2"
+        ],
+        [
+         "speed_mbps",
+         "10000"
+        ],
+        [
+         "device_mac",
+         "70:49:a2:21:53:99"
+        ],
+        [
+         "traffic_direction",
+         "receive"
+        ]
+       ]
+      },
+      {
+       "metric": "network_device.network_transmit_bytes_per_second",
+       "value": 8.0,
+       "subject_type": "network_device",
+       "subject_id": "usw_pro_xg_8_poe",
+       "source_system": "unifi",
+       "collector_service": "graphyard-agent",
+       "collector_host": "macmini",
+       "source_instance": "default",
+       "source_entity_id": "70:49:a2:21:53:99",
+       "host": null,
+       "service": "unifi",
+       "tags": [
+        [
+         "device_class",
+         "data_rate"
+        ],
+        [
+         "spec_name",
+         "unifi usw traffic"
+        ],
+        [
+         "traffic_scope",
+         "uplink"
+        ],
+        [
+         "interface",
+         "eth0"
+        ],
+        [
+         "port_idx",
+         "10"
+        ],
+        [
+         "port_name",
+         "SFP+ 2"
+        ],
+        [
+         "speed_mbps",
+         "10000"
+        ],
+        [
+         "device_mac",
+         "70:49:a2:21:53:99"
+        ],
+        [
+         "traffic_direction",
+         "transmit"
+        ]
+       ]
+      }
+     ]
+    },
+    {
+     "call": "touch",
+     "points": [
+      {
+       "metric": "network_device.network_receive_bytes_per_second",
+       "value": 7.0,
+       "subject_type": "network_device",
+       "subject_id": "usw_pro_xg_8_poe",
+       "source_system": "unifi",
+       "collector_service": "graphyard-agent",
+       "collector_host": "macmini",
+       "source_instance": "default",
+       "source_entity_id": "70:49:a2:21:53:99",
+       "host": null,
+       "service": "unifi",
+       "tags": [
+        [
+         "device_class",
+         "data_rate"
+        ],
+        [
+         "spec_name",
+         "unifi usw traffic"
+        ],
+        [
+         "traffic_scope",
+         "uplink"
+        ],
+        [
+         "interface",
+         "eth0"
+        ],
+        [
+         "port_idx",
+         "10"
+        ],
+        [
+         "port_name",
+         "SFP+ 2"
+        ],
+        [
+         "speed_mbps",
+         "10000"
+        ],
+        [
+         "device_mac",
+         "70:49:a2:21:53:99"
+        ],
+        [
+         "traffic_direction",
+         "receive"
+        ]
+       ]
+      },
+      {
+       "metric": "network_device.network_transmit_bytes_per_second",
+       "value": 8.0,
+       "subject_type": "network_device",
+       "subject_id": "usw_pro_xg_8_poe",
+       "source_system": "unifi",
+       "collector_service": "graphyard-agent",
+       "collector_host": "macmini",
+       "source_instance": "default",
+       "source_entity_id": "70:49:a2:21:53:99",
+       "host": null,
+       "service": "unifi",
+       "tags": [
+        [
+         "device_class",
+         "data_rate"
+        ],
+        [
+         "spec_name",
+         "unifi usw traffic"
+        ],
+        [
+         "traffic_scope",
+         "uplink"
+        ],
+        [
+         "interface",
+         "eth0"
+        ],
+        [
+         "port_idx",
+         "10"
+        ],
+        [
+         "port_name",
+         "SFP+ 2"
+        ],
+        [
+         "speed_mbps",
+         "10000"
+        ],
+        [
+         "device_mac",
+         "70:49:a2:21:53:99"
+        ],
+        [
+         "traffic_direction",
+         "transmit"
+        ]
+       ]
+      }
+     ]
+    }
+   ],
    "log": [
     "HTTP Request: POST http://probe.test/api/login \"HTTP/1.1 200 OK\"",
     "HTTP Request: GET http://probe.test/api/s/default/stat/device \"HTTP/1.1 200 OK\""

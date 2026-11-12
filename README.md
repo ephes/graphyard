@@ -372,8 +372,12 @@ do not stop later conditions; a heartbeat write failure still fails the whole ru
 Persisted condition failure messages use the same safe category.
 
 Due-only scheduler runs claim each selected slot with a conditional
-`next_run_time` update **before** any collection. Another runner with the same
-snapshot skips a lost claim. In the Rust agent, claims last `min(max(3, interval_seconds), 300)` seconds and
+`next_run_time` update **before** any collection. The claim also compares the
+loaded definition (name, type, interval and config): if the spec was edited
+between load and claim, no claim is taken, no request uses the old URL or
+credentials, and the spec stays due for the next run with its current
+definition. Another runner with the same
+snapshot skips a lost claim. In both agents, claims last `min(max(3, interval_seconds), 300)` seconds and
 renew every one third of that duration through collection, sink writes and
 registry publication. Renewal and completion compare the exact claim timestamp
 and captured definition, so an old owner cannot extend a replacement. Losing
@@ -383,9 +387,10 @@ persisted lease expiry. Successful and failed attempts schedule the next regular
 interval from their original claim start. No database lock spans network I/O.
 A process suspended beyond its lease, or database contention that delays renewal
 past expiry, can still lose ownership; cancellation cannot
-recall bytes already accepted by an external sink. Python retains its interval-based
-1–300 second recovery lease and can overlap long collectors; use the Rust agent
-for renewable ownership. Do not run both schedulers for the same specs. Explicit non-due runs
+recall bytes already accepted by an external sink. The Python agent renews from a
+background thread while its synchronous collector runs; it cannot interrupt the
+collector mid-request, so after a lost renewal it refuses the collector's sink
+and registry publication and skips completion. Do not run both schedulers for the same specs. Explicit non-due runs
 (including manual one-shot collection) continue to run every enabled spec,
 regardless of its due time, but completion still requires the captured definition and schedule. Deleted, disabled, edited or
 superseded collections contribute no counts, errors or heartbeat evidence; a run
@@ -584,6 +589,7 @@ Example `config` JSON for a UniFi device traffic spec:
   "password": "replace-me",
   "site_id": "default",
   "device_name": "USW Pro XG 8 PoE",
+  "device_mac": "70:49:a2:21:53:45",
   "interface_selector": "uplink",
   "subject_type": "network_device",
   "subject_id": "usw_pro_xg_8_poe",
@@ -596,6 +602,15 @@ Example `config` JSON for a UniFi device traffic spec:
   "verify_tls": false
 }
 ```
+
+Device selection: when `device_mac` is set it is authoritative (case and
+surrounding whitespace ignored) and `device_name` is not consulted; otherwise
+`device_name` must match exactly one device. When several devices match (for
+example two devices with the same display name, listed in any order), the spec
+records the warning `configured UniFi device is ambiguous; set a unique
+config.device_mac` and writes no points, instead of using whichever device the
+controller listed first. Migration: add the device's `device_mac` to specs that
+select by name; a configured MAC no longer falls back to a matching name.
 
 By default, UniFi auth uses `auth_mode=auto`: Graphyard first tries the classic
 Network Application flow (`POST /api/login`, then `/api/s/<site>/stat/device`)

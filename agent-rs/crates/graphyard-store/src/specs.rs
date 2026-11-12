@@ -160,32 +160,47 @@ pub(crate) fn update_spec_run(
 
 fn claim_due_spec(
     connection: &Connection,
-    id: i64,
+    definition: &SpecRow,
     expected_due: i64,
     now: i64,
     until: i64,
 ) -> Result<bool, StoreError> {
     Ok(connection.execute(
         "UPDATE metric_collection_spec SET next_run_time = ? \
-         WHERE id = ? AND enabled AND next_run_time = ? AND next_run_time <= ?",
-        params![until, id, expected_due, now],
+         WHERE id = ? AND enabled AND next_run_time = ? AND next_run_time <= ? \
+         AND name = ? AND spec_type = ? AND interval_seconds = ? AND config = ?",
+        params![
+            until,
+            definition.id,
+            expected_due,
+            now,
+            definition.name,
+            definition.spec_type,
+            definition.interval_seconds,
+            definition.config
+        ],
     )? == 1)
 }
 
 impl Store {
-    /// Claim one due slot before collection. Only the winning caller may execute.
+    /// Claim one due slot before collection, only for the captured
+    /// definition (name, type, interval, config) the caller will execute.
+    /// Only the winning caller may execute; an edit since the load leaves the
+    /// slot due for a run with the current definition.
     ///
     /// # Errors
     /// SQLite errors.
     pub async fn claim_due_spec(
         &self,
-        id: i64,
+        definition: SpecRow,
         expected_due: i64,
         now: i64,
         until: i64,
     ) -> Result<bool, StoreError> {
-        self.call(move |connection| claim_due_spec(connection, id, expected_due, now, until))
-            .await
+        self.call(move |connection| {
+            claim_due_spec(connection, &definition, expected_due, now, until)
+        })
+        .await
     }
 
     /// Extend only the exact live claim and captured definition. A stale owner

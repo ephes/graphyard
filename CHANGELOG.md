@@ -15,6 +15,16 @@
   retain the maximum successful observation time (first committed status wins ties).
 - Cover caller cancellation during real actor-owned registry transactions,
   including complete commit, injected-error rollback and writer-lock release.
+- Bind the initial due-collection claim to the loaded definition in both agents:
+  an edit between load and claim takes no claim and sends no request with the
+  old URL or credentials; the spec stays due for its current definition.
+- Give the Python agent the Rust lease contract: `min(max(3, interval), 300)`
+  second claims renewed every third of that while a collector runs; a lost
+  renewal refuses sink/registry publication and completion.
+- Refuse ambiguous UniFi device selection in both agents: a configured
+  `device_mac` is authoritative, a name must match exactly one device, and
+  several matches record a warning without points. Specs selecting by a
+  duplicated name need `device_mac`.
 
 - Reject duplicate inventory JSON members at every depth before storage, while
   preserving repeated array entries and existing report budgets.

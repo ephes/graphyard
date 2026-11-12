@@ -3,6 +3,7 @@
 from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 from datetime import UTC, datetime, timedelta
 from threading import Barrier, Event, Lock
+import time
 
 import pytest
 from django.db import connections
@@ -221,3 +222,160 @@ def test_unchanged_truthy_enabled_collection_settles(monkeypatch, due_only):
     row.refresh_from_db()
     assert row.last_status == StatusLevel.OK and row.last_run_at == now
     assert row.next_run_time == int(now.timestamp()) + 600
+
+
+@pytest.mark.django_db
+def test_claim_refuses_a_definition_edited_after_load(monkeypatch):
+    row = MetricCollectionSpec.objects.create(
+        name="synthetic",
+        spec_type=MetricCollectionSpecType.HTTP_JSON_METRIC,
+        interval_seconds=600,
+        next_run_time=0,
+        config={"url": "http://127.0.0.1:9/old", "bearer_token": "old-token"},
+    )
+    new_config = {"url": "http://127.0.0.1:9/new", "bearer_token": "new-token"}
+    now = datetime(2026, 3, 4, 12, tzinfo=UTC)
+    reads = []
+
+    def clock():
+        # The second read is the per-spec run time: after load, before claim.
+        reads.append(None)
+        if len(reads) == 2:
+            MetricCollectionSpec.objects.filter(pk=row.pk).update(config=new_config)
+        return now
+
+    monkeypatch.setattr(services.timezone, "now", clock)
+    monkeypatch.setattr(services, "record_heartbeat", lambda *a, **k: None)
+    seen = []
+
+    def collect(item):
+        seen.append(item.config)
+        return StatusLevel.OK, 1, 0, ""
+
+    monkeypatch.setattr(services, "_run_single_metric_collection_spec", collect)
+    assert services.run_metric_collection_specs_once(due_only=True).total == 0
+    assert seen == []
+    row.refresh_from_db()
+    # Not claimed: still due, and the next run executes the current definition.
+    assert row.next_run_time == 0
+    assert services.run_metric_collection_specs_once(due_only=True).total == 1
+    assert seen == [new_config]
+
+
+def _short_spec():
+    return MetricCollectionSpec.objects.create(
+        name="synthetic",
+        spec_type=MetricCollectionSpecType.HTTP_JSON_METRIC,
+        interval_seconds=1,
+        next_run_time=0,
+        config={},
+    )
+
+
+def _schedule(pk):
+    return MetricCollectionSpec.objects.values_list("next_run_time", flat=True).get(
+        pk=pk
+    )
+
+
+@pytest.mark.django_db(transaction=True)
+def test_live_python_collector_renews_and_excludes_a_second_runner(monkeypatch):
+    row = _short_spec()
+    monkeypatch.setattr(services, "record_heartbeat", lambda *a, **k: None)
+    entered, finish = Event(), Event()
+    calls = []
+
+    def collect(item):
+        calls.append(item.pk)
+        if len(calls) == 1:
+            entered.set()
+            assert finish.wait(15)
+        return StatusLevel.OK, 1, 0, ""
+
+    monkeypatch.setattr(services, "_run_single_metric_collection_spec", collect)
+
+    def run():
+        try:
+            return services.run_metric_collection_specs_once(due_only=True)
+        finally:
+            connections.close_all()
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        owner = pool.submit(run)
+        try:
+            assert entered.wait(10)
+            first_claim = _schedule(row.pk)
+            # Longer than the one-second interval and the three-second lease.
+            time.sleep(4)
+            renewed = _schedule(row.pk)
+            second = pool.submit(run).result(timeout=10)
+        finally:
+            finish.set()
+        assert owner.result(timeout=10).total == 1
+    connections.close_all()
+    assert renewed > first_claim, "the live owner must renew its claim"
+    assert second.total == 0
+    assert calls == [row.pk]
+
+
+@pytest.mark.django_db(transaction=True)
+def test_lost_python_claim_cannot_publish_points_or_complete(monkeypatch):
+    row = _short_spec()
+    now = datetime(2026, 3, 4, 12, tzinfo=UTC)
+    monkeypatch.setattr(services.timezone, "now", lambda: now)
+    monkeypatch.setattr(services, "record_heartbeat", lambda *a, **k: None)
+    written = []
+    monkeypatch.setattr(services.influx, "write_points", written.append)
+    monkeypatch.setattr(services, "touch_registry_from_points", lambda points: None)
+    claimed = Event()
+
+    def collect(item):
+        claimed.set()
+        # Another runner replaces the claim (e.g. after a stall); the next
+        # renewal is refused, so publication must not happen.
+        MetricCollectionSpec.objects.filter(pk=row.pk).update(next_run_time=123)
+        deadline = time.monotonic() + 10
+        while not services._collection_ownership.lost.is_set():
+            assert time.monotonic() < deadline
+            time.sleep(0.05)
+        services._publish_collected_points(["synthetic point"])
+        raise AssertionError("publication must be refused")
+
+    monkeypatch.setattr(services, "_run_single_metric_collection_spec", collect)
+    try:
+        result = services.run_metric_collection_specs_once(due_only=True)
+    finally:
+        connections.close_all()
+    assert claimed.is_set()
+    assert result.total == 0
+    assert written == []
+    row.refresh_from_db()
+    assert row.next_run_time == 123
+    assert row.last_run_at is None
+
+
+@pytest.mark.django_db
+def test_process_death_recovers_after_one_lease(monkeypatch):
+    row = _short_spec()
+    now = datetime(2026, 3, 4, 12, tzinfo=UTC)
+    current = [now]
+    monkeypatch.setattr(services.timezone, "now", lambda: current[0])
+
+    def crash(item):
+        raise SystemExit("synthetic crash")
+
+    monkeypatch.setattr(services, "_run_single_metric_collection_spec", crash)
+    with pytest.raises(SystemExit):
+        services.run_metric_collection_specs_once(due_only=True)
+    lease = services.COLLECTION_LEASE_MIN_SECONDS
+    assert _schedule(row.pk) == int(now.timestamp()) + lease
+    current[0] += timedelta(seconds=lease - 1)
+    assert services.run_metric_collection_specs_once(due_only=True).total == 0
+    current[0] += timedelta(seconds=1)
+    monkeypatch.setattr(
+        services,
+        "_run_single_metric_collection_spec",
+        lambda _: (StatusLevel.OK, 1, 0, ""),
+    )
+    monkeypatch.setattr(services, "record_heartbeat", lambda *a, **k: None)
+    assert services.run_metric_collection_specs_once(due_only=True).total == 1

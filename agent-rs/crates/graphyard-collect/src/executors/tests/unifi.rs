@@ -64,7 +64,8 @@ fn find_device_matches_python() {
     let devices = fixture()["devices"].as_array().expect("devices");
     for case in section("find_device") {
         let found = find_device(devices, text(case, "device_name"), text(case, "device_mac"));
-        let index = found.map(|device| {
+        assert_eq!(found.err().unwrap_or(""), text(case, "warning"), "{case}");
+        let index = found.ok().map(|device| {
             devices
                 .iter()
                 .position(|item| item.as_object() == Some(device))

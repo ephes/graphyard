@@ -40,6 +40,24 @@ fn spec_values(spec: &SpecRow) -> Value {
     })
 }
 
+/// The definition a runner loaded before claiming (`op.definition`).
+fn captured_spec(id: i64, definition: &Value) -> SpecRow {
+    SpecRow {
+        id,
+        name: definition["name"].as_str().unwrap().to_owned(),
+        enabled: true,
+        spec_type: definition["spec_type"].as_str().unwrap().to_owned(),
+        interval_seconds: definition["interval_seconds"].as_i64().unwrap(),
+        next_run_time: 0,
+        config: definition["config"].as_str().unwrap().to_owned(),
+        last_run_at: None,
+        last_status: String::new(),
+        last_error: String::new(),
+        created_at: None,
+        updated_at: None,
+    }
+}
+
 fn condition_values(condition: &ConditionRow) -> Value {
     json!({
         "id": condition.id,
@@ -143,7 +161,7 @@ async fn run_case(case: &Value) {
             .map(|()| None),
         "claim_spec" => store
             .claim_due_spec(
-                op["id"].as_i64().unwrap(),
+                captured_spec(op["id"].as_i64().unwrap(), &op["definition"]),
                 op["expected_due"].as_i64().unwrap(),
                 op["now_ts"].as_i64().unwrap(),
                 op["claim_until"].as_i64().unwrap(),
@@ -324,13 +342,19 @@ async fn independent_stores_race_for_one_due_slot() {
     db.seed("metric_collection_spec", row["before"].as_array().unwrap());
     let first = db.store();
     let second = db.store();
+    let spec = captured_spec(1, &row["op"]["definition"]);
     let (a, b) = tokio::join!(
-        first.claim_due_spec(1, 100, 100, 400),
-        second.claim_due_spec(1, 100, 100, 400),
+        first.claim_due_spec(spec.clone(), 100, 100, 400),
+        second.claim_due_spec(spec.clone(), 100, 100, 400),
     );
     assert_ne!(a.unwrap(), b.unwrap());
-    assert!(!first.claim_due_spec(1, 400, 399, 699).await.unwrap());
-    assert!(second.claim_due_spec(1, 400, 400, 700).await.unwrap());
+    assert!(
+        !first
+            .claim_due_spec(spec.clone(), 400, 399, 699)
+            .await
+            .unwrap()
+    );
+    assert!(second.claim_due_spec(spec, 400, 400, 700).await.unwrap());
     first.close();
     second.close();
 }

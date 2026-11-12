@@ -461,6 +461,9 @@ DEVICES: list[object] = [
     {"mac": "aa:bb:cc:00:00:03"},
     {"name": 7, "mac": None},
     {"name": "Switch B", "mac": "aa:bb:cc:00:00:05"},
+    {"name": "Twin", "mac": "aa:bb:cc:00:00:06"},
+    {"name": "Twin", "mac": "aa:bb:cc:00:00:07"},
+    {"name": "Twin", "mac": "AA:BB:CC:00:00:07"},
 ]
 
 FIND_CASES: list[tuple[str, str]] = [
@@ -476,13 +479,19 @@ FIND_CASES: list[tuple[str, str]] = [
     ("", ""),
     ("switch a", ""),
     ("missing", "missing"),
+    ("Twin", ""),
+    ("Twin", "aa:bb:cc:00:00:06"),
+    ("Switch A", "aa:bb:cc:00:00:06"),
+    ("", "aa:bb:cc:00:00:07"),
+    ("Switch A", "aa:bb:cc:00:00:99"),
+    ("Switch B", "aa:bb:cc:00:00:05"),
 ]
 
 
 def _find_cases() -> list[dict[str, Any]]:
     cases = []
     for device_name, device_mac in FIND_CASES:
-        found = services._find_unifi_device(
+        found, warning = services._find_unifi_device(
             DEVICES, device_name=device_name, device_mac=device_mac
         )
         cases.append(
@@ -490,6 +499,7 @@ def _find_cases() -> list[dict[str, Any]]:
                 "device_name": device_name,
                 "device_mac": device_mac,
                 "index": None if found is None else DEVICES.index(found),
+                "warning": warning,
             }
         )
     return cases
@@ -712,6 +722,24 @@ _DEVICES = {
     "meta": {"rc": "ok"},
     "data": [{"name": "other", "mac": "00:00:00:00:00:01"}, _DEVICE],
 }
+# Same display name, different identity and counters, listed first.
+_TWIN_DEVICES = {
+    "meta": {"rc": "ok"},
+    "data": [
+        _DEVICE,
+        {
+            **_DEVICE,
+            "mac": "70:49:A2:21:53:99",
+            "uplink": {
+                "name": "eth0",
+                "port_idx": 10,
+                "speed": 10000,
+                "rx_bytes-r": 7,
+                "tx_bytes-r": 8,
+            },
+        },
+    ],
+}
 _LOGIN_OK = _json_reply(200, {"meta": {"rc": "ok"}, "data": []})
 _LEGACY_DEVICES = "/api/s/default/stat/device"
 _OS_DEVICES = "/proxy/network/api/s/default/stat/device"
@@ -898,6 +926,16 @@ UNIFI_SCENARIOS: list[dict[str, Any]] = [
         "name": "device not found",
         "config": _unifi(device_name="missing"),
         "routes": _legacy_routes(),
+    },
+    {
+        "name": "duplicate device name without a MAC is refused",
+        "config": _unifi(),
+        "routes": _legacy_routes(devices=_json_reply(200, _TWIN_DEVICES)),
+    },
+    {
+        "name": "configured MAC selects the later same-name device",
+        "config": _unifi(device_mac="70:49:a2:21:53:99"),
+        "routes": _legacy_routes(devices=_json_reply(200, _TWIN_DEVICES)),
     },
     {
         "name": "device by MAC",

@@ -1055,7 +1055,8 @@ in the order the Python code checks them.
   `UniFi login failed; attempts: <mode> <endpoint> returned HTTP <code>[: <summary>]; …`
   with `_unifi_response_summary` (redact values ≥ 4 chars, regex-redact
   `"password": "…"`, whitespace collapse, 240 chars). Device list GET,
-  `_find_unifi_device` (name first, then MAC per item), interface selectors
+  `_find_unifi_device` (an exact configured MAC is authoritative, otherwise the name;
+  several matches are refused as ambiguous, round 85), interface selectors
   `uplink`, `port_idx:<n>`, `port_name:<name>` with their `ValueError`
   messages, Python truthiness for `port_idx or num_port` and Python `==` for
   `port_idx` comparisons, `str()` of `speed`; two points (`rx_bytes-r`,

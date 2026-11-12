@@ -199,7 +199,7 @@ pub async fn run_metric_specs<E: SpecExecutors, C: Clock>(
                 .checked_add(lease_seconds)
                 .ok_or(RunError::NextRunTimeOverflow)?;
             if !store
-                .claim_due_spec(spec.id, spec.next_run_time, run_ts, until)
+                .claim_due_spec(spec.clone(), spec.next_run_time, run_ts, until)
                 .await?
             {
                 continue;
