@@ -625,21 +625,33 @@ def version_list(request):
     from . import inventory_releases
 
     now = timezone.now()
-    sources = inventory_releases.registry()
     selected_host = request.GET.get("host", "")[:128]
     query = request.GET.get("q", "")[:100].strip()
     selected_status = request.GET.get("status", "")
-    hosts = (
-        InventoryHost.objects.select_related("host")
-        .filter(host__enabled=True)
-        .order_by("host__host_id")
-    )
+    # One read snapshot: release cache, host list and every pointer/report
+    # generation shown on the page come from the same committed state.
+    with _read_snapshot():
+        sources = inventory_releases.registry()
+        source_count = inventory_releases.InventoryRelease.objects.filter(
+            enabled=True
+        ).count()
+        hosts = list(
+            InventoryHost.objects.select_related("host")
+            .filter(host__enabled=True)
+            .order_by("host__host_id")
+        )
+        selected = [
+            host
+            for host in hosts
+            if not selected_host or host.host.host_id == selected_host
+        ]
+        states = _host_states(selected)
     rows = []
     coverage = []
-    for host in hosts:
-        if selected_host and host.host.host_id != selected_host:
-            continue
-        host_rows, notes = inventory_releases.rows_for_host(host, sources, now)
+    for host in selected:
+        host_rows, notes = inventory_releases.rows_for_host(
+            host, sources, now, states[host.pk][1]
+        )
         coverage.extend({"host": host.host.host_id, "message": note} for note in notes)
         for row in host_rows:
             row["host"] = host.host.host_id
@@ -680,8 +692,6 @@ def version_list(request):
             "selected_status": selected_status,
             "query": query,
             "params": params.urlencode(),
-            "source_count": inventory_releases.InventoryRelease.objects.filter(
-                enabled=True
-            ).count(),
+            "source_count": source_count,
         },
     )

@@ -97,17 +97,32 @@ def fetch(client, definition):
         if monotonic() >= deadline:
             raise ValueError("Release lookup elapsed budget exceeded")
 
-    with client.stream("GET", url(definition)) as response:
+    with client.stream(
+        "GET", url(definition), headers={"Accept-Encoding": "identity"}
+    ) as response:
         check_deadline()
         response.raise_for_status()
+        # Decompression would expand a chunk before any size check could run;
+        # refuse encoded or over-declared bodies before reading them.
+        encoding = response.headers.get("Content-Encoding", "").strip().lower()
+        if encoding not in ("", "identity"):
+            raise ValueError("Unsupported release response encoding")
+        declared = response.headers.get("Content-Length")
+        if declared is not None and (
+            not declared.strip().isdigit() or int(declared) > MAX_BODY
+        ):
+            raise ValueError("Release response too large")
         raw = bytearray()
         for chunk in response.iter_bytes():
             check_deadline()
-            raw.extend(chunk)
-            if len(raw) > MAX_BODY:
+            if len(chunk) > MAX_BODY - len(raw):
                 raise ValueError("Release response too large")
+            raw.extend(chunk)
     check_deadline()
-    data = json.loads(raw)
+    try:
+        data = json.loads(raw)
+    except RecursionError as exc:
+        raise ValueError("Release response nested too deeply") from exc
     if not isinstance(data, dict):
         raise ValueError("Invalid release response")
     kind = definition["kind"]
@@ -282,17 +297,20 @@ def compare(installed, release, observed_at, now, historical=False):
     return result
 
 
-def rows_for_host(host, sources, now):
-    """Keep individual package observations traceable to their exact snapshot."""
+def rows_for_host(host, sources, now, observations=None):
+    """Keep individual package observations traceable to their exact snapshot.
+
+    ``observations`` are the host's categories with pointers already resolved,
+    for example from one batched read snapshot; otherwise they are loaded here.
+    """
     from .inventory_applications import applications, source
     from .inventory_sbom import packages, Unavailable
 
-    categories = {
-        c.name: c
-        for c in host.inventorycategory_set.select_related(
+    if observations is None:
+        observations = host.inventorycategory_set.select_related(
             "latest_attempt", "latest_success"
         )
-    }
+    categories = {c.name: c for c in observations}
     snapshot, basis, apps = source(categories.get("applications"))
     rows = []
     notes = []
