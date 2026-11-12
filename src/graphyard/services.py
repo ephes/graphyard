@@ -2238,6 +2238,20 @@ class _CollectionLease:
         self._thread.join()
         _collection_ownership.lost = self._previous
 
+    def _renew(self, renewed: int) -> bool:
+        # Retry only transient SQLite lock contention, like heartbeat writes;
+        # any other failure counts as a lost claim.
+        for delay in (0.05, 0.1, None):
+            try:
+                return _renew_collection_claim(
+                    self.spec_id, self.until, renewed, self.definition
+                )
+            except OperationalError as err:
+                if delay is None or "locked" not in str(err):
+                    raise
+                time.sleep(delay)
+        raise AssertionError("unreachable")
+
     def _renew_until_stopped(self) -> None:
         period = max(1, self.lease_seconds // 3)
         try:
@@ -2246,9 +2260,7 @@ class _CollectionLease:
                     int(timezone.now().timestamp()) + self.lease_seconds,
                     self.until + 1,
                 )
-                if not _renew_collection_claim(
-                    self.spec_id, self.until, renewed, self.definition
-                ):
+                if not self._renew(renewed):
                     self.lost.set()
                     return
                 self.until = renewed

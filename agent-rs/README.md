@@ -262,7 +262,10 @@ collector without publishing a result or heartbeat; renewal storage errors fail
 the run. Process death or a dropped run stops renewal; recovery waits until the
 last persisted claim expires. A process suspended beyond its lease, or database contention delaying renewal
 past expiry, can still lose ownership, and cancellation cannot recall a remotely accepted write.
-The Python scheduler retains its earlier nonrenewing lease; do not run the two
+The Python scheduler follows the same lease and renewal contract (round 85) from a
+background thread; it cannot interrupt a running collector, so a lost renewal
+refuses its sink/registry publication and completion instead. The initial claim
+of both agents also compares the captured definition. Do not run the two
 schedulers together for the same specs.
 Explicit non-due/manual runs still execute every enabled spec regardless of due
 time, with completion fenced by the captured definition and original schedule.

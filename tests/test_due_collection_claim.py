@@ -278,6 +278,31 @@ def _schedule(pk):
     )
 
 
+@pytest.mark.django_db
+def test_transient_lock_during_renewal_is_retried(monkeypatch):
+    from django.db import OperationalError
+
+    attempts = []
+
+    def renew(*args):
+        attempts.append(args)
+        if len(attempts) == 1:
+            raise OperationalError("database table is locked")
+        return True
+
+    monkeypatch.setattr(services, "_renew_collection_claim", renew)
+    lease = services._CollectionLease(1, {}, 100, 3)
+    assert lease._renew(104)
+    assert len(attempts) == 2
+    monkeypatch.setattr(
+        services,
+        "_renew_collection_claim",
+        lambda *a: (_ for _ in ()).throw(OperationalError("disk I/O error")),
+    )
+    with pytest.raises(OperationalError):
+        lease._renew(104)
+
+
 @pytest.mark.django_db(transaction=True)
 def test_live_python_collector_renews_and_excludes_a_second_runner(monkeypatch):
     row = _short_spec()
@@ -293,6 +318,17 @@ def test_live_python_collector_renews_and_excludes_a_second_runner(monkeypatch):
         return StatusLevel.OK, 1, 0, ""
 
     monkeypatch.setattr(services, "_run_single_metric_collection_spec", collect)
+    # Serialize the test's own DB writes so shared-cache in-memory SQLite
+    # contention cannot obscure the lease result.
+    update_lock = Lock()
+    for name in ("_claim_due_collection_spec", "_renew_collection_claim"):
+        original = getattr(services, name)
+
+        def serialized(*args, _original=original):
+            with update_lock:
+                return _original(*args)
+
+        monkeypatch.setattr(services, name, serialized)
 
     def run():
         try:
