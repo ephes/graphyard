@@ -430,6 +430,12 @@ application/Python/Homebrew observations with explicit public release sources.
 It supports host, component/application and finding filters. Each row links the
 immutable source report and the release API, showing both observation times.
 The page never makes outbound requests and never modifies host reports.
+The release cache, host list and every category pointer and report shown come from
+one short database snapshot (the same read transaction as the fleet summaries), so
+a concurrent ingest or pruning cannot mix report generations or drop a host's
+evidence mid-render; rendering holds no transaction. Pointers and reports are
+batched with a constant number of queries regardless of fleet size, each referenced
+report is decoded once, and a host filter reads only that host's evidence.
 
 `refresh_inventory_releases --file /etc/graphyard/inventory-releases.json` refreshes
 a separate database cache. The registry is an array of `{kind, project, targets}`;
@@ -441,7 +447,11 @@ Overlapping refreshes publish results only when the cached attempt is not newer
 than their start time. A late older success or failure cannot overwrite a newer
 completed attempt. Network I/O stays outside database transactions.
 
-Each public response is bounded to 16 MiB after decompression. Each source has
+Release requests ask for `Accept-Encoding: identity`; a compressed reply, or one
+declaring a `Content-Length` above 16 MiB (or an invalid one), is refused before its
+body is read. Each body is bounded to 16 MiB, and a chunk that would cross the limit
+is refused before buffering. JSON nested too deeply to decode counts as that
+source's lookup failure; later sources are still checked. Each source has
 a 60-second monotonic elapsed budget, checked after headers and each streamed
 chunk (without accumulating fixed-size read buffers). The 20-second HTTP
 operation timeout bounds an in-progress operation; budget detection can lag

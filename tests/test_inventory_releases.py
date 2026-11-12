@@ -629,3 +629,127 @@ def test_delayed_policy_cannot_replace_newer_registry(monkeypatch, replacement):
     assert {row.source_id: row.definition for row in enabled} == releases.definitions(
         replacement
     )
+
+
+VALID_PYPI = b'{"info":{"name":"django","version":"6.1","yanked":false},"urls":[{"yanked":false}]}'
+
+
+class RecordingStream(httpx.SyncByteStream):
+    def __init__(self, *chunks):
+        self.chunks = chunks
+        self.read = []
+
+    def __iter__(self):
+        for chunk in self.chunks:
+            self.read.append(chunk)
+            yield chunk
+
+
+def fetch_with(response_factory):
+    seen = []
+
+    def handler(request):
+        seen.append(request)
+        return response_factory()
+
+    with httpx.Client(
+        transport=httpx.MockTransport(handler), follow_redirects=False
+    ) as client:
+        try:
+            return releases.fetch(client, definition()), seen
+        except ValueError as exc:
+            return exc, seen
+
+
+@pytest.mark.parametrize("encoding", ["gzip", "deflate", "br", "GZIP "])
+def test_compressed_release_response_is_refused_before_body_read(encoding):
+    import gzip
+
+    stream = RecordingStream(gzip.compress(b"\0" * (1024 * 1024)))
+    result, seen = fetch_with(
+        lambda: httpx.Response(
+            200, stream=stream, headers={"Content-Encoding": encoding}
+        )
+    )
+    assert isinstance(result, ValueError)
+    assert "encoding" in str(result)
+    assert stream.read == []
+    assert seen[0].headers["Accept-Encoding"] == "identity"
+
+
+@pytest.mark.parametrize("declared", ["9", "abc", "-1"])
+def test_over_declared_release_body_is_refused_before_body_read(monkeypatch, declared):
+    monkeypatch.setattr(releases, "MAX_BODY", 8)
+    stream = RecordingStream(b"{}")
+    result, _ = fetch_with(
+        lambda: httpx.Response(200, stream=stream, headers={"Content-Length": declared})
+    )
+    assert isinstance(result, ValueError)
+    assert stream.read == []
+
+
+def test_release_chunk_beyond_budget_is_refused_before_buffering(monkeypatch):
+    monkeypatch.setattr(releases, "MAX_BODY", len(VALID_PYPI) - 1)
+    grown = []
+    original = bytearray.extend
+
+    class Spy(bytearray):
+        def extend(self, data):
+            original(self, data)
+            grown.append(len(self))
+
+    monkeypatch.setattr(releases, "bytearray", Spy, raising=False)
+    stream = RecordingStream(VALID_PYPI[:10], VALID_PYPI[10:])
+    result, _ = fetch_with(lambda: httpx.Response(200, stream=stream))
+    assert isinstance(result, ValueError) and "too large" in str(result)
+    assert grown == [10]
+    # The exact budget is still accepted.
+    monkeypatch.setattr(releases, "MAX_BODY", len(VALID_PYPI))
+    stream = RecordingStream(VALID_PYPI)
+    assert fetch_with(lambda: httpx.Response(200, stream=stream))[0] == "6.1"
+
+
+def test_identity_release_response_is_accepted():
+    stream = RecordingStream(VALID_PYPI)
+    result, _ = fetch_with(
+        lambda: httpx.Response(
+            200,
+            stream=stream,
+            headers={
+                "Content-Encoding": "identity",
+                "Content-Length": str(len(VALID_PYPI)),
+            },
+        )
+    )
+    assert result == "6.1"
+
+
+def test_malformed_release_source_is_isolated_from_other_sources(monkeypatch):
+    row = cache()
+    checked = row.checked_at
+    nested = b"[" * 200_000 + b"]" * 200_000
+
+    def handler(request):
+        if "/django/" in str(request.url):
+            return httpx.Response(200, content=nested)
+        return httpx.Response(
+            200,
+            json={
+                "info": {"name": "flask", "version": "3.1", "yanked": False},
+                "urls": [{"yanked": False}],
+            },
+        )
+
+    factory = httpx.Client
+    monkeypatch.setattr(
+        releases.httpx,
+        "Client",
+        lambda **kw: factory(transport=httpx.MockTransport(handler), **kw),
+    )
+    assert (
+        releases.refresh([definition(), definition(project="flask")], force=True) == 1
+    )
+    row.refresh_from_db()
+    assert row.version == "6.0" and row.checked_at == checked
+    assert row.error == "Release lookup failed"
+    assert InventoryRelease.objects.get(pk="pypi:flask").version == "3.1"

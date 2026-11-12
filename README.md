@@ -13,7 +13,7 @@ one immutable report, with SQLite contention returned as retryable HTTP 503.
 Host latest and category pointers order reports by observation time, receive time,
 then row ID; failed categories keep their last successful evidence. Fleet summaries
 batch host/category pointers and reports, decoding each referenced report once.
-Summary and per-host evidence is materialized in one short database snapshot, so
+Summary, per-host and version-page evidence is materialized in one short database snapshot, so
 concurrent ingestion/pruning cannot mix generations; rendering holds no transaction.
 SQLite's configured `BEGIN IMMEDIATE` briefly reserves the database writer during
 these reads; competing ingests may need their existing retry on HTTP 503.

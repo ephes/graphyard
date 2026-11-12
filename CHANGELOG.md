@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Render the inventory version page from one read snapshot with batched host
+  pointers and reports (constant queries, each report decoded once); a host
+  filter reads only that host's evidence.
+- Refuse compressed or over-declared public release responses before reading
+  their bodies, never buffer past the 16 MiB limit, and record over-nested JSON
+  as a failure of that source only, continuing with the remaining sources.
+
 - Reject duplicate inventory JSON members at every depth before storage, while
   preserving repeated array entries and existing report budgets.
 - Mark all inventory reader responses private and no-store, including raw reports,
