@@ -1327,7 +1327,10 @@ check`) and a `parity` job (section 9.4). First release `agent-rs-v0.1.0`
 `42d6dbb5b931599c1b35ab7f19a29823bf9583d65b45e2259a69b5dbc64b80e2`; recorded in
 `agent-rs/README.md`, "Published releases"). Second release `agent-rs-v0.2.0`
 (S15a, `evaluate-conditions`, published 2026-10-21 from `17a929f`; archive
-sha256 `d8efcb78fd09f5047d5e747696bc7966c94e70de8a44bbe1d5d34111a7a058d4`).
+sha256 `d8efcb78fd09f5047d5e747696bc7966c94e70de8a44bbe1d5d34111a7a058d4`). Third release
+`agent-rs-v0.3.0` (the fixes of scout rounds 79 to 85 and rusqlite 0.41,
+published 2026-11-12 from `eba6ea1`; archive sha256
+`55f947fd84edfacf04dd0f28fe00db3018fd4cc08b69bf96c1a28ebbb61643f3`).
 
 ### 8.3 Deploy mechanism today and the changes
 

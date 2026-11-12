@@ -12,7 +12,9 @@ on macmini since the cutover of 2026-10-23 11:31:46 UTC (slice S14,
 release `agent-rs-v0.2.0`; PLAN.md 11.3 "As run"). The 7-day soak runs from
 11:41:37 UTC after the rollback drill. The shadow run (S13, 2026-10-22/23)
 missed two lean goals narrowly and showed explained deviations, which the
-owner accepted (PLAN.md 11.2). The deployment selects the Rust binary
+owner accepted (PLAN.md 11.2). Release `agent-rs-v0.3.0` (the fixes of scout
+rounds 79 to 85) replaced 0.2.0 on macmini on 2026-11-12 at 15:18:42 UTC;
+0.2.0 stays installed as the rollback target. The deployment selects the Rust binary
 through a systemd drop-in that the ops repositories add; the Python agent
 stays installed as the rollback target until its retirement (S15b).
 
@@ -127,8 +129,9 @@ switches to this command with the Python retirement (slice S15b); until then
 
 Release archives come from `agent-rs-v<version>` tags
 (`.github/workflows/agent-rs-release.yml`, see `agent-rs/README.md`); the
-first is `agent-rs-v0.1.0`, the current one `agent-rs-v0.2.0` (with
-`evaluate-conditions`); their sha256 values are listed in `agent-rs/README.md`
+first is `agent-rs-v0.1.0`, the current one `agent-rs-v0.3.0` (the fixes
+of scout rounds 79 to 85; `agent-rs-v0.2.0` added `evaluate-conditions`);
+their sha256 values are listed in `agent-rs/README.md`
 ("Published releases").
 The ops-library role `graphyard_deploy` and the ops-deploy pyinfra service
 install a pinned release under `/opt/graphyard-agent/<version>/` and select

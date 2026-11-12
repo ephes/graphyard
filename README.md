@@ -838,15 +838,17 @@ with the same flags plus `--db`, `--check-schema`, `--version` and the shadow
 mode `--influx-write-file`; its subcommand `graphyard-agent
 evaluate-conditions [--condition-id N]` is the port of `evaluate_conditions`
 above (same summary lines and exit codes, settings from the process
-environment only). Release 0.2.0 has been the production agent on macmini
-since 2026-10-23 (cutover after a 24 h shadow run); the Python command above
+environment only). The Rust agent has been the production agent on macmini
+since 2026-10-23 (release 0.2.0, cutover after a 24 h shadow run); release
+0.3.0 replaced 0.2.0 there on 2026-11-12. The Python command above
 stays installed as the rollback target until its retirement 30 days later. Release archives of the Rust binary are
 built by `.github/workflows/agent-rs-release.yml` from `agent-rs-v<version>`
 tags; the first is
 [`agent-rs-v0.1.0`](https://github.com/ephes/graphyard/releases/tag/agent-rs-v0.1.0),
 the current one
-[`agent-rs-v0.2.0`](https://github.com/ephes/graphyard/releases/tag/agent-rs-v0.2.0)
-(adds `evaluate-conditions`).
+[`agent-rs-v0.3.0`](https://github.com/ephes/graphyard/releases/tag/agent-rs-v0.3.0)
+(the agent fixes of scout rounds 79 to 85; `agent-rs-v0.2.0` added
+`evaluate-conditions`).
 
 ## Nyxmon Integration Contract
 

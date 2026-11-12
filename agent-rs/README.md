@@ -451,13 +451,17 @@ that is not 7 to 40 lowercase hex digits fails the build.
 Deploys pin the version and the archive's sha256 (ops-control host vars,
 slice S11c). macmini has had `agent-rs-v0.2.0` installed since slice S12
 (2026-10-22). It ran there as the S13 shadow from 2026-10-22 to
-2026-10-23 (PLAN.md 11.2) and has been the selected agent since the S14
-cutover of 2026-10-23 (PLAN.md 11.3).
+2026-10-23 (PLAN.md 11.2) and was the selected agent from the S14
+cutover of 2026-10-23 (PLAN.md 11.3) until 2026-11-12, when the
+`graphyard_core` deploy of ops-control `10de3426` installed and selected
+`agent-rs-v0.3.0` (T1 15:18:42 UTC); 0.2.0 stays installed as the rollback
+target.
 
 | Tag | Commit | Archive sha256 |
 | --- | --- | --- |
 | [`agent-rs-v0.1.0`](https://github.com/ephes/graphyard/releases/tag/agent-rs-v0.1.0) | `19f56e666173d9cb51639269e1219fcb7edd3e12` | `42d6dbb5b931599c1b35ab7f19a29823bf9583d65b45e2259a69b5dbc64b80e2` |
 | [`agent-rs-v0.2.0`](https://github.com/ephes/graphyard/releases/tag/agent-rs-v0.2.0) | `17a929f240ddf3f63fc7a2ae404dd3c041e93838` | `d8efcb78fd09f5047d5e747696bc7966c94e70de8a44bbe1d5d34111a7a058d4` |
+| [`agent-rs-v0.3.0`](https://github.com/ephes/graphyard/releases/tag/agent-rs-v0.3.0) | `eba6ea16af73c322232b28b1035876557e7d9871` | `55f947fd84edfacf04dd0f28fe00db3018fd4cc08b69bf96c1a28ebbb61643f3` |
 
 `agent-rs-v0.1.0` (slice S10b) was checked after publishing: the downloaded
 archive matches its `.sha256` file and is byte-identical to the archive of a
@@ -473,6 +477,13 @@ it holds `graphyard-agent` (0755, 8958360 bytes) and `LICENSE` (0644), owned
 by root; `release_checks.py glibc-floor --max 2.35` passes on the extracted
 binary (newest symbol version `GLIBC_2.34`, libraries OK); the workflow's
 smoke test printed `graphyard-agent 0.2.0 (17a929f240ddf3f63fc7a2ae404dd3c041e93838)`.
+
+`agent-rs-v0.3.0` (the fixes of scout rounds 79 to 85, rusqlite 0.41) was
+checked after publishing on 2026-11-12: the downloaded archive matches its
+`.sha256` file; it holds `graphyard-agent` (0755, 9007608 bytes) and `LICENSE`
+(0644), owned by root; `release_checks.py glibc-floor --max 2.35` passes on
+the extracted binary (newest symbol version `GLIBC_2.34`, libraries OK); the
+workflow's smoke test passed for `graphyard-agent 0.3.0 (eba6ea16af73c322232b28b1035876557e7d9871)`.
 
 ### Influx response budgets
 

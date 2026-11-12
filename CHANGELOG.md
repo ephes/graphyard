@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+- Rust agent (`agent-rs/`): release `agent-rs-v0.3.0`
+  (<https://github.com/ephes/graphyard/releases/tag/agent-rs-v0.3.0>), built by
+  the release workflow from `eba6ea1`. Asset
+  `graphyard-agent-0.3.0-x86_64-unknown-linux-gnu.tar.gz`, sha256
+  `55f947fd84edfacf04dd0f28fe00db3018fd4cc08b69bf96c1a28ebbb61643f3`; the binary
+  needs at most `GLIBC_2.34`. ops-control `10de3426` pins it, and the
+  `graphyard_core` deploy of 2026-11-12 installed and selected it on macmini
+  (T1 15:18:42 UTC, `/proc/<pid>/exe` `/opt/graphyard-agent/0.3.0/graphyard-agent`,
+  `--check-schema` exit 0 for 0.3.0 and the rollback target 0.2.0). One hour
+  later: no restart, every spec run on time, no new InfluxDB series key
+  (75 in 24 h), `/v1/health` ok, cgroup anon 5.1 MB, CPU about 1.2 min per
+  day. No shadow run or cutover drill: those qualified the switch from the
+  Python to the Rust agent, not a version update of the selected one.
+
 - Rust agent (`agent-rs/`): version 0.3.0, released as `agent-rs-v0.3.0`.
   It carries the Rust fixes merged since `agent-rs-v0.2.0` (scout rounds 79
   to 85), among them collection claims bound to the loaded definition, lease
