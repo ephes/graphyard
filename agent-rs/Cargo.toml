@@ -9,7 +9,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.2.0"
+version = "0.3.0"
 edition = "2024"
 rust-version = "1.99"
 license = "MIT"
@@ -39,7 +39,7 @@ num-bigint = "0.4"
 num-traits = "0.2"
 percent-encoding = "2"
 regex = { version = "1", default-features = false, features = ["std", "perf", "unicode"] }
-rusqlite = { version = "0.40", features = ["bundled", "limits"] }
+rusqlite = { version = "0.41", features = ["bundled", "limits"] }
 # HTTP client (PLAN.md 4.3): rustls with ring and the system trust store
 # (rustls-platform-verifier, D-12), no OpenSSL, no aws-lc; HTTP/1.1 only;
 # gzip/deflate response decoding for the queries.

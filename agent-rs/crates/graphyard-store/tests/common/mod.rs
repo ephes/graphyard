@@ -128,11 +128,7 @@ impl TestDb {
         let mut statement = connection
             .prepare(&format!("SELECT * FROM \"{table}\" ORDER BY id"))
             .unwrap();
-        let columns: Vec<String> = statement
-            .column_names()
-            .into_iter()
-            .map(str::to_owned)
-            .collect();
+        let columns: Vec<String> = statement.column_names().map(str::to_owned).collect();
         statement
             .query_map([], |row| {
                 Ok(columns

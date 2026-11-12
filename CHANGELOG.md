@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+- Rust agent (`agent-rs/`): version 0.3.0, released as `agent-rs-v0.3.0`.
+  It carries the Rust fixes merged since `agent-rs-v0.2.0` (scout rounds 79
+  to 85), among them collection claims bound to the loaded definition, lease
+  renewal and publication fences, heartbeat ordering, registry batches
+  chunked at SQLite's variable limit, unambiguous UniFi device selection,
+  bounded HTTP and Influx transfers, and one-shot runs that exit 1 on a
+  failed loop. `--check-schema` now needs graphyard migration
+  `0015_alter_conditiondefinition_breach_minutes_and_more`. The release also
+  moves `rusqlite` from 0.40 to 0.41 (bundled `libsqlite3-sys` 0.39.1,
+  SQLite 3.54.1) for RUSTSEC-2026-0459, which fails `cargo deny`; only test
+  code needed changes for the new API. macmini keeps running 0.2.0 until
+  ops-control pins the new release.
+
 - Render the inventory version page from one read snapshot with batched host
   pointers and reports (constant queries, each report decoded once); a host
   filter reads only that host's evidence.

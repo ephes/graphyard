@@ -26,9 +26,11 @@ fn record(event: TraceEvent<'_>) {
 }
 
 /// Start recording the statements `connection` runs on this thread.
-fn trace(connection: &Connection) {
+fn trace(connection: &mut Connection) {
     TRACE.with(|trace| trace.borrow_mut().clear());
-    connection.trace_v2(TraceEventCodes::SQLITE_TRACE_STMT, Some(record));
+    connection
+        .trace_v2(TraceEventCodes::SQLITE_TRACE_STMT, Some(record))
+        .unwrap();
 }
 
 /// The recorded registry statements as the fixture describes them: the
@@ -118,7 +120,7 @@ fn every_registry_case_sends_the_django_statements() {
         let db = TestDb::new();
         db.seed_registry(case);
         let mut connection = open(&db);
-        trace(&connection);
+        trace(&mut connection);
         let result = run(&db, &mut connection, case);
         let statements = recorded_statements();
         assert_eq!(
@@ -382,10 +384,12 @@ async fn cancelled_registry_caller_settles_the_real_transaction() {
             .call(move |connection| {
                 TRACE.with(|trace| trace.borrow_mut().clear());
                 TRANSACTION_GATE.with(|slot| *slot.borrow_mut() = Some((entered, gate)));
-                connection.trace_v2(
-                    TraceEventCodes::SQLITE_TRACE_STMT,
-                    Some(gate_service_insert),
-                );
+                connection
+                    .trace_v2(
+                        TraceEventCodes::SQLITE_TRACE_STMT,
+                        Some(gate_service_insert),
+                    )
+                    .unwrap();
                 Ok(())
             })
             .await

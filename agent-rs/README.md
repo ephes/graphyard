@@ -9,7 +9,8 @@ deploys ship `agent-rs/` only as a release archive.
 
 Status: slices S1 (scaffold), S2, S3a, S3b, S4a, S5, S6, S7a, S7b, S8, S9a, S9b, S10a, S10b (first release `agent-rs-v0.1.0`, see
 [Published releases](#published-releases)) and S15a (the `evaluate-conditions`
-subcommand, release `agent-rs-v0.2.0`). S1: the workspace, the toolchain pin,
+subcommand, release `agent-rs-v0.2.0`); release `agent-rs-v0.3.0` carries the
+fixes of scout rounds 79 to 85. S1: the workspace, the toolchain pin,
 the cargo-deny policy, the CI `rust` job, the `just rs-*` recipes, the shared
 model types (`graphyard_core::model`) and the fixture pipeline with its drift
 test. S2: the CPython compatibility helpers (`graphyard_core::pycompat`), the
