@@ -469,7 +469,9 @@ InfluxDB configuration errors surface lazily, per write or query, as in
 7. stdout `Metric specs: total=<t> failed=<f> warning=<w> ingested=<i> skipped=<s>`.
 
 Due-only runs now atomically claim each observed scheduling timestamp before
-execution (`WHERE enabled AND next_run_time = observed AND next_run_time <= now`).
+execution (`WHERE enabled AND next_run_time = observed AND next_run_time <= now`
+plus the captured name, type, interval and config since round 85, so an edit
+between load and claim reaches no external I/O and leaves the spec due).
 Use the per-spec claim start time and advance the Rust claim by
 `min(max(3, interval_seconds), 300)` seconds. Renew it every one third of that
 lease while the collector/sink/registry future is live. Each renewal compares the
@@ -480,8 +482,10 @@ run. Neither publishes a healthy outcome. No database lock spans collection.
 A crash or dropped run stops renewal and becomes eligible at its last persisted
 expiry; normal success/failure schedules the regular interval from claim start.
 A process suspension or database contention delaying renewal past expiry can lose
-ownership; cancellation cannot recall accepted external writes. Python retains
-the nonrenewing 1–300 second lease; never run both schedulers on the same specs.
+ownership; cancellation cannot recall accepted external writes. Since round 85
+Python uses the same lease and renewal from a background thread and refuses
+publication/completion after a lost renewal; never run both schedulers on the
+same specs.
 Non-due manual runs retain unconditional execution and the shared run-start
 timestamp, with completion fenced by the originally observed schedule and
 captured definition. Superseded completions are not counted, and a run with no
@@ -1055,7 +1059,8 @@ in the order the Python code checks them.
   `UniFi login failed; attempts: <mode> <endpoint> returned HTTP <code>[: <summary>]; …`
   with `_unifi_response_summary` (redact values ≥ 4 chars, regex-redact
   `"password": "…"`, whitespace collapse, 240 chars). Device list GET,
-  `_find_unifi_device` (name first, then MAC per item), interface selectors
+  `_find_unifi_device` (an exact configured MAC is authoritative, otherwise the name;
+  several matches are refused as ambiguous, round 85), interface selectors
   `uplink`, `port_idx:<n>`, `port_name:<name>` with their `ValueError`
   messages, Python truthiness for `port_idx or num_port` and Python `==` for
   `port_idx` comparisons, `str()` of `speed`; two points (`rx_bytes-r`,

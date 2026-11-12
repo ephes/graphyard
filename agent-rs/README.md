@@ -123,6 +123,21 @@ subject, which reads the registry rows once per call and writes only missing,
 changed or stale (60 s) rows in one transaction, pinned by the
 `registry_cases` of `store_ops.json` including Django's statement sequence.
 
+Registry lookups and last-seen updates split large batches at the connection's
+SQLite variable limit. Subject type/ID pairs and encounter order stay distinct;
+all creation/update chunks share one transaction and roll back together. Once
+queued on the store actor, an operation completes even if its awaiting caller is
+canceled. The real registry cancellation test gates a transaction after subject
+and host creation, checks isolation through another connection, and verifies
+complete commit or complete rollback after an injected service failure.
+
+Rust heartbeat projection compares observation timestamps while holding the
+writer reservation. Older observations cannot replace current status, error,
+details or `updated_at`; equal times retain the first committed projection.
+Successful observations, including delayed/equal-time ones, retain the maximum
+`last_success` without changing a newer projection. Fresh transitions still
+publish normally. Independent store handles exercise reordered commits.
+
 The slice table is PLAN.md section 12; the test coverage per slice is
 [`TESTMAP.md`](TESTMAP.md).
 
@@ -247,7 +262,10 @@ collector without publishing a result or heartbeat; renewal storage errors fail
 the run. Process death or a dropped run stops renewal; recovery waits until the
 last persisted claim expires. A process suspended beyond its lease, or database contention delaying renewal
 past expiry, can still lose ownership, and cancellation cannot recall a remotely accepted write.
-The Python scheduler retains its earlier nonrenewing lease; do not run the two
+The Python scheduler follows the same lease and renewal contract (round 85) from a
+background thread; it cannot interrupt a running collector, so a lost renewal
+refuses its sink/registry publication and completion instead. The initial claim
+of both agents also compares the captured definition. Do not run the two
 schedulers together for the same specs.
 Explicit non-due/manual runs still execute every enabled spec regardless of due
 time, with completion fenced by the captured definition and original schedule.

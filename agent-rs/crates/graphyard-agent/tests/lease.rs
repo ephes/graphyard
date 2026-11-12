@@ -133,7 +133,12 @@ async fn renewal_and_completion_cannot_extend_or_publish_a_replacement_claim() {
     short_spec(&db);
     let store = Store::open(db.path(), &settings(&[])).unwrap();
     let spec = store.load_specs(None).await.unwrap().remove(0);
-    assert!(store.claim_due_spec(spec.id, 0, 100, 103).await.unwrap());
+    assert!(
+        store
+            .claim_due_spec(spec.clone(), 0, 100, 103)
+            .await
+            .unwrap()
+    );
     assert!(
         store
             .renew_spec_claim(spec.clone(), 103, 104)
@@ -142,7 +147,12 @@ async fn renewal_and_completion_cannot_extend_or_publish_a_replacement_claim() {
     );
     // A different store/process owns the replacement once the old claim expires.
     let other = Store::open(db.path(), &settings(&[])).unwrap();
-    assert!(other.claim_due_spec(spec.id, 104, 104, 107).await.unwrap());
+    assert!(
+        other
+            .claim_due_spec(spec.clone(), 104, 104, 107)
+            .await
+            .unwrap()
+    );
     assert!(
         !store
             .renew_spec_claim(spec.clone(), 104, 108)
@@ -170,4 +180,79 @@ async fn renewal_and_completion_cannot_extend_or_publish_a_replacement_claim() {
     assert!(!other.renew_spec_claim(spec, 107, 110).await.unwrap());
     store.close();
     other.close();
+}
+
+/// Records the config each execution received.
+struct Recording(std::sync::Mutex<Vec<Value>>);
+impl SpecExecutors for Recording {
+    async fn execute(
+        &self,
+        _: SpecType,
+        _: &str,
+        config: &Value,
+        _: &mut RunState,
+    ) -> ExecutorResult {
+        self.0.lock().unwrap().push(config.clone());
+        Ok(SpecOutcome::new(StatusLevel::Ok, 0, 0, ""))
+    }
+}
+
+/// Replaces the config (keeping the schedule) on the per-spec clock read,
+/// i.e. after the load and before the claim.
+struct EditBeforeClaim<'a> {
+    db: &'a TestDb,
+    calls: AtomicUsize,
+}
+impl Clock for EditBeforeClaim<'_> {
+    fn now(&self) -> DateTime<Utc> {
+        if self.calls.fetch_add(1, Ordering::SeqCst) == 1 {
+            self.db.execute(
+                "UPDATE metric_collection_spec SET \
+                 config='{\"url\": \"http://127.0.0.1:9/new\", \"bearer_token\": \"new-token\"}'",
+            );
+        }
+        DateTime::from_timestamp(100, 0).unwrap()
+    }
+}
+
+#[tokio::test]
+async fn claim_refuses_a_definition_edited_after_load() {
+    let db = TestDb::new();
+    insert_spec(
+        &db,
+        "synthetic",
+        "http_json_metric",
+        &json!({"url": "http://127.0.0.1:9/old", "bearer_token": "old-token"}),
+    );
+    let store = Store::open(db.path(), &settings(&[])).unwrap();
+    let collector = Recording(std::sync::Mutex::new(Vec::new()));
+    let clock = EditBeforeClaim {
+        db: &db,
+        calls: AtomicUsize::new(0),
+    };
+    let stale = run_metric_specs(&store, &collector, &clock, true)
+        .await
+        .unwrap();
+    assert_eq!(stale.total, 0);
+    assert!(
+        collector.0.lock().unwrap().is_empty(),
+        "the old URL/bearer must not reach the collector"
+    );
+    // The slot was not claimed: the edited spec is still due and runs with
+    // its current definition.
+    assert_eq!(schedule(&db), 0);
+    let fresh = run_metric_specs(
+        &store,
+        &collector,
+        &Fixed(DateTime::from_timestamp(100, 0).unwrap()),
+        true,
+    )
+    .await
+    .unwrap();
+    assert_eq!(fresh.total, 1);
+    assert_eq!(
+        *collector.0.lock().unwrap(),
+        vec![json!({"url": "http://127.0.0.1:9/new", "bearer_token": "new-token"})]
+    );
+    store.close();
 }

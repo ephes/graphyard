@@ -347,11 +347,18 @@ def _run_case(raw: sqlite3.Connection, case: dict[str, Any]) -> dict[str, Any]:
             elif kind == "update_spec":
                 _update_spec(op)
             elif kind == "claim_spec":
+                captured = op["definition"]
                 services._claim_due_collection_spec(
                     op["id"],
                     op["expected_due"],
                     op["now_ts"],
                     op["claim_until"],
+                    {
+                        "name": captured["name"],
+                        "spec_type": captured["spec_type"],
+                        "interval_seconds": captured["interval_seconds"],
+                        "config_text": captured["config"],
+                    },
                 )
             elif kind == "finish_claimed_spec":
                 spec = MetricCollectionSpec.objects.annotate(
@@ -577,7 +584,27 @@ def _claim_cases() -> list[dict[str, Any]]:
             400,
             400,
         ),
+        (
+            "reject claim for an edited config",
+            spec_row(
+                1,
+                "synthetic",
+                next_run_time=100,
+                config='{"url": "http://127.0.0.1:10/metrics", "metric_path": "$.value"}',
+            ),
+            100,
+            100,
+        ),
+        (
+            "reject claim for an edited name",
+            spec_row(1, "renamed", next_run_time=100),
+            100,
+            100,
+        ),
     ]:
+        # The definition the runner loaded and will execute; edits since then
+        # leave the slot due for a run with the current definition.
+        captured = spec_row(1, "synthetic")
         cases.append(
             {
                 "name": name,
@@ -590,6 +617,10 @@ def _claim_cases() -> list[dict[str, Any]]:
                     "expected_due": expected_due,
                     "now_ts": at,
                     "claim_until": at + 300,
+                    "definition": {
+                        field: captured[field]
+                        for field in ("name", "spec_type", "interval_seconds", "config")
+                    },
                 },
             }
         )

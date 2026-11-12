@@ -829,6 +829,43 @@ def _resolve_json_path(payload: object, path: str) -> object | None:
     return current
 
 
+class _CollectionOwnershipLost(BaseException):
+    """The due claim was lost; the collector must not publish.
+
+    A ``BaseException`` so executor-level ``except Exception`` isolation cannot
+    turn it into an ordinary collector failure.
+    """
+
+
+# Per-thread live due claim: ``lost`` is set by the renewal thread.
+_collection_ownership = threading.local()
+
+# Due claims last ``clamp(interval, MIN, MAX)`` seconds and are renewed every
+# third of that while the collector runs (the Rust agent's contract).
+COLLECTION_LEASE_MIN_SECONDS = 3
+COLLECTION_LEASE_MAX_SECONDS = 300
+
+
+def _collection_lease_seconds(interval: int) -> int:
+    return min(
+        max(interval, COLLECTION_LEASE_MIN_SECONDS), COLLECTION_LEASE_MAX_SECONDS
+    )
+
+
+def _ensure_collection_ownership() -> None:
+    lost = getattr(_collection_ownership, "lost", None)
+    if lost is not None and lost.is_set():
+        raise _CollectionOwnershipLost
+
+
+def _publish_collected_points(points: list[influx.MetricPoint]) -> int:
+    """Write collected points and touch the registry while still the owner."""
+    _ensure_collection_ownership()
+    written = influx.write_points(points)
+    touch_registry_from_points(points)
+    return written
+
+
 def _execute_home_assistant_sensor_spec(
     spec: MetricCollectionSpec,
 ) -> tuple[str, int, int, str]:
@@ -891,8 +928,7 @@ def _execute_home_assistant_sensor_spec(
                 "state payload not numeric or mapping failed",
             )
 
-        written = influx.write_points([point])
-        touch_registry_from_points([point])
+        written = _publish_collected_points([point])
         return StatusLevel.OK, written, 0, ""
     except Exception as err:  # noqa: BLE001
         return StatusLevel.CRITICAL, 0, 0, collector_failure(err)
@@ -1000,8 +1036,7 @@ def _execute_home_assistant_env_scan_spec(
         if not points:
             return StatusLevel.WARNING, 0, skipped, "no matching numeric states"
 
-        written = influx.write_points(points)
-        touch_registry_from_points(points)
+        written = _publish_collected_points(points)
         return StatusLevel.OK, written, skipped, ""
     except Exception as err:  # noqa: BLE001
         return StatusLevel.CRITICAL, 0, 0, collector_failure(err)
@@ -1113,8 +1148,7 @@ def _execute_http_json_metric_spec(
             service=service_id_raw or None,
             tags=tags,
         )
-        written = influx.write_points([point])
-        touch_registry_from_points([point])
+        written = _publish_collected_points([point])
         return StatusLevel.OK, written, 0, ""
     except Exception as err:  # noqa: BLE001
         return StatusLevel.CRITICAL, 0, 0, collector_failure(err)
@@ -1519,8 +1553,7 @@ def _execute_http_page_probe_spec(
                 value=float(redirect_count),
             ),
         ]
-        written = influx.write_points(points)
-        touch_registry_from_points(points)
+        written = _publish_collected_points(points)
         if success_value == 1.0:
             return StatusLevel.OK, written, 0, ""
         return StatusLevel.WARNING, written, 0, f"unexpected status code: {status_code}"
@@ -1542,11 +1575,16 @@ def _execute_http_page_probe_spec(
                 value=0.0,
             ),
         ]
-        written = influx.write_points(points)
-        touch_registry_from_points(points)
+        written = _publish_collected_points(points)
         return StatusLevel.WARNING, written, 0, collector_failure(err)
     except Exception as err:  # noqa: BLE001
         return StatusLevel.CRITICAL, 0, 0, collector_failure(err)
+
+
+UNIFI_DEVICE_NOT_FOUND = "configured UniFi device not found"
+UNIFI_DEVICE_AMBIGUOUS = (
+    "configured UniFi device is ambiguous; set a unique config.device_mac"
+)
 
 
 def _find_unifi_device(
@@ -1554,22 +1592,36 @@ def _find_unifi_device(
     *,
     device_name: str,
     device_mac: str,
-) -> dict[str, object] | None:
+) -> tuple[dict[str, object] | None, str]:
+    """Select exactly one device, or return ``(None, warning)``.
+
+    A configured MAC is authoritative: only exact (stripped, lower-cased) MAC
+    matches are eligible and the name is not consulted. Without a MAC the
+    stripped name must match exactly one device. Several matches are refused
+    instead of picking whichever the controller listed first.
+    """
     normalized_mac = device_mac.strip().lower()
     normalized_name = device_name.strip()
-
-    for item in devices:
-        if not isinstance(item, dict):
-            continue
-        if normalized_name and str(item.get("name", "")).strip() == normalized_name:
-            return item
-        if (
-            normalized_mac
-            and str(item.get("mac", "")).strip().lower() == normalized_mac
-        ):
-            return item
-
-    return None
+    items = [item for item in devices if isinstance(item, dict)]
+    if normalized_mac:
+        matches = [
+            item
+            for item in items
+            if str(item.get("mac", "")).strip().lower() == normalized_mac
+        ]
+    elif normalized_name:
+        matches = [
+            item
+            for item in items
+            if str(item.get("name", "")).strip() == normalized_name
+        ]
+    else:
+        matches = []
+    if len(matches) == 1:
+        return matches[0], ""
+    if matches:
+        return None, UNIFI_DEVICE_AMBIGUOUS
+    return None, UNIFI_DEVICE_NOT_FOUND
 
 
 def _resolve_unifi_interface_stats(
@@ -1980,13 +2032,13 @@ def _execute_unifi_device_traffic_spec(
         if not isinstance(devices, list):
             return StatusLevel.CRITICAL, 0, 0, "device response missing data list"
 
-        device = _find_unifi_device(
+        device, device_warning = _find_unifi_device(
             devices,
             device_name=device_name,
             device_mac=device_mac,
         )
         if device is None:
-            return StatusLevel.WARNING, 0, 1, "configured UniFi device not found"
+            return StatusLevel.WARNING, 0, 1, device_warning
 
         interface_stats, interface_tags = _resolve_unifi_interface_stats(
             device,
@@ -2047,8 +2099,7 @@ def _execute_unifi_device_traffic_spec(
         if not points:
             return StatusLevel.WARNING, 0, skipped, "no numeric traffic values found"
 
-        written = influx.write_points(points)
-        touch_registry_from_points(points)
+        written = _publish_collected_points(points)
         return StatusLevel.OK, written, skipped, ""
     except Exception as err:  # noqa: BLE001
         return StatusLevel.CRITICAL, 0, 0, collector_failure(err)
@@ -2089,22 +2140,6 @@ _SPEC_EXECUTORS: dict[
 }
 
 
-def _claim_due_collection_spec(
-    spec_id: int,
-    expected_due: int,
-    now_ts: int,
-    claim_until: int,
-) -> bool:
-    return bool(
-        MetricCollectionSpec.objects.filter(
-            pk=spec_id,
-            enabled=True,
-            next_run_time=expected_due,
-            next_run_time__lte=now_ts,
-        ).update(next_run_time=claim_until)
-    )
-
-
 _COLLECTION_DEFINITION_FIELDS = (
     "name",
     "spec_type",
@@ -2113,16 +2148,131 @@ _COLLECTION_DEFINITION_FIELDS = (
 )
 
 
+def _definition_queryset():
+    return MetricCollectionSpec.objects.alias(config_text=Cast("config", TextField()))
+
+
+def _claim_due_collection_spec(
+    spec_id: int,
+    expected_due: int,
+    now_ts: int,
+    claim_until: int,
+    definition: dict,
+) -> bool:
+    """Claim the due slot only for the definition the caller will execute.
+
+    An edit between load and claim leaves the row due, so the next run
+    collects with the current URL, credentials and config instead.
+    """
+    return bool(
+        _definition_queryset()
+        .filter(
+            pk=spec_id,
+            enabled=True,
+            next_run_time=expected_due,
+            next_run_time__lte=now_ts,
+        )
+        .filter(**definition)
+        .update(next_run_time=claim_until)
+    )
+
+
 def _finish_due_collection_spec(
     spec_id: int, expected_schedule: int, *, definition: dict, **fields
 ) -> bool:
     """Publish only for the captured definition and scheduling owner."""
     return bool(
-        MetricCollectionSpec.objects.alias(config_text=Cast("config", TextField()))
+        _definition_queryset()
         .filter(pk=spec_id, enabled=True, next_run_time=expected_schedule)
         .filter(**definition)
         .update(**fields)
     )
+
+
+def _renew_collection_claim(
+    spec_id: int, expected_schedule: int, until: int, definition: dict
+) -> bool:
+    """Extend only the exact live claim of the captured definition."""
+    return bool(
+        _definition_queryset()
+        .filter(pk=spec_id, enabled=True, next_run_time=expected_schedule)
+        .filter(**definition)
+        .update(next_run_time=until)
+    )
+
+
+class _CollectionLease:
+    """Keep one due claim alive while its collector runs (Rust ``runs.rs``).
+
+    A daemon thread renews the exact claim every third of the lease. When a
+    renewal is refused (superseded, edited, disabled, deleted) or fails, the
+    claim counts as lost: publication raises ``_CollectionOwnershipLost`` and
+    completion is skipped. A dead process stops renewing, so recovery stays
+    bounded by one lease.
+    """
+
+    def __init__(
+        self, spec_id: int, definition: dict, until: int, lease_seconds: int
+    ) -> None:
+        self.spec_id = spec_id
+        self.definition = definition
+        self.until = until
+        self.lease_seconds = lease_seconds
+        self.lost = threading.Event()
+        self._stop = threading.Event()
+        self._previous: threading.Event | None = None
+        self._thread = threading.Thread(
+            target=self._renew_until_stopped,
+            name=f"graphyard-collection-lease-{spec_id}",
+            daemon=True,
+        )
+
+    def __enter__(self) -> _CollectionLease:
+        self._previous = getattr(_collection_ownership, "lost", None)
+        _collection_ownership.lost = self.lost
+        self._thread.start()
+        return self
+
+    def __exit__(self, *exc_info: object) -> None:
+        self._stop.set()
+        self._thread.join()
+        _collection_ownership.lost = self._previous
+
+    def _renew(self, renewed: int) -> bool:
+        # Retry only transient SQLite lock contention, like heartbeat writes;
+        # any other failure counts as a lost claim.
+        for delay in (0.05, 0.1, None):
+            try:
+                return _renew_collection_claim(
+                    self.spec_id, self.until, renewed, self.definition
+                )
+            except OperationalError as err:
+                if delay is None or "locked" not in str(err):
+                    raise
+                time.sleep(delay)
+        raise AssertionError("unreachable")
+
+    def _renew_until_stopped(self) -> None:
+        period = max(1, self.lease_seconds // 3)
+        try:
+            while not self._stop.wait(period):
+                renewed = max(
+                    int(timezone.now().timestamp()) + self.lease_seconds,
+                    self.until + 1,
+                )
+                if not self._renew(renewed):
+                    self.lost.set()
+                    return
+                self.until = renewed
+        except Exception as err:  # noqa: BLE001
+            logger.error(
+                "Collection lease renewal failure spec_id=%s category=%s",
+                self.spec_id,
+                error_category(err),
+            )
+            self.lost.set()
+        finally:
+            connection.close()
 
 
 def run_metric_collection_specs_once(
@@ -2162,20 +2312,41 @@ def run_metric_collection_specs_once(
         run_at = timezone.now() if due_only else now
         run_ts = int(run_at.timestamp())
         interval = max(1, int(spec.interval_seconds))
-        claim_until = run_ts + min(interval, 300)
-        if due_only and not _claim_due_collection_spec(
-            spec.pk,
-            spec.next_run_time,
-            run_ts,
-            claim_until,
-        ):
-            continue
-        status, item_ingested, item_skipped, error_msg = (
-            _run_single_metric_collection_spec(spec)
-        )
+        if due_only:
+            lease_seconds = _collection_lease_seconds(interval)
+            claim_until = run_ts + lease_seconds
+            if not _claim_due_collection_spec(
+                spec.pk,
+                spec.next_run_time,
+                run_ts,
+                claim_until,
+                definition,
+            ):
+                continue
+            # Keep ownership through collection, the sink and the registry.
+            try:
+                with _CollectionLease(
+                    spec.pk, definition, claim_until, lease_seconds
+                ) as lease:
+                    status, item_ingested, item_skipped, error_msg = (
+                        _run_single_metric_collection_spec(spec)
+                    )
+            except _CollectionOwnershipLost:
+                logger.info("Collection superseded spec_id=%s", spec.pk)
+                continue
+            if lease.lost.is_set():
+                logger.info("Collection superseded spec_id=%s", spec.pk)
+                continue
+            expected_schedule = lease.until
+        else:
+            # Explicit manual runs keep their policy: no claim, fenced by the
+            # observed schedule and definition at completion.
+            status, item_ingested, item_skipped, error_msg = (
+                _run_single_metric_collection_spec(spec)
+            )
         if not _finish_due_collection_spec(
             spec.pk,
-            claim_until if due_only else expected_schedule,
+            expected_schedule,
             definition=definition,
             last_run_at=run_at,
             last_status=status,

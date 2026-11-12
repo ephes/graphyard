@@ -251,7 +251,11 @@ undo remote acceptance. See the [process-death contract](../agent-rs/README.md#p
 for the isolated, pipe-gated regression harness and exact recovery assertions.
 Those process journeys cover the initial persisted claim. Live renewal and
 replacement fencing are checked separately by `tests/lease.rs`; renewed-lease
-process-death coverage is not claimed.
+process-death coverage is not claimed. The initial claim also binds the loaded
+definition, so an edit between load and claim never reaches external I/O
+(`tests/lease.rs::claim_refuses_a_definition_edited_after_load`). The retained
+Python agent follows the same lease and renewal contract
+(`tests/test_due_collection_claim.py`).
 
 ## Condition duration admission
 

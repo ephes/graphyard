@@ -299,13 +299,9 @@ async fn collect<S: MetricSink>(
     let Some(Value::Array(devices)) = payload.get("data") else {
         return Ok(critical("device response missing data list"));
     };
-    let Some(device) = find_device(devices, &spec.device_name, &spec.device_mac) else {
-        return Ok(SpecOutcome::new(
-            StatusLevel::Warning,
-            0,
-            1,
-            "configured UniFi device not found",
-        ));
+    let device = match find_device(devices, &spec.device_name, &spec.device_mac) {
+        Ok(device) => device,
+        Err(warning) => return Ok(SpecOutcome::new(StatusLevel::Warning, 0, 1, warning)),
     };
     let (stats, interface_tags) = resolve_interface_stats(device, &spec.interface_selector)?;
 
@@ -494,20 +490,38 @@ pub fn response_error(status: u16, body: &[u8], endpoint: &str, redactions: &[&s
     }
 }
 
-/// `_find_unifi_device(devices, device_name=…, device_mac=…)`: the first
-/// object whose stripped `name` equals the name or whose stripped,
-/// lower-cased `mac` equals the MAC (name checked first per item).
+/// Warning when no device matches the configured identity.
+pub const DEVICE_NOT_FOUND: &str = "configured UniFi device not found";
+/// Warning when the configured identity matches several devices.
+pub const DEVICE_AMBIGUOUS: &str =
+    "configured UniFi device is ambiguous; set a unique config.device_mac";
+
+/// `_find_unifi_device(devices, device_name=…, device_mac=…)`: a configured
+/// MAC is authoritative (exact stripped, lower-cased `mac`; the name is not
+/// consulted); otherwise the stripped `name` must match. Exactly one match is
+/// selected; several are refused rather than taking the first listed one.
+///
+/// # Errors
+/// The warning text for no match or an ambiguous match.
 pub fn find_device<'a>(
     devices: &'a [Value],
     device_name: &str,
     device_mac: &str,
-) -> Option<&'a Map<String, Value>> {
+) -> Result<&'a Map<String, Value>, &'static str> {
     let mac = py_strip(device_mac).to_lowercase();
     let name = py_strip(device_name);
-    devices.iter().filter_map(Value::as_object).find(|item| {
-        (!name.is_empty() && py_strip(&config_text(item, "name", "")) == name)
-            || (!mac.is_empty() && py_strip(&config_text(item, "mac", "")).to_lowercase() == mac)
-    })
+    let mut matches = devices.iter().filter_map(Value::as_object).filter(|item| {
+        if mac.is_empty() {
+            !name.is_empty() && py_strip(&config_text(item, "name", "")) == name
+        } else {
+            py_strip(&config_text(item, "mac", "")).to_lowercase() == mac
+        }
+    });
+    match (matches.next(), matches.next()) {
+        (Some(device), None) => Ok(device),
+        (Some(_), Some(_)) => Err(DEVICE_AMBIGUOUS),
+        (None, _) => Err(DEVICE_NOT_FOUND),
+    }
 }
 
 /// Python truthiness of a decoded JSON value.
