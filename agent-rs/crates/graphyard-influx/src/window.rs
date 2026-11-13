@@ -2,7 +2,6 @@
 //! PLAN.md 6.5) and the range a query covers (`query_range`'s arguments).
 
 use chrono::{DateTime, Utc};
-use graphyard_core::Tags;
 use graphyard_core::conditions::validate_condition_duration;
 use graphyard_core::logline::escape_log_value;
 use graphyard_core::normalize::normalize_subject_id;
@@ -10,6 +9,7 @@ use graphyard_core::pycompat::{
     PyError, date_out_of_range, py_datetime_add, py_int_true_divide, py_str, py_strip,
     py_timedelta_minutes, py_type_name,
 };
+use graphyard_core::{MetricSample, Tags};
 use num_bigint::BigInt;
 use num_traits::{FromPrimitive, ToPrimitive};
 use serde_json::Value;
@@ -75,6 +75,42 @@ impl QueryRange {
             subject_id: None,
             tags: Tags::new(),
         }
+    }
+
+    /// Refuse a complete response if any sample is outside the issued selection.
+    pub(crate) fn validate_samples(&self, samples: &[MetricSample]) -> Result<(), QueryError> {
+        for sample in samples {
+            let dimension = |key: &str| match key {
+                "metric" => Some(sample.metric.as_str()),
+                "host" => Some(sample.host.as_str()),
+                "service" => sample.service.as_deref(),
+                "subject_type" => sample.subject_type.as_deref(),
+                "subject_id" => sample.subject_id.as_deref(),
+                "source_system" => sample.source_system.as_deref(),
+                "source_instance" => sample.source_instance.as_deref(),
+                "source_entity_id" => sample.source_entity_id.as_deref(),
+                "collector_service" => sample.collector_service.as_deref(),
+                "collector_host" => sample.collector_host.as_deref(),
+                _ => sample.tags.get(key).map(String::as_str),
+            };
+            if sample.metric != self.metric
+                || sample.ts < self.start
+                || sample.ts >= self.stop
+                || self
+                    .dimension_filters()
+                    .iter()
+                    .any(|(key, value)| dimension(key) != Some(*value))
+                || self
+                    .tags
+                    .iter()
+                    .any(|(key, value)| dimension(key) != Some(value.as_str()))
+            {
+                return Err(QueryError::config(
+                    "InfluxDB query result does not match selection",
+                ));
+            }
+        }
+        Ok(())
     }
 
     /// The set filters in Python's order: host, service, subject type,

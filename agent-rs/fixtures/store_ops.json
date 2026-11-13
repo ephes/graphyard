@@ -5364,6 +5364,302 @@
  ],
  "registry_cases": [
   {
+   "name": "delayed or equal-time provenance preserves the committed winner 2026-10-21 08:15:30.123456",
+   "before": {
+    "subject_registry": [
+     {
+      "id": 1,
+      "subject_type": "host",
+      "subject_id": "edge",
+      "display_name": "edge",
+      "source_system": "new",
+      "last_seen_at": "2026-10-21 08:15:30.123456"
+     }
+    ],
+    "host_registry": [
+     {
+      "id": 1,
+      "host_id": "other",
+      "display_name": "other",
+      "grafana_url": "",
+      "enabled": 1,
+      "last_seen_at": "2026-10-21 08:15:00.123457"
+     },
+     {
+      "id": 2,
+      "host_id": "edge",
+      "display_name": "edge",
+      "grafana_url": "",
+      "enabled": 1,
+      "last_seen_at": "2026-10-21 08:15:00.123457"
+     }
+    ],
+    "service_registry": [
+     {
+      "id": 1,
+      "service_id": "mail",
+      "display_name": "mail",
+      "grafana_url": "",
+      "enabled": 1,
+      "last_seen_at": "2026-10-21 08:15:30.123456",
+      "host_id": 1
+     }
+    ]
+   },
+   "op": {
+    "kind": "touch_registry",
+    "now": "2026-10-21 08:15:30.123456",
+    "points": [
+     {
+      "ts": "2026-10-21T08:15:00+00:00",
+      "metric": "m",
+      "value": 1.0,
+      "subject_type": "host",
+      "subject_id": "edge",
+      "source_system": "old",
+      "collector_service": "vector",
+      "collector_host": "edge",
+      "source_instance": "default",
+      "source_entity_id": null,
+      "host": "edge",
+      "service": "mail",
+      "tags": null
+     }
+    ]
+   },
+   "statements": [
+    {
+     "verb": "SELECT",
+     "table": "host_registry",
+     "in_transaction": false
+    },
+    {
+     "verb": "SELECT",
+     "table": "subject_registry",
+     "in_transaction": false
+    },
+    {
+     "verb": "SELECT",
+     "table": "service_registry",
+     "in_transaction": false
+    },
+    {
+     "verb": "SELECT",
+     "table": "host_registry",
+     "in_transaction": true
+    },
+    {
+     "verb": "SELECT",
+     "table": "subject_registry",
+     "in_transaction": true
+    },
+    {
+     "verb": "SELECT",
+     "table": "service_registry",
+     "in_transaction": true
+    },
+    {
+     "verb": "UPDATE",
+     "table": "subject_registry",
+     "in_transaction": true
+    },
+    {
+     "verb": "UPDATE",
+     "table": "service_registry",
+     "in_transaction": true
+    }
+   ],
+   "after": {
+    "subject_registry": [
+     {
+      "id": 1,
+      "subject_type": "host",
+      "subject_id": "edge",
+      "display_name": "edge",
+      "source_system": "new",
+      "last_seen_at": "2026-10-21 08:15:30.123456"
+     }
+    ],
+    "host_registry": [
+     {
+      "id": 1,
+      "host_id": "other",
+      "display_name": "other",
+      "grafana_url": "",
+      "enabled": 1,
+      "last_seen_at": "2026-10-21 08:15:00.123457"
+     },
+     {
+      "id": 2,
+      "host_id": "edge",
+      "display_name": "edge",
+      "grafana_url": "",
+      "enabled": 1,
+      "last_seen_at": "2026-10-21 08:15:00.123457"
+     }
+    ],
+    "service_registry": [
+     {
+      "id": 1,
+      "service_id": "mail",
+      "display_name": "mail",
+      "grafana_url": "",
+      "enabled": 1,
+      "last_seen_at": "2026-10-21 08:15:30.123456",
+      "host_id": 1
+     }
+    ]
+   }
+  },
+  {
+   "name": "delayed or equal-time provenance preserves the committed winner 2026-10-21 08:16:30.123456",
+   "before": {
+    "subject_registry": [
+     {
+      "id": 1,
+      "subject_type": "host",
+      "subject_id": "edge",
+      "display_name": "edge",
+      "source_system": "new",
+      "last_seen_at": "2026-10-21 08:16:30.123456"
+     }
+    ],
+    "host_registry": [
+     {
+      "id": 1,
+      "host_id": "other",
+      "display_name": "other",
+      "grafana_url": "",
+      "enabled": 1,
+      "last_seen_at": "2026-10-21 08:15:00.123457"
+     },
+     {
+      "id": 2,
+      "host_id": "edge",
+      "display_name": "edge",
+      "grafana_url": "",
+      "enabled": 1,
+      "last_seen_at": "2026-10-21 08:15:00.123457"
+     }
+    ],
+    "service_registry": [
+     {
+      "id": 1,
+      "service_id": "mail",
+      "display_name": "mail",
+      "grafana_url": "",
+      "enabled": 1,
+      "last_seen_at": "2026-10-21 08:16:30.123456",
+      "host_id": 1
+     }
+    ]
+   },
+   "op": {
+    "kind": "touch_registry",
+    "now": "2026-10-21 08:15:30.123456",
+    "points": [
+     {
+      "ts": "2026-10-21T08:15:00+00:00",
+      "metric": "m",
+      "value": 1.0,
+      "subject_type": "host",
+      "subject_id": "edge",
+      "source_system": "old",
+      "collector_service": "vector",
+      "collector_host": "edge",
+      "source_instance": "default",
+      "source_entity_id": null,
+      "host": "edge",
+      "service": "mail",
+      "tags": null
+     }
+    ]
+   },
+   "statements": [
+    {
+     "verb": "SELECT",
+     "table": "host_registry",
+     "in_transaction": false
+    },
+    {
+     "verb": "SELECT",
+     "table": "subject_registry",
+     "in_transaction": false
+    },
+    {
+     "verb": "SELECT",
+     "table": "service_registry",
+     "in_transaction": false
+    },
+    {
+     "verb": "SELECT",
+     "table": "host_registry",
+     "in_transaction": true
+    },
+    {
+     "verb": "SELECT",
+     "table": "subject_registry",
+     "in_transaction": true
+    },
+    {
+     "verb": "SELECT",
+     "table": "service_registry",
+     "in_transaction": true
+    },
+    {
+     "verb": "UPDATE",
+     "table": "subject_registry",
+     "in_transaction": true
+    },
+    {
+     "verb": "UPDATE",
+     "table": "service_registry",
+     "in_transaction": true
+    }
+   ],
+   "after": {
+    "subject_registry": [
+     {
+      "id": 1,
+      "subject_type": "host",
+      "subject_id": "edge",
+      "display_name": "edge",
+      "source_system": "new",
+      "last_seen_at": "2026-10-21 08:16:30.123456"
+     }
+    ],
+    "host_registry": [
+     {
+      "id": 1,
+      "host_id": "other",
+      "display_name": "other",
+      "grafana_url": "",
+      "enabled": 1,
+      "last_seen_at": "2026-10-21 08:15:00.123457"
+     },
+     {
+      "id": 2,
+      "host_id": "edge",
+      "display_name": "edge",
+      "grafana_url": "",
+      "enabled": 1,
+      "last_seen_at": "2026-10-21 08:15:00.123457"
+     }
+    ],
+    "service_registry": [
+     {
+      "id": 1,
+      "service_id": "mail",
+      "display_name": "mail",
+      "grafana_url": "",
+      "enabled": 1,
+      "last_seen_at": "2026-10-21 08:16:30.123456",
+      "host_id": 1
+     }
+    ]
+   }
+  },
+  {
    "name": "an empty point list touches nothing",
    "before": {
     "subject_registry": [
@@ -10706,7 +11002,7 @@
    }
   },
   {
-   "name": "an unparseable last_seen_at loads as NULL and is refreshed",
+   "name": "unparseable last_seen_at refresh is guarded by its stored watermark",
    "before": {
     "subject_registry": [
      {
@@ -10791,7 +11087,7 @@
       "subject_id": "edge",
       "display_name": "edge",
       "source_system": "vector",
-      "last_seen_at": "2026-10-21 08:15:30.123456"
+      "last_seen_at": "yesterday"
      }
     ],
     "host_registry": [
@@ -10808,7 +11104,7 @@
    }
   },
   {
-   "name": "an offset last_seen_at is compared as its UTC instant",
+   "name": "offset last_seen_at refresh also respects its stored watermark",
    "before": {
     "subject_registry": [
      {
@@ -10898,7 +11194,7 @@
       "display_name": "edge",
       "grafana_url": "",
       "enabled": 1,
-      "last_seen_at": "2026-10-21 08:15:30.123456"
+      "last_seen_at": "2026-10-21T10:14:00.5+02:00"
      }
     ],
     "service_registry": []

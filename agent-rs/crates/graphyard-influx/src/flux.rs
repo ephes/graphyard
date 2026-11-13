@@ -419,7 +419,7 @@ const NON_TAG_COLUMNS: [&str; 18] = [
 /// `InfluxConfigurationError` for missing or malformed row/time/value evidence.
 pub fn flux_samples(
     records: &[FluxRecord],
-    metric_name: &str,
+    _metric_name: &str,
 ) -> Result<Vec<MetricSample>, QueryError> {
     let mut samples = Vec::new();
     for record in records {
@@ -454,7 +454,7 @@ pub fn flux_samples(
                 .unwrap_or_default(),
             metric: record
                 .get("metric")
-                .map_or_else(|| metric_name.to_owned(), FluxValue::py_str),
+                .map_or_else(String::new, FluxValue::py_str),
             service: optional("service"),
             subject_type: optional("subject_type"),
             subject_id: optional("subject_id"),

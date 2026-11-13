@@ -26,7 +26,7 @@ def install_rows(monkeypatch, settings, backend, values):
     settings.INFLUX_API_MODE = backend
     rows = [
         {
-            "time": (NOW - timedelta(minutes=len(values) - index - 1)).isoformat(),
+            "time": (NOW - timedelta(minutes=len(values) - index)).isoformat(),
             "value": value,
             "metric": "host.disk_usage",
             "host": "h1",
@@ -227,8 +227,18 @@ def test_sql_exact_byte_limit_and_split_json_keep_series(monkeypatch, settings):
     settings.INFLUX_TOKEN = "test-secret"
     settings.INFLUX_URL = "http://influx.local"
     rows = [
-        {"time": NOW.isoformat(), "value": 20, "mountpoint": "/"},
-        {"time": NOW.isoformat(), "value": 30, "mountpoint": "/data"},
+        {
+            "time": (NOW - timedelta(seconds=1)).isoformat(),
+            "metric": "host.disk_usage",
+            "value": 20,
+            "mountpoint": "/",
+        },
+        {
+            "time": (NOW - timedelta(seconds=1)).isoformat(),
+            "metric": "host.disk_usage",
+            "value": 30,
+            "mountpoint": "/data",
+        },
     ]
     body = json.dumps(rows).encode()
     monkeypatch.setattr(influx, "SQL_QUERY_MAX_BODY_BYTES", len(body))

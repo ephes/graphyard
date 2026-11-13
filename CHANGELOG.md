@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Keep inventory registry/usage observations monotonic under delayed writes;
+  bind complete Python/Rust Influx query replies to their issued selections.
+
 - Protect spec and condition admin edits with definition revision conflicts; keep
   runner scheduling/results read-only and preserve current masked secrets.
 

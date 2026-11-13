@@ -386,25 +386,10 @@
      "HTTP Request: POST http://{server}/api/v3/query_sql \"HTTP/1.1 200 OK\""
     ]
    ],
-   "samples": [
-    {
-     "ts": "2026-03-04T12:00:00+00:00",
-     "value": 22.4,
-     "host": "macmini",
-     "metric": "ha.sensor.office_temperature",
-     "service": "homeassistant",
-     "subject_type": "environment_sensor",
-     "subject_id": "office_temperature",
-     "source_system": "homeassistant",
-     "source_instance": "ha-main",
-     "source_entity_id": "sensor.office_temperature",
-     "collector_service": "graphyard-agent",
-     "collector_host": "macmini",
-     "tags": {
-      "mountpoint": "/"
-     }
-    }
-   ]
+   "error": {
+    "class": "InfluxConfigurationError",
+    "message": "InfluxDB query result does not match selection"
+   }
   },
   {
    "name": "non_finite_nan",
@@ -779,83 +764,10 @@
      "HTTP Request: POST http://{server}/api/v3/query_sql \"HTTP/1.1 200 OK\""
     ]
    ],
-   "samples": [
-    {
-     "ts": "2026-10-21T11:00:00+00:00",
-     "value": 3.0,
-     "host": "",
-     "metric": "host.disk_usage",
-     "service": null,
-     "subject_type": null,
-     "subject_id": null,
-     "source_system": null,
-     "source_instance": null,
-     "source_entity_id": null,
-     "collector_service": null,
-     "collector_host": null,
-     "tags": {}
-    },
-    {
-     "ts": "2026-10-21T11:01:00+00:00",
-     "value": 4.5,
-     "host": "",
-     "metric": "host.disk_usage",
-     "service": null,
-     "subject_type": null,
-     "subject_id": null,
-     "source_system": null,
-     "source_instance": null,
-     "source_entity_id": null,
-     "collector_service": null,
-     "collector_host": null,
-     "tags": {}
-    },
-    {
-     "ts": "2026-10-21T11:02:00+00:00",
-     "value": 10.0,
-     "host": "",
-     "metric": "host.disk_usage",
-     "service": null,
-     "subject_type": null,
-     "subject_id": null,
-     "source_system": null,
-     "source_instance": null,
-     "source_entity_id": null,
-     "collector_service": null,
-     "collector_host": null,
-     "tags": {}
-    },
-    {
-     "ts": "2026-10-21T11:03:00+00:00",
-     "value": 1.2345678901234568e+29,
-     "host": "",
-     "metric": "host.disk_usage",
-     "service": null,
-     "subject_type": null,
-     "subject_id": null,
-     "source_system": null,
-     "source_instance": null,
-     "source_entity_id": null,
-     "collector_service": null,
-     "collector_host": null,
-     "tags": {}
-    },
-    {
-     "ts": "2026-10-21T11:04:00+00:00",
-     "value": -0.0,
-     "host": "",
-     "metric": "host.disk_usage",
-     "service": null,
-     "subject_type": null,
-     "subject_id": null,
-     "source_system": null,
-     "source_instance": null,
-     "source_entity_id": null,
-     "collector_service": null,
-     "collector_host": null,
-     "tags": {}
-    }
-   ]
+   "error": {
+    "class": "InfluxConfigurationError",
+    "message": "InfluxDB query result does not match selection"
+   }
   },
   {
    "name": "bool_value",
@@ -1230,30 +1142,10 @@
      "HTTP Request: POST http://{server}/api/v3/query_sql \"HTTP/1.1 200 OK\""
     ]
    ],
-   "samples": [
-    {
-     "ts": "2026-10-21T11:00:00+00:00",
-     "value": 1.0,
-     "host": "None",
-     "metric": "None",
-     "service": "5",
-     "subject_type": null,
-     "subject_id": "False",
-     "source_system": null,
-     "source_instance": null,
-     "source_entity_id": null,
-     "collector_service": null,
-     "collector_host": null,
-     "tags": {
-      "a": "1.0",
-      "b": "True",
-      "c": "[1, {'x': None}]",
-      "d": "{'k': 'v'}",
-      "f": "inf",
-      "g": "10"
-     }
-    }
-   ]
+   "error": {
+    "class": "InfluxConfigurationError",
+    "message": "InfluxDB query result does not match selection"
+   }
   },
   {
    "name": "repeated_keys",
@@ -1313,26 +1205,10 @@
      "HTTP Request: POST http://{server}/api/v3/query_sql \"HTTP/1.1 200 OK\""
     ]
    ],
-   "samples": [
-    {
-     "ts": "2026-10-21T11:00:00+00:00",
-     "value": 2.0,
-     "host": "",
-     "metric": "host.disk_usage",
-     "service": null,
-     "subject_type": null,
-     "subject_id": null,
-     "source_system": null,
-     "source_instance": null,
-     "source_entity_id": null,
-     "collector_service": null,
-     "collector_host": null,
-     "tags": {
-      "a": "2",
-      "b": "x"
-     }
-    }
-   ]
+   "error": {
+    "class": "InfluxConfigurationError",
+    "message": "InfluxDB query result does not match selection"
+   }
   },
   {
    "name": "missing_columns_defaults",
@@ -1392,23 +1268,10 @@
      "HTTP Request: POST http://{server}/api/v3/query_sql \"HTTP/1.1 200 OK\""
     ]
    ],
-   "samples": [
-    {
-     "ts": "2026-10-21T11:00:00+00:00",
-     "value": 1.0,
-     "host": "",
-     "metric": "host.disk_usage",
-     "service": null,
-     "subject_type": null,
-     "subject_id": null,
-     "source_system": null,
-     "source_instance": null,
-     "source_entity_id": null,
-     "collector_service": null,
-     "collector_host": null,
-     "tags": {}
-    }
-   ]
+   "error": {
+    "class": "InfluxConfigurationError",
+    "message": "InfluxDB query result does not match selection"
+   }
   },
   {
    "name": "empty_list",
@@ -2336,42 +2199,10 @@
      "HTTP Request: POST http://{server}/api/v3/query_sql \"HTTP/1.1 200 OK\""
     ]
    ],
-   "samples": [
-    {
-     "ts": "2026-10-21T12:00:00+00:00",
-     "value": 20.0,
-     "host": "",
-     "metric": "host.disk_usage",
-     "service": null,
-     "subject_type": null,
-     "subject_id": null,
-     "source_system": null,
-     "source_instance": null,
-     "source_entity_id": null,
-     "collector_service": null,
-     "collector_host": null,
-     "tags": {
-      "mountpoint": "/"
-     }
-    },
-    {
-     "ts": "2026-10-21T12:00:00+00:00",
-     "value": 30.0,
-     "host": "",
-     "metric": "host.disk_usage",
-     "service": null,
-     "subject_type": null,
-     "subject_id": null,
-     "source_system": null,
-     "source_instance": null,
-     "source_entity_id": null,
-     "collector_service": null,
-     "collector_host": null,
-     "tags": {
-      "mountpoint": "/data"
-     }
-    }
-   ]
+   "error": {
+    "class": "InfluxConfigurationError",
+    "message": "InfluxDB query result does not match selection"
+   }
   },
   {
    "name": "gzip_body",

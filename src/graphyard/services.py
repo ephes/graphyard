@@ -2521,7 +2521,10 @@ def record_token_host_usage(token: IngestToken, identifiers: set[str]) -> None:
         if now - usage.last_seen_at >= TOKEN_HOST_USAGE_UPDATE_INTERVAL
     ]
     if stale_ids:
-        IngestTokenHostUsage.objects.filter(pk__in=stale_ids).update(last_seen_at=now)
+        IngestTokenHostUsage.objects.filter(
+            pk__in=stale_ids,
+            last_seen_at__lte=now - TOKEN_HOST_USAGE_UPDATE_INTERVAL,
+        ).update(last_seen_at=now)
 
     new_ids = sorted(host_ids - known.keys())
     if not new_ids:
@@ -2791,15 +2794,21 @@ def touch_registry_from_points(
         plan = _plan_registry_updates(batch, rows, now)
 
         if plan.subject_seen:
-            SubjectRegistry.objects.filter(pk__in=plan.subject_seen).update(
-                last_seen_at=now
-            )
+            SubjectRegistry.objects.filter(
+                Q(last_seen_at__isnull=True)
+                | Q(last_seen_at__lte=now - REGISTRY_LAST_SEEN_UPDATE_INTERVAL),
+                pk__in=plan.subject_seen,
+            ).update(last_seen_at=now)
         for pk, source_system in plan.subject_source.items():
-            SubjectRegistry.objects.filter(pk=pk).update(
-                source_system=source_system, last_seen_at=now
-            )
+            SubjectRegistry.objects.filter(
+                Q(last_seen_at__isnull=True) | Q(last_seen_at__lt=now), pk=pk
+            ).update(source_system=source_system, last_seen_at=now)
         if plan.host_seen:
-            HostRegistry.objects.filter(pk__in=plan.host_seen).update(last_seen_at=now)
+            HostRegistry.objects.filter(
+                Q(last_seen_at__isnull=True)
+                | Q(last_seen_at__lte=now - REGISTRY_LAST_SEEN_UPDATE_INTERVAL),
+                pk__in=plan.host_seen,
+            ).update(last_seen_at=now)
 
         writable_services = ServiceRegistry.objects.all()
         if bound_subject_id is not None:
@@ -2808,6 +2817,12 @@ def touch_registry_from_points(
                 Q(host__isnull=True) | Q(host__host_id=bound_subject_id)
             )
         if plan.service_seen:
-            writable_services.filter(pk__in=plan.service_seen).update(last_seen_at=now)
+            writable_services.filter(
+                Q(last_seen_at__isnull=True)
+                | Q(last_seen_at__lte=now - REGISTRY_LAST_SEEN_UPDATE_INTERVAL),
+                pk__in=plan.service_seen,
+            ).update(last_seen_at=now)
         for pk, host_pk in plan.service_reparent.items():
-            writable_services.filter(pk=pk).update(host_id=host_pk, last_seen_at=now)
+            writable_services.filter(
+                Q(last_seen_at__isnull=True) | Q(last_seen_at__lt=now), pk=pk
+            ).update(host_id=host_pk, last_seen_at=now)

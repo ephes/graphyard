@@ -1060,3 +1060,17 @@ lock only during its database transaction, with no network work. Definition edit
 preserve the last condition observation and watermark; the next scheduled
 evaluation uses the new definition, and in-flight old-definition results cannot
 publish. A definition edit does not manufacture a healthy observation.
+
+### Observation ordering and query replies
+
+Usage and registry updates recheck their observation watermark in the UPDATE.
+Older arrivals cannot move last-seen times backwards or replace newer subject
+provenance/service ownership. Equal-time provenance changes keep the first
+committed observation. Unchanged rows retain the existing minute/hour refresh
+throttles and usage row cap; bound tokens still cannot touch foreign services.
+
+Both query runtimes reject the entire Influx v2/v3 response if a sample has a
+missing/wrong metric, differs from any issued dimension/tag filter, or lies
+outside the issued half-open range (`start <= timestamp < stop`). Unfiltered
+dimensions may differ and sparse or empty series remain supported. A rejected
+reply produces an evaluation failure without publishing a partial observed value.

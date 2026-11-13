@@ -105,14 +105,16 @@ impl QueryClient {
     /// The exception the Python query raises (configuration, HTTP, decoding,
     /// non-finite samples).
     pub async fn query_range(&self, range: &QueryRange) -> Result<Vec<MetricSample>, QueryError> {
-        match self.mode {
+        let samples = match self.mode {
             InfluxApiMode::V3 => self.query_v3(range).await,
             InfluxApiMode::Auto => match self.query_v2(range).await {
                 Err(err) if err.is_v2_query_missing() => self.query_v3(range).await,
                 other => other,
             },
             InfluxApiMode::V2 => self.query_v2(range).await,
-        }
+        }?;
+        range.validate_samples(&samples)?;
+        Ok(samples)
     }
 
     /// `_query_range_v2_flux` through `influx._build_client()` and

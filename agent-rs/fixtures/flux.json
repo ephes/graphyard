@@ -1636,63 +1636,10 @@
      "HTTP Request: POST http://{server}/api/v2/query?org=graphyard \"HTTP/1.1 200 OK\""
     ]
    ],
-   "samples": [
-    {
-     "ts": "2026-10-21T11:30:00+00:00",
-     "value": 1.0,
-     "host": "macmini",
-     "metric": "host.disk_usage",
-     "service": null,
-     "subject_type": "host",
-     "subject_id": null,
-     "source_system": null,
-     "source_instance": null,
-     "source_entity_id": null,
-     "collector_service": null,
-     "collector_host": null,
-     "tags": {
-      "mountpoint": "/"
-     }
-    },
-    {
-     "ts": "2026-10-21T09:40:00+00:00",
-     "value": 42.0,
-     "host": "",
-     "metric": "host.disk_usage",
-     "service": null,
-     "subject_type": null,
-     "subject_id": null,
-     "source_system": null,
-     "source_instance": null,
-     "source_entity_id": null,
-     "collector_service": null,
-     "collector_host": null,
-     "tags": {
-      "mountpoint": "/boot",
-      "flag": "True",
-      "age": "15"
-     }
-    },
-    {
-     "ts": "2026-10-21T11:41:00+00:00",
-     "value": 7.0,
-     "host": "",
-     "metric": "host.disk_usage",
-     "service": null,
-     "subject_type": null,
-     "subject_id": null,
-     "source_system": null,
-     "source_instance": null,
-     "source_entity_id": null,
-     "collector_service": null,
-     "collector_host": null,
-     "tags": {
-      "mountpoint": "/boot",
-      "flag": "False",
-      "age": "-3"
-     }
-    }
-   ]
+   "error": {
+    "class": "InfluxConfigurationError",
+    "message": "InfluxDB query result does not match selection"
+   }
   },
   {
    "name": "defaults_fill_empty_cells",
@@ -1752,42 +1699,10 @@
      "HTTP Request: POST http://{server}/api/v2/query?org=graphyard \"HTTP/1.1 200 OK\""
     ]
    ],
-   "samples": [
-    {
-     "ts": "2026-10-21T11:30:00+00:00",
-     "value": 2.5,
-     "host": "dflt",
-     "metric": "host.disk_usage",
-     "service": null,
-     "subject_type": null,
-     "subject_id": null,
-     "source_system": null,
-     "source_instance": null,
-     "source_entity_id": null,
-     "collector_service": null,
-     "collector_host": null,
-     "tags": {
-      "device": "None"
-     }
-    },
-    {
-     "ts": "2026-10-21T11:31:00+00:00",
-     "value": 4.0,
-     "host": "h",
-     "metric": "host.disk_usage",
-     "service": "s",
-     "subject_type": null,
-     "subject_id": null,
-     "source_system": null,
-     "source_instance": null,
-     "source_entity_id": null,
-     "collector_service": null,
-     "collector_host": null,
-     "tags": {
-      "device": "d"
-     }
-    }
-   ]
+   "error": {
+    "class": "InfluxConfigurationError",
+    "message": "InfluxDB query result does not match selection"
+   }
   },
   {
    "name": "empty_table_id_ignores_default",
@@ -1973,58 +1888,10 @@
      "HTTP Request: POST http://{server}/api/v2/query?org=graphyard \"HTTP/1.1 200 OK\""
     ]
    ],
-   "samples": [
-    {
-     "ts": "2026-10-21T11:30:00+00:00",
-     "value": 1.0,
-     "host": "",
-     "metric": "host.disk_usage",
-     "service": null,
-     "subject_type": null,
-     "subject_id": null,
-     "source_system": null,
-     "source_instance": null,
-     "source_entity_id": null,
-     "collector_service": null,
-     "collector_host": null,
-     "tags": {
-      "l": "-5",
-      "u": "18446744073709551615",
-      "d": "1e+16",
-      "b": "True",
-      "t": "2026-10-21 11:30:00.500000-01:30",
-      "du": "1000",
-      "bin": "b'hi'",
-      "x": "None",
-      "empty": "None"
-     }
-    },
-    {
-     "ts": "2026-10-21T11:31:00+00:00",
-     "value": 1.0,
-     "host": "",
-     "metric": "host.disk_usage",
-     "service": null,
-     "subject_type": null,
-     "subject_id": null,
-     "source_system": null,
-     "source_instance": null,
-     "source_entity_id": null,
-     "collector_service": null,
-     "collector_host": null,
-     "tags": {
-      "l": "1000",
-      "u": "7",
-      "d": "inf",
-      "b": "False",
-      "t": "0001-01-01 00:00:00+00:00",
-      "du": "0",
-      "bin": "b'\\x00\\x01\\x02\\xff'",
-      "x": "None",
-      "empty": "x"
-     }
-    }
-   ]
+   "error": {
+    "class": "InfluxConfigurationError",
+    "message": "InfluxDB query result does not match selection"
+   }
   },
   {
    "name": "value_types",
@@ -2084,23 +1951,10 @@
      "HTTP Request: POST http://{server}/api/v2/query?org=graphyard \"HTTP/1.1 200 OK\""
     ]
    ],
-   "samples": [
-    {
-     "ts": "2026-10-21T11:30:00+00:00",
-     "value": 1.2345678901234567e+19,
-     "host": "",
-     "metric": "host.disk_usage",
-     "service": null,
-     "subject_type": null,
-     "subject_id": null,
-     "source_system": null,
-     "source_instance": null,
-     "source_entity_id": null,
-     "collector_service": null,
-     "collector_host": null,
-     "tags": {}
-    }
-   ]
+   "error": {
+    "class": "InfluxConfigurationError",
+    "message": "InfluxDB query result does not match selection"
+   }
   },
   {
    "name": "string_value_parsed_as_float",
@@ -2160,23 +2014,10 @@
      "HTTP Request: POST http://{server}/api/v2/query?org=graphyard \"HTTP/1.1 200 OK\""
     ]
    ],
-   "samples": [
-    {
-     "ts": "2026-10-21T11:30:00+00:00",
-     "value": 15.5,
-     "host": "",
-     "metric": "host.disk_usage",
-     "service": null,
-     "subject_type": null,
-     "subject_id": null,
-     "source_system": null,
-     "source_instance": null,
-     "source_entity_id": null,
-     "collector_service": null,
-     "collector_host": null,
-     "tags": {}
-    }
-   ]
+   "error": {
+    "class": "InfluxConfigurationError",
+    "message": "InfluxDB query result does not match selection"
+   }
   },
   {
    "name": "non_finite_nan",
@@ -3748,25 +3589,10 @@
      "HTTP Request: POST http://{server}/api/v2/query?org=graphyard \"HTTP/1.1 200 OK\""
     ]
    ],
-   "samples": [
-    {
-     "ts": "2026-10-21T11:30:00+00:00",
-     "value": 1.0,
-     "host": "",
-     "metric": "host.disk_usage",
-     "service": null,
-     "subject_type": null,
-     "subject_id": null,
-     "source_system": null,
-     "source_instance": null,
-     "source_entity_id": null,
-     "collector_service": null,
-     "collector_host": null,
-     "tags": {
-      "tag": "second"
-     }
-    }
-   ]
+   "error": {
+    "class": "InfluxConfigurationError",
+    "message": "InfluxDB query result does not match selection"
+   }
   },
   {
    "name": "quoted_cells",
@@ -3826,46 +3652,10 @@
      "HTTP Request: POST http://{server}/api/v2/query?org=graphyard \"HTTP/1.1 200 OK\""
     ]
    ],
-   "samples": [
-    {
-     "ts": "2026-10-21T11:30:00+00:00",
-     "value": 1.0,
-     "host": "",
-     "metric": "host.disk_usage",
-     "service": null,
-     "subject_type": null,
-     "subject_id": null,
-     "source_system": null,
-     "source_instance": null,
-     "source_entity_id": null,
-     "collector_service": null,
-     "collector_host": null,
-     "tags": {
-      "a": "x,y",
-      "b": "say \"hi\"",
-      "c": "multi\nline"
-     }
-    },
-    {
-     "ts": "2026-10-21T11:31:00+00:00",
-     "value": 2.0,
-     "host": "",
-     "metric": "host.disk_usage",
-     "service": null,
-     "subject_type": null,
-     "subject_id": null,
-     "source_system": null,
-     "source_instance": null,
-     "source_entity_id": null,
-     "collector_service": null,
-     "collector_host": null,
-     "tags": {
-      "a": "plain\"quote",
-      "b": "None",
-      "c": "unicode \u00e4\u20ac"
-     }
-    }
-   ]
+   "error": {
+    "class": "InfluxConfigurationError",
+    "message": "InfluxDB query result does not match selection"
+   }
   },
   {
    "name": "lf_line_endings",
@@ -3925,23 +3715,10 @@
      "HTTP Request: POST http://{server}/api/v2/query?org=graphyard \"HTTP/1.1 200 OK\""
     ]
    ],
-   "samples": [
-    {
-     "ts": "2026-10-21T11:30:00+00:00",
-     "value": 1.0,
-     "host": "h1",
-     "metric": "host.disk_usage",
-     "service": null,
-     "subject_type": null,
-     "subject_id": null,
-     "source_system": null,
-     "source_instance": null,
-     "source_entity_id": null,
-     "collector_service": null,
-     "collector_host": null,
-     "tags": {}
-    }
-   ]
+   "error": {
+    "class": "InfluxConfigurationError",
+    "message": "InfluxDB query result does not match selection"
+   }
   },
   {
    "name": "extra_cells_ignored",
@@ -4001,23 +3778,10 @@
      "HTTP Request: POST http://{server}/api/v2/query?org=graphyard \"HTTP/1.1 200 OK\""
     ]
    ],
-   "samples": [
-    {
-     "ts": "2026-10-21T11:30:00+00:00",
-     "value": 1.0,
-     "host": "",
-     "metric": "host.disk_usage",
-     "service": null,
-     "subject_type": null,
-     "subject_id": null,
-     "source_system": null,
-     "source_instance": null,
-     "source_entity_id": null,
-     "collector_service": null,
-     "collector_host": null,
-     "tags": {}
-    }
-   ]
+   "error": {
+    "class": "InfluxConfigurationError",
+    "message": "InfluxDB query result does not match selection"
+   }
   },
   {
    "name": "invalid_utf8",
