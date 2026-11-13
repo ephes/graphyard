@@ -101,3 +101,25 @@ def test_unknown_model_validation_fields_and_messages_are_never_echoed(
         call_command("apply_metric_collection_specs", file=str(path))
     assert "config" in str(error.value)
     assert SECRET not in "".join(traceback.format_exception(error.value))
+
+
+def test_duplicate_names_do_not_disclose_the_name(tmp_path):
+    path = tmp_path / "synthetic.json"
+    spec = {**SPEC, "name": SECRET}
+    path.write_text(json.dumps([spec, spec]))
+    with pytest.raises(CommandError, match="index 1.*duplicated name") as error:
+        call_command("apply_metric_collection_specs", file=str(path))
+    assert SECRET not in str(error.value)
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "field,value", [("name", SECRET * 20), ("interval_seconds", 10**100)]
+)
+def test_model_field_limits_are_reported_without_the_value(tmp_path, field, value):
+    path = tmp_path / "synthetic.json"
+    path.write_text(json.dumps([{**SPEC, field: value}]))
+    with pytest.raises(CommandError, match=f"index 0.*{field}") as error:
+        call_command("apply_metric_collection_specs", file=str(path))
+    assert SECRET not in "".join(traceback.format_exception(error.value))
+    assert len(str(error.value)) < 150

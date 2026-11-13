@@ -53,3 +53,18 @@ def test_exact_shape_limits_allow_normalization(tmp_path, monkeypatch, wrapped):
     path = tmp_path / "synthetic.json"
     path.write_text(json.dumps(payload))
     assert len(command._load_specs_file(path)) == 2
+
+
+@pytest.mark.parametrize("constant", ["NaN", "Infinity", "-Infinity"])
+def test_non_json_constants_are_refused_before_materialization(
+    tmp_path, monkeypatch, constant
+):
+    path = tmp_path / "synthetic.json"
+    path.write_text('{"ignored":' + constant + "}")
+
+    def no_tree(*args, **kwargs):
+        pytest.fail("non-JSON constant reached the tree decoder")
+
+    monkeypatch.setattr(command.json, "loads", no_tree)
+    with pytest.raises(CommandError, match="Invalid JSON"):
+        call_command("apply_metric_collection_specs", file=str(path))

@@ -330,9 +330,10 @@ JSON lists or objects, a streaming pass admits at most 100,000 nodes (object
 members count once for their key and once for their value; containers count as
 values) and 1,000 definitions in the root or `metric_collection_specs` list.
 These whole-document budgets include ignored fields and nested config values;
-exact limits are accepted. JSON extensions such as NaN/Infinity are refused. Unreadable, nonregular,
-oversized, invalid UTF-8/JSON or decoder-depth-exhausting inputs fail before any
-database query, with a bounded command error naming the path and omitting content.
+exact limits are accepted. JSON extensions such as NaN/Infinity are refused.
+Unreadable, nonregular, oversized, invalid UTF-8/JSON or decoder-depth-exhausting
+inputs fail before any database query, with a bounded command error naming the
+path and omitting content.
 Duplicate JSON members at every object level (including escaped-equivalent names
 and identical values) are refused with only the member position. Repeated array
 records still undergo the ordinary duplicate-spec-name check. Integers beyond

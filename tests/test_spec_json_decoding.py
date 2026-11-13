@@ -7,6 +7,7 @@ import pytest
 from django.core.management import call_command
 from django.core.management.base import CommandError
 
+from graphyard.management.commands import apply_metric_collection_specs as command
 from graphyard.models import MetricCollectionSpec
 
 
@@ -77,3 +78,31 @@ def test_repeated_records_retain_duplicate_spec_name_validation(tmp_path):
     path.write_text("[" + SPEC + "," + SPEC + "]")
     with pytest.raises(CommandError, match="duplicated"):
         call_command("apply_metric_collection_specs", file=str(path))
+
+
+@pytest.mark.parametrize(
+    "number", ["9" * 5000, "-" + "9" * 5000], ids=["positive", "negative"]
+)
+def test_integer_limit_cli_exits_with_bounded_error(tmp_path, capsys, number):
+    path = tmp_path / "synthetic.json"
+    path.write_text('[{"ignored":' + number + "} ]")
+    previous = sys.get_int_max_str_digits()
+    sys.set_int_max_str_digits(4300)
+    try:
+        with pytest.raises(SystemExit) as error:
+            command.Command().run_from_argv(
+                [
+                    "manage.py",
+                    "apply_metric_collection_specs",
+                    "--file",
+                    str(path),
+                    "--prune",
+                ]
+            )
+    finally:
+        sys.set_int_max_str_digits(previous)
+    assert error.value.code == 1
+    output = capsys.readouterr()
+    assert output.out == ""
+    assert "integer exceeds the decoder limit" in output.err
+    assert len(output.err) < len(str(path)) + 100
