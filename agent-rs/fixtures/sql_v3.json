@@ -340,9 +340,12 @@
        "application/json"
       ]
      ],
-     "body": "[{\"time\": \"2026-03-04T12:00:00Z\", \"value\": 22.4, \"host\": \"macmini\", \"metric\": \"ha.sensor.office_temperature\", \"service\": \"homeassistant\", \"subject_type\": \"environment_sensor\", \"subject_id\": \"office_temperature\", \"source_system\": \"homeassistant\", \"source_instance\": \"ha-main\", \"source_entity_id\": \"sensor.office_temperature\", \"collector_service\": \"graphyard-agent\", \"collector_host\": \"macmini\", \"mountpoint\": \"/\", \"device\": null}]"
+     "body": "[{\"time\": \"2026-10-21T11:30:00Z\", \"value\": 22.4, \"host\": \"macmini\", \"metric\": \"ha.sensor.office_temperature\", \"service\": \"homeassistant\", \"subject_type\": \"environment_sensor\", \"subject_id\": \"office_temperature\", \"source_system\": \"homeassistant\", \"source_instance\": \"ha-main\", \"source_entity_id\": \"sensor.office_temperature\", \"collector_service\": \"graphyard-agent\", \"collector_host\": \"macmini\", \"mountpoint\": \"/\", \"device\": null}]"
     }
    ],
+   "call": {
+    "metric": "ha.sensor.office_temperature"
+   },
    "settings": {
     "INFLUX_TOKEN": "test-token",
     "INFLUX_ORG": "graphyard",
@@ -377,7 +380,7 @@
        "application/json"
       ]
      ],
-     "body": "{\"db\":\"graphyard\",\"q\":\"select * from \\\"graphyard_metrics\\\" where time >= '2026-10-21T11:00:00Z' and time < '2026-10-21T12:00:00.500000Z' and metric = 'host.disk_usage' order by time asc\"}"
+     "body": "{\"db\":\"graphyard\",\"q\":\"select * from \\\"graphyard_metrics\\\" where time >= '2026-10-21T11:00:00Z' and time < '2026-10-21T12:00:00.500000Z' and metric = 'ha.sensor.office_temperature' order by time asc\"}"
     }
    ],
    "logs": [
@@ -388,7 +391,7 @@
    ],
    "samples": [
     {
-     "ts": "2026-03-04T12:00:00+00:00",
+     "ts": "2026-10-21T11:30:00+00:00",
      "value": 22.4,
      "host": "macmini",
      "metric": "ha.sensor.office_temperature",
@@ -733,7 +736,7 @@
        "application/json"
       ]
      ],
-     "body": "[{\"time\": \"2026-10-21T11:00:00Z\", \"value\": 3}, {\"time\": \"2026-10-21T11:01:00Z\", \"value\": \"4.5\"}, {\"time\": \"2026-10-21T11:02:00Z\", \"value\": \" 1_0 \"}, {\"time\": \"2026-10-21T11:03:00Z\", \"value\": 123456789012345678901234567890}, {\"time\": \"2026-10-21T11:04:00Z\", \"value\": -0.0}]"
+     "body": "[{\"time\": \"2026-10-21T11:00:00Z\", \"value\": 3, \"metric\": \"host.disk_usage\"}, {\"time\": \"2026-10-21T11:01:00Z\", \"value\": \"4.5\", \"metric\": \"host.disk_usage\"}, {\"time\": \"2026-10-21T11:02:00Z\", \"value\": \" 1_0 \", \"metric\": \"host.disk_usage\"}, {\"time\": \"2026-10-21T11:03:00Z\", \"value\": 123456789012345678901234567890, \"metric\": \"host.disk_usage\"}, {\"time\": \"2026-10-21T11:04:00Z\", \"value\": -0.0, \"metric\": \"host.disk_usage\"}]"
     }
    ],
    "settings": {
@@ -1187,6 +1190,9 @@
      "body": "[{\"time\": \"2026-10-21T11:00:00Z\", \"value\": 1, \"host\": null, \"service\": 5, \"metric\": null, \"a\": 1.0, \"b\": true, \"c\": [1, {\"x\": null}], \"d\": {\"k\": \"v\"}, \"e\": null, \"f\": 1e400, \"g\": 10, \"subject_id\": false}]"
     }
    ],
+   "call": {
+    "metric": "None"
+   },
    "settings": {
     "INFLUX_TOKEN": "test-token",
     "INFLUX_ORG": "graphyard",
@@ -1221,7 +1227,7 @@
        "application/json"
       ]
      ],
-     "body": "{\"db\":\"graphyard\",\"q\":\"select * from \\\"graphyard_metrics\\\" where time >= '2026-10-21T11:00:00Z' and time < '2026-10-21T12:00:00.500000Z' and metric = 'host.disk_usage' order by time asc\"}"
+     "body": "{\"db\":\"graphyard\",\"q\":\"select * from \\\"graphyard_metrics\\\" where time >= '2026-10-21T11:00:00Z' and time < '2026-10-21T12:00:00.500000Z' and metric = 'None' order by time asc\"}"
     }
    ],
    "logs": [
@@ -1267,7 +1273,7 @@
        "application/json"
       ]
      ],
-     "body": "[{\"time\": \"2026-10-21T11:00:00Z\", \"a\": \"1\", \"value\": 1, \"b\": \"x\", \"a\": \"2\", \"value\": 2}]"
+     "body": "[{\"time\": \"2026-10-21T11:00:00Z\", \"a\": \"1\", \"value\": 1, \"metric\": \"host.disk_usage\", \"b\": \"x\", \"a\": \"2\", \"value\": 2}]"
     }
    ],
    "settings": {
@@ -1346,7 +1352,7 @@
        "application/json"
       ]
      ],
-     "body": "[{\"time\": \"2026-10-21T11:00:00Z\", \"value\": 1}]"
+     "body": "[{\"time\": \"2026-10-21T11:00:00Z\", \"value\": 1, \"metric\": \"host.disk_usage\"}]"
     }
    ],
    "settings": {
@@ -2286,12 +2292,12 @@
        "application/json"
       ]
      ],
-     "body": "[{\"time\": \"2026-10-21T12:00:00+00:00\", \"value\": 20, \"mountpoint\": \"/\"}, {\"time\": \"2026-10-21T12:00:00+00:00\", \"value\": 30, \"mountpoint\": \"/data\"}]",
+     "body": "[{\"time\": \"2026-10-21T12:00:00+00:00\", \"value\": 20, \"metric\": \"host.disk_usage\", \"mountpoint\": \"/\"}, {\"time\": \"2026-10-21T12:00:00+00:00\", \"value\": 30, \"metric\": \"host.disk_usage\", \"mountpoint\": \"/data\"}]",
      "split": 10
     }
    ],
    "patch": {
-    "SQL_QUERY_MAX_BODY_BYTES": 146
+    "SQL_QUERY_MAX_BODY_BYTES": 204
    },
    "settings": {
     "INFLUX_TOKEN": "test-token",

@@ -565,6 +565,44 @@ def query_range(
     )
 
 
+def _validate_query_selection(
+    samples: list[MetricSample],
+    metric_name: str,
+    start: datetime,
+    stop: datetime,
+    *,
+    host: str | None,
+    service: str | None,
+    subject_type: str | None,
+    subject_id: str | None,
+    tags: dict[str, str] | None,
+) -> list[MetricSample]:
+    filters = {
+        "host": host,
+        "service": service,
+        "subject_type": subject_type,
+        "subject_id": subject_id,
+    }
+    for sample in samples:
+        dimensions = {name: getattr(sample, name) for name in _RESERVED_TAG_KEYS}
+        dimensions.update(sample.tags)
+        if (
+            sample.metric != metric_name
+            or not (_ensure_utc(start) <= sample.ts < _ensure_utc(stop))
+            or any(
+                value and dimensions.get(key) != value for key, value in filters.items()
+            )
+            or any(
+                dimensions.get(str(key)) != str(value)
+                for key, value in (tags or {}).items()
+            )
+        ):
+            raise InfluxConfigurationError(
+                "InfluxDB query result does not match selection"
+            )
+    return samples
+
+
 def _is_v2_query_missing(err: Exception) -> bool:
     if isinstance(err, ApiException):
         return err.status == 404
@@ -636,7 +674,7 @@ def _query_range_v2_flux(
                     ts=record_time,
                     value=_parse_query_value(value),
                     host=str(record.values.get("host", "")),
-                    metric=str(record.values.get("metric", metric_name)),
+                    metric=str(record.values.get("metric", "")),
                     service=(
                         str(record.values.get("service"))
                         if record.values.get("service") is not None
@@ -705,7 +743,17 @@ def _query_range_v2_flux(
                 )
             )
 
-    return samples
+    return _validate_query_selection(
+        samples,
+        metric_name,
+        start,
+        stop,
+        host=host,
+        service=service,
+        subject_type=subject_type,
+        subject_id=subject_id,
+        tags=tags,
+    )
 
 
 _V3_NON_TAG_COLUMNS = frozenset(
@@ -862,7 +910,7 @@ def _query_range_v3_sql(
                 ts=ts,
                 value=_parse_query_value(row_value),
                 host=str(row.get("host", "")),
-                metric=str(row.get("metric", metric_name)),
+                metric=str(row.get("metric", "")),
                 service=(
                     str(row.get("service")) if row.get("service") is not None else None
                 ),
@@ -909,7 +957,17 @@ def _query_range_v3_sql(
             )
         )
 
-    return samples
+    return _validate_query_selection(
+        samples,
+        metric_name,
+        start,
+        stop,
+        host=host,
+        service=service,
+        subject_type=subject_type,
+        subject_id=subject_id,
+        tags=tags,
+    )
 
 
 def _parse_influx_ts(raw: str) -> datetime:

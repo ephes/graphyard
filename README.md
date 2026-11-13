@@ -154,6 +154,12 @@ credential. Admission database failures return fixed-text 503 without attempting
 a heartbeat write or misreporting a sink failure. This transaction orders admission only: a remote
 write cannot be rolled back if its response or later bookkeeping fails.
 
+Both credential issuance commands (`create_ingest_token` and
+`create_inventory_credential`) accept `--database ALIAS`. Without it they use
+the write router; inventory issuance refuses split write aliases before reading
+any rows. Locks, retirement, related enrollment writes and replacement creation
+use one selected transaction. Plaintext is printed only after its commit.
+
 Rotation is atomic: either the new token exists and the previous one is revoked, or the command
 fails and nothing changed, so the previous token stays valid. Token names are unique, so the
 previous row is kept as history under the name `<name> (retired #<id>)` (revoked, with its
@@ -275,7 +281,9 @@ To choose scopes, see what each token really writes:
 just manage report_ingest_token_hosts --days 30
 ```
 
-The report is read-only. Per enabled token (`--include-disabled` adds revoked ones) it lists the
+The report is read-only. `--days` supports 1–36500 days (default 30); values
+outside that range or the datetime domain fail before database reads.
+Per enabled token (`--include-disabled` adds revoked ones) it lists the
 host identifiers written in the period, marks those outside the token's current scope, and prints a
 matching `--host-scope` value. For a token with more than 64 identifiers it prints no suggestion,
 because a scope holds at most 64 entries: choose prefixes (for example `web-*`) or split the token.
@@ -1048,3 +1056,29 @@ Inventory JSON rejects duplicate object names at every depth, including escaped
 equivalents, before storing reports or changing category pointers. Repeated array
 entries remain valid. All inventory reader HTML, JSON and SBOM responses carry
 `Cache-Control: private, no-store`, including errors and login redirects.
+
+### Admin definition ownership
+
+Collection spec and condition admin pages edit definitions only. Scheduling,
+collector results and condition observations are read-only and survive concurrent
+runner publications. A signed, row-bound revision detects definition edits since
+the page was opened (including secret rotation); conflicts require reloading.
+Masked secrets are merged from the current locked spec. The admin holds the row
+lock only during its database transaction, with no network work. Definition edits
+preserve the last condition observation and watermark; the next scheduled
+evaluation uses the new definition, and in-flight old-definition results cannot
+publish. A definition edit does not manufacture a healthy observation.
+
+### Observation ordering and query replies
+
+Usage and registry updates recheck their observation watermark in the UPDATE.
+Older arrivals cannot move last-seen times backwards or replace newer subject
+provenance/service ownership. Equal-time provenance changes keep the first
+committed observation. Unchanged rows retain the existing minute/hour refresh
+throttles and usage row cap; bound tokens still cannot touch foreign services.
+
+Both query runtimes reject the entire Influx v2/v3 response if a sample has a
+missing/wrong metric, differs from any issued dimension/tag filter, or lies
+outside the issued half-open range (`start <= timestamp < stop`). Unfiltered
+dimensions may differ and sparse or empty series remain supported. A rejected
+reply produces an evaluation failure without publishing a partial observed value.

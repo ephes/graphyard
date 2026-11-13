@@ -93,7 +93,7 @@ const NON_TAG_COLUMNS: [&str; 12] = [
 /// # Errors
 /// `Invalid response from InfluxDB v3 query API` when the document is not a
 /// list; missing or malformed row/time/value evidence.
-pub fn sql_samples(rows: &Value, metric_name: &str) -> Result<Vec<MetricSample>, QueryError> {
+pub fn sql_samples(rows: &Value, _metric_name: &str) -> Result<Vec<MetricSample>, QueryError> {
     let Value::Array(rows) = rows else {
         return Err(QueryError::config(
             "Invalid response from InfluxDB v3 query API",
@@ -124,9 +124,7 @@ pub fn sql_samples(rows: &Value, metric_name: &str) -> Result<Vec<MetricSample>,
             ts,
             value,
             host: row.get("host").map(py_str).unwrap_or_default(),
-            metric: row
-                .get("metric")
-                .map_or_else(|| metric_name.to_owned(), py_str),
+            metric: row.get("metric").map_or_else(String::new, py_str),
             service: optional("service"),
             subject_type: optional("subject_type"),
             subject_id: optional("subject_id"),

@@ -1,7 +1,7 @@
 """Synthetic transport regressions through the public query/write callers."""
 
 import asyncio
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 import gzip
 import json
 import time
@@ -16,9 +16,9 @@ REAL_CLIENT = httpx.AsyncClient
 
 NOW = datetime(2026, 1, 1, tzinfo=UTC)
 CSV = (
-    b"#datatype,string,long,dateTime:RFC3339,double\n"
-    b"#group,false,false,false,false\n#default,_result,,,\n"
-    b",result,table,_time,_value\n,,0,2026-01-01T00:00:00Z,2\n"
+    b"#datatype,string,long,dateTime:RFC3339,double,string\n"
+    b"#group,false,false,false,false,true\n#default,_result,,,,\n"
+    b",result,table,_time,_value,metric\n,,0,2026-01-01T00:00:00Z,2,m\n"
 )
 
 
@@ -85,7 +85,7 @@ def call(write):
                 )
             ]
         )
-    return influx.query_range("m", NOW, NOW)
+    return influx.query_range("m", NOW, NOW + timedelta(seconds=1))
 
 
 @pytest.mark.parametrize("write", [False, True])

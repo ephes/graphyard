@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import copy
+import json
 from typing import Any
 
 from django.contrib import admin
 from django import forms
 from django.forms import ModelForm
+from django.utils.crypto import constant_time_compare, salted_hmac
+from django.db import connections, router, transaction
 
 from .models import (
     ConditionDefinition,
@@ -29,12 +32,86 @@ _SECRET_CONFIG_KEYS = {
 }
 
 
-class MetricCollectionSpecAdminForm(ModelForm):
+class DefinitionAdminForm(ModelForm):
+    """Signed, row-bound definition revision; never save runner-owned fields."""
+
+    definition_revision = forms.CharField(widget=forms.HiddenInput, required=False)
+    CONFLICT = "Definition changed. Reload this page before editing again."
+
+    def _definition_fields(self) -> tuple[str, ...]:
+        return tuple(name for name in self.fields if name != "definition_revision")
+
+    def _revision(self, row: Any) -> str:
+        values = {
+            name: row._meta.get_field(name).to_python(getattr(row, name))
+            for name in self._definition_fields()
+        }
+        values.update(pk=row.pk, updated_at=str(row.updated_at))
+        # A keyed MAC, never a bare hash: the payload includes unredacted
+        # secrets while every other input is visible on the change page.
+        return salted_hmac(
+            f"graphyard.admin.definition_revision:{row._meta.label_lower}",
+            json.dumps(values, sort_keys=True, default=str),
+            algorithm="sha256",
+        ).hexdigest()
+
+    def _revision_matches(self, submitted: Any, row: Any) -> bool:
+        return isinstance(submitted, str) and constant_time_compare(
+            submitted, self._revision(row)
+        )
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        if self.instance.pk:
+            self.initial["definition_revision"] = self._revision(self.instance)
+
+    def _current(self) -> Any:
+        alias = router.db_for_write(type(self.instance), instance=self.instance)
+        rows = type(self.instance).objects.using(alias)
+        # Django admin holds its POST transaction from validation through save.
+        if connections[alias].in_atomic_block:
+            rows = rows.select_for_update()
+        return rows.filter(pk=self.instance.pk).first()
+
+    def clean(self) -> dict[str, Any]:
+        data = super().clean()
+        if self.instance.pk:
+            current = self._current()
+            if current is None or not self._revision_matches(
+                data.get("definition_revision"), current
+            ):
+                raise forms.ValidationError(self.CONFLICT)
+        return data
+
+    def save(self, commit: bool = True) -> Any:
+        if not commit or not self.instance.pk:
+            return super().save(commit=commit)
+        # Preserve ModelForm.save's refusal to persist invalid bound forms.
+        super().save(commit=False)
+        alias = router.db_for_write(type(self.instance), instance=self.instance)
+        with transaction.atomic(using=alias):
+            current = self._current()
+            if current is None or not self._revision_matches(
+                self.cleaned_data.get("definition_revision"), current
+            ):
+                raise forms.ValidationError(self.CONFLICT)
+            self.instance.save(
+                using=alias, update_fields=(*self._definition_fields(), "updated_at")
+            )
+        return self.instance
+
+
+class DefinitionAdmin(admin.ModelAdmin):
+    def save_model(self, request: Any, obj: Any, form: Any, change: bool) -> None:
+        form.save()
+
+
+class MetricCollectionSpecAdminForm(DefinitionAdminForm):
     REDACTED = "********"
 
     class Meta:
         model = MetricCollectionSpec
-        fields = "__all__"
+        fields = ("name", "enabled", "spec_type", "interval_seconds", "config")
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
@@ -65,9 +142,11 @@ class MetricCollectionSpecAdminForm(ModelForm):
             return config
 
         merged = copy.deepcopy(config)
+        current = self._current() if self.instance.pk else None
+        existing = current.config if current is not None else self._existing_config
         for key in _SECRET_CONFIG_KEYS:
-            if merged.get(key) == self.REDACTED and key in self._existing_config:
-                merged[key] = self._existing_config[key]
+            if merged.get(key) == self.REDACTED and key in existing:
+                merged[key] = existing[key]
         return merged
 
 
@@ -163,8 +242,39 @@ class SubjectRegistryAdmin(admin.ModelAdmin):
     search_fields = ("subject_type", "subject_id", "display_name", "source_system")
 
 
+class ConditionDefinitionAdminForm(DefinitionAdminForm):
+    class Meta:
+        model = ConditionDefinition
+        fields = (
+            "name",
+            "enabled",
+            "metric_name",
+            "host_filter",
+            "subject_type_filter",
+            "subject_id_filter",
+            "service_filter",
+            "tags_filter",
+            "operator",
+            "warning_threshold",
+            "critical_threshold",
+            "window_minutes",
+            "breach_minutes",
+            "stale_after_seconds",
+            "alert_when_stale",
+        )
+
+
 @admin.register(ConditionDefinition)
-class ConditionDefinitionAdmin(admin.ModelAdmin):
+class ConditionDefinitionAdmin(DefinitionAdmin):
+    form = ConditionDefinitionAdminForm
+    readonly_fields = (
+        "status",
+        "message",
+        "last_value",
+        "last_evaluated",
+        "created_at",
+        "updated_at",
+    )
     list_display = (
         "id",
         "name",
@@ -188,7 +298,15 @@ class ConditionDefinitionAdmin(admin.ModelAdmin):
 
 
 @admin.register(MetricCollectionSpec)
-class MetricCollectionSpecAdmin(admin.ModelAdmin):
+class MetricCollectionSpecAdmin(DefinitionAdmin):
+    readonly_fields = (
+        "next_run_time",
+        "last_run_at",
+        "last_status",
+        "last_error",
+        "created_at",
+        "updated_at",
+    )
     form = MetricCollectionSpecAdminForm
     list_display = (
         "id",

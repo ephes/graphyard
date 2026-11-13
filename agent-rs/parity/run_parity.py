@@ -719,14 +719,59 @@ def build_corpus(http: HttpFake, https: HttpFake, influx: InfluxFake) -> Corpus:
             "host.filesystem_used_ratio",
             [CRITICAL, OK, WARNING, WARNING, CRITICAL, WARNING, WARNING, WARNING],
             [
-                samples((60, 0.5), (240, 0.5), mountpoint="/")
-                + samples((60, 0.95), (200, 0.97), (330, 0.96), mountpoint="/data"),
-                samples((60, 0.5), mountpoint="/")
-                + samples((30, 0.6), mountpoint="/data"),
-                samples((60, 0.85), (240, 0.85), mountpoint="/")
-                + samples((60, 0.86), (280, 0.81), mountpoint="/data"),
-                samples((60, 0.5), mountpoint="/")
-                + samples((700, 0.6), mountpoint="/data"),
+                samples(
+                    (60, 0.5),
+                    (240, 0.5),
+                    mountpoint="/",
+                    mountpoint_kind="local",
+                    subject_type="host",
+                )
+                + samples(
+                    (60, 0.95),
+                    (200, 0.97),
+                    (330, 0.96),
+                    mountpoint="/data",
+                    mountpoint_kind="local",
+                    subject_type="host",
+                ),
+                samples(
+                    (60, 0.5),
+                    mountpoint="/",
+                    mountpoint_kind="local",
+                    subject_type="host",
+                )
+                + samples(
+                    (30, 0.6),
+                    mountpoint="/data",
+                    mountpoint_kind="local",
+                    subject_type="host",
+                ),
+                samples(
+                    (60, 0.85),
+                    (240, 0.85),
+                    mountpoint="/",
+                    mountpoint_kind="local",
+                    subject_type="host",
+                )
+                + samples(
+                    (60, 0.86),
+                    (280, 0.81),
+                    mountpoint="/data",
+                    mountpoint_kind="local",
+                    subject_type="host",
+                ),
+                samples(
+                    (60, 0.5),
+                    mountpoint="/",
+                    mountpoint_kind="local",
+                    subject_type="host",
+                )
+                + samples(
+                    (700, 0.6),
+                    mountpoint="/data",
+                    mountpoint_kind="local",
+                    subject_type="host",
+                ),
             ],
             warning=0.8,
             critical=0.9,
@@ -761,7 +806,15 @@ def build_corpus(http: HttpFake, https: HttpFake, influx: InfluxFake) -> Corpus:
             "non-host host filter",
             "service.http_latency",
             [OK, OK, OK, OK, CRITICAL, OK, OK, OK],
-            [samples((30, 0.2), (150, 0.3))],
+            [
+                samples(
+                    (30, 0.2),
+                    (150, 0.3),
+                    service="mail",
+                    subject_type="service",
+                    subject_id="mail_server",
+                )
+            ],
             host_filter="macmini",
             service_filter="mail",
             subject_type_filter="Service",
@@ -771,7 +824,19 @@ def build_corpus(http: HttpFake, https: HttpFake, influx: InfluxFake) -> Corpus:
             "host filter and tags",
             "host.load",
             [WARNING, WARNING, WARNING, WARNING, CRITICAL, WARNING, WARNING, WARNING],
-            [samples((30, 85.0), (100, 86.0), (200, 87.0), (290, 88.0))],
+            [
+                samples(
+                    (30, 85.0),
+                    (100, 86.0),
+                    (200, 87.0),
+                    (290, 88.0),
+                    host="macmini",
+                    subject_type="host",
+                    mountpoint="/",
+                    fs="1",
+                    quote="a\"b'c${x}",
+                )
+            ],
             host_filter="macmini",
             subject_type_filter="host",
             tags_filter={"mountpoint": "/", "fs": 1, "quote": "a\"b'c${x}"},
@@ -832,7 +897,7 @@ def build_corpus(http: HttpFake, https: HttpFake, influx: InfluxFake) -> Corpus:
             "flux only tag key",
             "service.flux_only",
             [OK, OK, CRITICAL, CRITICAL, CRITICAL, OK, OK, OK],
-            [samples((30, 1.0))],
+            [samples((30, 1.0), **{"mount-point": "/"})],
             tags_filter={"mount-point": "/"},
         ),
         Condition(

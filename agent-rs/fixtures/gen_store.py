@@ -1178,6 +1178,21 @@ def _registry_cases() -> list[dict[str, Any]]:
         "service_rows": [service_reg_row(1, "mail", 1)],
     }
     return [
+        *[
+            case(
+                "delayed or equal-time provenance preserves the committed winner "
+                + seen,
+                [host_point("edge", "mail", source_system="old")],
+                subjects=[
+                    subject_row(
+                        1, "host", "edge", source_system="new", last_seen_at=seen
+                    )
+                ],
+                hosts=[host_reg_row(1, "other"), host_reg_row(2, "edge")],
+                service_rows=[service_reg_row(1, "mail", 1, last_seen_at=seen)],
+            )
+            for seen in [NOW_TEXT, "2026-10-21 08:16:30.123456"]
+        ],
         case("an empty point list touches nothing", [], **edge_rows),
         # test_metric_dimensions.py::test_touch_registry_tracks_subjects_and_keeps_host_registry_host_only
         case(
@@ -1230,13 +1245,13 @@ def _registry_cases() -> list[dict[str, Any]]:
             ),
         ),
         case(
-            "an unparseable last_seen_at loads as NULL and is refreshed",
+            "unparseable last_seen_at refresh is guarded by its stored watermark",
             [host_point("edge")],
             subjects=[subject_row(1, "host", "edge", last_seen_at="yesterday")],
             hosts=[host_reg_row(1, "edge", last_seen_at=20261021)],
         ),
         case(
-            "an offset last_seen_at is compared as its UTC instant",
+            "offset last_seen_at refresh also respects its stored watermark",
             [host_point("edge")],
             subjects=[
                 subject_row(1, "host", "edge", last_seen_at="2026-10-21T10:15:00+02:00")

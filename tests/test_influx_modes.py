@@ -130,7 +130,7 @@ def test_query_range_v3_sql_selects_and_returns_dimension_columns(
         def json(self):
             return [
                 {
-                    "time": "2026-03-04T12:00:00Z",
+                    "time": "2026-03-04T11:59:59Z",
                     "value": 22.4,
                     "host": "macmini",
                     "metric": "ha.sensor.office_temperature",

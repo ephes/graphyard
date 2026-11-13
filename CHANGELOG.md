@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+- Bind credential command rotation/enrollment to one routed or explicit
+  `--database` transaction; reject invalid host-scope report lookbacks before reads.
+
+- Keep inventory registry/usage observations monotonic under delayed writes;
+  bind complete Python/Rust Influx query replies to their issued selections.
+  On SQLite a corrupt or offset-form registry `last_seen_at` text is no longer
+  rewritten automatically; repair it in the admin.
+- Admin definition revisions are a keyed MAC instead of a signed bare hash, so
+  the change page no longer exposes a hash over masked secrets. Query parity
+  fixtures again pin sample decoding for selection-matching replies.
+
+- Protect spec and condition admin edits with definition revision conflicts; keep
+  runner scheduling/results read-only and preserve current masked secrets.
+
 - Rust agent (`agent-rs/`): release `agent-rs-v0.3.0`
   (<https://github.com/ephes/graphyard/releases/tag/agent-rs-v0.3.0>), built by
   the release workflow from `eba6ea1`. Asset

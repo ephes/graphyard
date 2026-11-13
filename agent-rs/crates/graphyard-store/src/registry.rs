@@ -546,15 +546,19 @@ fn update_seen(
     table: &str,
     ids: &[i64],
     now_text: &str,
+    cutoff_text: &str,
 ) -> Result<(), StoreError> {
-    // The timestamp itself consumes one parameter in each UPDATE.
-    let capacity = variable_limit(connection)?.saturating_sub(1).max(1);
+    // SET timestamp and observation cutoff each consume one parameter.
+    let capacity = variable_limit(connection)?.saturating_sub(2).max(1);
     for ids in ids.chunks(capacity) {
-        let mut values: Vec<Value> = vec![Value::Text(now_text.to_owned())];
+        let mut values: Vec<Value> = vec![
+            Value::Text(now_text.to_owned()),
+            Value::Text(cutoff_text.to_owned()),
+        ];
         values.extend(ids.iter().copied().map(Value::Integer));
         connection.execute(
             &format!(
-                "UPDATE {table} SET last_seen_at = ? WHERE id IN ({})",
+                "UPDATE {table} SET last_seen_at = ? WHERE (last_seen_at IS NULL OR last_seen_at <= ?) AND id IN ({})",
                 marks(ids.len())
             ),
             params_from_iter(values),
@@ -571,6 +575,9 @@ pub(crate) fn write_registry(
     now: DbDateTime,
 ) -> Result<(), StoreError> {
     let now_text = now.to_db_text()?;
+    let cutoff_text =
+        DbDateTime::from_naive_utc(now.naive_utc() - REGISTRY_LAST_SEEN_UPDATE_INTERVAL)
+            .to_db_text()?;
     let mut transaction = connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
     // Reload under the write lock so the plan sees committed concurrent work.
     let mut rows = load_rows(&transaction, batch)?;
@@ -582,24 +589,32 @@ pub(crate) fn write_registry(
         "subject_registry",
         &plan.subject_seen,
         &now_text,
+        &cutoff_text,
     )?;
     for (id, source_system) in &plan.subject_source {
         transaction.execute(
-            "UPDATE subject_registry SET source_system = ?, last_seen_at = ? WHERE id = ?",
-            rusqlite::params![source_system, now_text, id],
+            "UPDATE subject_registry SET source_system = ?, last_seen_at = ? WHERE id = ? AND (last_seen_at IS NULL OR last_seen_at < ?)",
+            rusqlite::params![source_system, now_text, id, now_text],
         )?;
     }
-    update_seen(&transaction, "host_registry", &plan.host_seen, &now_text)?;
+    update_seen(
+        &transaction,
+        "host_registry",
+        &plan.host_seen,
+        &now_text,
+        &cutoff_text,
+    )?;
     update_seen(
         &transaction,
         "service_registry",
         &plan.service_seen,
         &now_text,
+        &cutoff_text,
     )?;
     for (id, host_id) in &plan.service_reparent {
         transaction.execute(
-            "UPDATE service_registry SET host_id = ?, last_seen_at = ? WHERE id = ?",
-            rusqlite::params![host_id, now_text, id],
+            "UPDATE service_registry SET host_id = ?, last_seen_at = ? WHERE id = ? AND (last_seen_at IS NULL OR last_seen_at < ?)",
+            rusqlite::params![host_id, now_text, id, now_text],
         )?;
     }
     transaction.commit()?;
