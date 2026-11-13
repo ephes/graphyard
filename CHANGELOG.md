@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Refuse duplicate JSON members throughout spec-import files, with position-only
+  diagnostics, and normalize overlong JSON integers to controlled command errors
+  before database access or pruning.
+
 - Bind credential command rotation/enrollment to one routed or explicit
   `--database` transaction; reject invalid host-scope report lookbacks before reads.
 

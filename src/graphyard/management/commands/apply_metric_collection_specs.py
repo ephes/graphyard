@@ -57,9 +57,20 @@ def _read_specs_file(path: Path) -> str:
         os.close(descriptor)
 
 
+def _unique_spec_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for position, (key, value) in enumerate(pairs, start=1):
+        if key in result:
+            raise CommandError(f"Duplicate JSON object key at member {position}")
+        result[key] = value
+    return result
+
+
 def _load_specs_file(path: Path) -> list[dict[str, Any]]:
     try:
-        payload = json.loads(_read_specs_file(path))
+        payload = json.loads(
+            _read_specs_file(path), object_pairs_hook=_unique_spec_object
+        )
     except FileNotFoundError as err:
         raise CommandError(f"Spec file not found: {path}") from err
     except UnicodeDecodeError as err:
@@ -76,8 +87,12 @@ def _load_specs_file(path: Path) -> list[dict[str, Any]]:
         raise CommandError(
             f"Invalid JSON in {path} at line {err.lineno} column {err.colno}"
         ) from err
-    except RecursionError as err:
-        raise CommandError(f"JSON nesting too deep in {path}") from err
+    except RecursionError:
+        raise CommandError(f"JSON nesting too deep in {path}") from None
+    except ValueError:
+        raise CommandError(
+            f"JSON integer exceeds the decoder limit in {path}"
+        ) from None
 
     pending = [(payload, 0)]
     while pending:

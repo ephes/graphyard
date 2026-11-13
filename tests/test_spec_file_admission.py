@@ -149,7 +149,7 @@ def test_decoder_depth_exhaustion_is_normalized_before_database(tmp_path, monkey
     path.write_text("[]")
     calls = []
 
-    def exhausted(content):
+    def exhausted(content, **kwargs):
         calls.append(True)
         raise RecursionError("private synthetic content")
 

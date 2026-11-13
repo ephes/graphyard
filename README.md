@@ -328,6 +328,10 @@ are capped at 2 MiB (an exact-limit valid file is accepted); parsed JSON paths
 may traverse at most 64 edges from the document root. Unreadable, nonregular,
 oversized, invalid UTF-8/JSON or decoder-depth-exhausting inputs fail before any
 database query, with a bounded command error naming the path and omitting content.
+Duplicate JSON members at every object level (including escaped-equivalent names
+and identical values) are refused with only the member position. Repeated array
+records still undergo the ordinary duplicate-spec-name check. Integers beyond
+Python's decoder digit limit produce a controlled command error before model access.
 
 Apply compares the captured definition and update timestamp before writing.
 Concurrent edits, duplicate creates or recognized database contention produce a
