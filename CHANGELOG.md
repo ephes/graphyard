@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Keep spec-import validation diagnostics private: report only definition indices
+  and known fields, without raw values/names or model-validation error chains;
+  preserve all-or-nothing reconciliation and its successful summary output.
+
 - Admit spec-import JSON depth, 100,000-node complexity and 1,000-definition
   budgets through the existing streaming parser before building an object tree;
   refuse non-JSON NaN/Infinity constants.

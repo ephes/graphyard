@@ -351,6 +351,13 @@ Prune is opt-in and keyed only by `name`. Without `--prune`, unspecified specs
 are left untouched. With `--prune`, the command refuses an empty desired spec
 set so a broken render cannot wipe every spec row in one shot.
 
+Spec-file validation errors identify the zero-based definition index and known
+field (including supported typed config knobs), with a fixed reason. They omit
+names, values, unknown model fields and raw model-validation exception chains.
+A failed apply emits no buffered success lines and rolls back all writes/pruning;
+correct the indexed definition locally and retry. Successful reconciliation still
+prints spec names and the stable summary counters.
+
 Typed config values are validated on save (Django admin and
 `apply_metric_collection_specs`, which aborts on the first invalid spec in the
 file, including specs whose stored row is otherwise unchanged):
