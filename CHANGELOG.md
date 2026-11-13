@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Protect spec and condition admin edits with definition revision conflicts; keep
+  runner scheduling/results read-only and preserve current masked secrets.
+
 - Rust agent (`agent-rs/`): release `agent-rs-v0.3.0`
   (<https://github.com/ephes/graphyard/releases/tag/agent-rs-v0.3.0>), built by
   the release workflow from `eba6ea1`. Asset

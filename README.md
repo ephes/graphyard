@@ -1048,3 +1048,15 @@ Inventory JSON rejects duplicate object names at every depth, including escaped
 equivalents, before storing reports or changing category pointers. Repeated array
 entries remain valid. All inventory reader HTML, JSON and SBOM responses carry
 `Cache-Control: private, no-store`, including errors and login redirects.
+
+### Admin definition ownership
+
+Collection spec and condition admin pages edit definitions only. Scheduling,
+collector results and condition observations are read-only and survive concurrent
+runner publications. A signed, row-bound revision detects definition edits since
+the page was opened (including secret rotation); conflicts require reloading.
+Masked secrets are merged from the current locked spec. The admin holds the row
+lock only during its database transaction, with no network work. Definition edits
+preserve the last condition observation and watermark; the next scheduled
+evaluation uses the new definition, and in-flight old-definition results cannot
+publish. A definition edit does not manufacture a healthy observation.
