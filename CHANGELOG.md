@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Admit spec-import JSON depth, 100,000-node complexity and 1,000-definition
+  budgets through the existing streaming parser before building an object tree;
+  refuse non-JSON NaN/Infinity constants.
+
 - Refuse duplicate JSON members throughout spec-import files, with position-only
   diagnostics, and normalize overlong JSON integers to controlled command errors
   before database access or pruning.

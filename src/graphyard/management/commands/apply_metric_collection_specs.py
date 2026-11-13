@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import io
 import json
 import os
 import sqlite3
 import stat
 from pathlib import Path
 from typing import Any
+
+import ijson
 
 from django.core.exceptions import ValidationError
 from django.core.management.base import BaseCommand, CommandError
@@ -17,6 +20,10 @@ from graphyard.models import MetricCollectionSpec, MetricCollectionSpecType
 
 MAX_SPEC_FILE_BYTES = 2 * 1024 * 1024
 MAX_SPEC_FILE_DEPTH = 64
+MAX_SPEC_FILE_NODES = 100_000
+MAX_SPEC_FILE_SPECS = 1_000
+# Match inventory admission: the Python backend avoids native integer callback failures.
+STREAMING_JSON = ijson.get_backend("python")
 DEFINITION_FIELDS = ("enabled", "spec_type", "interval_seconds", "config")
 APPLY_CONFLICT = "Spec application conflicted; retry the command"
 
@@ -57,6 +64,58 @@ def _read_specs_file(path: Path) -> str:
         os.close(descriptor)
 
 
+def _admit_spec_shape(content: str, path: Path) -> None:
+    """Count events without building lists/dicts, including ignored fields."""
+    depth = nodes = specs = 0
+    spec_array_depth: int | None = None
+    root_member_is_specs = False
+    try:
+        for event, value in STREAMING_JSON.basic_parse(
+            io.BytesIO(content.encode("utf-8")), buf_size=4096
+        ):
+            if event in ("end_map", "end_array"):
+                depth -= 1
+                if spec_array_depth is not None and depth < spec_array_depth:
+                    spec_array_depth = None
+                continue
+            nodes += 1
+            if nodes > MAX_SPEC_FILE_NODES:
+                raise CommandError(
+                    f"JSON node limit exceeds {MAX_SPEC_FILE_NODES} in {path}"
+                )
+            if event == "map_key":
+                if depth == 1:
+                    root_member_is_specs = value == "metric_collection_specs"
+                continue
+            if depth > MAX_SPEC_FILE_DEPTH:
+                raise CommandError(f"JSON nesting too deep in {path}")
+            if depth == spec_array_depth:
+                specs += 1
+                if specs > MAX_SPEC_FILE_SPECS:
+                    raise CommandError(
+                        f"Spec definition limit exceeds {MAX_SPEC_FILE_SPECS} in {path}"
+                    )
+            if event == "start_array" and (
+                depth == 0 or (depth == 1 and root_member_is_specs)
+            ):
+                spec_array_depth = depth + 1
+            if event in ("start_map", "start_array"):
+                depth += 1
+    except ijson.JSONError as err:
+        # The streaming backend wraps Python's integer digit-limit ValueError.
+        # Classify only its fixed prefix; never forward parser text or input.
+        cause = err.__context__
+        if isinstance(cause, ValueError) and str(cause).startswith(
+            "Exceeds the limit ("
+        ):
+            raise CommandError(
+                f"JSON integer exceeds the decoder limit in {path}"
+            ) from None
+        raise CommandError(f"Invalid JSON in {path}") from None
+    except ArithmeticError:
+        raise CommandError(f"Invalid JSON number in {path}") from None
+
+
 def _unique_spec_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     result: dict[str, Any] = {}
     for position, (key, value) in enumerate(pairs, start=1):
@@ -68,9 +127,9 @@ def _unique_spec_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
 
 def _load_specs_file(path: Path) -> list[dict[str, Any]]:
     try:
-        payload = json.loads(
-            _read_specs_file(path), object_pairs_hook=_unique_spec_object
-        )
+        content = _read_specs_file(path)
+        _admit_spec_shape(content, path)
+        payload = json.loads(content, object_pairs_hook=_unique_spec_object)
     except FileNotFoundError as err:
         raise CommandError(f"Spec file not found: {path}") from err
     except UnicodeDecodeError as err:
@@ -93,16 +152,6 @@ def _load_specs_file(path: Path) -> list[dict[str, Any]]:
         raise CommandError(
             f"JSON integer exceeds the decoder limit in {path}"
         ) from None
-
-    pending = [(payload, 0)]
-    while pending:
-        value, depth = pending.pop()
-        if depth > MAX_SPEC_FILE_DEPTH:
-            raise CommandError(f"JSON nesting too deep in {path}")
-        if isinstance(value, dict):
-            pending.extend((item, depth + 1) for item in value.values())
-        elif isinstance(value, list):
-            pending.extend((item, depth + 1) for item in value)
 
     raw_specs: object
     if isinstance(payload, list):

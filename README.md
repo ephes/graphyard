@@ -325,7 +325,12 @@ just manage apply_metric_collection_specs --file /etc/graphyard/metric-collectio
 Files are opened once without blocking and must resolve to a regular file;
 symlinks to regular files remain supported. Both declared size and actual reads
 are capped at 2 MiB (an exact-limit valid file is accepted); parsed JSON paths
-may traverse at most 64 edges from the document root. Unreadable, nonregular,
+may traverse at most 64 edges from the document root. Before materializing any
+JSON lists or objects, a streaming pass admits at most 100,000 nodes (object
+members count once for their key and once for their value; containers count as
+values) and 1,000 definitions in the root or `metric_collection_specs` list.
+These whole-document budgets include ignored fields and nested config values;
+exact limits are accepted. JSON extensions such as NaN/Infinity are refused. Unreadable, nonregular,
 oversized, invalid UTF-8/JSON or decoder-depth-exhausting inputs fail before any
 database query, with a bounded command error naming the path and omitting content.
 Duplicate JSON members at every object level (including escaped-equivalent names
