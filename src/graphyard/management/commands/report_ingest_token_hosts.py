@@ -14,6 +14,9 @@ from graphyard.token_scope import (
 )
 
 
+MAX_LOOKBACK_DAYS = 36500
+
+
 class Command(BaseCommand):
     help = (
         "Report, per ingest token, the host identifiers it wrote metrics for in "
@@ -22,7 +25,7 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser) -> None:
         parser.add_argument(
-            "--days", type=int, default=30, help="Look back this many days (default 30)"
+            "--days", type=int, default=30, help="Look back 1–36500 days (default 30)"
         )
         parser.add_argument(
             "--include-disabled",
@@ -32,9 +35,12 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options) -> None:
         days: int = options["days"]
-        if days < 1:
-            raise CommandError("--days must be at least 1")
-        cutoff = timezone.now() - timedelta(days=days)
+        if not 1 <= days <= MAX_LOOKBACK_DAYS:
+            raise CommandError("--days must be between 1 and 36500")
+        try:
+            cutoff = timezone.now() - timedelta(days=days)
+        except (OverflowError, ValueError) as err:
+            raise CommandError("--days exceeds the supported datetime range") from err
 
         tokens = IngestToken.objects.order_by("name")
         if not options["include_disabled"]:

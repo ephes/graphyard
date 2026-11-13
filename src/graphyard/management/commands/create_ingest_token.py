@@ -4,7 +4,10 @@ import secrets
 
 from django.core.exceptions import ValidationError
 from django.core.management.base import BaseCommand, CommandError
-from django.db import IntegrityError, transaction
+from django.db import IntegrityError, connections, transaction
+from django.utils import timezone
+
+from graphyard.credential_database import credential_database
 
 from graphyard.models import IngestToken
 from graphyard.token_scope import (
@@ -23,6 +26,7 @@ class Command(BaseCommand):
     help = "Create a new ingest bearer token (stored hashed only)"
 
     def add_arguments(self, parser) -> None:
+        parser.add_argument("--database", choices=tuple(connections), default=None)
         parser.add_argument("--name", required=True, help="Token name (e.g. host id)")
         parser.add_argument(
             "--rotate",
@@ -68,15 +72,19 @@ class Command(BaseCommand):
         elif unrestricted:
             host_scope = []
 
+        alias = credential_database((IngestToken,), options["database"])
         plaintext_token = secrets.token_urlsafe(32)
         ingest_token = IngestToken(name=name)
         ingest_token.set_token(plaintext_token)
         try:
             # One transaction: either the new token exists and the previous one
             # is revoked, or nothing changed and the previous one stays valid.
-            with transaction.atomic():
+            with transaction.atomic(using=alias):
                 previous = (
-                    IngestToken.objects.select_for_update().filter(name=name).first()
+                    IngestToken.objects.using(alias)
+                    .select_for_update()
+                    .filter(name=name)
+                    .first()
                 )
                 if previous is not None:
                     if previous.enabled:
@@ -84,12 +92,16 @@ class Command(BaseCommand):
                             raise CommandError(
                                 f"Enabled token with name '{name}' exists. Use --rotate to replace it."
                             )
-                        previous.revoke()
+                        previous.enabled = False
+                        previous.revoked_at = timezone.now()
+                        previous.save(
+                            using=alias, update_fields=["enabled", "revoked_at"]
+                        )
                     # Names are unique: the retired row keeps its history under
                     # a derived name and frees the name for the new token.
                     ingest_token.bound_subject_id = previous.bound_subject_id
                     previous.name = retired_token_name(previous)
-                    previous.save(update_fields=["name"])
+                    previous.save(using=alias, update_fields=["name"])
                     if host_scope is None:
                         # Replacing a token must never silently widen it.
                         if not is_valid_stored_scope(previous.host_scope):
@@ -99,7 +111,7 @@ class Command(BaseCommand):
                             )
                         host_scope = previous.host_scope
                 ingest_token.host_scope = [] if host_scope is None else host_scope
-                ingest_token.save()
+                ingest_token.save(using=alias)
         except IntegrityError as err:
             raise CommandError(
                 f"Could not create token '{name}'; no token was changed: {err}"

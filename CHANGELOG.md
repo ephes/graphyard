@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Bind credential command rotation/enrollment to one routed or explicit
+  `--database` transaction; reject invalid host-scope report lookbacks before reads.
+
 - Keep inventory registry/usage observations monotonic under delayed writes;
   bind complete Python/Rust Influx query replies to their issued selections.
 
