@@ -176,3 +176,26 @@ def test_invalid_bound_definition_cannot_be_saved(kind):
     with pytest.raises(ValueError, match="didn't validate"):
         form.save()
     assert type(row).objects.values().get(pk=row.pk) == before
+
+
+@pytest.mark.django_db
+def test_definition_revision_does_not_expose_a_secret_hash():
+    import hashlib
+
+    row = MetricCollectionSpec.objects.create(
+        name="synthetic", config={"token": "weak-secret"}
+    )
+    form = edit_form(row)
+    revision = form.initial["definition_revision"]
+    values = {
+        name: row._meta.get_field(name).to_python(getattr(row, name))
+        for name in form._definition_fields()
+    }
+    values.update(pk=row.pk, updated_at=str(row.updated_at))
+    bare = hashlib.sha256(
+        json.dumps(values, sort_keys=True, default=str).encode()
+    ).hexdigest()
+    assert bare not in revision
+    assert "weak-secret" not in revision
+    assert form.is_valid(), form.errors
+    assert not edit_form(row, definition_revision=bare).is_valid()

@@ -855,12 +855,12 @@ CSV_CASES: list[dict[str, Any]] = [
         "responses": [
             _ok(
                 _csv(_row(0, "2026-10-21T11:30:00Z", "1"))
-                + "#datatype,string,long,dateTime:RFC3339,long,string,boolean,duration\r\n"
-                + "#group,false,false,false,false,true,false,false\r\n"
-                + "#default,_result,,,,,,\r\n"
-                + ",result,table,_time,_value,mountpoint,flag,age\r\n"
-                + ",,2,2026-10-21T11:40:00+02:00,42,/boot,true,15\r\n"
-                + ",,2,2026-10-21T11:41:00,7,/boot,false,-3\r\n\r\n"
+                + "#datatype,string,long,dateTime:RFC3339,long,string,boolean,duration,string\r\n"
+                + "#group,false,false,false,false,true,false,false,true\r\n"
+                + "#default,_result,,,,,,,\r\n"
+                + ",result,table,_time,_value,mountpoint,flag,age,metric\r\n"
+                + ",,2,2026-10-21T13:40:00+02:00,42,/boot,true,15,host.disk_usage\r\n"
+                + ",,2,2026-10-21T11:41:00,7,/boot,false,-3,host.disk_usage\r\n\r\n"
             )
         ],
     },
@@ -868,12 +868,12 @@ CSV_CASES: list[dict[str, Any]] = [
         "name": "defaults_fill_empty_cells",
         "responses": [
             _ok(
-                "#datatype,string,long,dateTime:RFC3339,double,string,string,string\r\n"
-                "#group,false,false,false,false,true,true,true\r\n"
-                "#default,_result,3,,2.5,dflt,,\r\n"
-                ",result,table,_time,_value,host,service,device\r\n"
-                ",,0,2026-10-21T11:30:00Z,,,,\r\n"
-                ",,0,2026-10-21T11:31:00Z,4,h,s,d\r\n"
+                "#datatype,string,long,dateTime:RFC3339,double,string,string,string,string\r\n"
+                "#group,false,false,false,false,true,true,true,true\r\n"
+                "#default,_result,3,,2.5,dflt,,,host.disk_usage\r\n"
+                ",result,table,_time,_value,host,service,device,metric\r\n"
+                ",,0,2026-10-21T11:30:00Z,,,,,\r\n"
+                ",,0,2026-10-21T11:31:00Z,4,h,s,d,host.disk_usage\r\n"
             )
         ],
     },
@@ -907,12 +907,12 @@ CSV_CASES: list[dict[str, Any]] = [
         "name": "typed_tag_values",
         "responses": [
             _ok(
-                "#datatype,string,long,dateTime:RFC3339,double,long,unsignedLong,double,boolean,dateTime:RFC3339Nano,duration,base64Binary,unknownType,string\r\n"
-                "#group,false,false,false,false,false,false,false,false,false,false,false,false,false\r\n"
-                "#default,_result,,,,,,,,,,,,\r\n"
-                ",result,table,_time,_value,l,u,d,b,t,du,bin,x,empty\r\n"
-                ",,0,2026-10-21T11:30:00Z,1,-5,18446744073709551615,1e16,true,2026-10-21T11:30:00.5-01:30,1000,aGk=,whatever,\r\n"
-                ",,0,2026-10-21T11:31:00Z,1,1_000, 7 ,+Inf,TRUE,0001-01-01T00:00:00Z,0,AAEC/w==,,x\r\n"
+                "#datatype,string,long,dateTime:RFC3339,double,long,unsignedLong,double,boolean,dateTime:RFC3339Nano,duration,base64Binary,unknownType,string,string\r\n"
+                "#group,false,false,false,false,false,false,false,false,false,false,false,false,false,true\r\n"
+                "#default,_result,,,,,,,,,,,,,\r\n"
+                ",result,table,_time,_value,l,u,d,b,t,du,bin,x,empty,metric\r\n"
+                ",,0,2026-10-21T11:30:00Z,1,-5,18446744073709551615,1e16,true,2026-10-21T11:30:00.5-01:30,1000,aGk=,whatever,,host.disk_usage\r\n"
+                ",,0,2026-10-21T11:31:00Z,1,1_000, 7 ,+Inf,TRUE,0001-01-01T00:00:00Z,0,AAEC/w==,,x,host.disk_usage\r\n"
             )
         ],
     },
@@ -920,11 +920,11 @@ CSV_CASES: list[dict[str, Any]] = [
         "name": "value_types",
         "responses": [
             _ok(
-                "#datatype,string,long,dateTime:RFC3339,long\r\n"
-                "#group,false,false,false,false\r\n"
-                "#default,_result,,,\r\n"
-                ",result,table,_time,_value\r\n"
-                ",,0,2026-10-21T11:30:00Z,12345678901234567890\r\n"
+                "#datatype,string,long,dateTime:RFC3339,long,string\r\n"
+                "#group,false,false,false,false,true\r\n"
+                "#default,_result,,,,\r\n"
+                ",result,table,_time,_value,metric\r\n"
+                ",,0,2026-10-21T11:30:00Z,12345678901234567890,host.disk_usage\r\n"
             ),
         ],
     },
@@ -932,11 +932,11 @@ CSV_CASES: list[dict[str, Any]] = [
         "name": "string_value_parsed_as_float",
         "responses": [
             _ok(
-                "#datatype,string,long,dateTime:RFC3339,string\r\n"
-                "#group,false,false,false,false\r\n"
-                "#default,_result,,,\r\n"
-                ",result,table,_time,_value\r\n"
-                ",,0,2026-10-21T11:30:00Z, 1_5.5 \r\n"
+                "#datatype,string,long,dateTime:RFC3339,string,string\r\n"
+                "#group,false,false,false,false,true\r\n"
+                "#default,_result,,,,\r\n"
+                ",result,table,_time,_value,metric\r\n"
+                ",,0,2026-10-21T11:30:00Z, 1_5.5 ,host.disk_usage\r\n"
             ),
         ],
     },
@@ -1156,11 +1156,11 @@ CSV_CASES: list[dict[str, Any]] = [
         "name": "duplicate_column_names",
         "responses": [
             _ok(
-                "#datatype,string,long,dateTime:RFC3339,double,string,string\r\n"
-                "#group,false,false,false,false,true,true\r\n"
-                "#default,_result,,,,,\r\n"
-                ",result,table,_time,_value,tag,tag\r\n"
-                ",,0,2026-10-21T11:30:00Z,1,first,second\r\n"
+                "#datatype,string,long,dateTime:RFC3339,double,string,string,string\r\n"
+                "#group,false,false,false,false,true,true,true\r\n"
+                "#default,_result,,,,,,\r\n"
+                ",result,table,_time,_value,tag,tag,metric\r\n"
+                ",,0,2026-10-21T11:30:00Z,1,first,second,host.disk_usage\r\n"
             ),
         ],
     },
@@ -1168,12 +1168,12 @@ CSV_CASES: list[dict[str, Any]] = [
         "name": "quoted_cells",
         "responses": [
             _ok(
-                "#datatype,string,long,dateTime:RFC3339,double,string,string,string\r\n"
-                "#group,false,false,false,false,true,true,true\r\n"
-                "#default,_result,,,,,,\r\n"
-                ",result,table,_time,_value,a,b,c\r\n"
-                ',,0,2026-10-21T11:30:00Z,1,"x,y","say ""hi""","multi\nline"\r\n'
-                ',,0,2026-10-21T11:31:00Z,2,plain"quote,"",unicode ä€\r\n'
+                "#datatype,string,long,dateTime:RFC3339,double,string,string,string,string\r\n"
+                "#group,false,false,false,false,true,true,true,true\r\n"
+                "#default,_result,,,,,,,\r\n"
+                ",result,table,_time,_value,metric,a,b,c\r\n"
+                ',,0,2026-10-21T11:30:00Z,1,host.disk_usage,"x,y","say ""hi""","multi\nline"\r\n'
+                ',,0,2026-10-21T11:31:00Z,2,host.disk_usage,plain"quote,"",unicode ä€\r\n'
             ),
         ],
     },
@@ -1181,11 +1181,11 @@ CSV_CASES: list[dict[str, Any]] = [
         "name": "lf_line_endings",
         "responses": [
             _ok(
-                "#datatype,string,long,dateTime:RFC3339,double,string\n"
-                "#group,false,false,false,false,true\n"
-                "#default,_result,,,,\n"
-                ",result,table,_time,_value,host\n"
-                ",,0,2026-10-21T11:30:00Z,1,h1\n\n"
+                "#datatype,string,long,dateTime:RFC3339,double,string,string\n"
+                "#group,false,false,false,false,true,true\n"
+                "#default,_result,,,,,\n"
+                ",result,table,_time,_value,host,metric\n"
+                ",,0,2026-10-21T11:30:00Z,1,h1,host.disk_usage\n\n"
             ),
         ],
     },
@@ -1193,11 +1193,11 @@ CSV_CASES: list[dict[str, Any]] = [
         "name": "extra_cells_ignored",
         "responses": [
             _ok(
-                "#datatype,string,long,dateTime:RFC3339,double\r\n"
-                "#group,false,false,false,false\r\n"
-                "#default,_result,,,\r\n"
-                ",result,table,_time,_value\r\n"
-                ",,0,2026-10-21T11:30:00Z,1,extra,cells\r\n"
+                "#datatype,string,long,dateTime:RFC3339,double,string\r\n"
+                "#group,false,false,false,false,true\r\n"
+                "#default,_result,,,,\r\n"
+                ",result,table,_time,_value,metric\r\n"
+                ",,0,2026-10-21T11:30:00Z,1,host.disk_usage,extra,cells\r\n"
             ),
         ],
     },
@@ -1545,8 +1545,18 @@ def _v3_rows(*values: Any) -> str:
 
 _EXACT_BODY = json.dumps(
     [
-        {"time": NOW_WHOLE.isoformat(), "value": 20, "mountpoint": "/"},
-        {"time": NOW_WHOLE.isoformat(), "value": 30, "mountpoint": "/data"},
+        {
+            "time": NOW_WHOLE.isoformat(),
+            "value": 20,
+            "metric": "host.disk_usage",
+            "mountpoint": "/",
+        },
+        {
+            "time": NOW_WHOLE.isoformat(),
+            "value": 30,
+            "metric": "host.disk_usage",
+            "mountpoint": "/data",
+        },
     ]
 )
 
@@ -1561,7 +1571,7 @@ V3_ROW_CASES: list[dict[str, Any]] = [
                 json.dumps(
                     [
                         {
-                            "time": "2026-03-04T12:00:00Z",
+                            "time": "2026-10-21T11:30:00Z",
                             "value": 22.4,
                             "host": "macmini",
                             "metric": "ha.sensor.office_temperature",
@@ -1580,6 +1590,7 @@ V3_ROW_CASES: list[dict[str, Any]] = [
                 )
             )
         ],
+        "call": {"metric": "ha.sensor.office_temperature"},
     },
     # test_influx_query_safety.py::test_nonfinite_query_evidence_is_an_evaluation_error (v3)
     *[
@@ -1602,11 +1613,12 @@ V3_ROW_CASES: list[dict[str, Any]] = [
         "name": "value_types",
         "responses": [
             _json_ok(
-                '[{"time": "2026-10-21T11:00:00Z", "value": 3},'
-                ' {"time": "2026-10-21T11:01:00Z", "value": "4.5"},'
-                ' {"time": "2026-10-21T11:02:00Z", "value": " 1_0 "},'
-                ' {"time": "2026-10-21T11:03:00Z", "value": 123456789012345678901234567890},'
-                ' {"time": "2026-10-21T11:04:00Z", "value": -0.0}]'
+                '[{"time": "2026-10-21T11:00:00Z", "value": 3, "metric": "host.disk_usage"},'
+                ' {"time": "2026-10-21T11:01:00Z", "value": "4.5", "metric": "host.disk_usage"},'
+                ' {"time": "2026-10-21T11:02:00Z", "value": " 1_0 ", "metric": "host.disk_usage"},'
+                ' {"time": "2026-10-21T11:03:00Z", "value": 123456789012345678901234567890,'
+                ' "metric": "host.disk_usage"},'
+                ' {"time": "2026-10-21T11:04:00Z", "value": -0.0, "metric": "host.disk_usage"}]'
             )
         ],
     },
@@ -1655,18 +1667,25 @@ V3_ROW_CASES: list[dict[str, Any]] = [
                 ' "e": null, "f": 1e400, "g": 10, "subject_id": false}]'
             )
         ],
+        # A null metric renders as Python's str(None), the selected metric.
+        "call": {"metric": "None"},
     },
     {
         "name": "repeated_keys",
         "responses": [
             _json_ok(
-                '[{"time": "2026-10-21T11:00:00Z", "a": "1", "value": 1, "b": "x", "a": "2", "value": 2}]'
+                '[{"time": "2026-10-21T11:00:00Z", "a": "1", "value": 1, "metric": "host.disk_usage",'
+                ' "b": "x", "a": "2", "value": 2}]'
             )
         ],
     },
     {
         "name": "missing_columns_defaults",
-        "responses": [_json_ok('[{"time": "2026-10-21T11:00:00Z", "value": 1}]')],
+        "responses": [
+            _json_ok(
+                '[{"time": "2026-10-21T11:00:00Z", "value": 1, "metric": "host.disk_usage"}]'
+            )
+        ],
     },
     {"name": "empty_list", "responses": [_json_ok("[]")]},
 ]

@@ -877,6 +877,19 @@ returns at once; otherwise, per call:
    (select again, re-raise when still missing); an error anywhere rolls the
    whole transaction back.
 
+Every update is additionally fenced by the stored watermark, so a delayed
+writer never moves an observation backwards: the plain refreshes run with
+`WHERE (last_seen_at IS NULL OR last_seen_at <= now - 60 s)`, the
+provenance (`source_system`) and re-parent updates with `last_seen_at IS NULL
+OR last_seen_at < now` (an equal-time writer keeps the first committed
+winner). On SQLite these compare the stored TEXT. The planner still treats an
+unparseable value as NULL and an offset-form value by its UTC instant, but the
+fenced UPDATE does not match such non-canonical text (`'y' > '2'`, `'T' > ' '`),
+so a corrupt or offset-form `last_seen_at` is no longer rewritten by the
+registry; repair it in the admin. The fixture cases "unparseable last_seen_at
+refresh is guarded by its stored watermark" and "offset last_seen_at refresh
+also respects its stored watermark" pin this contract.
+
 The bound-subject filter on the service updates is not ported (non-goal,
 5.7).
 

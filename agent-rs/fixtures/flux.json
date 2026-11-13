@@ -1590,7 +1590,7 @@
        "text/csv; charset=utf-8"
       ]
      ],
-     "body": "#datatype,string,long,dateTime:RFC3339,dateTime:RFC3339,dateTime:RFC3339,double,string,string,string,string,string,string\r\n#group,false,false,true,true,false,false,true,true,true,true,true,true\r\n#default,_result,,,,,,,,,,,\r\n,result,table,_start,_stop,_time,_value,_field,_measurement,host,metric,mountpoint,subject_type\r\n,,0,2026-10-21T11:00:00Z,2026-10-21T12:00:00.5Z,2026-10-21T11:30:00Z,1,value,graphyard_metrics,macmini,host.disk_usage,/,host\r\n\r\n#datatype,string,long,dateTime:RFC3339,long,string,boolean,duration\r\n#group,false,false,false,false,true,false,false\r\n#default,_result,,,,,,\r\n,result,table,_time,_value,mountpoint,flag,age\r\n,,2,2026-10-21T11:40:00+02:00,42,/boot,true,15\r\n,,2,2026-10-21T11:41:00,7,/boot,false,-3\r\n\r\n"
+     "body": "#datatype,string,long,dateTime:RFC3339,dateTime:RFC3339,dateTime:RFC3339,double,string,string,string,string,string,string\r\n#group,false,false,true,true,false,false,true,true,true,true,true,true\r\n#default,_result,,,,,,,,,,,\r\n,result,table,_start,_stop,_time,_value,_field,_measurement,host,metric,mountpoint,subject_type\r\n,,0,2026-10-21T11:00:00Z,2026-10-21T12:00:00.5Z,2026-10-21T11:30:00Z,1,value,graphyard_metrics,macmini,host.disk_usage,/,host\r\n\r\n#datatype,string,long,dateTime:RFC3339,long,string,boolean,duration,string\r\n#group,false,false,false,false,true,false,false,true\r\n#default,_result,,,,,,,\r\n,result,table,_time,_value,mountpoint,flag,age,metric\r\n,,2,2026-10-21T13:40:00+02:00,42,/boot,true,15,host.disk_usage\r\n,,2,2026-10-21T11:41:00,7,/boot,false,-3,host.disk_usage\r\n\r\n"
     }
    ],
    "settings": {
@@ -1636,10 +1636,63 @@
      "HTTP Request: POST http://{server}/api/v2/query?org=graphyard \"HTTP/1.1 200 OK\""
     ]
    ],
-   "error": {
-    "class": "InfluxConfigurationError",
-    "message": "InfluxDB query result does not match selection"
-   }
+   "samples": [
+    {
+     "ts": "2026-10-21T11:30:00+00:00",
+     "value": 1.0,
+     "host": "macmini",
+     "metric": "host.disk_usage",
+     "service": null,
+     "subject_type": "host",
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "mountpoint": "/"
+     }
+    },
+    {
+     "ts": "2026-10-21T11:40:00+00:00",
+     "value": 42.0,
+     "host": "",
+     "metric": "host.disk_usage",
+     "service": null,
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "mountpoint": "/boot",
+      "flag": "True",
+      "age": "15"
+     }
+    },
+    {
+     "ts": "2026-10-21T11:41:00+00:00",
+     "value": 7.0,
+     "host": "",
+     "metric": "host.disk_usage",
+     "service": null,
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "mountpoint": "/boot",
+      "flag": "False",
+      "age": "-3"
+     }
+    }
+   ]
   },
   {
    "name": "defaults_fill_empty_cells",
@@ -1653,7 +1706,7 @@
        "text/csv; charset=utf-8"
       ]
      ],
-     "body": "#datatype,string,long,dateTime:RFC3339,double,string,string,string\r\n#group,false,false,false,false,true,true,true\r\n#default,_result,3,,2.5,dflt,,\r\n,result,table,_time,_value,host,service,device\r\n,,0,2026-10-21T11:30:00Z,,,,\r\n,,0,2026-10-21T11:31:00Z,4,h,s,d\r\n"
+     "body": "#datatype,string,long,dateTime:RFC3339,double,string,string,string,string\r\n#group,false,false,false,false,true,true,true,true\r\n#default,_result,3,,2.5,dflt,,,host.disk_usage\r\n,result,table,_time,_value,host,service,device,metric\r\n,,0,2026-10-21T11:30:00Z,,,,,\r\n,,0,2026-10-21T11:31:00Z,4,h,s,d,host.disk_usage\r\n"
     }
    ],
    "settings": {
@@ -1699,10 +1752,42 @@
      "HTTP Request: POST http://{server}/api/v2/query?org=graphyard \"HTTP/1.1 200 OK\""
     ]
    ],
-   "error": {
-    "class": "InfluxConfigurationError",
-    "message": "InfluxDB query result does not match selection"
-   }
+   "samples": [
+    {
+     "ts": "2026-10-21T11:30:00+00:00",
+     "value": 2.5,
+     "host": "dflt",
+     "metric": "host.disk_usage",
+     "service": null,
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "device": "None"
+     }
+    },
+    {
+     "ts": "2026-10-21T11:31:00+00:00",
+     "value": 4.0,
+     "host": "h",
+     "metric": "host.disk_usage",
+     "service": "s",
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "device": "d"
+     }
+    }
+   ]
   },
   {
    "name": "empty_table_id_ignores_default",
@@ -1842,7 +1927,7 @@
        "text/csv; charset=utf-8"
       ]
      ],
-     "body": "#datatype,string,long,dateTime:RFC3339,double,long,unsignedLong,double,boolean,dateTime:RFC3339Nano,duration,base64Binary,unknownType,string\r\n#group,false,false,false,false,false,false,false,false,false,false,false,false,false\r\n#default,_result,,,,,,,,,,,,\r\n,result,table,_time,_value,l,u,d,b,t,du,bin,x,empty\r\n,,0,2026-10-21T11:30:00Z,1,-5,18446744073709551615,1e16,true,2026-10-21T11:30:00.5-01:30,1000,aGk=,whatever,\r\n,,0,2026-10-21T11:31:00Z,1,1_000, 7 ,+Inf,TRUE,0001-01-01T00:00:00Z,0,AAEC/w==,,x\r\n"
+     "body": "#datatype,string,long,dateTime:RFC3339,double,long,unsignedLong,double,boolean,dateTime:RFC3339Nano,duration,base64Binary,unknownType,string,string\r\n#group,false,false,false,false,false,false,false,false,false,false,false,false,false,true\r\n#default,_result,,,,,,,,,,,,,\r\n,result,table,_time,_value,l,u,d,b,t,du,bin,x,empty,metric\r\n,,0,2026-10-21T11:30:00Z,1,-5,18446744073709551615,1e16,true,2026-10-21T11:30:00.5-01:30,1000,aGk=,whatever,,host.disk_usage\r\n,,0,2026-10-21T11:31:00Z,1,1_000, 7 ,+Inf,TRUE,0001-01-01T00:00:00Z,0,AAEC/w==,,x,host.disk_usage\r\n"
     }
    ],
    "settings": {
@@ -1888,10 +1973,58 @@
      "HTTP Request: POST http://{server}/api/v2/query?org=graphyard \"HTTP/1.1 200 OK\""
     ]
    ],
-   "error": {
-    "class": "InfluxConfigurationError",
-    "message": "InfluxDB query result does not match selection"
-   }
+   "samples": [
+    {
+     "ts": "2026-10-21T11:30:00+00:00",
+     "value": 1.0,
+     "host": "",
+     "metric": "host.disk_usage",
+     "service": null,
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "l": "-5",
+      "u": "18446744073709551615",
+      "d": "1e+16",
+      "b": "True",
+      "t": "2026-10-21 11:30:00.500000-01:30",
+      "du": "1000",
+      "bin": "b'hi'",
+      "x": "None",
+      "empty": "None"
+     }
+    },
+    {
+     "ts": "2026-10-21T11:31:00+00:00",
+     "value": 1.0,
+     "host": "",
+     "metric": "host.disk_usage",
+     "service": null,
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "l": "1000",
+      "u": "7",
+      "d": "inf",
+      "b": "False",
+      "t": "0001-01-01 00:00:00+00:00",
+      "du": "0",
+      "bin": "b'\\x00\\x01\\x02\\xff'",
+      "x": "None",
+      "empty": "x"
+     }
+    }
+   ]
   },
   {
    "name": "value_types",
@@ -1905,7 +2038,7 @@
        "text/csv; charset=utf-8"
       ]
      ],
-     "body": "#datatype,string,long,dateTime:RFC3339,long\r\n#group,false,false,false,false\r\n#default,_result,,,\r\n,result,table,_time,_value\r\n,,0,2026-10-21T11:30:00Z,12345678901234567890\r\n"
+     "body": "#datatype,string,long,dateTime:RFC3339,long,string\r\n#group,false,false,false,false,true\r\n#default,_result,,,,\r\n,result,table,_time,_value,metric\r\n,,0,2026-10-21T11:30:00Z,12345678901234567890,host.disk_usage\r\n"
     }
    ],
    "settings": {
@@ -1951,10 +2084,23 @@
      "HTTP Request: POST http://{server}/api/v2/query?org=graphyard \"HTTP/1.1 200 OK\""
     ]
    ],
-   "error": {
-    "class": "InfluxConfigurationError",
-    "message": "InfluxDB query result does not match selection"
-   }
+   "samples": [
+    {
+     "ts": "2026-10-21T11:30:00+00:00",
+     "value": 1.2345678901234567e+19,
+     "host": "",
+     "metric": "host.disk_usage",
+     "service": null,
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {}
+    }
+   ]
   },
   {
    "name": "string_value_parsed_as_float",
@@ -1968,7 +2114,7 @@
        "text/csv; charset=utf-8"
       ]
      ],
-     "body": "#datatype,string,long,dateTime:RFC3339,string\r\n#group,false,false,false,false\r\n#default,_result,,,\r\n,result,table,_time,_value\r\n,,0,2026-10-21T11:30:00Z, 1_5.5 \r\n"
+     "body": "#datatype,string,long,dateTime:RFC3339,string,string\r\n#group,false,false,false,false,true\r\n#default,_result,,,,\r\n,result,table,_time,_value,metric\r\n,,0,2026-10-21T11:30:00Z, 1_5.5 ,host.disk_usage\r\n"
     }
    ],
    "settings": {
@@ -2014,10 +2160,23 @@
      "HTTP Request: POST http://{server}/api/v2/query?org=graphyard \"HTTP/1.1 200 OK\""
     ]
    ],
-   "error": {
-    "class": "InfluxConfigurationError",
-    "message": "InfluxDB query result does not match selection"
-   }
+   "samples": [
+    {
+     "ts": "2026-10-21T11:30:00+00:00",
+     "value": 15.5,
+     "host": "",
+     "metric": "host.disk_usage",
+     "service": null,
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {}
+    }
+   ]
   },
   {
    "name": "non_finite_nan",
@@ -3543,7 +3702,7 @@
        "text/csv; charset=utf-8"
       ]
      ],
-     "body": "#datatype,string,long,dateTime:RFC3339,double,string,string\r\n#group,false,false,false,false,true,true\r\n#default,_result,,,,,\r\n,result,table,_time,_value,tag,tag\r\n,,0,2026-10-21T11:30:00Z,1,first,second\r\n"
+     "body": "#datatype,string,long,dateTime:RFC3339,double,string,string,string\r\n#group,false,false,false,false,true,true,true\r\n#default,_result,,,,,,\r\n,result,table,_time,_value,tag,tag,metric\r\n,,0,2026-10-21T11:30:00Z,1,first,second,host.disk_usage\r\n"
     }
    ],
    "settings": {
@@ -3589,10 +3748,25 @@
      "HTTP Request: POST http://{server}/api/v2/query?org=graphyard \"HTTP/1.1 200 OK\""
     ]
    ],
-   "error": {
-    "class": "InfluxConfigurationError",
-    "message": "InfluxDB query result does not match selection"
-   }
+   "samples": [
+    {
+     "ts": "2026-10-21T11:30:00+00:00",
+     "value": 1.0,
+     "host": "",
+     "metric": "host.disk_usage",
+     "service": null,
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "tag": "second"
+     }
+    }
+   ]
   },
   {
    "name": "quoted_cells",
@@ -3606,7 +3780,7 @@
        "text/csv; charset=utf-8"
       ]
      ],
-     "body": "#datatype,string,long,dateTime:RFC3339,double,string,string,string\r\n#group,false,false,false,false,true,true,true\r\n#default,_result,,,,,,\r\n,result,table,_time,_value,a,b,c\r\n,,0,2026-10-21T11:30:00Z,1,\"x,y\",\"say \"\"hi\"\"\",\"multi\nline\"\r\n,,0,2026-10-21T11:31:00Z,2,plain\"quote,\"\",unicode \u00e4\u20ac\r\n"
+     "body": "#datatype,string,long,dateTime:RFC3339,double,string,string,string,string\r\n#group,false,false,false,false,true,true,true,true\r\n#default,_result,,,,,,,\r\n,result,table,_time,_value,metric,a,b,c\r\n,,0,2026-10-21T11:30:00Z,1,host.disk_usage,\"x,y\",\"say \"\"hi\"\"\",\"multi\nline\"\r\n,,0,2026-10-21T11:31:00Z,2,host.disk_usage,plain\"quote,\"\",unicode \u00e4\u20ac\r\n"
     }
    ],
    "settings": {
@@ -3652,10 +3826,46 @@
      "HTTP Request: POST http://{server}/api/v2/query?org=graphyard \"HTTP/1.1 200 OK\""
     ]
    ],
-   "error": {
-    "class": "InfluxConfigurationError",
-    "message": "InfluxDB query result does not match selection"
-   }
+   "samples": [
+    {
+     "ts": "2026-10-21T11:30:00+00:00",
+     "value": 1.0,
+     "host": "",
+     "metric": "host.disk_usage",
+     "service": null,
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "a": "x,y",
+      "b": "say \"hi\"",
+      "c": "multi\nline"
+     }
+    },
+    {
+     "ts": "2026-10-21T11:31:00+00:00",
+     "value": 2.0,
+     "host": "",
+     "metric": "host.disk_usage",
+     "service": null,
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "a": "plain\"quote",
+      "b": "None",
+      "c": "unicode \u00e4\u20ac"
+     }
+    }
+   ]
   },
   {
    "name": "lf_line_endings",
@@ -3669,7 +3879,7 @@
        "text/csv; charset=utf-8"
       ]
      ],
-     "body": "#datatype,string,long,dateTime:RFC3339,double,string\n#group,false,false,false,false,true\n#default,_result,,,,\n,result,table,_time,_value,host\n,,0,2026-10-21T11:30:00Z,1,h1\n\n"
+     "body": "#datatype,string,long,dateTime:RFC3339,double,string,string\n#group,false,false,false,false,true,true\n#default,_result,,,,,\n,result,table,_time,_value,host,metric\n,,0,2026-10-21T11:30:00Z,1,h1,host.disk_usage\n\n"
     }
    ],
    "settings": {
@@ -3715,10 +3925,23 @@
      "HTTP Request: POST http://{server}/api/v2/query?org=graphyard \"HTTP/1.1 200 OK\""
     ]
    ],
-   "error": {
-    "class": "InfluxConfigurationError",
-    "message": "InfluxDB query result does not match selection"
-   }
+   "samples": [
+    {
+     "ts": "2026-10-21T11:30:00+00:00",
+     "value": 1.0,
+     "host": "h1",
+     "metric": "host.disk_usage",
+     "service": null,
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {}
+    }
+   ]
   },
   {
    "name": "extra_cells_ignored",
@@ -3732,7 +3955,7 @@
        "text/csv; charset=utf-8"
       ]
      ],
-     "body": "#datatype,string,long,dateTime:RFC3339,double\r\n#group,false,false,false,false\r\n#default,_result,,,\r\n,result,table,_time,_value\r\n,,0,2026-10-21T11:30:00Z,1,extra,cells\r\n"
+     "body": "#datatype,string,long,dateTime:RFC3339,double,string\r\n#group,false,false,false,false,true\r\n#default,_result,,,,\r\n,result,table,_time,_value,metric\r\n,,0,2026-10-21T11:30:00Z,1,host.disk_usage,extra,cells\r\n"
     }
    ],
    "settings": {
@@ -3778,10 +4001,23 @@
      "HTTP Request: POST http://{server}/api/v2/query?org=graphyard \"HTTP/1.1 200 OK\""
     ]
    ],
-   "error": {
-    "class": "InfluxConfigurationError",
-    "message": "InfluxDB query result does not match selection"
-   }
+   "samples": [
+    {
+     "ts": "2026-10-21T11:30:00+00:00",
+     "value": 1.0,
+     "host": "",
+     "metric": "host.disk_usage",
+     "service": null,
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {}
+    }
+   ]
   },
   {
    "name": "invalid_utf8",

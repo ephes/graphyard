@@ -1,14 +1,13 @@
 from __future__ import annotations
 
 import copy
-import hashlib
 import json
 from typing import Any
 
 from django.contrib import admin
 from django import forms
 from django.forms import ModelForm
-from django.core import signing
+from django.utils.crypto import constant_time_compare, salted_hmac
 from django.db import connections, router, transaction
 
 from .models import (
@@ -48,10 +47,18 @@ class DefinitionAdminForm(ModelForm):
             for name in self._definition_fields()
         }
         values.update(pk=row.pk, updated_at=str(row.updated_at))
-        digest = hashlib.sha256(
-            json.dumps(values, sort_keys=True, default=str).encode()
+        # A keyed MAC, never a bare hash: the payload includes unredacted
+        # secrets while every other input is visible on the change page.
+        return salted_hmac(
+            f"graphyard.admin.definition_revision:{row._meta.label_lower}",
+            json.dumps(values, sort_keys=True, default=str),
+            algorithm="sha256",
         ).hexdigest()
-        return signing.Signer(salt=row._meta.label_lower).sign(digest)
+
+    def _revision_matches(self, submitted: Any, row: Any) -> bool:
+        return isinstance(submitted, str) and constant_time_compare(
+            submitted, self._revision(row)
+        )
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
@@ -70,8 +77,8 @@ class DefinitionAdminForm(ModelForm):
         data = super().clean()
         if self.instance.pk:
             current = self._current()
-            if current is None or data.get("definition_revision") != self._revision(
-                current
+            if current is None or not self._revision_matches(
+                data.get("definition_revision"), current
             ):
                 raise forms.ValidationError(self.CONFLICT)
         return data
@@ -84,9 +91,9 @@ class DefinitionAdminForm(ModelForm):
         alias = router.db_for_write(type(self.instance), instance=self.instance)
         with transaction.atomic(using=alias):
             current = self._current()
-            if current is None or self.cleaned_data.get(
-                "definition_revision"
-            ) != self._revision(current):
+            if current is None or not self._revision_matches(
+                self.cleaned_data.get("definition_revision"), current
+            ):
                 raise forms.ValidationError(self.CONFLICT)
             self.instance.save(
                 using=alias, update_fields=(*self._definition_fields(), "updated_at")
