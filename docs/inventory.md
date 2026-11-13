@@ -21,6 +21,11 @@ just manage create_inventory_credential --host studio
 just manage create_inventory_credential --host atlas --intermittent
 ```
 
+The issuance command accepts `--database ALIAS`; otherwise all participating
+models must share one write-router alias. Selection, locks, enrollment updates,
+retirement and creation stay on that database, and plaintext is printed only
+after commit. A replacement failure rolls back retirement and freshness edits.
+
 Issuance/rotation and ingest admission lock the registered host row first, then
 access the inventory host, holding the lock through commit. The enabled-credential
 recheck under that lock is the admission point: an ingest admitted first commits

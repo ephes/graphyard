@@ -23,7 +23,10 @@ def install(monkeypatch, settings, mode, changes):
         subject_id="edge",
         mountpoint="/",
     )
-    rows = [good, {**good, **changes}]
+    bad = {**good, **changes}
+    if bad.pop("drop_metric", False):
+        bad.pop("metric")
+    rows = [good, bad]
 
     async def sql(*args):
         return rows
@@ -47,6 +50,7 @@ def install(monkeypatch, settings, mode, changes):
     "changes",
     [
         dict(metric="other"),
+        dict(drop_metric=True),
         dict(metric=None),
         dict(host="other"),
         dict(service="other"),

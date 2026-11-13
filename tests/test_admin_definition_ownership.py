@@ -101,3 +101,78 @@ def test_runner_fields_not_editable():
     )
     assert "next_run_time" not in edit_form(spec).fields
     assert "status" not in edit_form(condition).fields
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("kind", ["spec", "condition"])
+def test_admin_post_preserves_runtime_and_returns_stale_form_conflict(
+    admin_client, kind
+):
+    if kind == "spec":
+        row = MetricCollectionSpec.objects.create(
+            name="synthetic", config={"token": "synthetic-secret"}
+        )
+        expected = {
+            "next_run_time": 900,
+            "last_status": "critical",
+            "last_error": "synthetic failure",
+        }
+    else:
+        row = ConditionDefinition.objects.create(
+            name="synthetic", metric_name="cpu", warning_threshold=50
+        )
+        expected = {
+            "status": "critical",
+            "message": "synthetic breach",
+            "last_value": 99,
+            "last_evaluated": timezone.now(),
+        }
+    url = f"/admin/graphyard/{row._meta.model_name}/{row.pk}/change/"
+    response = admin_client.get(url)
+    assert response.status_code == 200
+    assert b"synthetic-secret" not in response.content
+    form = response.context["adminform"].form
+    data = {name: form.initial.get(name, "") for name in form.fields}
+    data = {
+        name: json.dumps(value)
+        if isinstance(value, dict)
+        else ""
+        if value is None
+        else value
+        for name, value in data.items()
+    }
+    data["name"] = "edited"
+    type(row).objects.filter(pk=row.pk).update(**expected)
+    response = admin_client.post(url, data)
+    assert response.status_code == 302
+    row.refresh_from_db()
+    assert {name: getattr(row, name) for name in expected} == expected
+    if kind == "spec":
+        assert row.config["token"] == "synthetic-secret"
+    # A fresh POST constructs its instance from the database, while the signed
+    # hidden revision still describes the previous GET.
+    response = admin_client.post(url, {**data, "name": "stale overwrite"})
+    assert response.status_code == 200
+    assert "Reload" in str(response.context["adminform"].form.non_field_errors())
+    row.refresh_from_db()
+    assert row.name == "edited"
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("kind", ["spec", "condition"])
+def test_invalid_bound_definition_cannot_be_saved(kind):
+    if kind == "spec":
+        row = MetricCollectionSpec.objects.create(
+            name="synthetic", spec_type="http_page_probe", config={}
+        )
+        form = edit_form(row, config={"verify_tls": "false"})
+    else:
+        row = ConditionDefinition.objects.create(
+            name="synthetic", metric_name="cpu", warning_threshold=50
+        )
+        form = edit_form(row, warning_threshold="NaN")
+    before = type(row).objects.values().get(pk=row.pk)
+    assert not form.is_valid()
+    with pytest.raises(ValueError, match="didn't validate"):
+        form.save()
+    assert type(row).objects.values().get(pk=row.pk) == before

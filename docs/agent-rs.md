@@ -270,3 +270,13 @@ A breach may be longer than the window: lookback includes the full breach and
 carry-forward anchor. See [Condition Evaluation](../README.md#condition-evaluation)
 and [Response privacy](../README.md#response-privacy) for configuration and web
 response storage policy.
+
+### Query selection admission
+
+Python and Rust admit an Influx response only when every decoded sample matches
+its issued metric, dimension/tag filters and half-open time range (`start <= ts < stop`).
+Missing metrics and missing filtered dimensions also fail the entire query; empty
+responses and differing unfiltered dimensions remain valid. Evaluation failures
+retain the previous observed value. The parity corpus supplies matching filter
+dimensions explicitly; the selection regressions separately inject mismatched
+rows, including a valid prefix followed by invalid evidence.

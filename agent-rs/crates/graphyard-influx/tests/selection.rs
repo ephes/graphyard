@@ -21,6 +21,7 @@ async fn complete_replies_are_bound_to_selection() {
     for mode in ["v2", "v3"] {
         for (key, value) in [
             ("metric", "other"),
+            ("metric", "__missing__"),
             ("host", "other"),
             ("service", "other"),
             ("subject_type", "sensor"),
@@ -32,7 +33,11 @@ async fn complete_replies_are_bound_to_selection() {
             ("metric", "cpu"),
         ] {
             let mut bad = good.clone();
-            bad[key] = Value::String(value.into());
+            if value == "__missing__" {
+                bad.as_object_mut().unwrap().remove(key);
+            } else {
+                bad[key] = Value::String(value.into());
+            }
             let body = if mode == "v3" {
                 json!([good, bad]).to_string()
             } else {
@@ -43,7 +48,7 @@ async fn complete_replies_are_bound_to_selection() {
                     csv.push_str(&format!(
                         ",,0,{},99,{},{},{},{},{},{}\n",
                         row["time"].as_str().unwrap(),
-                        row["metric"].as_str().unwrap(),
+                        row["metric"].as_str().unwrap_or_default(),
                         row["host"].as_str().unwrap(),
                         row["service"].as_str().unwrap(),
                         row["subject_type"].as_str().unwrap(),

@@ -1,5 +1,6 @@
 """Separate-connection ordering oracles for the opt-in PostgreSQL lane."""
 
+import json
 from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
 from threading import Event, local
@@ -51,7 +52,10 @@ def test_admin_definition_save_retains_other_connection_result(kind):
         }
         changes = {"warning_threshold": 60}
     initial = form_type(instance=row).initial
-    data = {**initial, **changes}
+    data = {
+        key: json.dumps(value) if isinstance(value, dict) else value
+        for key, value in {**initial, **changes}.items()
+    }
 
     def publish():
         try:
@@ -140,3 +144,84 @@ def test_delayed_registry_request_keeps_newer_connection_provenance(monkeypatch)
     assert subject.source_system == "new"
     assert service.host.host_id == "new"
     assert subject.last_seen_at == service.last_seen_at == now + timedelta(seconds=1)
+
+
+def test_two_admin_definition_edits_serialize_and_one_conflicts():
+    from threading import Barrier
+
+    row = ConditionDefinition.objects.create(
+        name="synthetic", metric_name="cpu", warning_threshold=50
+    )
+    initial = {
+        key: json.dumps(value) if isinstance(value, dict) else value
+        for key, value in ConditionDefinitionAdminForm(instance=row).initial.items()
+    }
+    barrier = Barrier(2)
+
+    def edit(threshold):
+        try:
+            current = ConditionDefinition.objects.get(pk=row.pk)
+            barrier.wait(timeout=10)
+            with transaction.atomic():
+                form = ConditionDefinitionAdminForm(
+                    data={**initial, "warning_threshold": threshold}, instance=current
+                )
+                valid = form.is_valid()
+                if valid:
+                    form.save()
+                else:
+                    assert "Reload" in str(form.non_field_errors())
+                return valid
+        finally:
+            connections.close_all()
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        assert sum(pool.map(edit, [60, 70])) == 1
+
+
+def test_usage_update_preserves_newer_connection_observation(monkeypatch):
+    from django.db.models.query import QuerySet
+    from graphyard.models import IngestToken, IngestTokenHostUsage
+
+    now = timezone.now()
+    token = IngestToken.objects.create(name="synthetic", token_hash="synthetic")
+    usage = IngestTokenHostUsage.objects.create(
+        token=token,
+        host_id="edge",
+        first_seen_at=now - timedelta(days=1),
+        last_seen_at=now - timedelta(days=1),
+    )
+    state = local()
+    ready, resume = Event(), Event()
+    update = QuerySet.update
+
+    def delayed_update(rows, **values):
+        if rows.model is IngestTokenHostUsage and getattr(state, "delayed", False):
+            state.delayed = False
+            ready.set()
+            assert resume.wait(timeout=10)
+        return update(rows, **values)
+
+    monkeypatch.setattr(QuerySet, "update", delayed_update)
+    monkeypatch.setattr(
+        services.timezone, "now", lambda: getattr(state, "observed", now)
+    )
+
+    def record(old):
+        try:
+            state.observed = now if old else now + timedelta(hours=2)
+            state.delayed = old
+            services.record_token_host_usage(token, {"edge"})
+        finally:
+            connections.close_all()
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        delayed = pool.submit(record, True)
+        try:
+            assert ready.wait(timeout=10)
+            pool.submit(record, False).result(timeout=10)
+        finally:
+            resume.set()
+        delayed.result(timeout=10)
+    usage.refresh_from_db()
+    assert usage.last_seen_at == now + timedelta(hours=2)

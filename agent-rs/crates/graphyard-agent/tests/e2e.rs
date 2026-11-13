@@ -153,18 +153,18 @@ fn serve(mut stream: TcpStream, recorded: &Mutex<Vec<Request>>, handler: &Handle
 
 /// Annotated CSV of InfluxDB v2 with one sample per minute over the last
 /// 20 minutes (relative to the request), all at `value`.
-fn flux_csv(metric: &str, value: f64) -> String {
+fn flux_csv(metric: &str, value: f64, subject_type: &str) -> String {
     let mut csv = String::from(
-        "#datatype,string,long,dateTime:RFC3339,double,string,string,string,string\r\n\
-         #group,false,false,false,false,true,true,true,true\r\n\
-         #default,_result,,,,,,,\r\n\
-         ,result,table,_time,_value,_field,_measurement,metric,host\r\n",
+        "#datatype,string,long,dateTime:RFC3339,double,string,string,string,string,string\r\n\
+         #group,false,false,false,false,true,true,true,true,true\r\n\
+         #default,_result,,,,,,,,\r\n\
+         ,result,table,_time,_value,_field,_measurement,metric,host,subject_type\r\n",
     );
     let now = Utc::now().trunc_subsecs(0);
     for minute in (1..=20).rev() {
         let ts = now - chrono::Duration::minutes(minute);
         csv.push_str(&format!(
-            ",,0,{},{value},value,graphyard_metrics,{metric},macmini\r\n",
+            ",,0,{},{value},value,graphyard_metrics,{metric},macmini,{subject_type}\r\n",
             ts.format("%Y-%m-%dT%H:%M:%SZ")
         ));
     }
@@ -251,7 +251,18 @@ fn collectors_fake() -> Fake {
         target if target.starts_with("/api/v2/query") => respond(
             "200 OK",
             "text/csv; charset=utf-8",
-            flux_csv("host.disk_ratio", 0.85),
+            flux_csv("host.disk_ratio", 0.85, {
+                let payload: Value = serde_json::from_str(&request.body).unwrap();
+                if payload["query"]
+                    .as_str()
+                    .unwrap()
+                    .contains(r#"r["subject_type"] == "service""#)
+                {
+                    "service"
+                } else {
+                    "host"
+                }
+            }),
         ),
         _ => respond("404 Not Found", "text/plain", ""),
     })

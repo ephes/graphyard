@@ -79,6 +79,8 @@ class DefinitionAdminForm(ModelForm):
     def save(self, commit: bool = True) -> Any:
         if not commit or not self.instance.pk:
             return super().save(commit=commit)
+        # Preserve ModelForm.save's refusal to persist invalid bound forms.
+        super().save(commit=False)
         alias = router.db_for_write(type(self.instance), instance=self.instance)
         with transaction.atomic(using=alias):
             current = self._current()
