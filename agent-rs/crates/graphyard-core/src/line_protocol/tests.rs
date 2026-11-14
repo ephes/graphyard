@@ -190,4 +190,11 @@ fn exact_request_budget_preserves_order_and_counts() {
     let over = prepare_write_with_limit("m", &points, expected.len() - 1);
     assert!(over.request_too_large);
     assert_eq!((over.written(), over.rejected), (0, 3));
+    // write_points logs exactly this one event before refusing the request.
+    let messages: Vec<_> = over
+        .events
+        .iter()
+        .map(|event| event.message.as_str())
+        .collect();
+    assert_eq!(messages, ["metrics_write_rejected category=request_bytes"]);
 }

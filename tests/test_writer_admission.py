@@ -105,3 +105,15 @@ def test_direct_dimensions_match_api_limits(field, limit):
 def test_direct_tags_match_api_limits(tags):
     with pytest.raises(ValueError, match="tags|overlong"):
         influx.normalize_metric_point(point(tags=tags))
+
+
+def test_overlong_dimension_order_matches_rust_agent():
+    # The Rust agent reports the same first overlong field (P1 parity).
+    with pytest.raises(ValueError, match="^overlong source_entity_id "):
+        influx.normalize_metric_point(
+            point(
+                source_entity_id="x" * 257,
+                collector_service="x" * 257,
+                collector_host="x" * 257,
+            )
+        )

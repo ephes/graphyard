@@ -178,13 +178,14 @@ fn validate_point_dimensions(item: &MetricPoint) -> Result<(), PyError> {
         ("subject_id", &item.subject_id, 128),
         ("source_system", &item.source_system, 64),
         ("source_instance", &item.source_instance, 256),
-        ("collector_service", &item.collector_service, 256),
-        ("collector_host", &item.collector_host, 256),
+        // Same order as Python's _validate_point_dimensions (P1: identical errors).
         (
             "source_entity_id",
             item.source_entity_id.as_deref().unwrap_or(""),
             256,
         ),
+        ("collector_service", &item.collector_service, 256),
+        ("collector_host", &item.collector_host, 256),
         ("host", item.host.as_deref().unwrap_or(""), 128),
         ("service", item.service.as_deref().unwrap_or(""), 128),
     ] {

@@ -163,7 +163,8 @@ Recommended modeling:
 - `source_instance=public_web`
 - `collector_service=graphyard-agent`
 - `collector_host=<probe host>` (currently `macmini` in production-style usage)
-- `source_entity_id=<raw URL>`
+- `source_entity_id=<configured URL without userinfo, query or fragment>`; a URL with
+  query parameters needs an explicit, stable, nonsecret `source_entity_id` in the spec
 
 Current implementation scope for this collector:
 

@@ -287,3 +287,17 @@ fn direct_dimensions_are_admitted_before_cloning() {
     point.tags.as_mut().unwrap().get_mut("k").unwrap().push('é');
     assert!(normalize_metric_point(&point).is_err());
 }
+
+#[test]
+fn overlong_dimensions_report_the_same_field_as_python() {
+    // Python checks source_entity_id before the collector fields (P1).
+    let mut point = synthetic_point();
+    point.source_entity_id = Some("x".repeat(257));
+    point.collector_service = "x".repeat(257);
+    point.collector_host = "x".repeat(257);
+    let err = normalize_metric_point(&point).unwrap_err();
+    assert_eq!(
+        err.message,
+        "overlong source_entity_id (max 256 characters)"
+    );
+}
