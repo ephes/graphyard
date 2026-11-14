@@ -885,7 +885,15 @@ def health(request: HttpRequest) -> JsonResponse:
 
     database_component: dict[str, object]
     pipeline_names = ("metric_ingest", "metric_collectors", "condition_evaluator")
+    # Resolve the lazy session login before the snapshot: on PostgreSQL the
+    # snapshot is READ ONLY, and Django may write the session while resolving it
+    # (flush on a stale auth hash, key rotation on a fallback secret).
+    # Details are shown only when the database evidence below succeeds too.
     detailed = False
+    try:
+        authenticated = request.user.is_authenticated
+    except DatabaseError:
+        authenticated = False
     try:
         with read_snapshot():
             with connection.cursor() as cursor:
@@ -905,9 +913,8 @@ def health(request: HttpRequest) -> JsonResponse:
                     )
                 },
             )
-            # Lazy session authentication belongs to the same database evidence.
-            detailed = request.user.is_authenticated
             database_component = {"status": StatusLevel.OK, "message": "ok"}
+        detailed = authenticated
     except DatabaseError:
         database_component = {
             "status": StatusLevel.CRITICAL,

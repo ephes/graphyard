@@ -70,6 +70,45 @@ def test_health_cache_policy_and_private_projection(
 
 
 @pytest.mark.django_db
+def test_health_resolves_session_login_outside_the_read_only_snapshot(
+    client, django_user_model, monkeypatch
+):
+    """Session login may write (flush, key rotation); PostgreSQL's snapshot is read-only."""
+    from contextlib import contextmanager
+
+    from django.contrib import auth
+
+    import graphyard.views as views
+
+    inside = {"snapshot": False, "resolved_inside": False, "calls": 0}
+    real_snapshot, real_get_user = views.read_snapshot, auth.get_user
+
+    @contextmanager
+    def snapshot():
+        with real_snapshot():
+            inside["snapshot"] = True
+            try:
+                yield
+            finally:
+                inside["snapshot"] = False
+
+    def get_user(request):
+        inside["calls"] += 1
+        inside["resolved_inside"] |= inside["snapshot"]
+        return real_get_user(request)
+
+    monkeypatch.setattr(views, "read_snapshot", snapshot)
+    monkeypatch.setattr(auth, "get_user", get_user)
+    client.force_login(django_user_model.objects.create_user(username="synthetic"))
+    response = client.get("/v1/health")
+    assert response.status_code == 200
+    # The authenticated caller still gets the detailed projection.
+    assert "details" in response.json()["components"]["pipelines"]["metric_ingest"]
+    assert inside["calls"] >= 1
+    assert not inside["resolved_inside"]
+
+
+@pytest.mark.django_db
 def test_health_method_error_is_not_cacheable(client):
     response = client.post("/v1/health")
     assert response.status_code == 405

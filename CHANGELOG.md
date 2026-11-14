@@ -8,7 +8,8 @@
 - Read health database evidence in one short consistent snapshot with one
   condition-count aggregate, releasing it before remote Influx work. Isolate all
   health responses with private no-store and Cookie variation, including failures
-  and authentication transitions.
+  and authentication transitions. The session login is resolved before the read-only
+  PostgreSQL snapshot, so a session flush or key rotation cannot fail health.
 
 - Refuse control characters in metric identities and custom tags before stripping
   or encoding, and apply the API's dimension/tag limits to Python and Rust direct
