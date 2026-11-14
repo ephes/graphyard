@@ -448,21 +448,37 @@ each target has `{kind, name}`. Sources support `pypi`, `github`, `brew` (formul
 and target kinds are `python`, `application`, `brew`. Registry identifiers are
 validated; URLs are constructed for fixed public HTTPS endpoints. Inventory content
 cannot register sources, select destinations, or send private package names outward.
-Overlapping refreshes publish results only when the cached attempt is not newer
-than their start time. A late older success or failure cannot overwrite a newer
-completed attempt. Network I/O stays outside database transactions.
+Cached success belongs to the complete source definition (`kind`, `project` and
+`targets`). Changing it atomically clears the version, success/attempt timestamps
+and error before looking up the replacement, even inside the freshness window.
+An unchanged definition retains last-good evidence on lookup failure. Results
+publish only while their registry generation and enabled definition still match,
+with the attempt-time fence retained. A newer refresh fences older in-flight
+successes and failures, including removal/re-enable and A → B → A edits, even
+with equal wall-clock timestamps. Network I/O stays outside database transactions.
 
 Release requests ask for `Accept-Encoding: identity`; a compressed reply, or one
 declaring a `Content-Length` above 16 MiB (or an invalid one), is refused before its
 body is read. Each body is bounded to 16 MiB, and a chunk that would cross the limit
 is refused before buffering. JSON nested too deeply to decode counts as that
-source's lookup failure; later sources are still checked. Each source has
-a 60-second monotonic elapsed budget, checked after headers and each streamed
-chunk (without accumulating fixed-size read buffers). The 20-second HTTP
-operation timeout bounds an in-progress operation; budget detection can lag
-until that operation returns. An exhausted budget records a bounded lookup
-failure, retains the last success and its timestamp, and continues to the next
-source.
+source's lookup failure; later sources are still checked while time remains.
+Each source has a 60-second monotonic elapsed budget. The whole refresh has a
+300-second monotonic budget from entry, including registry replacement. The
+command checks the remaining budget before each lookup and caps that source's
+deadline and HTTP operation timeout to the remaining run allowance. Deadline
+checks run before requests, after headers, each streamed chunk and JSON parsing.
+The normal HTTP operation timeout is 20 seconds; cooperative budget detection
+can lag until an in-progress operation returns, and database work/cleanup is not
+forcibly interrupted. This is an elapsed admission budget, not process termination.
+A source that exhausts its allowance records a bounded lookup failure and retains
+last-good evidence for the unchanged definition. Later sources needing a lookup
+are counted as skipped once the run allowance is exhausted; unchanged definitions'
+version, error, attempt and success timestamps are untouched. Changed definitions
+remain invalidated even if their new lookup is skipped. Fresh cache hits do not
+count as skipped. Output reports failed and skipped counts; any skipped sources
+make the command incomplete with a nonzero exit status. Rerun normally to resume
+(still-fresh successes are skipped without network requests); `--force` also
+rechecks fresh sources and remains subject to the same budget.
 HTTP redirects, proxy environment settings, prereleases/dev/local versions, yanked
 PyPI releases, disabled formulae and oversized responses are refused. No GitHub
 credential is used; rate limits appear as failed checks. PyPI's latest project
@@ -558,9 +574,11 @@ are installed. This is contract coverage, not a new exporter format.
 Release registry refreshes reserve a monotonic database configuration generation
 before policy replacement. A delayed, superseded refresh cannot re-enable removed
 sources or restore old target mappings, even when the newer registry is empty.
-Policy replacement is atomic; network lookup results retain their separate
-attempt-time fence and never change enablement or targets. Superseded policy
-refreshes return without fetching. No database lock spans public-source I/O.
+Policy replacement and each result publication briefly lock the same generation
+row. Results from an obsolete generation cannot publish; they retain their
+separate attempt-time fence and never change enablement or targets. Superseded
+policy refreshes return without fetching, reporting their sources as skipped.
+No database lock spans public-source I/O.
 
 
 ## Coherent inventory reads

@@ -48,7 +48,15 @@ class Command(BaseCommand):
                 fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
             except BlockingIOError as exc:
                 raise CommandError("Release refresh already running") from exc
-            failures = refresh(data, force=options["force"])
-        self.stdout.write(f"Release refresh completed; {failures} failed sources")
-        if failures:
+            result = refresh(data, force=options["force"])
+        state = "completed" if result.complete else "incomplete"
+        self.stdout.write(
+            f"Release refresh {state}; {result.failures} failed sources; "
+            f"{result.skipped} skipped sources"
+        )
+        if not result.complete:
+            raise CommandError(
+                "Release refresh incomplete: elapsed budget or superseded registry"
+            )
+        if result.failures:
             raise CommandError("Some release sources could not be checked")

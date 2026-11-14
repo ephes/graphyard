@@ -2,6 +2,7 @@
 
 import json
 import re
+from dataclasses import dataclass
 from datetime import timedelta
 from time import monotonic
 
@@ -17,6 +18,7 @@ MAX_AGE = timedelta(days=8)
 REFRESH_AFTER = timedelta(days=6)
 MAX_BODY = 16 * 1024 * 1024
 FETCH_BUDGET_SECONDS = 60
+REFRESH_BUDGET_SECONDS = 300
 NAME = re.compile(r"[a-zA-Z0-9][a-zA-Z0-9_.@+-]{0,99}")
 
 
@@ -90,15 +92,24 @@ def stable(value):
     return value
 
 
-def fetch(client, definition):
-    deadline = monotonic() + FETCH_BUDGET_SECONDS
+def fetch(client, definition, *, deadline=None):
+    now = monotonic()
+    deadline = (
+        min(deadline, now + FETCH_BUDGET_SECONDS)
+        if deadline is not None
+        else now + FETCH_BUDGET_SECONDS
+    )
 
     def check_deadline():
         if monotonic() >= deadline:
             raise ValueError("Release lookup elapsed budget exceeded")
 
+    check_deadline()
     with client.stream(
-        "GET", url(definition), headers={"Accept-Encoding": "identity"}
+        "GET",
+        url(definition),
+        headers={"Accept-Encoding": "identity"},
+        timeout=min(20, deadline - monotonic()),
     ) as response:
         check_deadline()
         response.raise_for_status()
@@ -123,6 +134,7 @@ def fetch(client, definition):
         data = json.loads(raw)
     except RecursionError as exc:
         raise ValueError("Release response nested too deeply") from exc
+    check_deadline()
     if not isinstance(data, dict):
         raise ValueError("Invalid release response")
     kind = definition["kind"]
@@ -151,7 +163,18 @@ def fetch(client, definition):
     return stable(data.get("versions", {}).get("stable"))
 
 
+@dataclass(frozen=True)
+class RefreshResult:
+    failures: int = 0
+    skipped: int = 0
+
+    @property
+    def complete(self):
+        return self.skipped == 0
+
+
 def refresh(data, force=False):
+    deadline = monotonic() + REFRESH_BUDGET_SECONDS
     registry = definitions(data)  # Validate completely before changing cache policy.
     with transaction.atomic():
         InventoryReleaseRegistry.objects.get_or_create(pk=1)
@@ -166,13 +189,18 @@ def refresh(data, force=False):
         if not InventoryReleaseRegistry.objects.filter(
             pk=1, generation=generation
         ).update(generation=F("generation")):
-            return 0
+            return RefreshResult(skipped=len(registry))
         InventoryRelease.objects.exclude(source_id__in=registry).update(enabled=False)
         for key, definition in registry.items():
-            InventoryRelease.objects.update_or_create(
-                source_id=key, defaults={"definition": definition, "enabled": True}
+            row, _ = InventoryRelease.objects.get_or_create(
+                source_id=key, defaults={"definition": definition}
             )
-    failures = 0
+            values = {"definition": definition, "enabled": True}
+            if row.definition != definition:
+                # Cached evidence belongs to the entire definition, including targets.
+                values.update(version="", checked_at=None, attempted_at=None, error="")
+            InventoryRelease.objects.filter(pk=key).update(**values)
+    failures = skipped = 0
     with httpx.Client(
         timeout=20,
         follow_redirects=False,
@@ -191,18 +219,29 @@ def refresh(data, force=False):
                 and timedelta(0) <= started - row.checked_at < REFRESH_AFTER
             ):
                 continue
+            if monotonic() >= deadline:
+                skipped += 1
+                continue
             try:
-                version = fetch(client, definition)
+                version = fetch(client, definition, deadline=deadline)
                 values = {"version": version, "checked_at": timezone.now(), "error": ""}
             except (httpx.HTTPError, ValueError, TypeError, KeyError, AttributeError):
                 failures += 1
                 values = {"error": "Release lookup failed"}
             # Failed attempts preserve the last success and never renew its timestamp.
             values["attempted_at"] = started
-            InventoryRelease.objects.filter(pk=key).filter(
-                Q(attempted_at__isnull=True) | Q(attempted_at__lte=started)
-            ).update(**values)
-    return failures
+            with transaction.atomic():
+                # Serialize with policy replacement, never across network work.
+                # Generation also fences removal/re-enable and A -> B -> A edits.
+                if InventoryReleaseRegistry.objects.filter(
+                    pk=1, generation=generation
+                ).update(generation=F("generation")):
+                    InventoryRelease.objects.filter(
+                        pk=key, enabled=True, definition=definition
+                    ).filter(
+                        Q(attempted_at__isnull=True) | Q(attempted_at__lte=started)
+                    ).update(**values)
+    return RefreshResult(failures=failures, skipped=skipped)
 
 
 def source_health(now):

@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Invalidate cached release success when its source/target definition changes and
+  fence in-flight publication against the registry generation and enabled exact
+  definition, including removal and A → B → A edits.
+- Bound release refreshes to a five-minute monotonic admission budget, cap each
+  remaining lookup allowance, and report skipped sources with an incomplete,
+  unsuccessful command outcome without renewing their cache timestamps.
+
 - Refuse ambiguous UniFi site components and controller URL query/fragment forms
   before login in Python and Rust; require unique explicit interface selections
   with typed integer port identities and no writes on selection failure.
