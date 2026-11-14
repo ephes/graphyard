@@ -2,13 +2,16 @@ from __future__ import annotations
 
 import copy
 import json
+import sqlite3
 from typing import Any
 
 from django.contrib import admin
 from django import forms
 from django.forms import ModelForm
 from django.utils.crypto import constant_time_compare, salted_hmac
-from django.db import connections, router, transaction
+from django.db import OperationalError, connections, router, transaction
+from django.core.exceptions import ValidationError
+from django.http import HttpResponse
 
 from .models import (
     ConditionDefinition,
@@ -37,16 +40,21 @@ class DefinitionAdminForm(ModelForm):
 
     definition_revision = forms.CharField(widget=forms.HiddenInput, required=False)
     CONFLICT = "Definition changed. Reload this page before editing again."
+    revision_fields: tuple[str, ...] = ()
 
     def _definition_fields(self) -> tuple[str, ...]:
         return tuple(name for name in self.fields if name != "definition_revision")
 
     def _revision(self, row: Any) -> str:
         values = {
-            name: row._meta.get_field(name).to_python(getattr(row, name))
-            for name in self._definition_fields()
+            name: row._meta.get_field(name).to_python(
+                getattr(row, row._meta.get_field(name).attname)
+            )
+            for name in (*self._definition_fields(), *self.revision_fields)
         }
-        values.update(pk=row.pk, updated_at=str(row.updated_at))
+        values.update(pk=row.pk)
+        if hasattr(row, "updated_at"):
+            values["updated_at"] = str(row.updated_at)
         # A keyed MAC, never a bare hash: the payload includes unredacted
         # secrets while every other input is visible on the change page.
         return salted_hmac(
@@ -95,9 +103,10 @@ class DefinitionAdminForm(ModelForm):
                 self.cleaned_data.get("definition_revision"), current
             ):
                 raise forms.ValidationError(self.CONFLICT)
-            self.instance.save(
-                using=alias, update_fields=(*self._definition_fields(), "updated_at")
-            )
+            fields = self._definition_fields()
+            if hasattr(current, "updated_at"):
+                fields = (*fields, "updated_at")
+            self.instance.save(using=alias, update_fields=fields)
         return self.instance
 
 
@@ -150,7 +159,8 @@ class MetricCollectionSpecAdminForm(DefinitionAdminForm):
         return merged
 
 
-class IngestTokenAdminForm(ModelForm):
+class IngestTokenAdminForm(DefinitionAdminForm):
+    revision_fields = ("token_hash", "revoked_at")
     host_scope = forms.CharField(
         required=False,
         widget=forms.Textarea(attrs={"rows": 4, "cols": 60}),
@@ -164,7 +174,7 @@ class IngestTokenAdminForm(ModelForm):
 
     class Meta:
         model = IngestToken
-        fields = "__all__"
+        fields = ("name", "enabled", "host_scope", "bound_subject_id")
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
@@ -176,8 +186,35 @@ class IngestTokenAdminForm(ModelForm):
         return parse_host_scope_text(self.cleaned_data.get("host_scope") or "")
 
 
+class CurrentStateAdmin(DefinitionAdmin):
+    """Convert stale-save and SQLite writer contention into a reload refusal."""
+
+    def changeform_view(self, request, object_id=None, form_url="", extra_context=None):
+        try:
+            return super().changeform_view(request, object_id, form_url, extra_context)
+        except ValidationError as error:
+            if request.method != "POST" or error.messages != [
+                DefinitionAdminForm.CONFLICT
+            ]:
+                raise
+        except OperationalError as error:
+            alias = router.db_for_write(self.model)
+            code = getattr(error.__cause__, "sqlite_errorcode", 0)
+            if (
+                request.method != "POST"
+                or connections[alias].vendor != "sqlite"
+                or code & 0xFF not in (sqlite3.SQLITE_BUSY, sqlite3.SQLITE_LOCKED)
+            ):
+                raise
+        # Outside Django admin's rolled-back POST transaction. Do not retry a
+        # security edit or expose storage diagnostics, and do not read again.
+        return HttpResponse(
+            "Change not saved. Reload this page before editing again.", status=409
+        )
+
+
 @admin.register(IngestToken)
-class IngestTokenAdmin(admin.ModelAdmin):
+class IngestTokenAdmin(CurrentStateAdmin):
     form = IngestTokenAdminForm
     list_display = (
         "id",
@@ -216,22 +253,61 @@ class IngestTokenHostUsageAdmin(admin.ModelAdmin):
         return False
 
 
+class RegistryAdmin(CurrentStateAdmin):
+    identity_fields: tuple[str, ...] = ()
+    readonly_fields: tuple[str, ...] = ("last_seen_at",)
+
+    def get_readonly_fields(self, request, obj=None):
+        return (*self.readonly_fields, *(self.identity_fields if obj else ()))
+
+
+class HostRegistryAdminForm(DefinitionAdminForm):
+    revision_fields = ("host_id",)
+
+    class Meta:
+        model = HostRegistry
+        fields = ("host_id", "display_name", "grafana_url", "enabled")
+
+
+class ServiceRegistryAdminForm(DefinitionAdminForm):
+    revision_fields = ("service_id", "host_id")
+
+    class Meta:
+        model = ServiceRegistry
+        fields = ("service_id", "host", "display_name", "grafana_url", "enabled")
+
+
+class SubjectRegistryAdminForm(DefinitionAdminForm):
+    revision_fields = ("subject_type", "subject_id")
+
+    class Meta:
+        model = SubjectRegistry
+        fields = ("subject_type", "subject_id", "display_name")
+
+
 @admin.register(HostRegistry)
-class HostRegistryAdmin(admin.ModelAdmin):
+class HostRegistryAdmin(RegistryAdmin):
+    form = HostRegistryAdminForm
+    identity_fields = ("host_id",)
     list_display = ("host_id", "display_name", "enabled", "last_seen_at")
     search_fields = ("host_id", "display_name")
     list_filter = ("enabled",)
 
 
 @admin.register(ServiceRegistry)
-class ServiceRegistryAdmin(admin.ModelAdmin):
+class ServiceRegistryAdmin(RegistryAdmin):
+    form = ServiceRegistryAdminForm
+    identity_fields = ("service_id",)
     list_display = ("service_id", "display_name", "host", "enabled", "last_seen_at")
     search_fields = ("service_id", "display_name")
     list_filter = ("enabled",)
 
 
 @admin.register(SubjectRegistry)
-class SubjectRegistryAdmin(admin.ModelAdmin):
+class SubjectRegistryAdmin(RegistryAdmin):
+    form = SubjectRegistryAdminForm
+    identity_fields = ("subject_type", "subject_id")
+    readonly_fields = ("last_seen_at", "source_system")
     list_display = (
         "subject_type",
         "subject_id",

@@ -5,7 +5,8 @@ from datetime import timedelta
 from django.core.management.base import BaseCommand, CommandError
 from django.utils import timezone
 
-from graphyard.models import IngestToken, IngestTokenHostUsage
+from graphyard.models import IngestToken
+from graphyard.token_reports import token_usage_batches
 from graphyard.token_scope import (
     MAX_HOST_SCOPE_ENTRIES,
     host_in_scope,
@@ -46,41 +47,36 @@ class Command(BaseCommand):
         if not options["include_disabled"]:
             tokens = tokens.filter(enabled=True)
 
-        usage_by_token: dict[int, list[IngestTokenHostUsage]] = {}
-        for usage in IngestTokenHostUsage.objects.filter(
-            last_seen_at__gte=cutoff
-        ).order_by("host_id"):
-            usage_by_token.setdefault(usage.token_id, []).append(usage)
+        tokens = tokens.values("id", "name", "enabled", "host_scope")
 
         self.stdout.write(
             f"Hosts written per ingest token in the last {days} day(s). "
             "Usage is recorded from the release that added host scopes onwards; "
             "last_seen is updated at most once per hour."
         )
-        for token in tokens:
-            scope = token.host_scope
+        for token, usages in token_usage_batches(tokens, cutoff):
+            scope = token["host_scope"]
             if not is_scoped(scope):
                 scope_text = "unrestricted"
             elif is_valid_stored_scope(scope):
                 scope_text = ",".join(str(entry) for entry in scope)
             else:
                 scope_text = "invalid (allows nothing)"
-            state = "enabled" if token.enabled else "disabled"
+            state = "enabled" if token["enabled"] else "disabled"
             self.stdout.write("")
             self.stdout.write(
-                f"token id={token.pk} name={token.name} {state} host_scope={scope_text}"
+                f"token id={token['id']} name={token['name']} {state} host_scope={scope_text}"
             )
-            usages = usage_by_token.get(token.pk, [])
             if not usages:
                 self.stdout.write("  (no recorded writes in this period)")
                 continue
             for usage in usages:
                 note = ""
-                if is_scoped(scope) and not host_in_scope(scope, usage.host_id):
+                if is_scoped(scope) and not host_in_scope(scope, usage["host_id"]):
                     note = "  outside current scope"
                 self.stdout.write(
-                    f"  {usage.host_id}  last_seen={usage.last_seen_at.isoformat(timespec='seconds')}"
-                    f"  first_seen={usage.first_seen_at.isoformat(timespec='seconds')}{note}"
+                    f"  {usage['host_id']}  last_seen={usage['last_seen_at'].isoformat(timespec='seconds')}"
+                    f"  first_seen={usage['first_seen_at'].isoformat(timespec='seconds')}{note}"
                 )
             if len(usages) > MAX_HOST_SCOPE_ENTRIES:
                 self.stdout.write(
@@ -91,5 +87,5 @@ class Command(BaseCommand):
             else:
                 self.stdout.write(
                     "  suggested --host-scope "
-                    + ",".join(usage.host_id for usage in usages)
+                    + ",".join(usage["host_id"] for usage in usages)
                 )

@@ -12,6 +12,9 @@ use rusqlite::{Connection, OpenFlags};
 
 use crate::error::StoreError;
 
+// Includes the running job. Callers beyond this limit wait without sending.
+const MAX_PENDING_OPERATIONS: usize = 64;
+
 type Job = Box<dyn FnOnce(&mut Connection) + Send>;
 
 enum Message {
@@ -35,7 +38,8 @@ impl std::fmt::Debug for Message {
 /// discarded).
 #[derive(Clone, Debug)]
 pub struct Store {
-    messages: mpsc::Sender<Message>,
+    messages: Arc<Mutex<Option<mpsc::Sender<Message>>>>,
+    admission: Arc<tokio::sync::Semaphore>,
     thread: Arc<Mutex<Option<JoinHandle<()>>>>,
 }
 
@@ -66,26 +70,46 @@ impl Store {
             })
             .map_err(StoreError::Io)?;
         Ok(Store {
-            messages,
+            messages: Arc::new(Mutex::new(Some(messages))),
+            admission: Arc::new(tokio::sync::Semaphore::new(MAX_PENDING_OPERATIONS)),
             thread: Arc::new(Mutex::new(Some(thread))),
         })
     }
 
-    /// Run `operation` on the DB thread and await its result.
+    /// Wait for one of 64 running/queued slots, then send `operation` to
+    /// the DB thread and await its result. Cancelling before send queues
+    /// nothing; after send, the operation completes even without its caller.
     pub(crate) async fn call<T, F>(&self, operation: F) -> Result<T, StoreError>
     where
         T: Send + 'static,
         F: FnOnce(&mut Connection) -> Result<T, StoreError> + Send + 'static,
     {
+        let permit = self
+            .admission
+            .clone()
+            .acquire_owned()
+            .await
+            .map_err(|_| StoreError::ThreadGone)?;
         let (reply, response) = tokio::sync::oneshot::channel();
         let job: Job = Box::new(move |connection| {
+            // The job, not the awaiting caller, owns admission until it ends.
+            let _permit = permit;
             // The receiver is gone when the caller was cancelled; the
             // operation has completed either way.
             let _ = reply.send(operation(connection));
         });
-        self.messages
-            .send(Message::Job(job))
-            .map_err(|_| StoreError::ThreadGone)?;
+        {
+            // Serialize only admission/send with close, never the reply wait.
+            let messages = self
+                .messages
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            messages
+                .as_ref()
+                .ok_or(StoreError::ThreadGone)?
+                .send(Message::Job(job))
+                .map_err(|_| StoreError::ThreadGone)?;
+        }
         response.await.map_err(|_| StoreError::ThreadGone)?
     }
 
@@ -93,10 +117,22 @@ impl Store {
     /// queued before this call) and close the connection. Blocks until the
     /// thread has finished, which a statement waiting on a lock bounds by
     /// `busy_timeout` (PLAN.md 4.1); call it outside the async runtime.
-    /// Later operations on any clone fail with [`StoreError::ThreadGone`].
+    /// Admission closes across all clones before Stop is sent; later calls
+    /// and admission waiters fail with [`StoreError::ThreadGone`]. Repeated
+    /// close may return while another closer is still joining the thread.
     pub fn close(self) {
-        // The thread may already be gone; then there is nothing to stop.
-        let _ = self.messages.send(Message::Stop);
+        {
+            let mut messages = self
+                .messages
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            // Wake permit waiters and reject new calls on every clone. Any
+            // sender that won this lock earlier queued its job before Stop.
+            self.admission.close();
+            if let Some(sender) = messages.take() {
+                let _ = sender.send(Message::Stop);
+            }
+        }
         let handle = self
             .thread
             .lock()
@@ -349,6 +385,126 @@ mod tests {
             )
             .unwrap();
         assert_eq!(tables, 1);
+    }
+
+    #[tokio::test]
+    async fn pending_admission_is_bounded_and_cancelled_waiters_never_write() {
+        use std::future::Future;
+        use std::task::{Context, Poll, Waker};
+
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("db.sqlite3");
+        Connection::open(&path).unwrap();
+        let store = Store::open(&path, &settings(&[])).unwrap();
+        let (started, wait_started) = mpsc::channel();
+        let (release, wait_release) = mpsc::channel();
+        let mut first = Box::pin(store.call(move |connection| {
+            connection.execute_batch("CREATE TABLE committed (id INTEGER)")?;
+            started.send(()).unwrap();
+            wait_release.recv_timeout(Duration::from_secs(10)).unwrap();
+            Ok(())
+        }));
+        let mut context = Context::from_waker(Waker::noop());
+        assert!(matches!(first.as_mut().poll(&mut context), Poll::Pending));
+        wait_started.recv_timeout(Duration::from_secs(10)).unwrap();
+        let mut callers = Vec::new();
+        for id in 0..128 {
+            // The capture stands for sample/config data retained by queued work.
+            let payload = vec![id; 1024];
+            let mut caller = Box::pin(store.call(move |connection| {
+                connection.execute("INSERT INTO committed VALUES (?1)", [payload[0]])?;
+                Ok(())
+            }));
+            assert!(matches!(caller.as_mut().poll(&mut context), Poll::Pending));
+            callers.push(caller);
+        }
+        // Sent jobs must survive cancellation, but permit waiters own no write.
+        drop(callers);
+        drop(first);
+        release.send(()).unwrap();
+        store.close();
+        let check = Connection::open(&path).unwrap();
+        let count: i64 = check
+            .query_row("SELECT count(*) FROM committed", [], |row| row.get(0))
+            .unwrap();
+        assert_eq!(
+            count, 63,
+            "64 running/queued operations including the blocked first job"
+        );
+    }
+
+    #[tokio::test]
+    async fn close_rejects_late_calls_before_the_running_job_finishes() {
+        use std::future::Future;
+        use std::task::{Context, Poll, Waker};
+
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("db.sqlite3");
+        Connection::open(&path).unwrap();
+        let store = Store::open(&path, &settings(&[])).unwrap();
+        let (started, wait_started) = mpsc::channel();
+        let (release, wait_release) = mpsc::channel();
+        let mut first = Box::pin(store.call(move |connection| {
+            connection.execute_batch("CREATE TABLE accepted (id INTEGER)")?;
+            started.send(()).unwrap();
+            wait_release.recv_timeout(Duration::from_secs(10)).unwrap();
+            Ok(())
+        }));
+        let mut context = Context::from_waker(Waker::noop());
+        assert!(matches!(first.as_mut().poll(&mut context), Poll::Pending));
+        wait_started.recv_timeout(Duration::from_secs(10)).unwrap();
+        for id in 0..63 {
+            let mut accepted = Box::pin(store.call(move |connection| {
+                connection.execute("INSERT INTO accepted VALUES (?1)", [id])?;
+                Ok(())
+            }));
+            assert!(matches!(
+                accepted.as_mut().poll(&mut context),
+                Poll::Pending
+            ));
+            // Dropping a sent call must not withdraw the accepted write.
+        }
+        let mut waiting = Box::pin(store.call(|connection| {
+            connection.execute("INSERT INTO accepted VALUES (998)", [])?;
+            Ok(())
+        }));
+        assert!(matches!(waiting.as_mut().poll(&mut context), Poll::Pending));
+        let closer = std::thread::spawn({
+            let clone = store.clone();
+            move || clone.close()
+        });
+        // close takes the join handle only after publishing Stop; the running
+        // job remains blocked, making the late-send interleaving deterministic.
+        let deadline = std::time::Instant::now() + Duration::from_secs(5);
+        while store.thread.lock().unwrap().is_some() {
+            assert!(std::time::Instant::now() < deadline);
+            std::thread::yield_now();
+        }
+        let mut late = Box::pin(store.call(|connection| {
+            connection.execute("INSERT INTO accepted VALUES (999)", [])?;
+            Ok(())
+        }));
+        let outcome = late.as_mut().poll(&mut context);
+        let waiting_outcome = waiting.as_mut().poll(&mut context);
+        release.send(()).unwrap();
+        closer.join().unwrap();
+        assert!(
+            matches!(outcome, Poll::Ready(Err(StoreError::ThreadGone))),
+            "a call after Stop must be rejected before waiting for the DB thread"
+        );
+        assert!(
+            matches!(waiting_outcome, Poll::Ready(Err(StoreError::ThreadGone))),
+            "close must wake unadmitted waiters without sending their jobs"
+        );
+        drop(waiting);
+        drop(late);
+        drop(first);
+        store.close(); // repeated close is harmless
+        let check = Connection::open(&path).unwrap();
+        let count: i64 = check
+            .query_row("SELECT count(*) FROM accepted", [], |row| row.get(0))
+            .unwrap();
+        assert_eq!(count, 63);
     }
 
     #[test]

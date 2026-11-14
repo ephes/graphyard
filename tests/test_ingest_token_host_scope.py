@@ -501,6 +501,7 @@ def test_admin_form_edits_scope_as_text():
         "token_hash": token.token_hash,
         "enabled": "on",
         "host_scope": "Edge, db*\nweb-1",
+        "definition_revision": form.initial["definition_revision"],
     }
     form = IngestTokenAdminForm(data=data, instance=token)
     assert form.is_valid(), form.errors
@@ -508,6 +509,9 @@ def test_admin_form_edits_scope_as_text():
     token.refresh_from_db()
     assert token.host_scope == ["edge", "db*", "web-1"]
 
+    data["definition_revision"] = IngestTokenAdminForm(instance=token).initial[
+        "definition_revision"
+    ]
     form = IngestTokenAdminForm(data={**data, "host_scope": ""}, instance=token)
     assert form.is_valid(), form.errors
     form.save()

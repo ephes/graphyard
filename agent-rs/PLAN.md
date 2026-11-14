@@ -2170,3 +2170,17 @@ before reading. Decoder tests pin high-ratio gzip/zlib/raw-deflate, stacked
 intermediate growth and normal split chunks. This intentional tighter allocation
 bound precedes Python's general post-decode check; accepted ordinary fixtures
 stay identical. Login admission is a Python web concern, not an agent change.
+
+### Store actor admission and close ordering (round 93)
+
+The DB actor permits at most 64 running/queued operations. Async admission occurs
+before send; cancelled permit waiters enqueue nothing. A sent closure owns the
+permit through completion, preserving the round-85 cancellation/transaction
+contract. Application futures waiting for admission still own their input data.
+One shared sender/admission mutex orders sends with close: close disables the
+semaphore, takes the sender and sends Stop behind accepted jobs. Later calls and
+pending permit waiters return ThreadGone. Reply waits and thread joining hold no
+admission lock. Repeated close may return while another closer drains its join
+handle; DB thread panic still drops outstanding replies and queued operations.
+Regression tests gate a real DB closure, cancel excess callers, and verify both
+the 64-job admission boundary and the deterministic send-versus-close ordering.

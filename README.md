@@ -299,6 +299,12 @@ Usage is recorded at ingest from this release onwards (table
 `ingest_token_host_usage`, `last_seen` updated at most hourly, at most 500 identifiers per token),
 so let it collect for a while before scoping existing tokens.
 
+The binding and host-scope reports stream token metadata in batches of 100 and
+read projected usage once per batch. They never fetch credential hashes or hydrate usage models;
+proposals and disabled/retired token attribution retain their existing semantics.
+The default host-scope report reads usage only for enabled tokens;
+`--include-disabled` admits disabled tokens through the same bounded batches.
+
 The scope does not limit metric names or `service` tags, and it does not apply to the
 inventory API, which has its own per-host credentials.
 
@@ -1134,6 +1140,16 @@ lock only during its database transaction, with no network work. Definition edit
 preserve the last condition observation and watermark; the next scheduled
 evaluation uses the new definition, and in-flight old-definition results cannot
 publish. A definition edit does not manufacture a healthy observation.
+
+Token admin changes carry a signed revision covering the name, enablement, scope,
+binding, credential hash and revocation state. A stale security edit requires a
+reload; usage timestamps do not invalidate a page and are never saved by the
+form. Registry admin changes save only operator fields (display name, Grafana
+URL, enablement and service host assignment where present). Existing registry
+identifiers and observed source/last-seen fields are read-only. Identity or
+service-host reassignment since opening the page requires a reload. SQLite
+writer contention or a conflict at save returns a fixed-text HTTP 409, with no
+automatic retry; reload and review the current state before submitting again.
 
 ### Observation ordering and query replies
 
