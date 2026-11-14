@@ -106,3 +106,8 @@ def test_integer_limit_cli_exits_with_bounded_error(tmp_path, capsys, number):
     assert output.out == ""
     assert "integer exceeds the decoder limit" in output.err
     assert len(output.err) < len(str(path)) + 100
+
+
+def test_unreadable_path_is_not_reported_as_decoder_limit():
+    with pytest.raises(CommandError, match="invalid path"):
+        call_command("apply_metric_collection_specs", file="synthetic\x00.json")

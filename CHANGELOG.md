@@ -8,7 +8,10 @@
 
 - Admit spec-import JSON depth, 100,000-node complexity and 1,000-definition
   budgets through the existing streaming parser before building an object tree;
-  refuse non-JSON NaN/Infinity constants.
+  refuse non-JSON NaN/Infinity constants. Syntax errors found by this pass (empty
+  file, trailing data, missing brackets) are reported as `Invalid JSON in <file>`
+  without line/column. A spec path the OS refuses (for example with a NUL byte)
+  is reported as an invalid path instead of a decoder-limit error.
 
 - Refuse duplicate JSON members throughout spec-import files, with position-only
   diagnostics, and normalize overlong JSON integers to controlled command errors

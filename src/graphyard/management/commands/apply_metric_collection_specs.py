@@ -128,8 +128,6 @@ def _unique_spec_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
 def _load_specs_file(path: Path) -> list[dict[str, Any]]:
     try:
         content = _read_specs_file(path)
-        _admit_spec_shape(content, path)
-        payload = json.loads(content, object_pairs_hook=_unique_spec_object)
     except FileNotFoundError:
         raise CommandError(f"Spec file not found: {path}") from None
     except UnicodeDecodeError:
@@ -142,16 +140,24 @@ def _load_specs_file(path: Path) -> list[dict[str, Any]]:
         else:
             detail = "filesystem read failed"
         raise CommandError(f"Cannot read spec file {path}: {detail}") from None
+    except ValueError:
+        # For example an embedded NUL byte in the path.
+        raise CommandError("Cannot read spec file: invalid path") from None
+    _admit_spec_shape(content, path)
+    try:
+        payload = json.loads(content, object_pairs_hook=_unique_spec_object)
     except json.JSONDecodeError as err:
         raise CommandError(
             f"Invalid JSON in {path} at line {err.lineno} column {err.colno}"
         ) from None
     except RecursionError:
         raise CommandError(f"JSON nesting too deep in {path}") from None
-    except ValueError:
-        raise CommandError(
-            f"JSON integer exceeds the decoder limit in {path}"
-        ) from None
+    except ValueError as err:
+        if str(err).startswith("Exceeds the limit ("):
+            raise CommandError(
+                f"JSON integer exceeds the decoder limit in {path}"
+            ) from None
+        raise CommandError(f"Invalid JSON in {path}") from None
 
     raw_specs: object
     if isinstance(payload, list):
