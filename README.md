@@ -325,9 +325,19 @@ just manage apply_metric_collection_specs --file /etc/graphyard/metric-collectio
 Files are opened once without blocking and must resolve to a regular file;
 symlinks to regular files remain supported. Both declared size and actual reads
 are capped at 2 MiB (an exact-limit valid file is accepted); parsed JSON paths
-may traverse at most 64 edges from the document root. Unreadable, nonregular,
-oversized, invalid UTF-8/JSON or decoder-depth-exhausting inputs fail before any
-database query, with a bounded command error naming the path and omitting content.
+may traverse at most 64 edges from the document root. Before materializing any
+JSON lists or objects, a streaming pass admits at most 100,000 nodes (object
+members count once for their key and once for their value; containers count as
+values) and 1,000 definitions in the root or `metric_collection_specs` list.
+These whole-document budgets include ignored fields and nested config values;
+exact limits are accepted. JSON extensions such as NaN/Infinity are refused.
+Unreadable, nonregular, oversized, invalid UTF-8/JSON or decoder-depth-exhausting
+inputs fail before any database query, with a bounded command error naming the
+path and omitting content.
+Duplicate JSON members at every object level (including escaped-equivalent names
+and identical values) are refused with only the member position. Repeated array
+records still undergo the ordinary duplicate-spec-name check. Integers beyond
+Python's decoder digit limit produce a controlled command error before model access.
 
 Apply compares the captured definition and update timestamp before writing.
 Concurrent edits, duplicate creates or recognized database contention produce a
@@ -341,6 +351,13 @@ definitions before applying the desired file again.
 Prune is opt-in and keyed only by `name`. Without `--prune`, unspecified specs
 are left untouched. With `--prune`, the command refuses an empty desired spec
 set so a broken render cannot wipe every spec row in one shot.
+
+Spec-file validation errors identify the zero-based definition index and known
+field (including supported typed config knobs), with a fixed reason. They omit
+names, values, unknown model fields and raw model-validation exception chains.
+A failed apply emits no buffered success lines and rolls back all writes/pruning;
+correct the indexed definition locally and retry. Successful reconciliation still
+prints spec names and the stable summary counters.
 
 Typed config values are validated on save (Django admin and
 `apply_metric_collection_specs`, which aborts on the first invalid spec in the
