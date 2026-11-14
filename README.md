@@ -899,6 +899,18 @@ state per name; transitions and retries after failed/rolled-back writes publish.
 The retained Python agent uses this writer too; Rust writes every heartbeat and
 needs no throttle correction.
 
+Health materializes heartbeats, condition counts and lazy session authentication in
+one short database snapshot; all condition counts use one aggregate query. SQLite's
+configured `BEGIN IMMEDIATE` briefly reserves the writer (WAL/deferred readers use
+their read snapshot); PostgreSQL uses an outer repeatable-read, read-only
+transaction. Health opts out of per-request transactions and releases its snapshot
+before querying remote InfluxDB or rendering the response. Application callers must
+not wrap the snapshot in a PostgreSQL transaction.
+Every `/v1/health` response, including anonymous, expired-session, unavailable and
+method-error responses, carries `Cache-Control: private, no-store` and `Vary: Cookie`
+while preserving other Vary fields. Detailed diagnostics must never be cached or
+reused after logout; anonymous failures keep the reduced projection.
+
 These endpoints need no credential, but unauthenticated callers get a reduced
 payload: `/v1/health` returns the overall `status`, `checked_at`, each
 component's `status` (pipelines also `last_success` and `age_seconds`) and the
@@ -1045,7 +1057,21 @@ Use an absolute HTTP(S) `base_url` for the controller (prefer HTTPS with TLS
 verification). Login passwords, cookies and CSRF headers stay on that exact
 scheme/host/effective-port origin: cross-origin redirects and scheme changes,
 including HTTPS downgrades, are refused. Same-origin redirects remain supported.
-Point `base_url` at the final origin rather than a redirecting alias.
+Point `base_url` at the final origin rather than a redirecting alias. Query and
+fragment syntax (including empty `?`/`#`) is refused before login. `site_id` is a
+single literal ASCII component using letters, digits, `_`, `-`, or `.`, except
+`.` and `..`; slash, backslash, percent escapes, query/fragment delimiters and
+other characters are refused before any credentials are sent. Empty/whitespace
+site configuration retains the `default` fallback.
+
+Explicit `port_idx:<n>` and `port_name:<name>` selectors require exactly one
+matching port; duplicate matches fail the collection without metric or registry
+writes, regardless of controller ordering. Index selectors use ASCII decimal
+nonnegative integers and match only JSON integer identities, never booleans,
+floats or numeric strings. A name-selected port's optional index must also be a
+nonnegative JSON integer; missing/null indices remain supported. A unique name
+selects its own port even if other ports have that index. `uplink` continues to
+read the device's uplink telemetry and retains its existing tag enrichment.
 
 Both Python and Rust UniFi collectors apply `max_body_bytes` (default 10 MiB)
 to the sum of all login attempts, redirect bodies and device responses.

@@ -1047,6 +1047,79 @@ UNIFI_SCENARIOS: list[dict[str, Any]] = [
 ]
 
 
+# Credentialed routes are admitted before any login. Replayed on a loopback
+# controller by Rust, with identical zero-request/zero-write expectations.
+for site in (
+    "a/b",
+    "../other",
+    ".",
+    "..",
+    "a#b",
+    "a?b",
+    "%2f",
+    "%2e%2e",
+    "%252f",
+    "a\\b",
+):
+    UNIFI_SCENARIOS.append(
+        {
+            "name": f"invalid site {site}",
+            "config": _unifi(site_id=site),
+            "routes": _legacy_routes(),
+        }
+    )
+for suffix in ("?other=1", "#other", "?", "#"):
+    UNIFI_SCENARIOS.append(
+        {
+            "name": f"ambiguous base {suffix}",
+            "config": _unifi(base_url=ORIGIN + suffix),
+            "routes": _legacy_routes(),
+        }
+    )
+UNIFI_SCENARIOS.append(
+    {
+        "name": "normal unreserved site component",
+        "config": _unifi(site_id="site_1-a.b"),
+        "routes": {
+            "/api/login": _LOGIN_OK,
+            "/api/s/site_1-a.b/stat/device": _json_reply(200, _DEVICES),
+        },
+    }
+)
+for selector, ports in (
+    ("port_idx:1", [{"port_idx": 1, "name": "a"}, {"port_idx": 1, "name": "b"}]),
+    ("port_name:a", [{"port_idx": 1, "name": "a"}, {"port_idx": 2, "name": "a"}]),
+    ("port_idx:1", [{"port_idx": True, "name": "a"}]),
+    ("port_idx:1", [{"port_idx": 1.0, "name": "a"}]),
+    ("port_name:a", [{"port_idx": True, "name": "a"}]),
+    ("port_name:a", [{"port_idx": "1", "name": "a"}]),
+    (
+        "port_idx:1",
+        [{"port_idx": True, "name": "bool"}, {"port_idx": 1, "name": "valid"}],
+    ),
+    (
+        "port_name:valid",
+        [{"port_idx": True, "name": "bool"}, {"port_idx": 1, "name": "valid"}],
+    ),
+):
+    for reverse in (False, True):
+        table = list(reversed(ports)) if reverse else ports
+        device = {
+            **_DEVICE,
+            "port_table": [
+                {**p, "rx_bytes-r": i + 1, "tx_bytes-r": i + 2}
+                for i, p in enumerate(table)
+            ],
+        }
+        UNIFI_SCENARIOS.append(
+            {
+                "name": f"typed unique port {selector} {ports!r} reverse={reverse}",
+                "config": _unifi(interface_selector=selector),
+                "routes": _legacy_routes(_json_reply(200, {"data": [device]})),
+            }
+        )
+
+
 def _unifi_cases() -> list[dict[str, Any]]:
     return [
         {

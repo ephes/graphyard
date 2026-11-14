@@ -66,7 +66,13 @@ def test_collector_failure_is_safe_before_persistence(
     key = "url" if "url" in config else "base_url"
     config[key] = (
         config[key].replace("https://", f"https://user:{SENTINEL}@")
-        + f"?key={SENTINEL}"
+        # UniFi refuses base URL queries before transport; keep this test on
+        # its transport/error path with a private path segment instead.
+        + (
+            f"/{SENTINEL}"
+            if spec_type == "unifi_device_traffic"
+            else f"?key={SENTINEL}"
+        )
     )
     spec = MetricCollectionSpec.objects.create(
         name="synthetic", spec_type=spec_type, config=config

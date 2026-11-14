@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Refuse ambiguous UniFi site components and controller URL query/fragment forms
+  before login in Python and Rust; require unique explicit interface selections
+  with typed integer port identities and no writes on selection failure.
+- Read health database evidence in one short consistent snapshot with one
+  condition-count aggregate, releasing it before remote Influx work. Isolate all
+  health responses with private no-store and Cookie variation, including failures
+  and authentication transitions.
+
 - Keep spec-import validation diagnostics private: report only definition indices
   and known fields, without raw values/names or model-validation error chains;
   preserve all-or-nothing reconciliation and its successful summary output.

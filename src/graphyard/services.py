@@ -1661,48 +1661,51 @@ def _resolve_unifi_interface_stats(
 
     if selector_lower.startswith("port_idx:"):
         raw_port_idx = selector.split(":", 1)[1].strip()
-        if not raw_port_idx.isdigit():
+        if not raw_port_idx.isascii() or not raw_port_idx.isdigit():
             raise ValueError(f"invalid port_idx selector: {selector}")
         target_port_idx = int(raw_port_idx)
-        for port in port_table:
-            if not isinstance(port, dict):
-                continue
-            if port.get("port_idx") != target_port_idx:
-                continue
-            tags = {
-                "traffic_scope": "port",
-                "port_idx": str(target_port_idx),
-            }
-            port_name = str(port.get("name", "")).strip()
-            if port_name:
-                tags["port_name"] = port_name
-            speed_raw = port.get("speed")
-            if speed_raw is not None:
-                tags["speed_mbps"] = str(speed_raw)
-            return port, tags
-        raise ValueError(f"port_idx {target_port_idx} not found on device")
+        matches = [
+            port
+            for port in port_table
+            if isinstance(port, dict)
+            and type(port.get("port_idx")) is int
+            and port["port_idx"] == target_port_idx
+        ]
+        if len(matches) != 1:
+            raise ValueError("UniFi port selection must match exactly one interface")
+        port = matches[0]
+        tags = {"traffic_scope": "port", "port_idx": str(target_port_idx)}
+        port_name = str(port.get("name", "")).strip()
+        if port_name:
+            tags["port_name"] = port_name
+        speed_raw = port.get("speed")
+        if speed_raw is not None:
+            tags["speed_mbps"] = str(speed_raw)
+        return port, tags
 
     if selector_lower.startswith("port_name:"):
         target_name = selector.split(":", 1)[1].strip()
         if not target_name:
             raise ValueError(f"invalid port_name selector: {selector}")
-        for port in port_table:
-            if not isinstance(port, dict):
-                continue
-            if str(port.get("name", "")).strip() != target_name:
-                continue
-            tags = {
-                "traffic_scope": "port",
-                "port_name": target_name,
-            }
-            port_idx_raw = port.get("port_idx")
-            if port_idx_raw is not None:
-                tags["port_idx"] = str(port_idx_raw)
-            speed_raw = port.get("speed")
-            if speed_raw is not None:
-                tags["speed_mbps"] = str(speed_raw)
-            return port, tags
-        raise ValueError(f"port_name {target_name!r} not found on device")
+        matches = [
+            port
+            for port in port_table
+            if isinstance(port, dict)
+            and str(port.get("name", "")).strip() == target_name
+        ]
+        if len(matches) != 1:
+            raise ValueError("UniFi port selection must match exactly one interface")
+        port = matches[0]
+        tags = {"traffic_scope": "port", "port_name": target_name}
+        port_idx_raw = port.get("port_idx")
+        if port_idx_raw is not None:
+            if type(port_idx_raw) is not int or port_idx_raw < 0:
+                raise ValueError("UniFi port index must be a nonnegative integer")
+            tags["port_idx"] = str(port_idx_raw)
+        speed_raw = port.get("speed")
+        if speed_raw is not None:
+            tags["speed_mbps"] = str(speed_raw)
+        return port, tags
 
     raise ValueError(f"unsupported interface_selector: {selector}")
 
@@ -1764,6 +1767,8 @@ def _unifi_origin(url: httpx.URL) -> tuple[str, str, int | None]:
 
 
 def _guard_unifi_origin(base_url: str) -> Callable[[httpx.Request], None]:
+    if "?" in base_url or "#" in base_url:
+        raise ValueError("UniFi controller URL must not contain query or fragment")
     origin = httpx.URL(base_url)
     if origin.scheme not in {"http", "https"} or not origin.host:
         raise ValueError("UniFi controller URL must be absolute HTTP or HTTPS")
@@ -2002,6 +2007,8 @@ def _execute_unifi_device_traffic_spec(
         return StatusLevel.CRITICAL, 0, 0, "config.subject_id is required"
 
     try:
+        if not re.fullmatch(r"[A-Za-z0-9_.-]+", site_id) or site_id in {".", ".."}:
+            raise ValueError("UniFi site_id must be one unreserved path component")
         client = httpx.Client(
             timeout=timeout_seconds,
             verify=verify_tls,

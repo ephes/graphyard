@@ -9,7 +9,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import RequestDataTooBig
 from django.db import connection
 from django.db import DatabaseError, OperationalError, transaction
-from django.db.models import F
+from django.db.models import Count, F, Q
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.utils.cache import add_never_cache_headers
@@ -23,6 +23,7 @@ from .auth import (
     extract_bearer_token,
     record_ingest_token_metadata,
 )
+from .database import read_snapshot
 from .influx import InfluxConfigurationError, MetricPoint, check_health as influx_health
 from .influx import normalize_metric_point, parse_finite_float, write_points
 from .models import (
@@ -864,6 +865,7 @@ def _public_health_components(
     }
 
 
+@transaction.non_atomic_requests
 @require_GET
 def health(request: HttpRequest) -> JsonResponse:
     now = timezone.now()
@@ -872,20 +874,27 @@ def health(request: HttpRequest) -> JsonResponse:
     pipeline_names = ("metric_ingest", "metric_collectors", "condition_evaluator")
     detailed = False
     try:
-        with connection.cursor() as cursor:
-            cursor.execute("SELECT 1")
-            cursor.fetchone()
-        pipelines = {name: _heartbeat_component(name, now) for name in pipeline_names}
-        condition_counts = {
-            status: ConditionDefinition.objects.filter(
-                enabled=True, status=status
-            ).count()
-            for status in (StatusLevel.OK, StatusLevel.WARNING, StatusLevel.CRITICAL)
-        }
-        conditions = {"total": sum(condition_counts.values()), **condition_counts}
-        # Lazy session authentication can also require the failed database.
-        detailed = request.user.is_authenticated
-        database_component = {"status": StatusLevel.OK, "message": "ok"}
+        with read_snapshot():
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT 1")
+                cursor.fetchone()
+            pipelines = {
+                name: _heartbeat_component(name, now) for name in pipeline_names
+            }
+            conditions = ConditionDefinition.objects.filter(enabled=True).aggregate(
+                total=Count("pk"),
+                **{
+                    status: Count("pk", filter=Q(status=status))
+                    for status in (
+                        StatusLevel.OK,
+                        StatusLevel.WARNING,
+                        StatusLevel.CRITICAL,
+                    )
+                },
+            )
+            # Lazy session authentication belongs to the same database evidence.
+            detailed = request.user.is_authenticated
+            database_component = {"status": StatusLevel.OK, "message": "ok"}
     except DatabaseError:
         database_component = {
             "status": StatusLevel.CRITICAL,
