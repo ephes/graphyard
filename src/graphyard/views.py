@@ -304,6 +304,19 @@ def _parse_metrics_payload(payload: object) -> list[MetricPoint]:
                 raise _parse_error(
                     f"Metric at index {idx} has overlong {name} (max {limit} characters)"
                 )
+            if isinstance(dimension, str) and any(
+                ord(c) < 32 or 127 <= ord(c) <= 159 for c in dimension
+            ):
+                reason = "metric identity contains unsupported control characters"
+                logger.warning(
+                    "Rejected metric payload at index=%s metric=%r: %r",
+                    idx,
+                    metric[:256],
+                    reason,
+                )
+                raise _normalization_error(
+                    f"Metric at index {idx} failed validation: {reason}"
+                )
         if any(len(key) > 256 or len(value) > 256 for key, value in tags.items()):
             raise _parse_error(f"Metric at index {idx} has overlong tag key or value")
 

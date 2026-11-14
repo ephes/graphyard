@@ -182,6 +182,8 @@ pub fn line_point(
 /// normalisation in their order.
 #[derive(Clone, Debug, PartialEq)]
 pub struct PreparedWrite {
+    /// Whole batch refused before network or shadow-file effects.
+    pub request_too_large: bool,
     /// One line per valid point, in point order.
     pub lines: Vec<String>,
     /// `len(points)`.
@@ -223,33 +225,79 @@ impl PreparedWrite {
     }
 }
 
-/// The pure part of `write_points(points)` for the measurement
-/// `INFLUX_MEASUREMENT`: normalise every point, log and skip the invalid
-/// ones, build the lines of the valid ones.
+/// Maximum UTF-8 request body, including newline separators (8 MiB).
+pub const WRITE_MAX_REQUEST_BYTES: usize = 8 * 1024 * 1024;
+/// Bounded diagnostics even for many invalid points or reserved tag overrides.
+const MAX_WRITE_EVENTS: usize = 32;
+
+/// The pure part of `write_points`: admit dimensions, skip invalid points and
+/// build the valid lines in order, refusing a request above the total byte cap.
 pub fn prepare_write(measurement: &str, points: &[MetricPoint]) -> PreparedWrite {
+    prepare_write_with_limit(measurement, points, WRITE_MAX_REQUEST_BYTES)
+}
+
+/// Prepare one atomic request; overflow discards the complete batch.
+pub fn prepare_write_with_limit(
+    measurement: &str,
+    points: &[MetricPoint],
+    max_bytes: usize,
+) -> PreparedWrite {
     let mut prepared = PreparedWrite {
-        lines: Vec::with_capacity(points.len()),
+        request_too_large: false,
+        lines: Vec::new(),
         total: points.len(),
         rejected: 0,
         events: Vec::new(),
     };
+    let mut bytes = 0usize;
+    // Count measurement escaping before allocating a possibly oversized line.
+    let measurement_bytes = measurement.len().saturating_add(
+        measurement
+            .chars()
+            .filter(|c| matches!(c, ',' | ' ' | '\n' | '\r' | '\t'))
+            .count(),
+    );
+    if measurement_bytes > max_bytes {
+        prepared.request_too_large = true;
+    }
     for item in points {
+        if prepared.request_too_large {
+            break;
+        }
         match normalize_metric_point(item) {
             Ok(normalized) => {
                 let line = line_point(measurement, &normalized, &mut prepared.events);
-                prepared.lines.push(line.to_line_protocol());
+                let encoded = line.to_line_protocol();
+                let size = encoded.len() + usize::from(!prepared.lines.is_empty());
+                if size > max_bytes.saturating_sub(bytes) {
+                    prepared.request_too_large = true;
+                    break;
+                }
+                bytes += size;
+                prepared.lines.push(encoded);
             }
             Err(err) => {
-                prepared.events.push(LogEvent::error(format!(
+                if prepared.events.len() < MAX_WRITE_EVENTS {
+                    prepared.events.push(LogEvent::error(format!(
                     "Metric point validation failed metric={} subject_type={} subject_id={}: {}",
-                    escape_log_value(&item.metric),
-                    escape_log_value(&item.subject_type),
-                    escape_log_value(&item.subject_id),
-                    escape_log_value(&err.message)
+                    escape_log_value(&item.metric.chars().take(256).collect::<String>()),
+                    escape_log_value(&item.subject_type.chars().take(256).collect::<String>()),
+                    escape_log_value(&item.subject_id.chars().take(128).collect::<String>()),
+                    escape_log_value(&err.message.chars().take(512).collect::<String>())
                 )));
+                }
                 prepared.rejected += 1;
             }
         }
+        prepared.events.truncate(MAX_WRITE_EVENTS);
+    }
+    if prepared.request_too_large {
+        prepared.lines.clear();
+        prepared.rejected = prepared.total;
+        prepared.events.clear();
+        prepared.events.push(LogEvent::error(
+            "metrics_write_rejected category=request_bytes",
+        ));
     }
     prepared
 }

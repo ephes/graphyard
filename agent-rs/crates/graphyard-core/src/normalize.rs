@@ -5,7 +5,8 @@
 //! `normalize_metric_point` and `_RESERVED_TAG_KEYS`. Pinned by
 //! `fixtures/normalize.json` (`fixtures/gen_normalize.py`).
 //!
-//! Every failure is the `ValueError` Python raises, with its exact message
+//! Shared raw dimension/control admission runs first. Subsequent failures are
+//! the `ValueError` Python raises, with its exact message
 //! (P1): executors report these texts as spec messages and `write_points`
 //! logs them. `str.lower()` is Rust's `to_lowercase` (full Unicode mapping
 //! like CPython; the Unicode database versions may differ on new code
@@ -169,15 +170,85 @@ fn stripped_or_none(raw: Option<&str>) -> Option<String> {
         .map(str::to_owned)
 }
 
+/// Shared API/direct-writer raw dimension limits, counted as Unicode characters.
+fn validate_point_dimensions(item: &MetricPoint) -> Result<(), PyError> {
+    for (name, value, limit) in [
+        ("metric", item.metric.as_str(), 256),
+        ("subject_type", &item.subject_type, 256),
+        ("subject_id", &item.subject_id, 128),
+        ("source_system", &item.source_system, 64),
+        ("source_instance", &item.source_instance, 256),
+        ("collector_service", &item.collector_service, 256),
+        ("collector_host", &item.collector_host, 256),
+        (
+            "source_entity_id",
+            item.source_entity_id.as_deref().unwrap_or(""),
+            256,
+        ),
+        ("host", item.host.as_deref().unwrap_or(""), 128),
+        ("service", item.service.as_deref().unwrap_or(""), 128),
+    ] {
+        if value.chars().take(limit + 1).count() > limit {
+            return Err(PyError::value_error(format!(
+                "overlong {name} (max {limit} characters)"
+            )));
+        }
+    }
+    if let Some(tags) = &item.tags {
+        if tags.len() > 32 {
+            return Err(PyError::value_error("metric exceeds 32 tags"));
+        }
+        if tags
+            .iter()
+            .any(|(k, v)| k.chars().take(257).count() > 256 || v.chars().take(257).count() > 256)
+        {
+            return Err(PyError::value_error(
+                "overlong tag key or value (max 256 characters)",
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn validate_point_text(item: &MetricPoint) -> Result<(), PyError> {
+    let invalid = |value: &str| value.chars().any(char::is_control);
+    let fields = [
+        item.metric.as_str(),
+        &item.subject_type,
+        &item.subject_id,
+        &item.source_system,
+        &item.source_instance,
+        &item.collector_service,
+        &item.collector_host,
+        item.source_entity_id.as_deref().unwrap_or(""),
+        item.host.as_deref().unwrap_or(""),
+        item.service.as_deref().unwrap_or(""),
+    ];
+    if fields.into_iter().any(invalid)
+        || item
+            .tags
+            .as_ref()
+            .is_some_and(|tags| tags.iter().any(|(k, v)| invalid(k) || invalid(v)))
+    {
+        return Err(PyError::value_error(
+            "metric identity contains unsupported control characters",
+        ));
+    }
+    Ok(())
+}
+
 /// `normalize_metric_point(item)`.
 ///
-/// Checks in Python's order: metric, subject type, subject id, source
+/// Admits raw dimensions and control text, then checks in Python's order:
+/// metric, subject type, subject id, source
 /// system, source instance (fallback `default`), collector service,
 /// collector host, the host compatibility tag, the value.
 ///
 /// # Errors
 /// The first `ValueError` of that order.
 pub fn normalize_metric_point(item: &MetricPoint) -> Result<NormalizedPoint, PyError> {
+    validate_point_dimensions(item)?;
+    validate_point_text(item)?;
     let metric = py_strip(&item.metric);
     if metric.is_empty() {
         return Err(PyError::value_error("metric is required"));

@@ -18,7 +18,9 @@ use graphyard_core::spec_config::{
 };
 
 use super::{ExecutorResult, MetricSink, config_object, config_text, now_utc};
-use crate::http::{ClientOptions, HttpClient, HttpContext, run_page_probe, run_with_deadline};
+use crate::http::{
+    ClientOptions, HttpClient, HttpContext, HttpxUrl, run_page_probe, run_with_deadline,
+};
 
 /// The point metrics, in the order Python builds them.
 pub const TTFB_METRIC: &str = "service.http_page_ttfb_seconds";
@@ -36,7 +38,7 @@ struct ProbePoints {
     source_instance: String,
     collector_service: String,
     collector_host: String,
-    url: String,
+    source_entity_id: String,
     tags: Tags,
 }
 
@@ -53,7 +55,7 @@ impl ProbePoints {
             self.collector_host.clone(),
         );
         point.source_instance.clone_from(&self.source_instance);
-        point.source_entity_id = Some(self.url.clone());
+        point.source_entity_id = Some(self.source_entity_id.clone());
         point.service = Some(self.service_id.clone());
         point.tags = Some(self.tags.clone());
         point
@@ -111,6 +113,26 @@ pub async fn execute_http_page_probe<S: MetricSink>(
         return Ok(critical("config.subject_id is required"));
     }
 
+    let explicit_identity = stripped(config, "source_entity_id", "");
+    let source_entity_id = if explicit_identity.is_empty() {
+        match HttpxUrl::parse(&url) {
+            Ok(parsed) if parsed.is_absolute() => {
+                if parsed.has_query_parameters() {
+                    return Ok(critical(
+                        "page probes with query parameters require config.source_entity_id",
+                    ));
+                }
+                parsed.source_identity()
+            }
+            _ => "invalid_url".into(),
+        }
+    } else {
+        explicit_identity
+    };
+    if source_entity_id.chars().count() > 256 || source_entity_id.chars().any(char::is_control) {
+        return Ok(critical("invalid page probe source identity"));
+    }
+
     let mut tags = Tags::new();
     tags.insert("spec_name".to_owned(), name.to_owned());
     tags.insert("http_method".to_owned(), "get".to_owned());
@@ -126,12 +148,12 @@ pub async fn execute_http_page_probe<S: MetricSink>(
         source_instance: or_default(source_instance, "public_web"),
         collector_service: or_default(collector_service, "graphyard-agent"),
         collector_host: or_default(collector_host, "external"),
-        url,
+        source_entity_id,
         tags,
     };
 
     let client = HttpClient::new(http, &ClientOptions::new(timeout_seconds, verify_tls));
-    let url = shared.url.as_str();
+    let url = url.as_str();
     let probe = run_with_deadline(&client, url, total_timeout_seconds, |deadline| {
         let client = &client;
         async move {

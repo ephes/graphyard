@@ -257,6 +257,12 @@ impl InfluxWriter {
             return Ok(0);
         }
         let prepared = prepare_write(&settings.influx_measurement, points);
+        if prepared.request_too_large {
+            return Err(WriteError::Transport {
+                class: "ValueError",
+                message: "metric write exceeds 8 MiB request byte limit".into(),
+            });
+        }
         for event in &prepared.events {
             emit(event);
         }

@@ -166,3 +166,24 @@ fn an_unwritable_path_fails_to_open() {
     let dir = tempfile::tempdir().unwrap();
     assert!(InfluxWriter::to_file(&dir.path().join("missing/writes.lp")).is_err());
 }
+
+#[tokio::test]
+async fn oversized_batch_keeps_shadow_file_unchanged() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("writes.lp");
+    std::fs::write(&path, "# earlier content\n").unwrap();
+    let writer = InfluxWriter::to_file(&path).unwrap();
+    let mut p = point("synthetic", 1.0);
+    p.source_entity_id = Some("x".repeat(256));
+    let result = writer.write_points(&settings(&[]), &vec![p; 25000]).await;
+    assert!(
+        result
+            .unwrap_err()
+            .to_string()
+            .contains("request byte limit")
+    );
+    assert_eq!(
+        std::fs::read_to_string(&path).unwrap(),
+        "# earlier content\n"
+    );
+}

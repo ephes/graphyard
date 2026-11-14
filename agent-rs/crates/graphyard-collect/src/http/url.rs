@@ -248,6 +248,21 @@ impl HttpxUrl {
         })
     }
 
+    pub(crate) fn has_query_parameters(&self) -> bool {
+        self.query.as_ref().is_some_and(|query| !query.is_empty())
+    }
+
+    /// Stable endpoint identity, without transport credentials, query or fragment.
+    pub(crate) fn source_identity(&self) -> String {
+        Self {
+            userinfo: String::new(),
+            query: None,
+            fragment: None,
+            ..self.clone()
+        }
+        .to_string()
+    }
+
     /// `URL.copy_with(fragment=fragment)`.
     pub(crate) fn with_fragment(&self, fragment: &str) -> Self {
         Self {

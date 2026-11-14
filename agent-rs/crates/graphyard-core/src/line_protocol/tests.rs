@@ -141,6 +141,7 @@ fn escapes_follow_the_client_tables() {
 #[test]
 fn rejected_event_reports_the_counts() {
     let prepared = PreparedWrite {
+        request_too_large: false,
         lines: vec!["a".into()],
         total: 3,
         rejected: 2,
@@ -157,4 +158,36 @@ fn rejected_event_reports_the_counts() {
         ..prepared
     };
     assert_eq!(clean.rejected_event(), None);
+}
+
+#[test]
+fn over_budget_refuses_complete_request() {
+    let mut point = crate::normalize::tests::synthetic_point();
+    point.source_entity_id = Some("x".repeat(256));
+    let points = vec![point; 25000];
+    let prepared = prepare_write("metrics", &points);
+    assert!(
+        prepared.is_empty(),
+        "an over-budget batch must retain no lines"
+    );
+    assert_eq!(prepared.rejected, points.len());
+    assert!(prepared.events.len() <= 32);
+}
+
+#[test]
+fn exact_request_budget_preserves_order_and_counts() {
+    let mut a = crate::normalize::tests::synthetic_point();
+    a.metric = "first".into();
+    let mut b = a.clone();
+    b.metric = "second".into();
+    let mut bad = a.clone();
+    bad.tags = Some([("k".into(), "x".repeat(257))].into_iter().collect());
+    let points = [a.clone(), bad, b.clone()];
+    let expected = prepare_write("m", &[a, b]).body();
+    let exact = prepare_write_with_limit("m", &points, expected.len());
+    assert_eq!(exact.body(), expected);
+    assert_eq!((exact.written(), exact.rejected, exact.total), (2, 1, 3));
+    let over = prepare_write_with_limit("m", &points, expected.len() - 1);
+    assert!(over.request_too_large);
+    assert_eq!((over.written(), over.rejected), (0, 3));
 }

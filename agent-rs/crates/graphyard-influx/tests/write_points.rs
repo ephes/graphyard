@@ -510,8 +510,19 @@ fn written_lines_parse_as_line_protocol() {
         .iter()
         .find(|case| s(case, "name").starts_with("custom tags"))
         .expect("custom tags case");
-    let body = s(&case["requests"][0], "body");
-    let lines: Vec<_> = parse_lines(body)
+    // The original control-bearing fixture is now rejected before writing.
+    assert!(case["requests"].as_array().unwrap().is_empty());
+    // Literal backslash sequences remain admitted and retain ordinary escaping.
+    let mut point = point_of(&case["points"][0]);
+    point.tags = point.tags.map(|tags| {
+        tags.into_iter()
+            .map(|(key, value)| (key.replace('\t', "\\t"), value.replace('\n', "\\n")))
+            .collect()
+    });
+    let prepared = graphyard_core::line_protocol::prepare_write("graphyard_metrics", &[point]);
+    assert_eq!((prepared.written(), prepared.rejected), (1, 0));
+    let body = prepared.body();
+    let lines: Vec<_> = parse_lines(&body)
         .collect::<Result<_, _>>()
         .expect("valid line protocol");
     assert_eq!(lines.len(), 1);

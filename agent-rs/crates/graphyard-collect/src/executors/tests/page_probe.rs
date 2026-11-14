@@ -210,6 +210,7 @@ async fn abandoned_lookups_cap_new_probes() {
         .with_limits(Duration::from_millis(50), 2);
     let config = json!({
         "url": "https://user:invented-url-marker@example.invalid/?key=invented-url-marker",
+        "source_entity_id": "synthetic_probe",
         "subject_id": "dripping_site",
         "total_timeout_seconds": 0.1,
     });
@@ -287,4 +288,68 @@ async fn connection_failures_take_the_warning_path() {
         "{outcome:?}"
     );
     assert_eq!(written_values(&sink), failure_points());
+}
+
+#[tokio::test]
+async fn probe_identity_does_not_publish_transport_credentials() {
+    for explicit in [None, Some("catalog_variant_a"), Some("catalog_variant_b")] {
+        let server = Server::start(|_| response("200 OK", &[], b"ok")).await;
+        let query = if explicit.is_some() {
+            "?signature=synthetic-secret"
+        } else {
+            ""
+        };
+        let mut config = json!({
+            "url": format!("http://synthetic-user:synthetic-password@127.0.0.1:{}/catalog{query}#private-fragment", server.port()),
+            "subject_id": "synthetic_probe"
+        });
+        if let Some(identity) = explicit {
+            config["source_entity_id"] = json!(identity);
+        }
+        let (result, sink) = probe(&HttpContext::new(), &config).await;
+        assert_eq!(result.unwrap().ingested, 5);
+        let requests = server.requests();
+        assert_eq!(
+            requests[0].header_values("authorization"),
+            vec!["Basic c3ludGhldGljLXVzZXI6c3ludGhldGljLXBhc3N3b3Jk"]
+        );
+        assert_eq!(requests[0].target, format!("/catalog{query}"));
+        let expected = explicit
+            .map(str::to_owned)
+            .unwrap_or_else(|| format!("{}/catalog", server.origin()));
+        for call in sink.calls.borrow().iter() {
+            for point in &call.points {
+                assert_eq!(point.source_entity_id.as_deref(), Some(expected.as_str()));
+                let wire = graphyard_core::line_protocol::prepare_write(
+                    "metrics",
+                    std::slice::from_ref(point),
+                )
+                .body();
+                let evidence = format!("{point:?} {wire}");
+                for secret in [
+                    "synthetic-user",
+                    "synthetic-password",
+                    "synthetic-secret",
+                    "private-fragment",
+                ] {
+                    assert!(!evidence.contains(secret));
+                }
+            }
+        }
+    }
+}
+
+#[tokio::test]
+async fn query_selected_endpoints_require_explicit_identity_before_transport() {
+    let server = Server::start(|_| response("200 OK", &[], b"ok")).await;
+    let config = json!({ "url": format!("{}/catalog?variant=a", server.origin()), "subject_id": "synthetic" });
+    let (result, sink) = probe(&HttpContext::new(), &config).await;
+    let outcome = result.unwrap();
+    assert_eq!(outcome.status, StatusLevel::Critical);
+    assert_eq!(
+        outcome.message,
+        "page probes with query parameters require config.source_entity_id"
+    );
+    assert!(sink.calls.borrow().is_empty());
+    assert!(server.requests().is_empty());
 }
