@@ -153,7 +153,7 @@ def test_cache_failure_preserves_success_time_and_retry_is_not_skipped(monkeypat
     monkeypatch.setattr(
         releases, "fetch", Mock(side_effect=ValueError("private response detail"))
     )
-    assert releases.refresh([definition()], force=True) == 1
+    assert releases.refresh([definition()], force=True).failures == 1
     row.refresh_from_db()
     assert row.version == "6.0" and row.checked_at == original
     assert row.error == "Release lookup failed"
@@ -162,7 +162,7 @@ def test_cache_failure_preserves_success_time_and_retry_is_not_skipped(monkeypat
         == "unknown"
     )
     monkeypatch.setattr(releases, "fetch", Mock(return_value="6.1"))
-    assert releases.refresh([definition()]) == 0
+    assert releases.refresh([definition()]).failures == 0
     row.refresh_from_db()
     assert row.version == "6.1" and not row.error and row.checked_at >= original
     releases.fetch.reset_mock()
@@ -319,7 +319,7 @@ def test_command_check_is_read_only_and_lock_prevents_parallel_refresh(
     policy.write_text(json.dumps([definition()]))
     from graphyard.management.commands import refresh_inventory_releases as command
 
-    refresh = Mock(return_value=0)
+    refresh = Mock(return_value=releases.RefreshResult())
     monkeypatch.setattr(command, "refresh", refresh)
     call_command("refresh_inventory_releases", file=policy, check=True)
     refresh.assert_not_called()
@@ -538,18 +538,18 @@ def test_older_refresh_cannot_overwrite_newer_completion(monkeypatch, old_failur
     monkeypatch.setattr(releases.timezone, "now", lambda: next(times))
     nested = False
 
-    def fetch(client, item):
+    def fetch(client, item, **kwargs):
         nonlocal nested
         if nested:
             return "6.2"
         nested = True
-        assert releases.refresh([definition()], force=True) == 0
+        assert releases.refresh([definition()], force=True).failures == 0
         if old_failure:
             raise ValueError("old request failed")
         return "6.1"
 
     monkeypatch.setattr(releases, "fetch", fetch)
-    assert releases.refresh([definition()], force=True) == int(old_failure)
+    assert releases.refresh([definition()], force=True).failures == int(old_failure)
     row = InventoryRelease.objects.get(pk="pypi:django")
     assert row.version == "6.2"
     assert row.checked_at == newer
@@ -592,7 +592,10 @@ def test_slow_stream_exhausts_budget_preserves_success_and_continues(monkeypatch
         lambda **kw: factory(transport=httpx.MockTransport(handler), **kw),
     )
     assert (
-        releases.refresh([definition(), definition(project="flask")], force=True) == 1
+        releases.refresh(
+            [definition(), definition(project="flask")], force=True
+        ).failures
+        == 1
     )
     row.refresh_from_db()
     assert row.version == "6.0" and row.checked_at == checked
@@ -619,12 +622,12 @@ def test_delayed_policy_cannot_replace_newer_registry(monkeypatch, replacement):
         nonlocal calls
         calls += 1
         if calls == 1:
-            assert releases.refresh(replacement, force=True) == 0
+            assert releases.refresh(replacement, force=True).failures == 0
         return now
 
     monkeypatch.setattr(releases.timezone, "now", paused_start)
     monkeypatch.setattr(releases, "fetch", Mock(return_value="1.0"))
-    assert releases.refresh([definition()], force=True) == 0
+    assert releases.refresh([definition()], force=True).failures == 0
     enabled = list(InventoryRelease.objects.filter(enabled=True))
     assert {row.source_id: row.definition for row in enabled} == releases.definitions(
         replacement
@@ -747,9 +750,297 @@ def test_malformed_release_source_is_isolated_from_other_sources(monkeypatch):
         lambda **kw: factory(transport=httpx.MockTransport(handler), **kw),
     )
     assert (
-        releases.refresh([definition(), definition(project="flask")], force=True) == 1
+        releases.refresh(
+            [definition(), definition(project="flask")], force=True
+        ).failures
+        == 1
     )
     row.refresh_from_db()
     assert row.version == "6.0" and row.checked_at == checked
     assert row.error == "Release lookup failed"
     assert InventoryRelease.objects.get(pk="pypi:flask").version == "3.1"
+
+
+@pytest.mark.parametrize("change", ["project", "targets"])
+def test_definition_change_invalidates_fresh_success_before_lookup(monkeypatch, change):
+    row = cache(error="old error", attempted_at=timezone.now())
+    row.error = ""
+    if change == "project":
+        row.definition = definition(project="old-project")
+    row.save()
+    replacement = definition()
+    if change == "targets":
+        replacement["targets"] = [{"kind": "python", "name": "new-target"}]
+    observed = []
+
+    def lookup(client, item, **kwargs):
+        current = InventoryRelease.objects.get(pk=row.pk)
+        observed.append(
+            (current.version, current.checked_at, current.attempted_at, current.error)
+        )
+        assert (
+            releases.compare("1.0", current, timezone.now(), timezone.now())[
+                "available"
+            ]
+            == "Unknown"
+        )
+        raise ValueError("new source unavailable")
+
+    monkeypatch.setattr(releases, "fetch", lookup)
+    assert releases.refresh([replacement]).failures == 1
+    assert observed == [("", None, None, "")]
+    row.refresh_from_db()
+    assert row.definition == replacement
+    assert row.version == "" and row.checked_at is None
+
+
+@pytest.mark.parametrize("replacement", ["changed", "removed", "aba"])
+@pytest.mark.parametrize("old_failure", [False, True])
+def test_inflight_completion_is_bound_to_registry_generation(
+    monkeypatch, replacement, old_failure
+):
+    cache()
+    now = timezone.now()
+    monkeypatch.setattr(releases.timezone, "now", lambda: now)
+    original = definition()
+    changed = {**original, "targets": [{"kind": "python", "name": "new-target"}]}
+    nested = False
+    expected = []
+
+    def lookup(client, item, **kwargs):
+        nonlocal nested
+        if nested:
+            raise ValueError("replacement unavailable")
+        nested = True
+        releases.refresh([] if replacement == "removed" else [changed], force=True)
+        if replacement == "aba":
+            releases.refresh([original], force=True)
+        expected.append(list(InventoryRelease.objects.values()))
+        if old_failure:
+            raise ValueError("old failure")
+        return "99.0"
+
+    monkeypatch.setattr(releases, "fetch", lookup)
+    releases.refresh([original], force=True)
+    assert list(InventoryRelease.objects.values()) == expected[0]
+
+
+def test_superseded_refresh_stops_looking_up_and_reports_incomplete(monkeypatch):
+    from django.db import transaction
+    from django.db.models import F
+
+    from graphyard.models import InventoryReleaseRegistry
+
+    payload = [definition(project=f"project-{i}") for i in range(3)]
+    lookups = []
+
+    def lookup(client, item, **kwargs):
+        lookups.append(item["project"])
+        if len(lookups) == 1:
+            # A newer refresh takes the registry while this lookup is in flight.
+            with transaction.atomic():
+                InventoryReleaseRegistry.objects.filter(pk=1).update(
+                    generation=F("generation") + 1
+                )
+        return "2.0"
+
+    monkeypatch.setattr(releases, "fetch", lookup)
+    result = releases.refresh(payload, force=True)
+    assert lookups == ["project-0"]
+    assert result.skipped == 3 and not result.complete
+    assert not InventoryRelease.objects.filter(version="2.0").exists()
+
+
+def test_superseded_refresh_skips_only_due_sources_and_counts_failure_once(
+    monkeypatch,
+):
+    from django.db import transaction
+    from django.db.models import F
+
+    from graphyard.models import InventoryReleaseRegistry
+
+    payload = [definition(project=f"project-{i}") for i in range(3)]
+    # project-1 is a fresh cache hit; project-2 needs a lookup.
+    InventoryRelease.objects.create(
+        source_id="pypi:project-1",
+        definition=payload[1],
+        version="1.0",
+        checked_at=timezone.now(),
+    )
+    lookups = []
+
+    def lookup(client, item, **kwargs):
+        lookups.append(item["project"])
+        with transaction.atomic():
+            InventoryReleaseRegistry.objects.filter(pk=1).update(
+                generation=F("generation") + 1
+            )
+        raise ValueError("discarded failure")
+
+    monkeypatch.setattr(releases, "fetch", lookup)
+    result = releases.refresh(payload)
+    assert lookups == ["project-0"]
+    # The discarded failure stays a failure; only project-2 is skipped.
+    assert (result.failures, result.skipped) == (1, 1)
+    assert not result.complete
+
+
+def test_superseded_failure_on_the_only_due_source_is_incomplete(monkeypatch):
+    from django.db import transaction
+    from django.db.models import F
+
+    from graphyard.models import InventoryReleaseRegistry
+
+    def lookup(client, item, **kwargs):
+        with transaction.atomic():
+            InventoryReleaseRegistry.objects.filter(pk=1).update(
+                generation=F("generation") + 1
+            )
+        raise ValueError("discarded failure")
+
+    monkeypatch.setattr(releases, "fetch", lookup)
+    result = releases.refresh([definition()], force=True)
+    assert result.superseded and result.skipped == 0
+    assert not result.complete
+
+
+def test_whole_refresh_budget_bounds_200_sources_and_preserves_unattempted(monkeypatch):
+    payload = [definition(project=f"project-{i}") for i in range(200)]
+    previous = timezone.now() - timedelta(days=7)
+    for item in payload:
+        InventoryRelease.objects.create(
+            source_id="pypi:" + item["project"],
+            definition=item,
+            version="1.0",
+            checked_at=previous,
+            attempted_at=previous,
+        )
+    clock = [0.0]
+    attempted = []
+    closed = []
+    monkeypatch.setattr(releases, "monotonic", lambda: clock[0])
+
+    class Stream(httpx.SyncByteStream):
+        def __init__(self, project, allowance):
+            self.project = project
+            self.allowance = allowance
+
+        def __iter__(self):
+            # A source stays inside its own 60-second allowance, then another
+            # read consumes the remaining whole-run time on the final source.
+            for _ in range(5):
+                clock[0] += min(10, self.allowance)
+                yield b" "
+            clock[0] += 9
+            yield json.dumps(
+                {
+                    "info": {"name": self.project, "version": "2.0", "yanked": False},
+                    "urls": [{"yanked": False}],
+                }
+            ).encode()
+
+        def close(self):
+            closed.append(self.project)
+
+    def handler(request):
+        project = request.url.path.split("/")[2]
+        attempted.append(project)
+        return httpx.Response(
+            200, stream=Stream(project, request.extensions["timeout"]["read"])
+        )
+
+    factory = httpx.Client
+    monkeypatch.setattr(
+        releases.httpx,
+        "Client",
+        lambda **kw: factory(transport=httpx.MockTransport(handler), **kw),
+    )
+    result = releases.refresh(payload, force=True)
+    assert len(attempted) == 6
+    assert clock[0] == 300
+    assert closed == attempted
+    assert result.failures == 1
+    assert result.skipped == 194 and not result.complete
+    for row in InventoryRelease.objects.exclude(
+        pk__in=["pypi:" + p for p in attempted]
+    ):
+        assert row.version == "1.0" and row.checked_at == previous
+        assert row.attempted_at == previous and row.error == ""
+
+
+def test_command_reports_incomplete_refresh(tmp_path, settings, monkeypatch, capsys):
+    settings.BASE_DIR = tmp_path
+    policy = tmp_path / "sources.json"
+    policy.write_text(json.dumps([definition(), definition(project="flask")]))
+    clock = [0.0]
+    monkeypatch.setattr(releases, "monotonic", lambda: clock[0])
+
+    def lookup(client, item, **kwargs):
+        clock[0] = 300
+        return "6.2"
+
+    monkeypatch.setattr(releases, "fetch", lookup)
+    with pytest.raises(CommandError, match="budget"):
+        call_command("refresh_inventory_releases", file=policy, force=True)
+    assert "1 skipped sources" in capsys.readouterr().out
+    row = InventoryRelease.objects.get(pk="pypi:flask")
+    assert row.attempted_at is None and row.checked_at is None
+
+
+def test_fetch_uses_remaining_refresh_budget(monkeypatch):
+    clock = [0.0]
+    monkeypatch.setattr(releases, "monotonic", lambda: clock[0])
+    stream = RecordingStream(VALID_PYPI)
+    seen = []
+
+    def handler(request):
+        seen.append(request.extensions["timeout"])
+        clock[0] = 7.0
+        return httpx.Response(200, stream=stream)
+
+    with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+        with pytest.raises(ValueError, match="budget"):
+            releases.fetch(client, definition(), deadline=7.0)
+    assert all(value <= 7 for value in seen[0].values())
+
+
+@pytest.mark.django_db(transaction=True)
+@pytest.mark.parametrize("replacement", ["changed", "removed", "aba"])
+def test_separate_connection_cannot_publish_obsolete_lookup(monkeypatch, replacement):
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Event, current_thread, main_thread
+    from django.db import connections
+
+    # Earlier migration regression tests intentionally leave an older schema.
+    call_command("migrate", verbosity=0)
+    started = Event()
+    resume = Event()
+    original = definition()
+    changed = {**original, "targets": [{"kind": "python", "name": "new-target"}]}
+
+    def lookup(client, item, **kwargs):
+        if current_thread() is not main_thread():
+            started.set()
+            assert resume.wait(timeout=10)
+            return "99.0"
+        raise ValueError("replacement unavailable")
+
+    def old_refresh():
+        try:
+            return releases.refresh([original], force=True)
+        finally:
+            connections.close_all()
+
+    monkeypatch.setattr(releases, "fetch", lookup)
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        future = pool.submit(old_refresh)
+        try:
+            assert started.wait(timeout=10)
+            releases.refresh([] if replacement == "removed" else [changed], force=True)
+            if replacement == "aba":
+                releases.refresh([original], force=True)
+            expected = list(InventoryRelease.objects.values())
+        finally:
+            resume.set()
+        future.result(timeout=10)
+    assert list(InventoryRelease.objects.values()) == expected

@@ -21,6 +21,14 @@ PostgreSQL readers own an outer repeatable-read transaction; do not wrap these
 projection functions in an application transaction. This pilot does not make remote logins or install
 producer schedules.
 
+Cached public releases belong to the exact configured source definition,
+including comparison targets. Changes clear prior success before the next lookup;
+older in-flight results cannot publish after a newer registry refresh, including
+removal and A → B → A changes. Release refreshes have a five-minute monotonic
+budget (60 seconds per source); skipped unchanged sources retain their observation
+times, and an incomplete command reports skipped counts and exits unsuccessfully.
+See [release cache policy](docs/inventory.md) for transport limits.
+
 ## MVP Scope
 
 - `POST /v1/metrics` authenticated ingest (bearer token)
