@@ -904,6 +904,59 @@ def test_superseded_failure_on_the_only_due_source_is_incomplete(monkeypatch):
     assert not result.complete
 
 
+def test_superseded_refresh_of_only_fresh_sources_is_incomplete(monkeypatch):
+    from django.db import transaction
+    from django.db.models import F
+
+    from graphyard.models import InventoryReleaseRegistry
+
+    cache()  # Fresh: no lookup, nothing to publish.
+    real_get = InventoryRelease.objects.get
+
+    def get(*args, **kwargs):
+        # A newer refresh replaces the registry while this run walks its sources.
+        with transaction.atomic():
+            InventoryReleaseRegistry.objects.filter(pk=1).update(
+                generation=F("generation") + 1
+            )
+        return real_get(*args, **kwargs)
+
+    monkeypatch.setattr(InventoryRelease.objects, "get", get)
+    monkeypatch.setattr(
+        releases, "fetch", lambda *a, **k: pytest.fail("fresh source fetched")
+    )
+    result = releases.refresh([definition()])
+    assert result.superseded and not result.complete
+
+
+def test_refresh_superseded_after_publishing_everything_is_incomplete(monkeypatch):
+    from django.db import transaction
+    from django.db.models import F
+
+    from graphyard.models import InventoryReleaseRegistry
+
+    monkeypatch.setattr(releases, "fetch", lambda *a, **k: "6.2")
+    # Bump the generation right after the only due result is published.
+    published = []
+    real_qs_update = type(InventoryRelease.objects.all()).update
+
+    def update(self, **values):
+        count = real_qs_update(self, **values)
+        if "version" in values and not published:
+            published.append(values["version"])
+            with transaction.atomic():
+                InventoryReleaseRegistry.objects.filter(pk=1).update(
+                    generation=F("generation") + 1
+                )
+        return count
+
+    monkeypatch.setattr(type(InventoryRelease.objects.all()), "update", update)
+    outcome = releases.refresh([definition()], force=True)
+    assert published == ["6.2"]
+    assert InventoryRelease.objects.get(pk="pypi:django").version == "6.2"
+    assert outcome.superseded and not outcome.complete
+
+
 def test_whole_refresh_budget_bounds_200_sources_and_preserves_unattempted(monkeypatch):
     payload = [definition(project=f"project-{i}") for i in range(200)]
     previous = timezone.now() - timedelta(days=7)

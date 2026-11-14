@@ -259,6 +259,13 @@ def refresh(data, force=False):
                     1 for later in remaining if not fresh(later)
                 )
                 break
+    if not superseded:
+        # Fresh cache hits publish nothing, so a run that only skipped them would
+        # otherwise never notice that a newer refresh replaced the registry. Any
+        # newer refresh before this one returns makes it incomplete; rerun it.
+        superseded = not InventoryReleaseRegistry.objects.filter(
+            pk=1, generation=generation
+        ).exists()
     return RefreshResult(failures=failures, skipped=skipped, superseded=superseded)
 
 

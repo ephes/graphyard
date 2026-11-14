@@ -581,7 +581,10 @@ policy refreshes return without fetching, reporting their sources as skipped. A
 refresh superseded while it runs stops at its first discarded result: that source
 (unless its lookup already failed, which counts as failed) and the remaining
 sources that would need a lookup count as skipped (fresh cache hits still do not),
-and the command reports the run incomplete.
+and the command reports the run incomplete. The generation is checked once more before a
+refresh returns: a newer refresh that started at any point before then (also while
+only fresh cache hits were walked, or after every due result was published) makes
+the run incomplete with a nonzero exit; rerun the command.
 No database lock spans public-source I/O.
 
 

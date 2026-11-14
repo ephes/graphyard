@@ -5,7 +5,8 @@
 - Invalidate cached release success when its source/target definition changes and
   fence in-flight publication against the registry generation and enabled exact
   definition, including removal and A → B → A edits. A refresh superseded by a
-  newer one stops looking up sources and reports the rest as skipped (incomplete).
+  newer one stops looking up sources and reports the rest as skipped; any newer
+  refresh before it returns makes it incomplete.
 - Bound release refreshes to a five-minute monotonic admission budget, cap each
   remaining lookup allowance, and report skipped sources with an incomplete,
   unsuccessful command outcome without renewing their cache timestamps.
