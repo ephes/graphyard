@@ -888,13 +888,11 @@ def health(request: HttpRequest) -> JsonResponse:
     # Resolve the lazy session login before the snapshot: on PostgreSQL the
     # snapshot is READ ONLY, and Django may write the session while resolving it
     # (flush on a stale auth hash, key rotation on a fallback secret).
-    # Details are shown only when the database evidence below succeeds too.
+    # A failing session lookup is database evidence too; details are shown only
+    # when all of it succeeds.
     detailed = False
     try:
         authenticated = request.user.is_authenticated
-    except DatabaseError:
-        authenticated = False
-    try:
         with read_snapshot():
             with connection.cursor() as cursor:
                 cursor.execute("SELECT 1")

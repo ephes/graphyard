@@ -911,8 +911,11 @@ state per name; transitions and retries after failed/rolled-back writes publish.
 The retained Python agent uses this writer too; Rust writes every heartbeat and
 needs no throttle correction.
 
-Health materializes heartbeats, condition counts and lazy session authentication in
-one short database snapshot; all condition counts use one aggregate query. SQLite's
+Health resolves the lazy session login first, outside the snapshot (Django may write
+the session while resolving it, which a read-only PostgreSQL transaction refuses), and
+then materializes heartbeats and condition counts in one short database snapshot;
+all condition counts use one aggregate query. A failing session lookup counts as
+failed database evidence like the snapshot reads. SQLite's
 configured `BEGIN IMMEDIATE` briefly reserves the writer (WAL/deferred readers use
 their read snapshot); PostgreSQL uses an outer repeatable-read, read-only
 transaction. Health opts out of per-request transactions and releases its snapshot

@@ -109,6 +109,38 @@ def test_health_resolves_session_login_outside_the_read_only_snapshot(
 
 
 @pytest.mark.django_db
+def test_health_session_lookup_failure_is_database_evidence(client, monkeypatch):
+    """A session lookup that fails is a database failure, not an anonymous caller."""
+    from contextlib import contextmanager
+
+    import graphyard.views as views
+
+    marker = "synthetic-session-lookup-marker"
+    entered = []
+
+    @contextmanager
+    def snapshot():
+        entered.append(True)
+        yield
+
+    def fail(request):
+        raise DatabaseError(marker)
+
+    monkeypatch.setattr(views, "read_snapshot", snapshot)
+    monkeypatch.setattr("django.contrib.auth.get_user", fail)
+    monkeypatch.setattr(
+        "graphyard.views.influx_health",
+        lambda: {"status": "pass", "message": marker, "name": marker},
+    )
+    response = client.get("/v1/health")
+    assert response.status_code == 503
+    assert response.json()["components"]["database"]["status"] == "critical"
+    assert set(response.json()["components"]["influxdb"]) == {"status"}
+    assert marker not in response.content.decode()
+    assert entered == []
+
+
+@pytest.mark.django_db
 def test_health_method_error_is_not_cacheable(client):
     response = client.post("/v1/health")
     assert response.status_code == 405
