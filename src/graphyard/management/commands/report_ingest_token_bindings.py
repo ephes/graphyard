@@ -3,7 +3,8 @@ from datetime import timedelta
 from django.core.management.base import BaseCommand, CommandError
 from django.utils import timezone
 
-from graphyard.models import IngestToken, IngestTokenHostUsage
+from graphyard.models import IngestToken
+from graphyard.token_reports import token_usage_batches
 
 
 class Command(BaseCommand):
@@ -26,23 +27,19 @@ class Command(BaseCommand):
             "Names are stored token names; disabled/retired usage stays with that row, "
             "not its replacement."
         )
-        for token in IngestToken.objects.only(
-            "name", "enabled", "bound_subject_id"
-        ).order_by("name"):
-            usages = list(
-                IngestTokenHostUsage.objects.filter(
-                    token=token, last_seen_at__gte=cutoff
-                ).order_by("host_id")
-            )
+        tokens = IngestToken.objects.order_by("name").values(
+            "id", "name", "enabled", "bound_subject_id"
+        )
+        for token, usages in token_usage_batches(tokens, cutoff):
             self.stdout.write(
-                f"name={token.name} enabled={token.enabled} binding={token.bound_subject_id or 'unbound'}"
+                f"name={token['name']} enabled={token['enabled']} binding={token['bound_subject_id'] or 'unbound'}"
             )
             for usage in usages:
                 self.stdout.write(
-                    f"  {usage.host_id} last_seen={usage.last_seen_at.isoformat()}"
+                    f"  {usage['host_id']} last_seen={usage['last_seen_at'].isoformat()}"
                 )
             if len(usages) == 1:
-                self.stdout.write(f"  proposed binding={usages[0].host_id}")
+                self.stdout.write(f"  proposed binding={usages[0]['host_id']}")
             elif usages:
                 self.stdout.write(
                     "  no proposal: multiple subject/host identifiers; split producers/tokens before binding"

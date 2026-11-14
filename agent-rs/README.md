@@ -124,6 +124,18 @@ subject, which reads the registry rows once per call and writes only missing,
 changed or stale (60 s) rows in one transaction, pinned by the
 `registry_cases` of `store_ops.json` including Django's statement sequence.
 
+The store admits at most 64 running/queued DB jobs per actor through an async
+semaphore. Excess callers wait before sending their captured operation; cancelling
+such a waiter sends no write. Admitted jobs own their permit until completion,
+including when the caller stops waiting. This bounds actor-owned payloads, not
+the number or payload size of application futures waiting for admission.
+`Store::close` closes admission on all clones, wakes permit waiters with
+`ThreadGone`, and orders Stop after every accepted send. Later calls fail without
+running; the closer owning the join handle joins the draining thread without
+holding the admission mutex. Repeated close is harmless; if another closer already
+owns the join handle, it may return before that closer finishes draining. Actor panic drops queued
+jobs and replies, releasing permits and returning `ThreadGone` to callers.
+
 Registry lookups and last-seen updates split large batches at the connection's
 SQLite variable limit. Subject type/ID pairs and encounter order stay distinct;
 all creation/update chunks share one transaction and roll back together. Once

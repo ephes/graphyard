@@ -265,6 +265,9 @@ def test_bind_by_name_normalizes_and_admin_can_clear(admin_client):
         "host_scope": "",
         "bound_subject_id": "",
     }
+    data["definition_revision"] = IngestTokenAdminForm(instance=row).initial[
+        "definition_revision"
+    ]
     form = IngestTokenAdminForm(data=data, instance=row)
     assert form.is_valid(), form.errors
     form.save()

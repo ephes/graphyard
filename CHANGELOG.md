@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+- Fence token admin security edits with signed current-state revisions and narrow
+  saves; preserve credentials, revocation and ingest usage. Registry admin edits
+  preserve observed telemetry/provenance, protect existing identifiers and refuse
+  stale identity/service-host edits. SQLite writer contention returns a controlled
+  reload response instead of an accidental server error.
+- Batch binding and host-scope report metadata/projected usage in groups of 100
+  tokens, eliminating per-token usage queries and avoiding credential/usage model
+  reads. The default host-scope report excludes disabled-token histories at SQL
+  selection time.
+- Bound the Rust DB actor to 64 running/queued jobs with async admission. Cancelled
+  permit waiters send no write; admitted jobs finish despite caller cancellation.
+  Close orders all accepted sends before Stop, rejects new calls across clones
+  and wakes pending admission waiters before joining outside admission locks.
+
 - Invalidate cached release success when its source/target definition changes and
   fence in-flight publication against the registry generation and enabled exact
   definition, including removal and A → B → A edits. A refresh superseded by a
