@@ -577,7 +577,11 @@ sources or restore old target mappings, even when the newer registry is empty.
 Policy replacement and each result publication briefly lock the same generation
 row. Results from an obsolete generation cannot publish; they retain their
 separate attempt-time fence and never change enablement or targets. Superseded
-policy refreshes return without fetching, reporting their sources as skipped.
+policy refreshes return without fetching, reporting their sources as skipped. A
+refresh superseded while it runs stops at its first discarded result: that source
+(unless its lookup already failed, which counts as failed) and the remaining
+sources that would need a lookup count as skipped (fresh cache hits still do not),
+and the command reports the run incomplete.
 No database lock spans public-source I/O.
 
 

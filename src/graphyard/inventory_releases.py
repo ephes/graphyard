@@ -167,10 +167,12 @@ def fetch(client, definition, *, deadline=None):
 class RefreshResult:
     failures: int = 0
     skipped: int = 0
+    # A newer refresh took the registry: this run's remaining results never count.
+    superseded: bool = False
 
     @property
     def complete(self):
-        return self.skipped == 0
+        return self.skipped == 0 and not self.superseded
 
 
 def refresh(data, force=False):
@@ -189,7 +191,7 @@ def refresh(data, force=False):
         if not InventoryReleaseRegistry.objects.filter(
             pk=1, generation=generation
         ).update(generation=F("generation")):
-            return RefreshResult(skipped=len(registry))
+            return RefreshResult(skipped=len(registry), superseded=True)
         InventoryRelease.objects.exclude(source_id__in=registry).update(enabled=False)
         for key, definition in registry.items():
             row, _ = InventoryRelease.objects.get_or_create(
@@ -201,6 +203,7 @@ def refresh(data, force=False):
                 values.update(version="", checked_at=None, attempted_at=None, error="")
             InventoryRelease.objects.filter(pk=key).update(**values)
     failures = skipped = 0
+    superseded = False
     with httpx.Client(
         timeout=20,
         follow_redirects=False,
@@ -210,14 +213,19 @@ def refresh(data, force=False):
             "User-Agent": "Graphyard-inventory-release-check/1",
         },
     ) as client:
-        for key, definition in registry.items():
-            row = InventoryRelease.objects.get(pk=key)
-            if (
+
+        def fresh(row):
+            return (
                 not force
                 and not row.error
                 and row.checked_at
                 and timedelta(0) <= started - row.checked_at < REFRESH_AFTER
-            ):
+            )
+
+        keys = list(registry)
+        for index, (key, definition) in enumerate(registry.items()):
+            row = InventoryRelease.objects.get(pk=key)
+            if fresh(row):
                 continue
             if monotonic() >= deadline:
                 skipped += 1
@@ -233,15 +241,25 @@ def refresh(data, force=False):
             with transaction.atomic():
                 # Serialize with policy replacement, never across network work.
                 # Generation also fences removal/re-enable and A -> B -> A edits.
-                if InventoryReleaseRegistry.objects.filter(
+                superseded = not InventoryReleaseRegistry.objects.filter(
                     pk=1, generation=generation
-                ).update(generation=F("generation")):
+                ).update(generation=F("generation"))
+                if not superseded:
                     InventoryRelease.objects.filter(
                         pk=key, enabled=True, definition=definition
                     ).filter(
                         Q(attempted_at__isnull=True) | Q(attempted_at__lte=started)
                     ).update(**values)
-    return RefreshResult(failures=failures, skipped=skipped)
+            if superseded:
+                # A newer refresh owns the registry: this result was discarded and
+                # the remaining sources needing a lookup are not looked up at all.
+                # A failed lookup already counts as failed, not also as skipped.
+                remaining = InventoryRelease.objects.filter(pk__in=keys[index + 1 :])
+                skipped += ("version" in values) + sum(
+                    1 for later in remaining if not fresh(later)
+                )
+                break
+    return RefreshResult(failures=failures, skipped=skipped, superseded=superseded)
 
 
 def source_health(now):

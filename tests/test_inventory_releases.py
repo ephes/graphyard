@@ -825,6 +825,85 @@ def test_inflight_completion_is_bound_to_registry_generation(
     assert list(InventoryRelease.objects.values()) == expected[0]
 
 
+def test_superseded_refresh_stops_looking_up_and_reports_incomplete(monkeypatch):
+    from django.db import transaction
+    from django.db.models import F
+
+    from graphyard.models import InventoryReleaseRegistry
+
+    payload = [definition(project=f"project-{i}") for i in range(3)]
+    lookups = []
+
+    def lookup(client, item, **kwargs):
+        lookups.append(item["project"])
+        if len(lookups) == 1:
+            # A newer refresh takes the registry while this lookup is in flight.
+            with transaction.atomic():
+                InventoryReleaseRegistry.objects.filter(pk=1).update(
+                    generation=F("generation") + 1
+                )
+        return "2.0"
+
+    monkeypatch.setattr(releases, "fetch", lookup)
+    result = releases.refresh(payload, force=True)
+    assert lookups == ["project-0"]
+    assert result.skipped == 3 and not result.complete
+    assert not InventoryRelease.objects.filter(version="2.0").exists()
+
+
+def test_superseded_refresh_skips_only_due_sources_and_counts_failure_once(
+    monkeypatch,
+):
+    from django.db import transaction
+    from django.db.models import F
+
+    from graphyard.models import InventoryReleaseRegistry
+
+    payload = [definition(project=f"project-{i}") for i in range(3)]
+    # project-1 is a fresh cache hit; project-2 needs a lookup.
+    InventoryRelease.objects.create(
+        source_id="pypi:project-1",
+        definition=payload[1],
+        version="1.0",
+        checked_at=timezone.now(),
+    )
+    lookups = []
+
+    def lookup(client, item, **kwargs):
+        lookups.append(item["project"])
+        with transaction.atomic():
+            InventoryReleaseRegistry.objects.filter(pk=1).update(
+                generation=F("generation") + 1
+            )
+        raise ValueError("discarded failure")
+
+    monkeypatch.setattr(releases, "fetch", lookup)
+    result = releases.refresh(payload)
+    assert lookups == ["project-0"]
+    # The discarded failure stays a failure; only project-2 is skipped.
+    assert (result.failures, result.skipped) == (1, 1)
+    assert not result.complete
+
+
+def test_superseded_failure_on_the_only_due_source_is_incomplete(monkeypatch):
+    from django.db import transaction
+    from django.db.models import F
+
+    from graphyard.models import InventoryReleaseRegistry
+
+    def lookup(client, item, **kwargs):
+        with transaction.atomic():
+            InventoryReleaseRegistry.objects.filter(pk=1).update(
+                generation=F("generation") + 1
+            )
+        raise ValueError("discarded failure")
+
+    monkeypatch.setattr(releases, "fetch", lookup)
+    result = releases.refresh([definition()], force=True)
+    assert result.superseded and result.skipped == 0
+    assert not result.complete
+
+
 def test_whole_refresh_budget_bounds_200_sources_and_preserves_unattempted(monkeypatch):
     payload = [definition(project=f"project-{i}") for i in range(200)]
     previous = timezone.now() - timedelta(days=7)
