@@ -332,6 +332,7 @@ def test_page_probe_caps_abandoned_workers(db, monkeypatch, caplog):
     spec = _create_spec(
         "https://user:invented-url-marker@example.invalid/?key=invented-url-marker",
         total_timeout_seconds=0.1,
+        source_entity_id="synthetic_probe",
     )
     try:
         for _ in range(2):

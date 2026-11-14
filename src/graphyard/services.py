@@ -1154,6 +1154,24 @@ def _execute_http_json_metric_spec(
         return StatusLevel.CRITICAL, 0, 0, collector_failure(err)
 
 
+def _page_probe_source_identity(url: str, explicit: str) -> str:
+    if explicit:
+        return explicit
+    try:
+        parsed = httpx.URL(url)
+        if not parsed.is_absolute_url:
+            return "invalid_url"
+        if parsed.query:
+            raise ValueError(
+                "page probes with query parameters require config.source_entity_id"
+            )
+        return str(
+            parsed.copy_with(username=None, password=None, query=None, fragment=None)
+        )
+    except httpx.InvalidURL:
+        return "invalid_url"
+
+
 def _build_http_page_probe_point(
     *,
     ts: datetime,
@@ -1165,7 +1183,7 @@ def _build_http_page_probe_point(
     source_instance: str,
     collector_service: str,
     collector_host: str,
-    url: str,
+    source_entity_id: str,
     tags: dict[str, str],
 ) -> influx.MetricPoint:
     return influx.MetricPoint(
@@ -1176,7 +1194,7 @@ def _build_http_page_probe_point(
         subject_id=subject_id,
         source_system=source_system,
         source_instance=source_instance,
-        source_entity_id=url,
+        source_entity_id=source_entity_id,
         collector_service=collector_service,
         collector_host=collector_host,
         service=service_id,
@@ -1486,6 +1504,22 @@ def _execute_http_page_probe_spec(
     if isinstance(configured_tags, dict):
         tags.update({str(key): str(value) for key, value in configured_tags.items()})
 
+    try:
+        source_identity = _page_probe_source_identity(
+            url, str(spec.config.get("source_entity_id", "")).strip()
+        )
+    except ValueError:
+        return (
+            StatusLevel.CRITICAL,
+            0,
+            0,
+            "page probes with query parameters require config.source_entity_id",
+        )
+    if len(source_identity) > 256 or any(
+        ord(c) < 32 or 127 <= ord(c) <= 159 for c in source_identity
+    ):
+        return StatusLevel.CRITICAL, 0, 0, "invalid page probe source identity"
+
     normalized_source_system = source_system or "http_probe"
     normalized_source_instance = source_instance or "public_web"
     normalized_collector_service = collector_service or "graphyard-agent"
@@ -1502,7 +1536,7 @@ def _execute_http_page_probe_spec(
             source_instance=normalized_source_instance,
             collector_service=normalized_collector_service,
             collector_host=normalized_collector_host,
-            url=url,
+            source_entity_id=source_identity,
             tags=tags,
         )
 

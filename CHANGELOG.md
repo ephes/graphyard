@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+- Refuse control characters in metric identities and custom tags before stripping
+  or encoding, and apply the API's dimension/tag limits to Python and Rust direct
+  writers. Rust rejection diagnostics retain at most 32 bounded events.
+- Refuse entire Rust write batches above 8 MiB of UTF-8 line protocol (including
+  separators) before network or shadow-file effects; retain normal point order
+  and valid-sibling handling below the limit.
+- Keep page-probe transport credentials, queries and fragments out of metric and
+  registry source identities in both runtimes. Use an explicit nonsecret
+  `source_entity_id` for URLs with query parameters; missing IDs fail before
+  transport, preventing query-selected endpoints from collapsing into one series.
+- Add an opt-in local timestamp compatibility oracle for InfluxDB 2.7.12 and
+  3.12.2. Their upper limits differ; timestamp admission remains unchanged pending
+  the choice of a write-domain policy for `INFLUX_API_MODE=auto`.
+
 - Keep spec-import validation diagnostics private: report only definition indices
   and known fields, without raw values/names or model-validation error chains;
   preserve all-or-nothing reconciliation and its successful summary output.

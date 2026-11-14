@@ -26,7 +26,11 @@ CONFIGS = {
         "metric_path": "value",
         "metric_name": "test.value",
     },
-    "http_page_probe": {"url": "https://example.test/page", "subject_id": "test"},
+    "http_page_probe": {
+        "url": "https://example.test/page",
+        "subject_id": "test",
+        "source_entity_id": "synthetic_probe",
+    },
     "unifi_device_traffic": {
         "base_url": "https://example.test",
         "username": "synthetic",

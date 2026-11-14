@@ -257,8 +257,16 @@ impl InfluxWriter {
             return Ok(0);
         }
         let prepared = prepare_write(&settings.influx_measurement, points);
+        // An oversized batch carries exactly one `metrics_write_rejected
+        // category=request_bytes` event; log it before refusing the request.
         for event in &prepared.events {
             emit(event);
+        }
+        if prepared.request_too_large {
+            return Err(WriteError::Transport {
+                class: "ValueError",
+                message: "metric write exceeds 8 MiB request byte limit".into(),
+            });
         }
         if prepared.is_empty() {
             if let Some(event) = prepared.rejected_event() {

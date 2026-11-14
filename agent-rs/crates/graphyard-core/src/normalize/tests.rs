@@ -226,3 +226,78 @@ fn every_python_test_of_the_slice_is_in_the_corpus() {
         assert!(inputs.contains(&text), "{text}");
     }
 }
+
+pub(crate) fn synthetic_point() -> MetricPoint {
+    MetricPoint::new(
+        ts_of("2026-11-14T00:00:00Z"),
+        "load",
+        1.0,
+        "host",
+        "edge",
+        "test",
+        "agent",
+        "edge",
+    )
+}
+
+#[test]
+fn controls_cannot_alias_literal_escapes() {
+    for control in ['\n', '\r', '\t', '\0', '\u{7f}', '\u{85}'] {
+        for field in 0..6 {
+            let mut point = synthetic_point();
+            let text = format!("a{control}b");
+            match field {
+                0 => point.metric = text,
+                1 => point.source_entity_id = Some(text),
+                2 => point.service = Some(text),
+                3 => point.subject_id = text,
+                4 => point.tags = Some([(text, "value".into())].into_iter().collect()),
+                _ => point.tags = Some([("key".into(), text)].into_iter().collect()),
+            }
+            assert!(
+                normalize_metric_point(&point).is_err(),
+                "{field} {control:?}"
+            );
+        }
+    }
+    let mut point = synthetic_point();
+    point.metric = r"a\nb".into();
+    assert!(normalize_metric_point(&point).is_ok());
+}
+
+#[test]
+fn direct_dimensions_are_admitted_before_cloning() {
+    let mut point = synthetic_point();
+    for (field, limit) in [(0, 256), (1, 128), (2, 64), (3, 128), (4, 256)] {
+        let mut invalid = point.clone();
+        let text = "x".repeat(limit + 1);
+        match field {
+            0 => invalid.metric = text,
+            1 => invalid.subject_id = text,
+            2 => invalid.source_system = text,
+            3 => invalid.service = Some(text),
+            _ => invalid.source_entity_id = Some(text),
+        }
+        assert!(normalize_metric_point(&invalid).is_err(), "field {field}");
+    }
+    point.tags = Some((0..33).map(|n| (n.to_string(), "v".into())).collect());
+    assert!(normalize_metric_point(&point).is_err());
+    point.tags = Some([("k".into(), "é".repeat(256))].into_iter().collect());
+    assert!(normalize_metric_point(&point).is_ok()); // Limits count characters, like the API.
+    point.tags.as_mut().unwrap().get_mut("k").unwrap().push('é');
+    assert!(normalize_metric_point(&point).is_err());
+}
+
+#[test]
+fn overlong_dimensions_report_the_same_field_as_python() {
+    // Python checks source_entity_id before the collector fields (P1).
+    let mut point = synthetic_point();
+    point.source_entity_id = Some("x".repeat(257));
+    point.collector_service = "x".repeat(257);
+    point.collector_host = "x".repeat(257);
+    let err = normalize_metric_point(&point).unwrap_err();
+    assert_eq!(
+        err.message,
+        "overlong source_entity_id (max 256 characters)"
+    );
+}

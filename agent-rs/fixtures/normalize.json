@@ -885,7 +885,7 @@
    },
    "error": {
     "class": "ValueError",
-    "message": "Unknown subject_type \"it's\\n\"; expected one of ['environment_sensor', 'host', 'network_device', 'service']"
+    "message": "metric identity contains unsupported control characters"
    }
   },
   {
@@ -927,20 +927,9 @@
     "service": null,
     "tags": null
    },
-   "ok": {
-    "ts": "2026-10-21T08:15:30.123456+00:00",
-    "metric": "host.cpu usage",
-    "value": "0.3",
-    "subject_type": "host",
-    "subject_id": "macmini",
-    "source_system": "vector",
-    "source_instance": "vector-macmini",
-    "source_entity_id": null,
-    "collector_service": "vector",
-    "collector_host": "macmini",
-    "host": "macmini",
-    "service": null,
-    "tags": []
+   "error": {
+    "class": "ValueError",
+    "message": "metric identity contains unsupported control characters"
    }
   },
   {
@@ -1004,20 +993,9 @@
     "service": null,
     "tags": null
    },
-   "ok": {
-    "ts": "2026-10-21T08:15:30.123456+00:00",
-    "metric": "first\nforged",
-    "value": "0.3",
-    "subject_type": "host",
-    "subject_id": "macmini",
-    "source_system": "vector",
-    "source_instance": "vector-macmini",
-    "source_entity_id": null,
-    "collector_service": "vector",
-    "collector_host": "macmini",
-    "host": "macmini",
-    "service": null,
-    "tags": []
+   "error": {
+    "class": "ValueError",
+    "message": "metric identity contains unsupported control characters"
    }
   },
   {
@@ -1202,20 +1180,9 @@
     "service": null,
     "tags": null
    },
-   "ok": {
-    "ts": "2026-10-21T08:15:30.123456+00:00",
-    "metric": "host.cpu_usage",
-    "value": "0.3",
-    "subject_type": "host",
-    "subject_id": "macmini",
-    "source_system": "vector",
-    "source_instance": "default",
-    "source_entity_id": null,
-    "collector_service": "vector",
-    "collector_host": "macmini",
-    "host": "macmini",
-    "service": null,
-    "tags": []
+   "error": {
+    "class": "ValueError",
+    "message": "metric identity contains unsupported control characters"
    }
   },
   {

@@ -280,3 +280,57 @@ responses and differing unfiltered dimensions remain valid. Evaluation failures
 retain the previous observed value. The parity corpus supplies matching filter
 dimensions explicitly; the selection regressions separately inject mismatched
 rows, including a valid prefix followed by invalid evidence.
+
+## Writer admission and timestamp compatibility
+
+The shared identity/dimension contract is documented in the root README under
+“Shared writer admission”. Rust prepares at most 8 MiB of line protocol and one
+bounded line at a time; the later joined body can add another 8 MiB. It retains
+at most 32 diagnostic events with bounded identity/error excerpts, while rejection
+counts include every invalid point. An over-budget batch fails before configuration,
+HTTP or shadow-file effects and reports zero successfully written points. Registry
+publication by AgentSink is skipped when writing fails. The request size limit
+is Rust-specific; identity/dimension admission and probe URL privacy apply to both
+runtimes. Query-bearing page-probe URLs require an explicit nonsecret
+`source_entity_id` before transport, so removing query values cannot silently
+merge distinct endpoints. Paths remain part of the default identity.
+
+The supported production baseline in this repository is InfluxDB v2; local dev
+also supports InfluxDB 3 Core. A real disposable-sink oracle pins 2.7.12 and 3.12.2
+using the actual Rust writer and `/api/v2/write?precision=ns`. At Python-compatible
+microsecond precision, both accept the lower boundary
+`1677-09-21T00:12:43.145225Z`. V2 accepts through
+`2262-04-11T23:47:16.854775Z`; v3 accepts through
+`2262-04-11T23:39:59.999999Z`. Adjacent unsupported microseconds and years 1/9999
+are refused by the sinks. A mixed valid/invalid request returns an error, never
+a successful written count; v2 may already have accepted its valid members, so
+retrying the entire batch is unsafe.
+
+**Open policy:** `INFLUX_API_MODE=auto` controls query fallback, not discovery of a
+write server's timestamp domain. Production timestamp admission is unchanged until
+the owner selects v2 or the narrower common domain for auto writes. The oracle
+records a demonstrated storage incompatibility, not a completed preflight fix.
+No host/deployment inspection was performed.
+
+Run the oracle only on disposable loopback servers with synthetic credentials:
+
+```bash
+docker run --detach --rm --name graphyard-r89-influx2 \
+  -p 127.0.0.1:18290:8086 \
+  -e DOCKER_INFLUXDB_INIT_MODE=setup \
+  -e DOCKER_INFLUXDB_INIT_USERNAME=synthetic \
+  -e DOCKER_INFLUXDB_INIT_PASSWORD=synthetic-password \
+  -e DOCKER_INFLUXDB_INIT_ORG=oracle -e DOCKER_INFLUXDB_INIT_BUCKET=oracle \
+  -e DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=synthetic-oracle-token influxdb:2.7.12
+# In another terminal (InfluxDB 3 Core 3.12.2):
+influxdb3 serve --node-id scout89 --object-store memory \
+  --http-bind 127.0.0.1:18289 --without-auth
+cd agent-rs
+GRAPHYARD_TIMESTAMP_ORACLE=v2 cargo test --locked --test timestamp_oracle -- --ignored
+GRAPHYARD_TIMESTAMP_ORACLE=v3 cargo test --locked --test timestamp_oracle -- --ignored
+# After tests: stop the native v3 process and the disposable container.
+docker stop graphyard-r89-influx2
+```
+
+`tests/timestamp_oracle.rs` uses only fixed loopback ports, a synthetic bucket and
+synthetic credentials. Normal workspace tests leave it explicitly ignored.

@@ -310,3 +310,19 @@ exactly one eligible recovery execution and explicitly counted potentially
 repeated remote delivery. Missing claim persistence, premature recovery and
 registry-before-acceptance mutations each fail their oracle. All data and HTTP
 endpoints are synthetic; gates exist only in the test executable.
+
+## Round 89 writer boundaries
+
+- `tests/test_writer_admission.py` ↔ core `normalize/tests.rs`: raw controls,
+  direct dimensional/tag admission and valid literal escapes; API rejection before
+  sink/registry effects. `core/tests/admission_allocation.rs` checks retained bytes
+  for huge invalid input plus a valid sibling.
+- Core `line_protocol/tests.rs`: whole-request overflow, exact byte boundary,
+  order and rejected/written accounting. Influx `tests/transfer_budgets.rs` proves
+  overflow causes no HTTP request.
+- `tests/test_page_probe_identity.py` ↔ collect executor `tests/page_probe.rs`:
+  successful authenticated probes preserve transport auth/query, while metric,
+  wire and registry/sink evidence omit transport secrets; explicit safe IDs work.
+- Influx `tests/timestamp_oracle.rs` is opt-in against real disposable 2.7.12 and
+  3.12.2 sinks. It records storage limits/mixed-batch failures; production domain
+  policy is intentionally pending (see `docs/agent-rs.md`).

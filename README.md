@@ -558,6 +558,18 @@ TLS settings are preserved. Budget exhaustion marks the collector critical and
 writes no metric. They share the page probe cancellation and four abandoned-worker
 limit described below; the agent returns within the deadline plus about a second.
 
+Page-probe `source_entity_id` defaults to the parsed configured URL with userinfo,
+query and fragment removed; the transport still uses the full URL and credentials.
+The original URL remains in the private collection configuration. URLs containing
+query parameters require an explicit, stable, nonsecret `source_entity_id` (at
+most 256 characters); without it, collection fails before transport or sink
+calls. Give query-selected endpoints distinct IDs so they cannot collapse into
+one series after query removal. Query-token
+rotation then keeps the same series. Paths remain visible: use an explicit safe
+ID when the path itself contains private data. Existing series that included
+credentials/query/fragment move to the new identity on the next observation;
+historical series are not rewritten or purged by this change.
+
 Example `config` JSON for an HTTP page probe spec:
 
 ```json
@@ -1099,3 +1111,20 @@ missing/wrong metric, differs from any issued dimension/tag filter, or lies
 outside the issued half-open range (`start <= timestamp < stop`). Unfiltered
 dimensions may differ and sparse or empty series remain supported. A rejected
 reply produces an evaluation failure without publishing a partial observed value.
+
+### Shared writer admission
+
+API ingestion and direct Python/Rust writers reject C0/C1 control characters
+(including newline, tab, carriage return, NUL and DEL) in raw dimensions and custom
+tag keys/values before stripping or normalizing. Literal backslash sequences stay
+unchanged. Ordinary line-protocol escaping remains compatible.
+Raw subject/host/service identifiers are limited to 128 Unicode characters,
+`source_system` to 64, and other dimensions to 256. Each point admits at most 32
+custom tags, with 256 characters per key/value, including reserved overrides.
+Direct writers skip invalid points and preserve valid siblings; API validation
+still refuses a malformed batch before sink or registry effects.
+The Rust writer additionally refuses the whole batch above 8 MiB encoded request
+bytes, including newlines, before sending or appending a shadow file. No partial
+chunks or automatic retries are introduced. Input points remain caller-owned;
+this bounds additional writer memory, not collector response allocation. The
+Python rollback writer does not yet apply this encoded request budget.

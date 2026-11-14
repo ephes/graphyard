@@ -101,3 +101,21 @@ async fn deadlines_stop_continuous_trickle_including_error_bodies() {
         }
     }
 }
+
+#[tokio::test]
+async fn oversized_request_refused_before_network() {
+    let server =
+        FakeInflux::start(&[json!({"status":204,"reason":"No Content","headers":[],"body":""})])
+            .await;
+    let mut p = point();
+    p.source_entity_id = Some("x".repeat(256));
+    let points = vec![p; 25000];
+    assert!(
+        InfluxWriter::new()
+            .unwrap()
+            .write_points(&settings(&server), &points)
+            .await
+            .is_err()
+    );
+    assert!(server.requests.lock().unwrap().is_empty());
+}

@@ -150,7 +150,62 @@ def _parse_query_value(raw: object) -> float:
         ) from err
 
 
+def _validate_point_dimensions(item: MetricPoint) -> None:
+    for name in (
+        "metric",
+        "subject_type",
+        "subject_id",
+        "source_system",
+        "source_instance",
+        "source_entity_id",
+        "collector_service",
+        "collector_host",
+        "host",
+        "service",
+    ):
+        value = getattr(item, name)
+        limit = {
+            "subject_id": 128,
+            "host": 128,
+            "service": 128,
+            "source_system": 64,
+        }.get(name, 256)
+        if value is not None and len(str(value)) > limit:
+            raise ValueError(f"overlong {name} (max {limit} characters)")
+    if item.tags and len(item.tags) > 32:
+        raise ValueError("metric exceeds 32 tags")
+    for key, value in (item.tags or {}).items():
+        if len(str(key)) > 256 or len(str(value)) > 256:
+            raise ValueError("overlong tag key or value (max 256 characters)")
+
+
+def _validate_point_text(item: MetricPoint) -> None:
+    # Check raw identities before stripping/folding or cloning tags.
+    for name in (
+        "metric",
+        "subject_type",
+        "subject_id",
+        "source_system",
+        "source_instance",
+        "source_entity_id",
+        "collector_service",
+        "collector_host",
+        "host",
+        "service",
+    ):
+        value = getattr(item, name)
+        if value is not None and any(
+            ord(c) < 32 or 127 <= ord(c) <= 159 for c in str(value)
+        ):
+            raise ValueError("metric identity contains unsupported control characters")
+    for key, value in (item.tags or {}).items():
+        if any(ord(c) < 32 or 127 <= ord(c) <= 159 for c in str(key) + str(value)):
+            raise ValueError("metric identity contains unsupported control characters")
+
+
 def normalize_metric_point(item: MetricPoint) -> MetricPoint:
+    _validate_point_dimensions(item)
+    _validate_point_text(item)
     metric_name = str(item.metric).strip()
     if not metric_name:
         raise ValueError("metric is required")

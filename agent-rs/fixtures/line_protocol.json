@@ -1025,8 +1025,8 @@
    "logs": [
     {
      "level": "ERROR",
-     "message": "Metric point validation failed metric=first\nforged subject_type=bad\r subject_id=x\ny: Unknown subject_type 'bad\\r'; expected one of ['environment_sensor', 'host', 'network_device', 'service']",
-     "d10_message": "Metric point validation failed metric=first\\nforged subject_type=bad\\r subject_id=x\\ny: Unknown subject_type 'bad\\r'; expected one of ['environment_sensor', 'host', 'network_device', 'service']"
+     "message": "Metric point validation failed metric=first\nforged subject_type=bad\r subject_id=x\ny: metric identity contains unsupported control characters",
+     "d10_message": "Metric point validation failed metric=first\\nforged subject_type=bad\\r subject_id=x\\ny: metric identity contains unsupported control characters"
     },
     {
      "level": "INFO",
@@ -1295,61 +1295,17 @@
     }
    ],
    "result": {
-    "written": 1
+    "written": 0
    },
-   "requests": [
-    {
-     "method": "POST",
-     "path": "/api/v2/write?org=graphyard&bucket=graphyard&precision=ns",
-     "headers": [
-      [
-       "Accept-Encoding",
-       "identity"
-      ],
-      [
-       "Accept",
-       "application/json"
-      ],
-      [
-       "Content-Type",
-       "text/plain"
-      ],
-      [
-       "Authorization",
-       "Token t0k"
-      ],
-      [
-       "User-Agent",
-       "influxdb-client-python/1.50.0"
-      ],
-      [
-       "Content-Length",
-       "288"
-      ]
-     ],
-     "body": "graphyard_metrics,Zebra=1,collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,spec_name=My\\ Spec\\,\\ v\\=2,subject_id=macmini,subject_type=host,tab\\tkey=new\\nline,trailing=dir\\  value=0.5 1792570530123456000"
-    }
-   ],
+   "requests": [],
    "logs": [
     {
-     "level": "WARNING",
-     "message": "Ignoring custom tag override for reserved key host"
+     "level": "ERROR",
+     "message": "Metric point validation failed metric=host.cpu_usage subject_type=host subject_id=macmini: metric identity contains unsupported control characters"
     },
     {
      "level": "WARNING",
-     "message": "Ignoring custom tag override for reserved key metric"
-    },
-    {
-     "level": "WARNING",
-     "message": "Ignoring custom tag override for reserved key collector_host"
-    },
-    {
-     "level": "WARNING",
-     "message": "Ignoring custom tag override for reserved key subject_id"
-    },
-    {
-     "level": "INFO",
-     "message": "HTTP Request: POST {server}/api/v2/write?org=graphyard&bucket=graphyard&precision=ns \"HTTP/1.1 204 No Content\""
+     "message": "metrics_write_rejected category=normalization rejected_points=1 written_points=0 total_points=1"
     }
    ]
   },
