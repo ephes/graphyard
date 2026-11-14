@@ -226,10 +226,8 @@ that differs is a bug.
   The same holds for Django's `datetime_re` fallback when reading a stored
   datetime (5.3): its `\d` matches Unicode digits, Rust's ASCII only, so
   such text loads as NULL in Rust (`fromisoformat` is ASCII-only in both).
-  The UniFi selector `port_idx:<n>` (S7b) likewise takes ASCII digits only:
-  Python's `isdigit()`/`int()` accept other decimal digits (`port_idx:٣`
-  is port 3), Rust reports `invalid port_idx selector: …` (`critical` in
-  both unless such a port exists).
+  Since round 90 the UniFi selector `port_idx:<n>` (S7b) takes ASCII
+  digits only in both runtimes; it is no longer a Unicode-digit divergence.
 - **D-7 Django command plumbing.** No Django system checks, no Django global
   options, clap usage text on bad flags (exit 2 as argparse). Settings that
   only the web reads (secret key, login throttle, ingest windows) are not
@@ -1063,7 +1061,10 @@ in the order the Python code checks them.
   warning path is raised out of the `except` block and becomes `collector
   raised …` (P1 status, P2 text) — reproduced.
 - **`unifi_device_traffic`** (`_execute_unifi_device_traffic_spec`):
-  redirects followed automatically (max 20), no deadline wrapper. Login
+  same-origin redirects (max 20), cumulative body budget and whole-exchange
+  deadline. Before login, `site_id` must be one literal ASCII unreserved
+  component (letters/digits/`_.-`, excluding `.` and `..`); percent escapes and
+  controller base URL query/fragment syntax are refused (round 90). Login
   attempts by `auth_mode` (`auto` = legacy `/api/login` then UniFi OS
   `/api/auth/login`; JSON body `{"username", "password", "remember": true}`,
   compact as httpx `json=`), success test `_unifi_login_response_ok`
@@ -1075,8 +1076,12 @@ in the order the Python code checks them.
   `_find_unifi_device` (an exact configured MAC is authoritative, otherwise the name;
   several matches are refused as ambiguous, round 85), interface selectors
   `uplink`, `port_idx:<n>`, `port_name:<name>` with their `ValueError`
-  messages, Python truthiness for `port_idx or num_port` and Python `==` for
-  `port_idx` comparisons, `str()` of `speed`; two points (`rx_bytes-r`,
+  messages. Explicit selectors require exactly one match; index selection
+  admits only nonnegative JSON integers, with no boolean/float/string coercion.
+  A name-selected port's optional index must satisfy the same type contract.
+  Missing/null name-selected indices remain allowed. Uplink retains Python
+  truthiness for `port_idx or num_port` and Python `==` for tag enrichment;
+  `str()` of `speed`; two points (`rx_bytes-r`,
   `tx_bytes-r`), each skipped when not finite; no points → `warning, 0,
   skipped, "no numeric traffic values found"`.
 

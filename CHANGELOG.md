@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Refuse ambiguous UniFi site components and controller URL query/fragment forms
+  before login in Python and Rust; require unique explicit interface selections
+  with typed integer port identities and no writes on selection failure.
+- Read health database evidence in one short consistent snapshot with one
+  condition-count aggregate, releasing it before remote Influx work. Isolate all
+  health responses with private no-store and Cookie variation, including failures
+  and authentication transitions.
+
 - Refuse control characters in metric identities and custom tags before stripping
   or encoding, and apply the API's dimension/tag limits to Python and Rust direct
   writers. Rust rejection diagnostics retain at most 32 bounded events.

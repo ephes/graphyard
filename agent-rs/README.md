@@ -563,3 +563,10 @@ one eligible recovery delivery and no immediate second run at that same time.
 The process journeys cover the initial persisted lease; the separate
 `tests/lease.rs` checks live renewal, expiry and replacement fencing. These are
 test-only trait wrappers; no production pause flags were added.
+
+UniFi controller routes and explicit port selectors use the shared
+[selector and transfer contract](../README.md#unifi-controller-transfer-policy):
+validate a single literal site component and reject base URL query/fragment
+syntax before login; select exactly one port with a JSON integer index (no
+boolean/float/string coercion). The shared `unifi.json` corpus covers malformed
+routes, reordered duplicate ports, typed identities and zero-write failures.

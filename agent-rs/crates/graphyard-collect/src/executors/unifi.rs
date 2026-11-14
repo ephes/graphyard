@@ -14,15 +14,14 @@
 use std::sync::OnceLock;
 
 use graphyard_core::diagnostics::collector_failure;
-use num_traits::Zero as _;
+use num_traits::{Signed as _, Zero as _};
 use regex::Regex;
 use serde_json::{Map, Value};
 
 use graphyard_core::model::{MetricPoint, SpecOutcome, StatusLevel, SubjectType, Tags};
 use graphyard_core::normalize::parse_finite_float;
 use graphyard_core::pycompat::{
-    PyError, PyNumber, json_loads, py_eq, py_int, py_number, py_split_whitespace, py_str,
-    py_str_repr, py_strip,
+    PyError, PyNumber, json_loads, py_eq, py_int, py_number, py_split_whitespace, py_str, py_strip,
 };
 use graphyard_core::spec_config::{
     Config, DEFAULT_PAGE_PROBE_MAX_BODY_BYTES, bool_config, page_probe_total_timeout_config,
@@ -244,6 +243,18 @@ async fn collect<S: MetricSink>(
     sink: &S,
     spec: &UnifiSpec<'_>,
 ) -> Result<SpecOutcome, Failure> {
+    if spec.site_id.is_empty()
+        || matches!(spec.site_id.as_str(), "." | "..")
+        || !spec
+            .site_id
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || b"_.-".contains(&b))
+    {
+        return Err(Failure(collector_failure("ValueError")));
+    }
+    if spec.base_url.contains(['?', '#']) {
+        return Err(Failure(collector_failure("ValueError")));
+    }
     let client = HttpClient::new(
         http,
         &ClientOptions::new(spec.timeout_seconds, spec.verify_tls)
@@ -557,6 +568,13 @@ fn insert_port_name(tags: &mut Tags, port: &Map<String, Value>) {
     }
 }
 
+// JSON integer tokens only: booleans, floats and numeric strings are not identities.
+fn integer_port_index(value: &Value) -> bool {
+    value.as_number().is_some_and(
+        |number| matches!(py_number(number), PyNumber::Int(index) if !index.is_negative()),
+    )
+}
+
 /// The text after the first `:` of a selector, stripped.
 fn selector_argument(selector: &str) -> &str {
     py_strip(selector.split_once(':').map_or("", |(_, rest)| rest))
@@ -569,7 +587,7 @@ fn selector_argument(selector: &str) -> &str {
 /// # Errors
 /// The `ValueError` messages of the Python function, and `int()`'s digit
 /// limit for a `port_idx` beyond 4300 digits. Non-ASCII digits in a
-/// `port_idx` selector are invalid (D-6).
+/// `port_idx` selector are invalid in both runtimes.
 pub fn resolve_interface_stats<'a>(
     device: &'a Map<String, Value>,
     interface_selector: &str,
@@ -623,14 +641,18 @@ pub fn resolve_interface_stats<'a>(
         let target = py_int(raw)?;
         let target_value =
             json_loads(&target.to_string()).map_err(|err| PyError::value_error(err.to_string()))?;
-        let Some(port) = ports().find(|port| {
-            port.get("port_idx")
-                .is_some_and(|value| py_eq(value, &target_value))
-        }) else {
-            return Err(PyError::value_error(format!(
-                "port_idx {target} not found on device"
-            )));
-        };
+        let matches: Vec<_> = ports()
+            .filter(|port| {
+                port.get("port_idx")
+                    .is_some_and(|value| integer_port_index(value) && py_eq(value, &target_value))
+            })
+            .collect();
+        if matches.len() != 1 {
+            return Err(PyError::value_error(
+                "UniFi port selection must match exactly one interface",
+            ));
+        }
+        let port = matches[0];
         tags.insert("traffic_scope".to_owned(), "port".to_owned());
         tags.insert("port_idx".to_owned(), target.to_string());
         insert_port_name(&mut tags, port);
@@ -645,16 +667,23 @@ pub fn resolve_interface_stats<'a>(
                 "invalid port_name selector: {selector}"
             )));
         }
-        let Some(port) = ports().find(|port| py_strip(&config_text(port, "name", "")) == target)
-        else {
-            return Err(PyError::value_error(format!(
-                "port_name {} not found on device",
-                py_str_repr(target)
-            )));
-        };
+        let matches: Vec<_> = ports()
+            .filter(|port| py_strip(&config_text(port, "name", "")) == target)
+            .collect();
+        if matches.len() != 1 {
+            return Err(PyError::value_error(
+                "UniFi port selection must match exactly one interface",
+            ));
+        }
+        let port = matches[0];
         tags.insert("traffic_scope".to_owned(), "port".to_owned());
         tags.insert("port_name".to_owned(), target.to_owned());
         if let Some(port_idx) = get_some(port, "port_idx") {
+            if !integer_port_index(port_idx) {
+                return Err(PyError::value_error(
+                    "UniFi port index must be a nonnegative integer",
+                ));
+            }
             tags.insert("port_idx".to_owned(), py_str(port_idx));
         }
         insert_speed(&mut tags, port);
