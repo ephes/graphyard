@@ -18,6 +18,9 @@
 
 - Bound recorder unit probes by deadline/output and retire their owned process
   groups; reject nonfinite or invalid sampling controls before resource access.
+  Kill helper groups before reaping their leader where `os.waitid` exists, keep
+  the original error when Darwin reports EPERM for a zombie-only group, and
+  refuse wrongly shaped comparison records with a located error.
 
 - Refuse recorder output aliases of input databases and replay explicit session
   baselines so offline deletions cannot survive recorder restarts.

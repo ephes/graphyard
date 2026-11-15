@@ -138,6 +138,37 @@ def _blob(value: object) -> str:
     raise TypeError(f"cannot record {type(value).__name__}")
 
 
+# leader_exit_status/retire_group are kept identical in shadow_compare.py: the parity
+# tools are standalone scripts copied and run individually.
+def leader_exit_status(child: subprocess.Popen[bytes], deadline: float) -> int:
+    """Exit status of a process-group leader before the group is retired.
+
+    Where ``os.waitid`` exists (e.g. Linux, where these tools run) the leader stays
+    unreaped (``WNOWAIT``), so its PID, and with it the process-group ID, cannot
+    be reused before ``retire_group`` sends the group kill. Elsewhere this falls
+    back to ``wait``; the group ID then stays reserved only while descendants live.
+    """
+    waitid = getattr(os, "waitid", None)
+    if waitid is None:
+        return child.wait(timeout=max(0.001, deadline - time.monotonic()))
+    flags = os.WEXITED | os.WNOHANG | os.WNOWAIT
+    while (state := waitid(os.P_PID, child.pid, flags)) is None:
+        if time.monotonic() >= deadline:
+            raise subprocess.TimeoutExpired(child.args, 0)
+        time.sleep(0.005)
+    return state.si_status if state.si_code == os.CLD_EXITED else -state.si_status
+
+
+def retire_group(child: subprocess.Popen[bytes]) -> None:
+    """Kill the child's own process group (pipe holders included), then reap it."""
+    try:
+        os.killpg(child.pid, signal.SIGKILL)
+    except (ProcessLookupError, PermissionError):
+        # Already gone; Darwin reports EPERM for a group holding only a zombie.
+        pass
+    child.wait()
+
+
 def unit_sample(
     unit: str, systemctl: str, proc: Path, stop: threading.Event | None = None
 ) -> dict[str, Any]:
@@ -174,7 +205,7 @@ def unit_sample(
                         captured.extend(chunk)
                         if len(captured) > UNIT_MAX_BYTES:
                             raise ValueError("probe output limit")
-                if child.wait(timeout=max(0.001, deadline - time.monotonic())) != 0:
+                if leader_exit_status(child, deadline) != 0:
                     raise ValueError("probe failed")
                 for line in captured.decode("utf-8").splitlines():
                     key, _, value = line.partition("=")
@@ -182,11 +213,7 @@ def unit_sample(
                         sample[key] = value
             finally:
                 # The process group was created for this probe, including pipe holders.
-                try:
-                    os.killpg(child.pid, signal.SIGKILL)
-                except ProcessLookupError:
-                    pass
-                child.wait()
+                retire_group(child)
     except (OSError, ValueError, subprocess.TimeoutExpired):
         return {"error": "unit probe unavailable"}
     pid = sample.get("MainPID", "0")

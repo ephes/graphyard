@@ -353,7 +353,14 @@ Each unit probe has a two-second monotonic budget and 64 KiB stdout cap; stderr
 is discarded. Timeout, cancellation, excess output and helper failures emit only
 `unit probe unavailable`. The recorder kills and reaps its dedicated helper
 process group (including descendants holding the pipe); SIGTERM interrupts probe
-polling. Missing unit evidence remains unavailable in qualification.
+polling. Missing unit evidence remains unavailable in qualification. The same
+group retirement applies to `shadow_compare`'s production CSV helper. Where
+`os.waitid` exists (e.g. Linux) the leader's exit status is read without reaping it,
+so the group kill runs while its process-group ID is still reserved; an EPERM
+from a zombie-only group (Darwin) counts as already gone and never hides the
+original deadline/limit error. Wrongly shaped record lines (non-object `dbs`,
+`units`, samples, tables or rows, non-list `_deleted`) fail with a location-only
+`invalid record shape` error.
 
 Shadow backups have a 30-second monotonic total budget, 50 ms SQLite busy waits
 and bounded-page progress callbacks. Failure removes only the newly created

@@ -16,6 +16,7 @@ import sqlite3
 import stat
 import sys
 import threading
+import time
 from pathlib import Path
 from types import ModuleType
 
@@ -1334,6 +1335,73 @@ def test_compare_bounds_fetched_csv(tmp_path, monkeypatch):
         compare.fetch_prod_csv(
             f"{shlex.quote(sys.executable)} {shlex.quote(str(script))}", None, "unused"
         )
+
+
+def test_compare_fetch_keeps_admission_error_when_group_kill_reports_eperm(
+    tmp_path, monkeypatch
+):
+    """Darwin reports EPERM for a zombie-only group; the real error must win."""
+    import shlex
+
+    script = tmp_path / "csv-helper"
+    script.write_text("print('x' * 10000)\n")
+    monkeypatch.setattr(compare, "MAX_FILE_BYTES", 100)
+
+    def eperm(pgid, sig):
+        raise PermissionError(1, "Operation not permitted")
+
+    monkeypatch.setattr(compare.os, "killpg", eperm)
+    with pytest.raises(ValueError, match="evidence byte limit"):
+        compare.fetch_prod_csv(
+            f"{shlex.quote(sys.executable)} {shlex.quote(str(script))}", None, "unused"
+        )
+
+
+@pytest.mark.parametrize("module_name", ["compare", "recorder"])
+@pytest.mark.skipif(not hasattr(os, "waitid"), reason="needs os.waitid (Linux)")
+def test_group_is_killed_before_the_leader_is_reaped(monkeypatch, module_name):
+    """The group kill must run while the leader's PID/PGID is still reserved."""
+    import subprocess
+
+    module = compare if module_name == "compare" else recorder
+    seen = []
+    real_killpg = module.os.killpg
+
+    def killpg(pgid, sig):
+        seen.append(child.returncode)
+        real_killpg(pgid, sig)
+
+    monkeypatch.setattr(module.os, "killpg", killpg)
+    with subprocess.Popen(
+        [sys.executable, "-c", "pass"],
+        stdout=subprocess.DEVNULL,
+        start_new_session=True,
+    ) as child:
+        assert module.leader_exit_status(child, time.monotonic() + 10) == 0
+        module.retire_group(child)
+    assert seen == [None]
+    assert child.returncode == 0
+
+
+@pytest.mark.parametrize(
+    "line",
+    [
+        '{"ts":1,"units":[]}',
+        '{"ts":1,"dbs":{"prod":[]}}',
+        '{"ts":1,"dbs":[]}',
+        '{"ts":1,"units":{"prod":1}}',
+        '{"ts":1,"dbs":{"prod":{"configs":[]}}}',
+        '{"ts":1,"dbs":{"prod":{"metric_collection_spec":{"1":5}}}}',
+        '{"ts":1,"dbs":{"prod":{"configs":{"1":[]}}}}',
+        '{"ts":1,"dbs":{"prod":{"configs_deleted":5}}}',
+        "[1]",
+    ],
+)
+def test_compare_refuses_wrongly_shaped_records_with_location(tmp_path, line):
+    path = tmp_path / "record"
+    path.write_text('{"ts":0}\n' + line + "\n")
+    with pytest.raises(ValueError, match=r"record:2: invalid record"):
+        compare.read_record(path)
 
 
 @pytest.mark.parametrize(

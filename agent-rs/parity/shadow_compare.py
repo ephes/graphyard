@@ -484,6 +484,37 @@ def flux_query(bucket: str, measurement: str, start: int, stop: int) -> str:
     )
 
 
+# leader_exit_status/retire_group are kept identical in shadow_record.py: the parity
+# tools are standalone scripts copied and run individually.
+def leader_exit_status(child: subprocess.Popen[bytes], deadline: float) -> int:
+    """Exit status of a process-group leader before the group is retired.
+
+    Where ``os.waitid`` exists (e.g. Linux, where these tools run) the leader stays
+    unreaped (``WNOWAIT``), so its PID, and with it the process-group ID, cannot
+    be reused before ``retire_group`` sends the group kill. Elsewhere this falls
+    back to ``wait``; the group ID then stays reserved only while descendants live.
+    """
+    waitid = getattr(os, "waitid", None)
+    if waitid is None:
+        return child.wait(timeout=max(0.001, deadline - time.monotonic()))
+    flags = os.WEXITED | os.WNOHANG | os.WNOWAIT
+    while (state := waitid(os.P_PID, child.pid, flags)) is None:
+        if time.monotonic() >= deadline:
+            raise subprocess.TimeoutExpired(child.args, 0)
+        time.sleep(0.005)
+    return state.si_status if state.si_code == os.CLD_EXITED else -state.si_status
+
+
+def retire_group(child: subprocess.Popen[bytes]) -> None:
+    """Kill the child's own process group (pipe holders included), then reap it."""
+    try:
+        os.killpg(child.pid, signal.SIGKILL)
+    except (ProcessLookupError, PermissionError):
+        # Already gone; Darwin reports EPERM for a group holding only a zombie.
+        pass
+    child.wait()
+
+
 def fetch_prod_csv(command: str, org: str | None, flux: str) -> str:
     argv = shlex.split(command)
     if org:
@@ -516,16 +547,12 @@ def fetch_prod_csv(command: str, org: str | None, flux: str) -> str:
                     captured.extend(chunk)
                     if len(captured) > MAX_FILE_BYTES:
                         raise ValueError("evidence byte limit exceeded")
-            if child.wait(timeout=max(0.001, deadline - time.monotonic())) != 0:
+            if leader_exit_status(child, deadline) != 0:
                 raise RuntimeError("production CSV command failed")
         except subprocess.TimeoutExpired:
             raise ValueError("production CSV deadline exceeded") from None
         finally:
-            try:
-                os.killpg(child.pid, signal.SIGKILL)
-            except ProcessLookupError:
-                pass
-            child.wait()
+            retire_group(child)
     return captured.decode("utf-8")
 
 
@@ -575,11 +602,17 @@ class DatabaseHistory:
             if key == "baseline":
                 continue
             if key.endswith("_deleted"):
+                if not isinstance(value, list):
+                    raise TypeError("deleted row ids")
                 table = key[: -len("_deleted")]
                 for row_id in value:
                     self.state[table].pop(str(row_id), None)
                 continue
             table = key
+            if not isinstance(value, dict) or not all(
+                isinstance(row, dict) for row in value.values()
+            ):
+                raise TypeError("table rows")
             watch = self.WATCH.get(table)
             for row_id, row in value.items():
                 before = self.state[table].get(row_id)
@@ -618,15 +651,23 @@ def read_record(path: Path, budget: EvidenceBudget | None = None) -> Record:
             ts = float(line["ts"])
             if not math.isfinite(ts) or not -(2**63) / 1e9 <= ts < (2**63) / 1e9:
                 raise ValueError("invalid timestamp")
-        except (ValueError, OverflowError):
+        except (ValueError, OverflowError, TypeError, KeyError):
             raise ValueError(f"{path}:{number}: invalid record timestamp") from None
         first = ts if first is None else first
         last = ts
-        for role, history in dbs.items():
-            if role in line.get("dbs", {}):
-                history.add(ts, line["dbs"][role])
-        for role, sample in line.get("units", {}).items():
-            units[role].append((ts, sample))
+        try:
+            line_dbs, line_units = line.get("dbs", {}), line.get("units", {})
+            if not isinstance(line_dbs, dict) or not isinstance(line_units, dict):
+                raise TypeError("record sections")
+            for role, history in dbs.items():
+                if role in line_dbs:
+                    history.add(ts, line_dbs[role])
+            for role, sample in line_units.items():
+                if not isinstance(sample, dict):
+                    raise TypeError("unit sample")
+                units[role].append((ts, sample))
+        except (AttributeError, TypeError, KeyError):
+            raise ValueError(f"{path}:{number}: invalid record shape") from None
     return Record(dbs, dict(units), first, last)
 
 
