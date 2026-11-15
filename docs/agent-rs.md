@@ -378,7 +378,8 @@ The comparator admits at most 64 MiB per file, 128 MiB across metadata, LP,
 JSONL and production CSV, 1 MiB per physical line, 500,000 combined input rows
 (physical file lines plus parsed CSV rows), and 1,000,000 JSON history nodes
 (including member names), with depth at most 64. Exact limits are accepted.
-Regular opened files are checked by size and bounded reads, including growth;
+JSON nodes/depth are counted before decoding containers. Regular opened files
+are checked by size and bounded reads, including growth;
 limits include ignored/out-of-window evidence. Fetched CSV has a 30-second owned
 process budget and the same file cap. Admission failure exits 1 before publishing
 a qualification report; split a larger recording into meaningful complete windows.
@@ -389,4 +390,12 @@ seconds inclusive. Numeric point values, numeric LP fields and JSON observations
 must be finite; point timestamps must fit signed 64-bit nanoseconds. Invalid
 observations refuse the complete input set with a location-only diagnostic.
 Finite negative/zero measurements remain supported; relative differences scale
-before subtraction to avoid overflowing opposite-sign finite values.
+before subtraction when opposite-sign finite values would overflow.
+
+Nearest-time alignment uses ordered binary lookup, preserving the earlier-time
+tie rule, first production point for duplicate timestamps, and reuse of production
+points. Search is O(P log P + S log P) per series rather than P×S. Every selected
+enabled spec needs observations on both sides; supported exact/aligned types also
+need at least one comparable pair. Missing evidence is an `inconclusive` finding,
+so `--fail-on-findings` fails even when both sides are empty. Explicitly disabled
+specs remain excluded. Matching empty sets cannot qualify a required collector.

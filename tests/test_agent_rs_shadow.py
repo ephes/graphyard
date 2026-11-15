@@ -906,13 +906,14 @@ def test_prepare_record_compare_chain_on_two_databases(tmp_path, capsys):
             proc,
         )
     points = [
-        ("json temp", "host.temp", 50.0, t0 + 30 + 60 * minute, {})
+        (name, "host.temp", 50.0, t0 + 30 + 60 * minute, {})
         for minute in range(4)
+        for name, _, _ in SPECS
     ]
     (tmp_path / "prod.csv").write_text(_csv(points))
     (shadow_dir / "points.lp").write_text(
         f"# write {compare.ns_text((t0 + 300) * 10**9)} points=4\n"
-        + "\n".join(_line(s, m, v, ts + 2) for s, m, v, ts, _ in points)
+        + "\n".join(_line(s, m, v, ts) for s, m, v, ts, _ in points)
         + "\n"
     )
     report_path = tmp_path / "report.json"
@@ -1396,3 +1397,142 @@ def test_compare_refuses_unrepresentable_point_times(tmp_path, timestamp):
     path.write_text(f"m value=1 {timestamp}\n")
     with pytest.raises(ValueError):
         compare.read_points_file(path)
+
+
+def test_nearest_alignment_preserves_exhaustive_ties_duplicates_and_reuse(monkeypatch):
+    import random
+
+    randomizer = random.Random(97)
+    series = ("m", (("spec_name", "s"),))
+    prod = [
+        compare.Point(series, ts, float(i + 1))
+        for i, ts in enumerate(
+            [10, 10, 20, 30] + [randomizer.randrange(100) for _ in range(40)]
+        )
+    ]
+    ordered = sorted(prod, key=lambda p: p.ts)
+    shadow = [
+        compare.Point(series, ts, min(ordered, key=lambda p: abs(p.ts - ts)).value)
+        for ts in [-1, 15, 15, 25, 101] + list(range(100))
+    ]
+    report = compare.Report()
+    result = compare._compare_aligned(
+        report, "s", {"prod": prod, "shadow": shadow}, 0, 1000
+    )
+    assert result == {"pairs": len(shadow), "beyond_tolerance": 0, "unpaired_shadow": 0}
+    assert report.findings == []
+
+
+def test_nearest_alignment_work_does_not_multiply_series_lengths(monkeypatch):
+    import builtins
+
+    series = ("m", (("spec_name", "s"),))
+    size = 2000
+    prod = [compare.Point(series, ts * 10, 1) for ts in range(size)]
+    shadow = [compare.Point(series, ts * 10 + 4, 1) for ts in range(size)]
+    calls = 0
+
+    def counted_abs(value):
+        nonlocal calls
+        calls += 1
+        return builtins.abs(value)
+
+    monkeypatch.setattr(compare, "abs", counted_abs, raising=False)
+    result = compare._compare_aligned(
+        compare.Report(), "s", {"prod": prod, "shadow": shadow}, 0, 10
+    )
+    assert result["pairs"] == size
+    assert calls <= size * 10
+
+
+@pytest.mark.parametrize(
+    "spec_type", [*compare.HA_TYPES, *compare.ALIGNED_TYPES, compare.PAGE_PROBE]
+)
+@pytest.mark.parametrize("side", ["neither", "prod", "shadow"])
+def test_required_spec_without_observations_is_inconclusive(spec_type, side):
+    point = compare.Point(("m", (("spec_name", "s"),)), 10, 1)
+    report = compare.Report()
+    compare.compare_points(
+        report,
+        [point] if side == "prod" else [],
+        [point] if side == "shadow" else [],
+        {"s": spec_type},
+        0.05,
+        60,
+    )
+    assert any(
+        f["section"] == "values" and "inconclusive" in str(f["detail"])
+        for f in report.findings
+    )
+    excluded_report = compare.Report()
+    compare.compare_points(excluded_report, [], [], {}, 0.05, 60)
+    assert not excluded_report.findings
+
+
+def test_no_samples_fail_cli_qualification(tmp_path):
+    shadow = _write_run(tmp_path, [200] * 10)
+    (shadow / "points.lp").write_text(
+        f"# write {compare.ns_text((T0 + 600) * 10**9)} points=0\n"
+    )
+    (tmp_path / "prod.csv").write_text("")
+    report = tmp_path / "report"
+    assert (
+        compare.main(
+            [
+                "--shadow-dir",
+                str(shadow),
+                "--prod-csv",
+                str(tmp_path / "prod.csv"),
+                "--json",
+                str(report),
+                "--fail-on-findings",
+            ]
+        )
+        == 1
+    )
+    assert any(
+        "inconclusive" in str(f["detail"])
+        for f in json.loads(report.read_text())["findings"]
+    )
+
+
+def test_history_work_is_refused_before_json_materialization(monkeypatch):
+    monkeypatch.setattr(compare, "MAX_JSON_NODES", 3)
+
+    def unexpected_decode(*args, **kwargs):
+        pytest.fail("over-budget history reached the JSON decoder")
+
+    monkeypatch.setattr(compare.json, "loads", unexpected_decode)
+    with pytest.raises(ValueError, match="evidence history limit"):
+        compare.EvidenceBudget().json("[0,0,0]", "synthetic:1")
+
+
+def test_json_history_limits_count_escaped_strings_and_exact_depth(monkeypatch):
+    monkeypatch.setattr(compare, "MAX_JSON_NODES", 5)
+    assert compare.EvidenceBudget().json('{"x":["a\\"[",0]}', "synthetic") == {
+        "x": ['a"[', 0]
+    }
+    monkeypatch.setattr(compare, "MAX_JSON_DEPTH", 2)
+    assert compare.EvidenceBudget().json("[[0]]", "synthetic") == [[0]]
+    with pytest.raises(ValueError, match="evidence history limit"):
+        compare.EvidenceBudget().json("[[[0]]]", "synthetic")
+
+
+def test_completion_sync_failure_preserves_published_artifacts(
+    tmp_path, monkeypatch, capsys
+):
+    source = tmp_path / "db"
+    _database(source).close()
+    shadow = _shadow_dir(tmp_path)
+    original = prepare.sync_directory
+
+    def fail_final_sync(path):
+        if (shadow / "shadow.json").exists():
+            raise OSError("synthetic sync failure")
+        original(path)
+
+    monkeypatch.setattr(prepare, "sync_directory", fail_final_sync)
+    assert prepare.main(["--source", str(source), "--shadow-dir", str(shadow)]) == 1
+    assert (shadow / "db.sqlite3").exists()
+    assert (shadow / "shadow.json").exists()
+    assert "uncertain publication" in capsys.readouterr().err

@@ -64,15 +64,16 @@ import io
 import json
 import math
 import os
-import stat
 import re
 import selectors
-import signal
 import shlex
+import signal
+import stat
 import statistics
 import subprocess
 import sys
 import time
+from bisect import bisect_left
 from collections import defaultdict
 from collections.abc import Iterable, Iterator
 from dataclasses import dataclass, field
@@ -142,23 +143,53 @@ class EvidenceBudget:
             raise ValueError("evidence row limit exceeded")
 
     def json(self, text: str, location: str) -> Any:
+        # Count lexical values/member names before the decoder allocates containers.
+        depth = index = 0
+        while index < len(text):
+            char = text[index]
+            if char.isspace() or char in ",:":
+                index += 1
+                continue
+            if char in "]}":
+                depth -= 1
+                index += 1
+                continue
+            self.nodes += 1
+            if self.nodes > MAX_JSON_NODES or depth > MAX_JSON_DEPTH:
+                raise ValueError("evidence history limit exceeded")
+            if char in "[{":
+                depth += 1
+                index += 1
+            elif char == '"':
+                index += 1
+                while index < len(text):
+                    if text[index] == "\\":
+                        index += 2
+                    elif text[index] == '"':
+                        index += 1
+                        break
+                    else:
+                        index += 1
+            else:
+                while (
+                    index < len(text)
+                    and not text[index].isspace()
+                    and text[index] not in ",:[]{}"
+                ):
+                    index += 1
         try:
             value = json.loads(text)
         except (ValueError, RecursionError):
             raise ValueError(f"{location}: invalid JSON evidence") from None
-        pending = [(value, 0)]
+        pending = [value]
         while pending:
-            item, depth = pending.pop()
-            self.nodes += 1
+            item = pending.pop()
             if isinstance(item, float) and not math.isfinite(item):
                 raise ValueError(f"{location}: nonfinite numeric evidence")
-            if self.nodes > MAX_JSON_NODES or depth > MAX_JSON_DEPTH:
-                raise ValueError("evidence history limit exceeded")
             if isinstance(item, dict):
-                self.nodes += len(item)  # member names also consume work
-                pending.extend((v, depth + 1) for v in item.values())
+                pending.extend(item.values())
             elif isinstance(item, list):
-                pending.extend((v, depth + 1) for v in item)
+                pending.extend(item)
         return value
 
 
@@ -203,10 +234,10 @@ def rfc3339_ns(text: str) -> int:
     text = text.strip()
     if re.fullmatch(r"\d+(\.\d+)?", text):
         whole, _, frac = text.partition(".")
-        return int(whole) * 10**9 + int(frac.ljust(9, "0")[:9] or 0)
+        return admitted_ns(int(whole) * 10**9 + int(frac.ljust(9, "0")[:9] or 0))
     match = _RFC3339.fullmatch(text)
     if match is None:
-        raise ValueError(f"not an RFC 3339 time: {text!r}")
+        raise ValueError("invalid RFC 3339 timestamp")
     seconds = calendar.timegm(
         time.strptime(f"{match[1]}T{match[2]}", "%Y-%m-%dT%H:%M:%S")
     )
@@ -214,7 +245,13 @@ def rfc3339_ns(text: str) -> int:
     if offset != "Z":
         sign = 1 if offset[0] == "+" else -1
         seconds -= sign * (int(offset[1:3]) * 3600 + int(offset[4:6]) * 60)
-    return seconds * 10**9 + int((match[3] or "").ljust(9, "0"))
+    return admitted_ns(seconds * 10**9 + int((match[3] or "").ljust(9, "0")))
+
+
+def admitted_ns(value: int) -> int:
+    if not -(2**63) <= value < 2**63:
+        raise ValueError("timestamp outside signed 64-bit nanoseconds")
+    return value
 
 
 def ns_text(ns: int) -> str:
@@ -628,7 +665,12 @@ def masked(text: Any, masks: list[re.Pattern[str]]) -> Any:
 
 def relative_difference(a: float, b: float) -> float:
     scale = max(abs(a), abs(b))
-    return 0.0 if scale == 0 else abs(a / scale - b / scale)
+    if scale == 0:
+        return 0.0
+    difference = abs(a - b)
+    return (
+        difference / scale if math.isfinite(difference) else abs(a / scale - b / scale)
+    )
 
 
 def _sequences(
@@ -878,9 +920,8 @@ def compare_points(
         elif spec_type == PAGE_PROBE:
             entry.update(_compare_page_probe(report, spec, sides))
         compared = entry.get("matched", entry.get("pairs"))
-        if compared == 0 and all(sides.values()):
-            # Values were written on both sides but none could be compared:
-            # the comparison proved nothing about them.
+        if not all(sides.values()) or compared == 0:
+            # A required enabled spec needs observations and meaningful pairs.
             report.finding("values", spec, "no value pair to compare (inconclusive)")
     report.sections["points"] = summary
 
@@ -925,13 +966,24 @@ def _compare_aligned(
     prod_by_series: dict[Series, list[Point]] = defaultdict(list)
     for point in sides["prod"]:
         prod_by_series[point.series].append(point)
-    for points in prod_by_series.values():
+    timestamps: dict[Series, list[int]] = {}
+    for series, points in prod_by_series.items():
         points.sort(key=lambda p: p.ts)
+        # min() on the old stable sort selected the first of duplicate timestamps.
+        unique: list[Point] = []
+        for point in points:
+            if not unique or unique[-1].ts != point.ts:
+                unique.append(point)
+        prod_by_series[series] = unique
+        timestamps[series] = [p.ts for p in unique]
     differences: dict[Series, list[tuple[float, Point, Point]]] = defaultdict(list)
     unpaired = 0
     for point in sides["shadow"]:
         candidates = prod_by_series.get(point.series, [])
-        best = min(candidates, key=lambda p: abs(p.ts - point.ts), default=None)
+        index = bisect_left(timestamps.get(point.series, []), point.ts)
+        neighbors = candidates[max(0, index - 1) : index + 1]
+        # Earlier timestamps win equidistant ties; production points remain reusable.
+        best = min(neighbors, key=lambda p: abs(p.ts - point.ts), default=None)
         if best is None or abs(best.ts - point.ts) > align_ns:
             unpaired += 1
             continue

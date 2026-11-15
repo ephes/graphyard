@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Use binary nearest-time matching with existing tie/reuse semantics and mark
+  enabled specifications with missing observations as inconclusive.
+
 - Reject nonfinite qualification controls, observations and unrepresentable point
   timestamps; preserve finite signed values and avoid difference overflow.
 
