@@ -11,8 +11,6 @@ name: CI
 # `uv run --frozen python scripts/audit_python.py` locally for the same audit.
 
 on:
-  push:
-  pull_request:
   workflow_dispatch:
 
 permissions:
