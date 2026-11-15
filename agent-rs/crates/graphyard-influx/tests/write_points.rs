@@ -699,3 +699,70 @@ async fn tls_handshake_eof_is_the_client_api_exception() {
         "{text}"
     );
 }
+
+#[tokio::test]
+async fn auto_writer_timestamp_admission() {
+    let recorder = recorder(Respond {
+        status: 204,
+        ..Respond::default()
+    })
+    .await;
+    let mut settings = v2_settings(&format!("http://{}", recorder.addr), "1000");
+    settings.influx_api_mode = "auto".into();
+    let writer = InfluxWriter::new().unwrap();
+    let base = point_of(&fixture()["writes"][1]["points"][0]);
+    for (ts, admitted) in [
+        ("1677-09-21T00:12:43.145224Z", false),
+        ("1677-09-21T00:12:43.145224999Z", false),
+        ("1677-09-21T00:12:43.145225Z", true),
+        ("1677-09-21T00:12:43.145226Z", true),
+        ("2262-04-11T23:39:59.999998Z", true),
+        ("2262-04-11T23:39:59.999999Z", true),
+        ("2262-04-11T23:39:59.999999999Z", true),
+        ("2262-04-11T23:40:00Z", false),
+        ("2262-04-11T23:47:16.854775Z", false),
+        ("2262-04-12T00:39:59.999999+01:00", true),
+        ("2262-04-12T00:40:00+01:00", false),
+    ] {
+        let mut candidate = base.clone();
+        candidate.ts = DateTime::parse_from_rfc3339(ts)
+            .unwrap()
+            .with_timezone(&Utc);
+        recorder.requests.lock().unwrap().clear();
+        assert_eq!(
+            writer
+                .write_points(&settings, &[candidate.clone()])
+                .await
+                .unwrap(),
+            u64::from(admitted),
+            "{ts}"
+        );
+        let requests = recorder.requests.lock().unwrap().clone();
+        assert_eq!(requests.len(), usize::from(admitted), "{ts}");
+        if admitted {
+            assert!(requests[0].body.ends_with(&format!(
+                " {}",
+                graphyard_core::line_protocol::timestamp_ns(&candidate.ts)
+            )));
+        }
+        recorder.requests.lock().unwrap().clear();
+        assert_eq!(
+            writer
+                .write_points(&settings, &[candidate, base.clone()])
+                .await
+                .unwrap(),
+            1 + u64::from(admitted),
+            "{ts}"
+        );
+        let requests = recorder.requests.lock().unwrap().clone();
+        assert_eq!(requests.len(), 1);
+        assert_eq!(requests[0].body.lines().count(), 1 + usize::from(admitted));
+    }
+    settings.influx_api_mode = "v2".into();
+    let mut candidate = base;
+    candidate.ts = "2262-04-11T23:47:16.854775Z".parse().unwrap();
+    assert_eq!(
+        writer.write_points(&settings, &[candidate]).await.unwrap(),
+        1
+    );
+}

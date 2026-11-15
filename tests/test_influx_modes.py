@@ -278,3 +278,76 @@ def test_parse_finite_float_rejects_non_finite(raw):
 def test_parse_finite_float_accepts_numbers():
     assert influx.parse_finite_float("1.5") == 1.5
     assert influx.parse_finite_float(3) == 3.0
+
+
+@pytest.mark.parametrize(
+    "ts, admitted",
+    [
+        ("1677-09-21T00:12:43.145224Z", False),
+        ("1677-09-21T00:12:43.145225Z", True),
+        ("1677-09-21T00:12:43.145226Z", True),
+        ("2262-04-11T23:39:59.999998Z", True),
+        ("2262-04-11T23:39:59.999999Z", True),
+        ("2262-04-11T23:40:00Z", False),
+        ("2262-04-11T23:47:16.854775Z", False),  # Valid only for v2.
+        ("2262-04-12T00:39:59.999999+01:00", True),
+        ("2262-04-12T00:40:00+01:00", False),
+        ("2262-04-11T23:40:00", False),  # Naive means UTC.
+    ],
+)
+def test_auto_writer_timestamp_admission(monkeypatch, settings, ts, admitted):
+    settings.INFLUX_API_MODE = "auto"
+    batches = []
+    monkeypatch.setattr(influx, "_write_batch", lambda points: batches.append(points))
+
+    def point(timestamp):
+        return influx.MetricPoint(
+            ts=datetime.fromisoformat(timestamp),
+            metric="timestamp_test",
+            value=1.0,
+            subject_type="host",
+            subject_id="synthetic",
+            source_system="test",
+            collector_service="test",
+            collector_host="synthetic",
+        )
+
+    candidate = point(ts)
+    assert influx.write_points([candidate]) == int(admitted)
+    assert len(batches) == int(admitted)
+    if admitted:
+        epoch = datetime(1970, 1, 1, tzinfo=UTC)
+        utc = (
+            candidate.ts.replace(tzinfo=UTC)
+            if candidate.ts.tzinfo is None
+            else candidate.ts.astimezone(UTC)
+        )
+        delta = utc - epoch
+        ns = (
+            delta.days * 86400_000000 + delta.seconds * 1000000 + delta.microseconds
+        ) * 1000
+        assert batches[0][0].to_line_protocol().endswith(f" {ns}")
+    batches.clear()
+    assert influx.write_points([candidate, point("2026-11-15T00:00:00Z")]) == 1 + int(
+        admitted
+    )
+    assert len(batches) == 1
+    assert len(batches[0]) == 1 + int(admitted)
+
+
+def test_explicit_v2_writer_keeps_v2_only_timestamp(monkeypatch, settings):
+    settings.INFLUX_API_MODE = "v2"
+    batches = []
+    monkeypatch.setattr(influx, "_write_batch", lambda points: batches.append(points))
+    point = influx.MetricPoint(
+        ts=datetime(2262, 4, 11, 23, 47, 16, 854775, tzinfo=UTC),
+        metric="timestamp_test",
+        value=1.0,
+        subject_type="host",
+        subject_id="synthetic",
+        source_system="test",
+        collector_service="test",
+        collector_host="synthetic",
+    )
+    assert influx.write_points([point]) == 1
+    assert batches[0][0].to_line_protocol().endswith(" 9223372036854775000")

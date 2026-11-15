@@ -9,6 +9,11 @@
 - Choose condition diagnostics by structural series identity in Python and Rust;
   JSON-quote tag names/values and distinguish missing from empty dimensions.
 
+- Enforce the inclusive common InfluxDB v2/v3 timestamp domain in Python and Rust
+  writers with `INFLUX_API_MODE=auto`: `1677-09-21T00:12:43.145225Z` through
+  `2262-04-11T23:39:59.999999Z`. Skip out-of-domain points before HTTP/shadow
+  writes, preserve valid siblings and counts, and leave explicit modes unchanged.
+
 - Use binary nearest-time matching with existing tie/reuse semantics and mark
   enabled specifications with missing observations as inconclusive.
 
@@ -75,8 +80,8 @@
   `source_entity_id` for URLs with query parameters; missing IDs fail before
   transport, preventing query-selected endpoints from collapsing into one series.
 - Add an opt-in local timestamp compatibility oracle for InfluxDB 2.7.12 and
-  3.12.2. Their upper limits differ; timestamp admission remains unchanged pending
-  the choice of a write-domain policy for `INFLUX_API_MODE=auto`.
+  3.12.2. Their upper limits differ; auto writers now apply the common
+  domain described above, while the oracle measures sink behavior in explicit v2 mode.
 
 - Keep spec-import validation diagnostics private: report only definition indices
   and known fields, without raw values/names or model-validation error chains;

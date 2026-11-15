@@ -439,8 +439,38 @@ WRITES: list[tuple[str, dict[str, str], list[dict[str, Any]], dict[str, Any]]] =
         {},
     ),
     (
+        "auto common timestamp domain",
+        {**V2, "INFLUX_API_MODE": "auto"},
+        [
+            _p(ts=datetime.fromisoformat(ts))
+            for ts in [
+                "1677-09-21T00:12:43.145224Z",
+                "1677-09-21T00:12:43.145225Z",
+                "1677-09-21T00:12:43.145226Z",
+                "2262-04-11T23:39:59.999998Z",
+                "2262-04-11T23:39:59.999999Z",
+                "2262-04-11T23:40:00Z",
+                "2262-04-11T23:47:16.854775Z",
+            ]
+        ],
+        {},
+    ),
+    (
+        "default auto rejects all timestamps before configuration",
+        {"INFLUX_TOKEN": "", "INFLUX_ORG": ""},
+        [_p(ts=datetime(2262, 4, 11, 23, 40, tzinfo=UTC))],
+        {},
+    ),
+    (
+        "explicit v2 preserves wider timestamp domain",
+        {**V2, "INFLUX_API_MODE": "v2"},
+        [_p(ts=datetime(2262, 4, 11, 23, 47, 16, 854775, tzinfo=UTC))],
+        {},
+    ),
+    (
+        # Explicit v2 keeps end-to-end wire coverage of timestamps outside i64.
         "timestamps",
-        V2,
+        {**V2, "INFLUX_API_MODE": "v2"},
         [
             _p(ts=datetime(1969, 12, 31, 23, 59, 59, 999999, tzinfo=UTC)),
             _p(ts=datetime(9999, 12, 31, 23, 59, 59, 999999, tzinfo=UTC)),

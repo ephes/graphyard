@@ -306,10 +306,20 @@ are refused by the sinks. A mixed valid/invalid request returns an error, never
 a successful written count; v2 may already have accepted its valid members, so
 retrying the entire batch is unsafe.
 
-**Open policy:** `INFLUX_API_MODE=auto` controls query fallback, not discovery of a
-write server's timestamp domain. Production timestamp admission is unchanged until
-the owner selects v2 or the narrower common domain for auto writes. The oracle
-records a demonstrated storage incompatibility, not a completed preflight fix.
+With `INFLUX_API_MODE=auto`, both Python and Rust writers now admit only the
+inclusive common domain, `1677-09-21T00:12:43.145225Z` through
+`2262-04-11T23:39:59.999999Z` (epoch nanoseconds `-9223372036854775000` through
+`9223371599999999000`). The comparison uses UTC and the microsecond precision
+actually encoded on the wire; Python naive datetimes mean UTC. This is a static
+admission policy because auto can write to either server, not server discovery.
+Out-of-domain points follow the existing invalid-point policy: log and skip them,
+write valid siblings in order, and count only written points. An all-invalid batch
+returns zero without HTTP or shadow-file append. Rust shadow writes apply the same
+policy. Explicit `v2`/`v3` modes keep their existing sink-side timestamp checks;
+`v2` can still write its wider upper range. Query fallback is unchanged.
+
+The disposable-sink oracle explicitly uses writer mode `v2` to bypass the auto
+preflight and continue measuring the actual sink rejection/partial-write behavior.
 No host/deployment inspection was performed.
 
 Run the oracle only on disposable loopback servers with synthetic credentials:

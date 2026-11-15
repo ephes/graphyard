@@ -75,7 +75,17 @@ fn prepare_write_matches_write_points() {
             .and_then(Value::as_str)
             .unwrap_or("graphyard_metrics");
         let points: Vec<MetricPoint> = case.list_field("points").iter().map(point_of).collect();
-        let prepared = prepare_write(measurement, &points);
+        let mode = case
+            .field("env")
+            .get("INFLUX_API_MODE")
+            .and_then(Value::as_str)
+            .unwrap_or("auto")
+            .to_lowercase();
+        let prepared = if mode == "auto" {
+            prepare_auto_write(measurement, &points)
+        } else {
+            prepare_write(measurement, &points)
+        };
         assert_eq!(prepared.total, points.len(), "{name}");
         assert_eq!(
             prepared.written() + prepared.rejected,

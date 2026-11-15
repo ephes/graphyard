@@ -49,6 +49,10 @@ class InfluxTransferError(RuntimeError):
 
 logger = logging.getLogger(__name__)
 
+# Shared InfluxDB 2.7.12 / 3.12.2 storage domain at writer microsecond precision.
+_AUTO_TIMESTAMP_MIN = datetime(1677, 9, 21, 0, 12, 43, 145225, tzinfo=UTC)
+_AUTO_TIMESTAMP_MAX = datetime(2262, 4, 11, 23, 39, 59, 999999, tzinfo=UTC)
+
 _SUBJECT_ID_PATTERN = re.compile(r"[a-z0-9]+(?:_[a-z0-9]+)*")
 _DIMENSION_VALUE_PATTERN = re.compile(r"[a-z0-9][a-z0-9_.-]*")
 _RESERVED_TAG_KEYS = {
@@ -496,6 +500,10 @@ def write_points(points: list[MetricPoint]) -> int:
     for item in points:
         try:
             normalized = normalize_metric_point(item)
+            if settings.INFLUX_API_MODE == "auto" and not (
+                _AUTO_TIMESTAMP_MIN <= normalized.ts <= _AUTO_TIMESTAMP_MAX
+            ):
+                raise ValueError("timestamp outside common InfluxDB v2/v3 domain")
         except ValueError as err:
             logger.error(
                 "Metric point validation failed metric=%s subject_type=%s subject_id=%s: %s",
