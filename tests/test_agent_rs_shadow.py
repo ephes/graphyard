@@ -1195,3 +1195,141 @@ def test_backup_busy_source_exits_and_removes_owned_copy(tmp_path, monkeypatch):
         db.close()
     assert time.monotonic() - started < 2
     assert not dest.exists()
+
+
+@pytest.mark.parametrize("phase", ["backup", "disable", "metadata"])
+def test_prepare_process_death_never_completes_half_generation(tmp_path, phase):
+    import select
+    import subprocess
+
+    source = tmp_path / "db"
+    _database(source).close()
+    shadow = _shadow_dir(tmp_path)
+    module, name = (
+        ("p.json", "dump")
+        if phase == "metadata"
+        else ("p", "backup" if phase == "backup" else "prepare")
+    )
+    script = f"""import sys, time
+sys.path.insert(0, {str(PARITY)!r})
+import shadow_prepare as p
+original = {module}.{name}
+def paused(*a, **kw):
+    result = original(*a, **kw)
+    print('paused', flush=True)
+    time.sleep(30)
+    return result
+{module}.{name} = paused
+p.main(['--source', {str(source)!r}, '--shadow-dir', {str(shadow)!r}, '--disable-spec', 'unifi'])
+"""
+    child = subprocess.Popen(
+        [sys.executable, "-c", script], stdout=subprocess.PIPE, stderr=subprocess.PIPE
+    )
+    try:
+        assert select.select([child.stdout], [], [], 5)[0]
+        assert child.stdout.readline() == b"paused\n"
+        child.kill()
+        child.wait(timeout=3)
+    finally:
+        if child.poll() is None:
+            child.kill()
+        child.communicate()
+    assert not (shadow / "shadow.json").exists()
+    again = subprocess.run(
+        [
+            sys.executable,
+            str(PARITY / "shadow_prepare.py"),
+            "--source",
+            str(source),
+            "--shadow-dir",
+            str(shadow),
+        ],
+        capture_output=True,
+        timeout=5,
+    )
+    assert again.returncode == 1
+    assert b"incomplete preparation" in again.stderr
+    assert b"fresh 0700 directory" in again.stderr
+
+
+def test_prepare_publishes_synced_completion_last(tmp_path, monkeypatch):
+    source = tmp_path / "db"
+    _database(source).close()
+    shadow = _shadow_dir(tmp_path)
+    events = []
+    real_link, real_sync = os.link, os.fsync
+
+    def link(src, dest):
+        events.append(Path(dest).name)
+        return real_link(src, dest)
+
+    def sync(fd):
+        events.append("sync")
+        return real_sync(fd)
+
+    monkeypatch.setattr(prepare.os, "link", link)
+    monkeypatch.setattr(prepare.os, "fsync", sync)
+    assert prepare.main(["--source", str(source), "--shadow-dir", str(shadow)]) == 0
+    meta = json.loads((shadow / "shadow.json").read_text())
+    assert meta["preparation_version"] == 2 and meta["complete"] is True
+    assert events.index("db.sqlite3") < events.index("shadow.json")
+    assert events[events.index("db.sqlite3") + 1] == "sync"
+    assert events[-1] == "sync"
+    assert list(shadow.glob(".prepare-*")) == []
+
+
+def test_compare_readers_bound_individual_and_combined_inputs(tmp_path, monkeypatch):
+    monkeypatch.setattr(compare, "MAX_FILE_BYTES", 40)
+    monkeypatch.setattr(compare, "MAX_TOTAL_BYTES", 60)
+    path = tmp_path / "points"
+    path.write_bytes(b"#" + b"x" * 39)
+    budget = compare.EvidenceBudget()
+    assert compare.read_points_file(path, budget) == ([], [])
+    with pytest.raises(ValueError, match="evidence byte limit"):
+        compare.read_points_file(path, budget)
+    path.write_bytes(b"x" * 41)
+    with pytest.raises(ValueError, match="evidence byte limit"):
+        compare.read_points_file(path)
+    with path.open("wb") as stream:
+        stream.truncate(10**8)
+    with pytest.raises(ValueError, match="evidence byte limit"):
+        compare.read_record(path)
+
+
+def test_compare_bounds_rows_and_json_history(tmp_path, monkeypatch):
+    monkeypatch.setattr(compare, "MAX_ROWS", 2)
+    path = tmp_path / "record"
+    path.write_text('{"ts":1}\n' * 2)
+    assert compare.read_record(path).last_ts == 1
+    path.write_text('{"ts":1}\n' * 3)
+    with pytest.raises(ValueError, match="evidence row limit"):
+        compare.read_record(path)
+    monkeypatch.setattr(compare, "MAX_JSON_NODES", 3)
+    path.write_text('{"ts":1,"dbs":{"prod":{}}}\n')
+    with pytest.raises(ValueError, match="evidence history limit"):
+        compare.read_record(path)
+
+
+def test_compare_detects_growing_input_during_bounded_reads(tmp_path, monkeypatch):
+    path = tmp_path / "growing"
+    path.write_text("#one\n")
+    monkeypatch.setattr(compare, "MAX_FILE_BYTES", 10)
+    budget = compare.EvidenceBudget()
+    lines = compare.evidence_lines(path, budget)
+    assert next(lines) == "#one\n"
+    with path.open("a") as stream:
+        stream.write("#two\n#three\n")
+    with pytest.raises(ValueError, match="evidence byte limit"):
+        list(lines)
+
+
+def test_compare_bounds_fetched_csv(tmp_path, monkeypatch):
+    import shlex
+
+    script = tmp_path / "csv-helper"
+    script.write_text("print('x' * 10000)\n")
+    monkeypatch.setattr(compare, "MAX_FILE_BYTES", 100)
+    with pytest.raises(ValueError, match="evidence byte limit"):
+        compare.fetch_prod_csv(
+            f"{shlex.quote(sys.executable)} {shlex.quote(str(script))}", None, "unused"
+        )

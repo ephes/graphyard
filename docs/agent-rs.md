@@ -359,3 +359,26 @@ Shadow backups have a 30-second monotonic total budget, 50 ms SQLite busy waits
 and bounded-page progress callbacks. Failure removes only the newly created
 incomplete backup. A requested disable set commits atomically: any missing spec
 rolls back every flag in that request.
+
+### Preparation completion and evidence limits
+
+Preparation stages a private `.prepare-*` generation. It syncs the database,
+publishes `db.sqlite3` without replacing any target, syncs the directory, then
+publishes and syncs `shadow.json` last. This v2 completion record contains
+`preparation_version: 2` and `complete: true`. Scan findings still require review
+(exit 2). Never launch a copy without its completion record. On failure or process
+death, an incomplete generation is preserved and the next invocation refuses with
+a recovery instruction: inspect/preserve that directory and retry in a **fresh
+0700 directory**. No existing copy is automatically replaced or removed. Late
+publication/sync failure can leave visible artifacts with uncertain durability;
+a failure message does not mean rollback. Legacy metadata remains readable, but
+has no durable completion guarantee; prepare new evidence with the updated tool.
+
+The comparator admits at most 64 MiB per file, 128 MiB across metadata, LP,
+JSONL and production CSV, 1 MiB per physical line, 500,000 combined input rows
+(physical file lines plus parsed CSV rows), and 1,000,000 JSON history nodes
+(including member names), with depth at most 64. Exact limits are accepted.
+Regular opened files are checked by size and bounded reads, including growth;
+limits include ignored/out-of-window evidence. Fetched CSV has a 30-second owned
+process budget and the same file cap. Admission failure exits 1 before publishing
+a qualification report; split a larger recording into meaningful complete windows.

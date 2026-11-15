@@ -62,14 +62,18 @@ import csv
 import datetime as dt
 import io
 import json
+import os
+import stat
 import re
+import selectors
+import signal
 import shlex
 import statistics
 import subprocess
 import sys
 import time
 from collections import defaultdict
-from collections.abc import Iterable
+from collections.abc import Iterable, Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, ClassVar
@@ -110,6 +114,75 @@ DEFAULT_MASKS = (
     r"at line \d+ column \d+",
 )
 SHOW = 12
+
+# Whole evidence admission, shared by all files of one CLI invocation.
+MAX_FILE_BYTES = 64 * 1024 * 1024
+MAX_TOTAL_BYTES = 128 * 1024 * 1024
+MAX_LINE_BYTES = 1024 * 1024
+MAX_ROWS = 500_000
+MAX_JSON_NODES = 1_000_000
+MAX_JSON_DEPTH = 64
+
+
+@dataclass
+class EvidenceBudget:
+    bytes: int = 0
+    rows: int = 0
+    nodes: int = 0
+
+    def add_bytes(self, count: int) -> None:
+        self.bytes += count
+        if self.bytes > MAX_TOTAL_BYTES:
+            raise ValueError("evidence byte limit exceeded")
+
+    def add_row(self) -> None:
+        self.rows += 1
+        if self.rows > MAX_ROWS:
+            raise ValueError("evidence row limit exceeded")
+
+    def json(self, text: str, location: str) -> Any:
+        try:
+            value = json.loads(text)
+        except (ValueError, RecursionError):
+            raise ValueError(f"{location}: invalid JSON evidence") from None
+        pending = [(value, 0)]
+        while pending:
+            item, depth = pending.pop()
+            self.nodes += 1
+            if self.nodes > MAX_JSON_NODES or depth > MAX_JSON_DEPTH:
+                raise ValueError("evidence history limit exceeded")
+            if isinstance(item, dict):
+                self.nodes += len(item)  # member names also consume work
+                pending.extend((v, depth + 1) for v in item.values())
+            elif isinstance(item, list):
+                pending.extend((v, depth + 1) for v in item)
+        return value
+
+
+def evidence_lines(path: Path, budget: EvidenceBudget) -> Iterator[str]:
+    fd = os.open(path, os.O_RDONLY | os.O_NONBLOCK)
+    with os.fdopen(fd, "rb") as stream:
+        info = os.fstat(stream.fileno())
+        if not stat.S_ISREG(info.st_mode):
+            raise ValueError(f"{path}: evidence must be a regular file")
+        if info.st_size > MAX_FILE_BYTES:
+            raise ValueError(f"{path}: evidence byte limit exceeded")
+        total = 0
+        while raw := stream.readline(MAX_LINE_BYTES + 1):
+            total += len(raw)
+            budget.add_bytes(len(raw))
+            budget.add_row()
+            if total > MAX_FILE_BYTES or len(raw) > MAX_LINE_BYTES:
+                raise ValueError(f"{path}: evidence byte limit exceeded")
+            try:
+                yield raw.decode("utf-8")
+            except UnicodeError:
+                raise ValueError(f"{path}: invalid UTF-8 evidence") from None
+
+
+def evidence_text(path: Path, budget: EvidenceBudget) -> str:
+    return "".join(evidence_lines(path, budget))
+
 
 Series = tuple[str, tuple[tuple[str, str], ...]]
 
@@ -247,43 +320,51 @@ def parse_line(line: str) -> tuple[str, dict[str, str], dict[str, Any], int | No
     return measurement, tags, fields, timestamp
 
 
-def read_points_file(path: Path) -> tuple[list[Point], list[int]]:
+def read_points_file(
+    path: Path, budget: EvidenceBudget | None = None
+) -> tuple[list[Point], list[int]]:
     """The shadow's ``--influx-write-file``: its points and batch times."""
     points: list[Point] = []
     batches: list[int] = []
-    with open(path, encoding="utf-8") as stream:
-        for number, raw in enumerate(stream, 1):
-            line = raw.rstrip("\n")
-            if not line:
-                continue
-            if line.startswith("#"):
-                match = re.match(r"# write (\S+) points=\d+$", line)
-                if match:
-                    batches.append(rfc3339_ns(match[1]))
-                continue
-            try:
-                measurement, tags, fields, timestamp = parse_line(line)
-            except ValueError as err:
-                raise ValueError(f"{path}:{number}: {err}") from None
-            if "value" not in fields or timestamp is None:
-                raise ValueError(f"{path}:{number}: no value field or timestamp")
-            points.append(
-                Point(
-                    (measurement, tuple(sorted((k, v) for k, v in tags.items() if v))),
-                    timestamp,
-                    float(fields["value"]),
-                )
+    budget = budget or EvidenceBudget()
+    for number, raw in enumerate(evidence_lines(path, budget), 1):
+        line = raw.rstrip("\n")
+        if not line:
+            continue
+        if line.startswith("#"):
+            match = re.match(r"# write (\S+) points=\d+$", line)
+            if match:
+                batches.append(rfc3339_ns(match[1]))
+            continue
+        try:
+            measurement, tags, fields, timestamp = parse_line(line)
+        except ValueError:
+            raise ValueError(f"{path}:{number}: invalid point evidence") from None
+        if "value" not in fields or timestamp is None:
+            raise ValueError(f"{path}:{number}: no value field or timestamp")
+        points.append(
+            Point(
+                (measurement, tuple(sorted((k, v) for k, v in tags.items() if v))),
+                timestamp,
+                float(fields["value"]),
             )
+        )
     return points, batches
 
 
-def parse_annotated_csv(text: str) -> list[dict[str, str]]:
+def parse_annotated_csv(
+    text: str, budget: EvidenceBudget | None = None
+) -> list[dict[str, str]]:
     """The records of ``influx query --raw`` (annotated CSV, several tables,
     a new header whenever the columns change). An error table raises."""
+    budget = budget or EvidenceBudget()
+    if len(text.encode("utf-8")) > MAX_FILE_BYTES:
+        raise ValueError("evidence byte limit exceeded")
     records: list[dict[str, str]] = []
     header: list[str] | None = None
     defaults: list[str] = []
     for row in csv.reader(io.StringIO(text)):
+        budget.add_row()
         if not row or all(cell == "" for cell in row):
             header = None
             defaults = []
@@ -298,7 +379,7 @@ def parse_annotated_csv(text: str) -> list[dict[str, str]]:
                 header = ["__error__", *header[1:]]
             continue
         if header[0] == "__error__":
-            raise RuntimeError(f"InfluxDB query failed: {row}")
+            raise RuntimeError("InfluxDB query failed: error table")
         record = {}
         for index, name in enumerate(header):
             if not name:
@@ -351,14 +432,45 @@ def fetch_prod_csv(command: str, org: str | None, flux: str) -> str:
     argv = shlex.split(command)
     if org:
         argv += ["--org", org]
-    completed = subprocess.run(
-        [*argv, flux], capture_output=True, text=True, check=False
-    )
-    if completed.returncode != 0:
-        raise RuntimeError(
-            f"{argv[0]} exited {completed.returncode}: {completed.stderr.strip()}"
-        )
-    return completed.stdout
+    deadline = time.monotonic() + 30
+    captured = bytearray()
+    with subprocess.Popen(
+        [*argv, flux],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        start_new_session=True,
+    ) as child:
+        try:
+            assert child.stdout is not None
+            os.set_blocking(child.stdout.fileno(), False)
+            with selectors.DefaultSelector() as selector:
+                selector.register(child.stdout, selectors.EVENT_READ)
+                while True:
+                    remaining = deadline - time.monotonic()
+                    if remaining <= 0:
+                        raise ValueError("production CSV deadline exceeded")
+                    if not selector.select(min(remaining, 0.1)):
+                        continue
+                    chunk = os.read(
+                        child.stdout.fileno(),
+                        min(65536, MAX_FILE_BYTES + 1 - len(captured)),
+                    )
+                    if not chunk:
+                        break
+                    captured.extend(chunk)
+                    if len(captured) > MAX_FILE_BYTES:
+                        raise ValueError("evidence byte limit exceeded")
+            if child.wait(timeout=max(0.001, deadline - time.monotonic())) != 0:
+                raise RuntimeError("production CSV command failed")
+        except subprocess.TimeoutExpired:
+            raise ValueError("production CSV deadline exceeded") from None
+        finally:
+            try:
+                os.killpg(child.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+            child.wait()
+    return captured.decode("utf-8")
 
 
 # --- record ----------------------------------------------------------------
@@ -437,26 +549,23 @@ class Record:
     last_ts: float | None
 
 
-def read_record(path: Path) -> Record:
+def read_record(path: Path, budget: EvidenceBudget | None = None) -> Record:
     dbs = {"prod": DatabaseHistory(), "shadow": DatabaseHistory()}
     units: dict[str, list[tuple[float, dict[str, Any]]]] = defaultdict(list)
     first = last = None
-    with open(path, encoding="utf-8") as stream:
-        for number, raw in enumerate(stream, 1):
-            if not raw.strip():
-                continue
-            try:
-                line = json.loads(raw)
-            except ValueError as err:
-                raise ValueError(f"{path}:{number}: {err}") from None
-            ts = float(line["ts"])
-            first = ts if first is None else first
-            last = ts
-            for role, history in dbs.items():
-                if role in line.get("dbs", {}):
-                    history.add(ts, line["dbs"][role])
-            for role, sample in line.get("units", {}).items():
-                units[role].append((ts, sample))
+    budget = budget or EvidenceBudget()
+    for number, raw in enumerate(evidence_lines(path, budget), 1):
+        if not raw.strip():
+            continue
+        line = budget.json(raw, f"{path}:{number}")
+        ts = float(line["ts"])
+        first = ts if first is None else first
+        last = ts
+        for role, history in dbs.items():
+            if role in line.get("dbs", {}):
+                history.add(ts, line["dbs"][role])
+        for role, sample in line.get("units", {}).items():
+            units[role].append((ts, sample))
     return Record(dbs, dict(units), first, last)
 
 
@@ -1050,9 +1159,14 @@ def main(argv: list[str] | None = None) -> int:
     points_path = args.points or args.shadow_dir / "points.lp"
     record_path = args.record or args.shadow_dir / "record.jsonl"
     try:
-        meta = json.loads(meta_path.read_text(encoding="utf-8"))
-        shadow_all, batches = read_points_file(points_path)
-        record = read_record(record_path)
+        budget = EvidenceBudget()
+        meta = budget.json(evidence_text(meta_path, budget), str(meta_path))
+        if "preparation_version" in meta and (
+            meta["preparation_version"] != 2 or meta.get("complete") is not True
+        ):
+            raise ValueError("incomplete or unsupported preparation marker")
+        shadow_all, batches = read_points_file(points_path, budget)
+        record = read_record(record_path, budget)
         masks = [re.compile(p) for p in (*DEFAULT_MASKS, *args.mask)]
         start = rfc3339_ns(args.start or meta["t0"])
         if args.stop:
@@ -1064,21 +1178,32 @@ def main(argv: list[str] | None = None) -> int:
         if stop <= start:
             raise ValueError("the window is empty (stop <= start)")
         if args.prod_csv:
-            csv_text = args.prod_csv.read_text(encoding="utf-8")
+            csv_text = evidence_text(args.prod_csv, budget)
         else:
             csv_text = fetch_prod_csv(
                 args.influx_command,
                 args.org,
                 flux_query(args.bucket, args.measurement, start, stop),
             )
+            budget.add_bytes(len(csv_text.encode("utf-8")))
             if args.save_prod_csv:
                 args.save_prod_csv.write_text(csv_text, encoding="utf-8")
         prod_points = [
             p
-            for p in influx_points(parse_annotated_csv(csv_text))
+            for p in influx_points(parse_annotated_csv(csv_text, budget))
             if p.series[0] == args.measurement and start <= p.ts < stop
         ]
-    except (OSError, ValueError, KeyError, RuntimeError, re.error) as err:
+    except (
+        OSError,
+        ValueError,
+        KeyError,
+        TypeError,
+        OverflowError,
+        RecursionError,
+        csv.Error,
+        RuntimeError,
+        re.error,
+    ) as err:
         print(f"shadow_compare: {err}", file=sys.stderr)
         return 1
     shadow_points = [

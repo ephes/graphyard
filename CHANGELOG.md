@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Stage shadow preparation privately and publish a synced v2 completion marker
+  last; preserve incomplete generations with an explicit safe recovery path.
+- Bound individual and cumulative comparison evidence bytes, rows, history nodes
+  and nesting, including growing files and fetched production CSV.
+
 - Give shadow backups a total elapsed deadline and roll back the whole requested
   disable set when any specification is missing.
 
