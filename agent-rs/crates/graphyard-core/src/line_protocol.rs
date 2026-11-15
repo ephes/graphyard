@@ -24,7 +24,7 @@ use chrono::{DateTime, Utc};
 use crate::logline::{LogEvent, escape_log_value};
 use crate::model::{MetricPoint, Tags};
 use crate::normalize::{NormalizedPoint, is_reserved_tag_key, normalize_metric_point};
-use crate::pycompat::py_float_repr;
+use crate::pycompat::{PyError, py_float_repr};
 
 /// `str.translate(table)` with the escapes of `point.py`.
 fn escape(text: &str, equals: bool) -> String {
@@ -236,11 +236,26 @@ pub fn prepare_write(measurement: &str, points: &[MetricPoint]) -> PreparedWrite
     prepare_write_with_limit(measurement, points, WRITE_MAX_REQUEST_BYTES)
 }
 
+/// Auto writes use the common InfluxDB v2/v3 domain at encoded microsecond
+/// precision. Explicit modes retain their existing sink-side timestamp checks.
+pub fn prepare_auto_write(measurement: &str, points: &[MetricPoint]) -> PreparedWrite {
+    prepare_write_inner(measurement, points, WRITE_MAX_REQUEST_BYTES, true)
+}
+
 /// Prepare one atomic request; overflow discards the complete batch.
 pub fn prepare_write_with_limit(
     measurement: &str,
     points: &[MetricPoint],
     max_bytes: usize,
+) -> PreparedWrite {
+    prepare_write_inner(measurement, points, max_bytes, false)
+}
+
+fn prepare_write_inner(
+    measurement: &str,
+    points: &[MetricPoint],
+    max_bytes: usize,
+    common_timestamp_domain: bool,
 ) -> PreparedWrite {
     let mut prepared = PreparedWrite {
         request_too_large: false,
@@ -264,7 +279,21 @@ pub fn prepare_write_with_limit(
         if prepared.request_too_large {
             break;
         }
-        match normalize_metric_point(item) {
+        let normalized = normalize_metric_point(item).and_then(|point| {
+            // Compare the microsecond value that timestamp_ns puts on the wire.
+            // Inclusive endpoints: 1677-09-21T00:12:43.145225Z and
+            // 2262-04-11T23:39:59.999999Z (the narrower v3 upper bound).
+            if common_timestamp_domain
+                && !(-9_223_372_036_854_775..=9_223_371_599_999_999)
+                    .contains(&point.ts.timestamp_micros())
+            {
+                return Err(PyError::value_error(
+                    "timestamp outside common InfluxDB v2/v3 domain",
+                ));
+            }
+            Ok(point)
+        });
+        match normalized {
             Ok(normalized) => {
                 let line = line_point(measurement, &normalized, &mut prepared.events);
                 let encoded = line.to_line_protocol();

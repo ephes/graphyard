@@ -29,6 +29,8 @@ async fn real_timestamp_storage_domain() {
         _ => panic!("unsupported local oracle mode"),
     };
     let settings = Settings::from_vars([
+        // Measure sink rejection without the auto writer's common-domain guard.
+        ("INFLUX_API_MODE".into(), "v2".into()),
         (
             "INFLUX_URL".into(),
             format!("http://127.0.0.1:{port}").into(),

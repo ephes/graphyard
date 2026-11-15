@@ -1186,6 +1186,12 @@ unchanged. Ordinary line-protocol escaping remains compatible.
 Raw subject/host/service identifiers are limited to 128 Unicode characters,
 `source_system` to 64, and other dimensions to 256. Each point admits at most 32
 custom tags, with 256 characters per key/value, including reserved overrides.
+With `INFLUX_API_MODE=auto`, Python and Rust writers admit timestamps only in the
+inclusive common InfluxDB v2/v3 range `1677-09-21T00:12:43.145225Z` through
+`2262-04-11T23:39:59.999999Z`, at UTC microsecond precision. Out-of-range points
+are logged and skipped before writing, including Rust shadow-file writes; only
+written points count. Explicit modes retain their existing sink-side checks.
+See [timestamp compatibility](docs/agent-rs.md#writer-admission-and-timestamp-compatibility).
 Direct writers skip invalid points and preserve valid siblings; API validation
 still refuses a malformed batch before sink or registry effects.
 The Rust writer additionally refuses the whole batch above 8 MiB encoded request

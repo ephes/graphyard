@@ -187,3 +187,39 @@ async fn oversized_batch_keeps_shadow_file_unchanged() {
         "# earlier content\n"
     );
 }
+
+#[tokio::test]
+async fn auto_timestamp_rejection_precedes_shadow_append() {
+    let (listener, url) = untouched_port();
+    let settings = settings(&[
+        ("INFLUX_URL", &url),
+        ("INFLUX_TOKEN", "t"),
+        ("INFLUX_ORG", "o"),
+    ]);
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("writes.lp");
+    let writer = InfluxWriter::to_file(&path).unwrap();
+    let mut invalid = point("synthetic", 1.0);
+    invalid.ts = "2262-04-11T23:40:00Z".parse().unwrap();
+    assert_eq!(
+        writer
+            .write_points(&settings, &[invalid.clone()])
+            .await
+            .unwrap(),
+        0
+    );
+    assert!(std::fs::read(&path).unwrap().is_empty());
+    let mut valid = invalid.clone();
+    valid.ts = "2262-04-11T23:39:59.999999Z".parse().unwrap();
+    assert_eq!(
+        writer
+            .write_points(&settings, &[invalid, valid])
+            .await
+            .unwrap(),
+        1
+    );
+    let text = std::fs::read_to_string(&path).unwrap();
+    assert_eq!(text.lines().count(), 2);
+    assert!(text.ends_with(" 9223371599999999000\n"));
+    assert!(listener.accept().is_err());
+}

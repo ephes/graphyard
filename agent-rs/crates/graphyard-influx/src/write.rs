@@ -31,11 +31,11 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
 use chrono::Utc;
-use graphyard_core::line_protocol::{PreparedWrite, prepare_write};
+use graphyard_core::line_protocol::{PreparedWrite, prepare_auto_write, prepare_write};
 use graphyard_core::logline::{LogEvent, LogLevel};
 use graphyard_core::model::MetricPoint;
 use graphyard_core::pycompat::{PyError, py_float_repr, py_str_repr};
-use graphyard_core::settings::Settings;
+use graphyard_core::settings::{InfluxApiMode, Settings};
 use percent_encoding::{AsciiSet, NON_ALPHANUMERIC, utf8_percent_encode};
 use reqwest::header::{
     ACCEPT, ACCEPT_ENCODING, AUTHORIZATION, CONTENT_TYPE, HeaderValue, USER_AGENT,
@@ -256,7 +256,11 @@ impl InfluxWriter {
         if points.is_empty() {
             return Ok(0);
         }
-        let prepared = prepare_write(&settings.influx_measurement, points);
+        let prepared = if settings.influx_api_mode() == InfluxApiMode::Auto {
+            prepare_auto_write(&settings.influx_measurement, points)
+        } else {
+            prepare_write(&settings.influx_measurement, points)
+        };
         // An oversized batch carries exactly one `metrics_write_rejected
         // category=request_bytes` event; log it before refusing the request.
         for event in &prepared.events {
