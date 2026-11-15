@@ -119,6 +119,8 @@ def scenario(
     touch_error: str | None = None,
     spec_name: str | None = None,
     p2_prefix: str | None = None,
+    rust_skipped: int | None = None,
+    rust_rows: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     config_text = config if isinstance(config, str) else json.dumps(config)
     routes = routes or {}
@@ -191,6 +193,21 @@ def scenario(
         for logger, level in zip(loggers, levels):
             logger.removeHandler(capture)
             logger.setLevel(level)
+    rust_expected = None
+    if rust_rows is not None:
+        # Oracle for the admitted neighbors uses the unchanged Python executor.
+        # The Rust-only skipped count is the explicit boundary contract.
+        admitted = scenario(
+            name,
+            spec_type,
+            config,
+            {"/api/states": _reply(200, rust_rows)},
+            spec_name=spec_name,
+        )
+        admitted["outcome"][2] = rust_skipped
+        rust_expected = {
+            key: admitted[key] for key in ("outcome", "written", "touched", "log")
+        }
     return {
         "name": name,
         "spec_name": spec.name,
@@ -207,6 +224,10 @@ def scenario(
         "write_error": write_error,
         "touch_error": touch_error,
         **outcome,
+        # The Rust scan counts malformed upstream rows (PLAN.md D-5).
+        # Retain the Python observation and declare only the intentional delta.
+        **({"rust_skipped": rust_skipped} if rust_skipped is not None else {}),
+        **({"rust_expected": rust_expected} if rust_expected is not None else {}),
         "requests": requests,
         "written": written,
         "touched": touched,
@@ -591,6 +612,7 @@ def _scenarios() -> list[dict[str, Any]]:
                     ],
                 )
             },
+            rust_skipped=5,
         ),
         scenario(
             "env scan device classes and null device class",
@@ -652,6 +674,8 @@ def _scenarios() -> list[dict[str, Any]]:
                     ],
                 )
             },
+            rust_skipped=1,
+            rust_rows=[{"entity_id": "sensor.ok_temperature", "state": "1"}],
         ),
         scenario(
             "env scan write failure",

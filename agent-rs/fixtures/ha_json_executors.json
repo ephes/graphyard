@@ -1561,6 +1561,7 @@
     0,
     ""
    ],
+   "rust_skipped": 5,
    "requests": [
     {
      "method": "GET",
@@ -2152,6 +2153,70 @@
     0,
     "collector failure: ValueError"
    ],
+   "rust_skipped": 1,
+   "rust_expected": {
+    "outcome": [
+     "ok",
+     1,
+     1,
+     ""
+    ],
+    "written": [
+     {
+      "ts": "2026-10-21T09:45:00.250000+00:00",
+      "metric": "ha.sensor.ok_temperature",
+      "value": "1.0",
+      "subject_type": "environment_sensor",
+      "subject_id": "ok_temperature",
+      "source_system": "homeassistant",
+      "collector_service": "graphyard-agent",
+      "collector_host": "homeassistant",
+      "source_instance": "default",
+      "source_entity_id": "sensor.ok_temperature",
+      "host": null,
+      "service": "homeassistant",
+      "tags": [
+       [
+        "entity_id",
+        "sensor.ok_temperature"
+       ],
+       [
+        "spec_name",
+        "env scan normalisation error stops the scan"
+       ]
+      ]
+     }
+    ],
+    "touched": [
+     {
+      "ts": "2026-10-21T09:45:00.250000+00:00",
+      "metric": "ha.sensor.ok_temperature",
+      "value": "1.0",
+      "subject_type": "environment_sensor",
+      "subject_id": "ok_temperature",
+      "source_system": "homeassistant",
+      "collector_service": "graphyard-agent",
+      "collector_host": "homeassistant",
+      "source_instance": "default",
+      "source_entity_id": "sensor.ok_temperature",
+      "host": null,
+      "service": "homeassistant",
+      "tags": [
+       [
+        "entity_id",
+        "sensor.ok_temperature"
+       ],
+       [
+        "spec_name",
+        "env scan normalisation error stops the scan"
+       ]
+      ]
+     }
+    ],
+    "log": [
+     "HTTP Request: GET http://fixture.test/api/states \"HTTP/1.1 200 OK\""
+    ]
+   },
    "requests": [
     {
      "method": "GET",

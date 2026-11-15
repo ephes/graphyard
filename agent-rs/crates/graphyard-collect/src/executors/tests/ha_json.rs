@@ -221,7 +221,9 @@ fn check_outcome(
                 "{context}"
             );
             assert_eq!(Some(outcome.ingested), expected[1].as_u64(), "{context}");
-            assert_eq!(Some(outcome.skipped), expected[2].as_u64(), "{context}");
+            // Explicit Rust row-isolation delta; every other reference field stays exact.
+            let skipped = scenario.get("rust_skipped").unwrap_or(&expected[2]);
+            assert_eq!(Some(outcome.skipped), skipped.as_u64(), "{context}");
             let message = localise(expected[3].as_str().expect("message"));
             match opt_text(scenario, "outcome_p2_prefix") {
                 Some(prefix) => assert!(
@@ -262,7 +264,10 @@ async fn executor_scenarios_match_python() {
             &config,
         )
         .await;
-        check_outcome(scenario, &result, &localise, name);
+        // Row-isolation expectations are generated from the unchanged Python
+        // executor on just the admitted rows, with an explicit skipped count.
+        let expected = scenario.get("rust_expected").unwrap_or(scenario);
+        check_outcome(expected, &result, &localise, name);
 
         let requests = server.requests();
         let expected_requests = scenario["requests"].as_array().expect("requests");
@@ -280,15 +285,15 @@ async fn executor_scenarios_match_python() {
         }
         assert_points(
             sink.written.borrow().as_ref(),
-            &scenario["written"],
+            &expected["written"],
             &format!("{name}: written"),
         );
         assert_points(
             sink.touched.borrow().as_ref(),
-            &scenario["touched"],
+            &expected["touched"],
             &format!("{name}: touched"),
         );
-        let expected_log: Vec<String> = scenario["log"]
+        let expected_log: Vec<String> = expected["log"]
             .as_array()
             .expect("log")
             .iter()

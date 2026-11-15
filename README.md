@@ -15,6 +15,9 @@ then row ID; failed categories keep their last successful evidence. Fleet summar
 batch host/category pointers and reports, decoding each referenced report once.
 Summary, per-host and version-page evidence is materialized in one short database snapshot, so
 concurrent ingestion/pruning cannot mix generations; rendering holds no transaction.
+Application pages also capture one response-entry clock for host/application
+freshness and every software-health projection, including threshold crossings
+and wall-clock rollback.
 SQLite's configured `BEGIN IMMEDIATE` briefly reserves the database writer during
 these reads; competing ingests may need their existing retry on HTTP 503.
 PostgreSQL readers own an outer repeatable-read transaction; do not wrap these
@@ -550,6 +553,34 @@ headers, body reads and JSON decoding. Budget exhaustion closes the response,
 marks the spec critical and writes no points; the next spec still runs. HA shares
 HTTP JSON/page probe cancellation and the four abandoned-worker limit below,
 so the agent returns within the deadline plus about a second.
+
+The Rust HA collectors additionally preflight the whole decoded collection before
+filtering or normalizing rows: at most 4096 rows (and therefore output points),
+128 subject/metric mapping rules in total, 4096 UTF-8 bytes per regex, 16,384
+possible regex evaluations and 4 MiB of aggregate match-input bytes. Admission
+counts every row against every rule plus the inclusion filter, even if filtering
+or first-match selection would avoid some work. Patterns are cached before the
+row loop and `fancy-regex` allows at most 1000 backtracking steps per match.
+
+Output admission reserves at most 8 MiB of point string/tag bytes: for each row,
+the largest configured extra-tags rule, both projected attribute tags, and eight
+times its entity/configured dimension text (including a 256-byte default reserve).
+This conservative reservation includes rows/rules that would later be ignored;
+exact ceilings are accepted. It bounds the entity × tag-size product before tag
+cloning or point allocation. Container counts remain bounded by the row and
+existing spec-shape limits. Exceeding a ceiling is critical with
+`collector failure: _HomeAssistantLimitExceeded`; regex runtime exhaustion is
+critical with `collector failure: ValueError`. Neither case writes points or
+registry entries, including otherwise valid neighbors. These fixed limits cannot
+be raised with the HTTP knobs. They are Rust-specific safety behavior; the frozen
+Python reference remains unchanged (see PLAN.md D-5).
+
+Malformed HA scan rows (non-objects, missing/non-string identities, or sensor identities
+that cannot produce a subject slug, such as `sensor.`) increment the scan's
+`skipped` count before filtering/mapping. Valid neighboring readings still write
+normally. The single-sensor collector retains its existing outcome contract.
+Invalid inclusion regex/configuration and collection-limit/runtime failures
+retain whole-collection failure semantics; row isolation cannot bypass them.
 
 Example `config` JSON for an HTTP JSON metric spec:
 

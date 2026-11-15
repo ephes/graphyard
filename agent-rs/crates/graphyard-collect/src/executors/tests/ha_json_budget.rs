@@ -254,3 +254,168 @@ async fn mapping_warnings_are_once_per_run() {
     .await;
     assert_eq!(count(&logs::lines()), 2);
 }
+
+#[tokio::test]
+async fn ha_work_envelope_refuses_before_matching_or_writing() {
+    for (count, rules, entity) in [
+        (4097, 0, "sensor.temperature".to_owned()),
+        (1, 129, "sensor.temperature".to_owned()),
+        (256, 128, "sensor.temperature".to_owned()),
+        (128, 1, format!("sensor.{}", "a".repeat(32768))),
+    ] {
+        let body = serde_json::to_vec(&vec![
+            json!({
+                "entity_id": entity, "state": "7", "attributes": {"device_class": "temperature"}
+            });
+            count
+        ])
+        .unwrap();
+        let server = Server::start(move |_| response("200 OK", &[], &body)).await;
+        let config = json!({
+            "base_url": server.origin(), "access_token": "synthetic",
+            "metric_mapping": {"rules": vec![json!({"match_entity_id_regex": "never"}); rules]}
+        });
+        let sink = ClockedSink::new(now_utc());
+        let mut state = RunState::new();
+        let outcome = run(
+            "home_assistant_env_scan",
+            &HttpContext::new(),
+            &sink,
+            &mut state,
+            &config,
+        )
+        .await;
+        assert_eq!(
+            outcome,
+            SpecOutcome::new(
+                StatusLevel::Critical,
+                0,
+                0,
+                "collector failure: _HomeAssistantLimitExceeded"
+            )
+        );
+        assert!(
+            state.mappings.warned_keys().next().is_none(),
+            "no normalization started"
+        );
+        assert!(sink.written.borrow().is_none());
+        assert!(sink.touched.borrow().is_none());
+    }
+}
+
+#[tokio::test]
+async fn ha_output_envelope_refuses_tag_amplification_without_partial_writes() {
+    let body = serde_json::to_vec(&vec![
+        json!({
+            "entity_id": "sensor.temperature", "state": "7", "attributes": {}
+        });
+        65
+    ])
+    .unwrap();
+    let server = Server::start(move |_| response("200 OK", &[], &body)).await;
+    let config = json!({
+        "base_url": server.origin(), "access_token": "synthetic",
+        "metric_mapping": {"rules": [{"match_entity_id_regex": ".*", "extra_tags": {"large": "x".repeat(128 * 1024)}}]}
+    });
+    let sink = ClockedSink::new(now_utc());
+    let outcome = run(
+        "home_assistant_env_scan",
+        &HttpContext::new(),
+        &sink,
+        &mut RunState::new(),
+        &config,
+    )
+    .await;
+    assert_eq!(
+        outcome,
+        SpecOutcome::new(
+            StatusLevel::Critical,
+            0,
+            0,
+            "collector failure: _HomeAssistantLimitExceeded"
+        )
+    );
+    assert!(sink.written.borrow().is_none());
+    assert!(sink.touched.borrow().is_none());
+}
+
+#[tokio::test]
+async fn ha_adversarial_mapping_failure_never_publishes_neighbors() {
+    for mapping in ["subject_mapping", "metric_mapping", "entity_id_regex"] {
+        let body = serde_json::to_vec(&json!([
+            {"entity_id": "sensor.temperature", "state": "7", "attributes": {"device_class": "temperature"}},
+            {"entity_id": format!("sensor.{}", "a".repeat(18)), "state": "8", "attributes": {}}
+        ])).unwrap();
+        let server = Server::start(move |_| response("200 OK", &[], &body)).await;
+        let mut config = json!({"base_url": server.origin(), "access_token": "synthetic", "entity_id_regex": ".*"});
+        if mapping == "entity_id_regex" {
+            config[mapping] = json!("(a|aa)+\\1x");
+        } else {
+            config[mapping] = json!({"rules": [{"match_entity_id_regex": "sensor\\.(a|aa)+\\1x"}]});
+        }
+        let sink = ClockedSink::new(now_utc());
+        let outcome = run(
+            "home_assistant_env_scan",
+            &HttpContext::new(),
+            &sink,
+            &mut RunState::new(),
+            &config,
+        )
+        .await;
+        assert_eq!(outcome.status, StatusLevel::Critical, "{mapping}");
+        assert!(sink.written.borrow().is_none(), "{mapping}");
+        assert!(sink.touched.borrow().is_none(), "{mapping}");
+    }
+}
+
+#[tokio::test]
+async fn ha_malformed_identity_is_counted_without_discarding_valid_neighbors() {
+    for malformed in [
+        json!("sensor."),
+        json!("binary_sensor.!!"),
+        Value::Null,
+        json!(42),
+    ] {
+        let body = serde_json::to_vec(&json!([
+            {"entity_id": "sensor.first_temperature", "state": "7", "attributes": {"device_class": "temperature"}},
+            {"entity_id": malformed, "state": "8", "attributes": {"device_class": "temperature"}},
+            {"entity_id": "sensor.last_temperature", "state": "9", "attributes": {"device_class": "temperature"}}
+        ])).unwrap();
+        let server = Server::start(move |_| response("200 OK", &[], &body)).await;
+        let config = json!({"base_url": server.origin(), "access_token": "synthetic"});
+        let sink = ClockedSink::new(now_utc());
+        let outcome = run(
+            "home_assistant_env_scan",
+            &HttpContext::new(),
+            &sink,
+            &mut RunState::new(),
+            &config,
+        )
+        .await;
+        assert_eq!(outcome, SpecOutcome::new(StatusLevel::Ok, 2, 1, ""));
+        {
+            let points = sink.written.borrow();
+            let points = points.as_ref().unwrap();
+            assert_eq!(
+                points.iter().map(|p| p.value).collect::<Vec<_>>(),
+                [7.0, 9.0]
+            );
+            assert_eq!(sink.touched.borrow().as_ref().unwrap(), points);
+        }
+
+        let sink = ClockedSink::new(now_utc());
+        let mut bad_config = config;
+        bad_config["entity_id_regex"] = json!("(");
+        let outcome = run(
+            "home_assistant_env_scan",
+            &HttpContext::new(),
+            &sink,
+            &mut RunState::new(),
+            &bad_config,
+        )
+        .await;
+        assert_eq!(outcome.status, StatusLevel::Critical);
+        assert!(sink.written.borrow().is_none());
+        assert!(sink.touched.borrow().is_none());
+    }
+}

@@ -1759,3 +1759,49 @@ def test_inventory_response_cache_policy_including_errors(
     assert "private" not in client.get(reverse("graphyard:conditions_list")).get(
         "Cache-Control", ""
     )
+
+
+@pytest.mark.parametrize("clock_step", [1, -1801])
+def test_application_projection_uses_one_clock_for_all_rows(
+    client, enrolled, django_user_model, monkeypatch, clock_step
+):
+    from graphyard import inventory, inventory_applications as presentation
+
+    now = timezone.now()
+    stamp = now - timedelta(seconds=1800)
+    evidence = health_evidence(timestamp=stamp.timestamp())
+    data = report(observed_at=stamp.isoformat())
+    data["categories"]["applications"]["items"] = [
+        {
+            "id": name,
+            "status": "ok",
+            "items": {"software_health": {"status": "ok", "items": evidence}},
+        }
+        for name in ["synthetic-first", "synthetic-second"]
+    ]
+    enrolled[0].warning_after_seconds = 1800
+    enrolled[0].save(update_fields=["warning_after_seconds"])
+    assert send(client, enrolled, data).status_code == 200
+    client.force_login(django_user_model.objects.create_user(username="clock-reader"))
+    monkeypatch.setattr(inventory.timezone, "now", lambda: now)
+    # Health's old independent clock crosses the inclusive threshold or rolls
+    # behind the observation. The response entry clock must govern both rows.
+    clock = [now.timestamp()]
+    original_project = presentation.project
+
+    def project(*args, **kwargs):
+        row = original_project(*args, **kwargs)
+        clock[0] += clock_step
+        return row
+
+    monkeypatch.setattr(presentation.time, "time", lambda: clock[0])
+    monkeypatch.setattr(presentation, "project", project)
+    response = client.get(reverse("graphyard:inventory_applications", args=["studio"]))
+    assert response.status_code == 200
+    assert response.context["observation_stale"] is False
+    assert response.context["host"]["stale"] is False
+    assert [row["health"]["historical"] for row in response.context["rows"]] == [
+        False,
+        False,
+    ]
+    assert InventorySnapshot.objects.get().report == data

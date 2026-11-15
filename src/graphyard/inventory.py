@@ -514,6 +514,7 @@ def detail(request, host_id):
 def application_list(request, host_id):
     from . import inventory_applications as presentation
 
+    now = timezone.now()
     host = get_object_or_404(InventoryHost, host__host_id=host_id)
     state = host_state(host)
     category = next((entry for entry in state[1] if entry.name == "applications"), None)
@@ -534,7 +535,6 @@ def application_list(request, host_id):
             and query.casefold() in row["id"].casefold()
         ]
     page = Paginator(rows, 20).get_page(request.GET.get("page"))
-    now = timezone.now()
     return render(
         request,
         "graphyard/inventory_applications.html",
@@ -555,6 +555,7 @@ def application_list(request, host_id):
                     row,
                     host_id=host.host.host_id,
                     observed_at=snapshot.observed_at if snapshot else None,
+                    now=now,
                 )
                 for row in page.object_list
             ],
