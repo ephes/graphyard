@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Reject nonfinite qualification controls, observations and unrepresentable point
+  timestamps; preserve finite signed values and avoid difference overflow.
+
 - Stage shadow preparation privately and publish a synced v2 completion marker
   last; preserve incomplete generations with an explicit safe recovery path.
 - Bound individual and cumulative comparison evidence bytes, rows, history nodes

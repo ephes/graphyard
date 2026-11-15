@@ -382,3 +382,11 @@ Regular opened files are checked by size and bounded reads, including growth;
 limits include ignored/out-of-window evidence. Fetched CSV has a 30-second owned
 process budget and the same file cap. Admission failure exits 1 before publishing
 a qualification report; split a larger recording into meaningful complete windows.
+
+Qualification controls are admitted before evidence I/O: tolerance must be finite
+and nonnegative; alignment must be finite and between one nanosecond and 86400
+seconds inclusive. Numeric point values, numeric LP fields and JSON observations
+must be finite; point timestamps must fit signed 64-bit nanoseconds. Invalid
+observations refuse the complete input set with a location-only diagnostic.
+Finite negative/zero measurements remain supported; relative differences scale
+before subtraction to avoid overflowing opposite-sign finite values.

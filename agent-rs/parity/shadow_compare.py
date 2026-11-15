@@ -62,6 +62,7 @@ import csv
 import datetime as dt
 import io
 import json
+import math
 import os
 import stat
 import re
@@ -149,6 +150,8 @@ class EvidenceBudget:
         while pending:
             item, depth = pending.pop()
             self.nodes += 1
+            if isinstance(item, float) and not math.isfinite(item):
+                raise ValueError(f"{location}: nonfinite numeric evidence")
             if self.nodes > MAX_JSON_NODES or depth > MAX_JSON_DEPTH:
                 raise ValueError("evidence history limit exceeded")
             if isinstance(item, dict):
@@ -228,6 +231,12 @@ class Point:
     series: Series
     ts: int
     value: float
+
+    def __post_init__(self) -> None:
+        if not math.isfinite(self.value):
+            raise ValueError("nonfinite point value")
+        if type(self.ts) is not int or not -(2**63) <= self.ts < 2**63:
+            raise ValueError("point timestamp outside signed 64-bit nanoseconds")
 
     @property
     def tags(self) -> dict[str, str]:
@@ -316,6 +325,8 @@ def parse_line(line: str) -> tuple[str, dict[str, str], dict[str, Any], int | No
             parsed = int(value[:-1])
         else:
             parsed = float(value)
+        if isinstance(parsed, float) and not math.isfinite(parsed):
+            raise ValueError("nonfinite numeric field")
         fields[_unescape(name, ",= ")] = parsed
     return measurement, tags, fields, timestamp
 
@@ -342,13 +353,16 @@ def read_points_file(
             raise ValueError(f"{path}:{number}: invalid point evidence") from None
         if "value" not in fields or timestamp is None:
             raise ValueError(f"{path}:{number}: no value field or timestamp")
-        points.append(
-            Point(
-                (measurement, tuple(sorted((k, v) for k, v in tags.items() if v))),
-                timestamp,
-                float(fields["value"]),
+        try:
+            points.append(
+                Point(
+                    (measurement, tuple(sorted((k, v) for k, v in tags.items() if v))),
+                    timestamp,
+                    float(fields["value"]),
+                )
             )
-        )
+        except (ValueError, OverflowError):
+            raise ValueError(f"{path}:{number}: invalid numeric observation") from None
     return points, batches
 
 
@@ -394,7 +408,7 @@ def parse_annotated_csv(
 
 def influx_points(records: Iterable[dict[str, str]]) -> list[Point]:
     points = []
-    for record in records:
+    for number, record in enumerate(records, 1):
         if record.get("_field", "value") != "value":
             continue
         tags = tuple(
@@ -404,13 +418,18 @@ def influx_points(records: Iterable[dict[str, str]]) -> list[Point]:
                 if key not in NON_TAG_COLUMNS and key != "_measurement" and value
             )
         )
-        points.append(
-            Point(
-                (record.get("_measurement", ""), tags),
-                rfc3339_ns(record["_time"]),
-                float(record["_value"]),
+        try:
+            points.append(
+                Point(
+                    (record.get("_measurement", ""), tags),
+                    rfc3339_ns(record["_time"]),
+                    float(record["_value"]),
+                )
             )
-        )
+        except (ValueError, OverflowError, KeyError):
+            raise ValueError(
+                f"production CSV row {number}: invalid numeric observation"
+            ) from None
     return points
 
 
@@ -558,7 +577,12 @@ def read_record(path: Path, budget: EvidenceBudget | None = None) -> Record:
         if not raw.strip():
             continue
         line = budget.json(raw, f"{path}:{number}")
-        ts = float(line["ts"])
+        try:
+            ts = float(line["ts"])
+            if not math.isfinite(ts) or not -(2**63) / 1e9 <= ts < (2**63) / 1e9:
+                raise ValueError("invalid timestamp")
+        except (ValueError, OverflowError):
+            raise ValueError(f"{path}:{number}: invalid record timestamp") from None
         first = ts if first is None else first
         last = ts
         for role, history in dbs.items():
@@ -604,7 +628,7 @@ def masked(text: Any, masks: list[re.Pattern[str]]) -> Any:
 
 def relative_difference(a: float, b: float) -> float:
     scale = max(abs(a), abs(b))
-    return 0.0 if scale == 0 else abs(a - b) / scale
+    return 0.0 if scale == 0 else abs(a / scale - b / scale)
 
 
 def _sequences(
@@ -1159,6 +1183,13 @@ def main(argv: list[str] | None = None) -> int:
     points_path = args.points or args.shadow_dir / "points.lp"
     record_path = args.record or args.shadow_dir / "record.jsonl"
     try:
+        if not math.isfinite(args.tolerance) or args.tolerance < 0:
+            raise ValueError("tolerance must be finite and nonnegative")
+        if (
+            not math.isfinite(args.align_seconds)
+            or not 1e-9 <= args.align_seconds <= 86400
+        ):
+            raise ValueError("alignment must be finite and in [1e-9, 86400] seconds")
         budget = EvidenceBudget()
         meta = budget.json(evidence_text(meta_path, budget), str(meta_path))
         if "preparation_version" in meta and (

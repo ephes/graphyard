@@ -827,7 +827,7 @@ def test_compare_queries_influx_through_the_command(tmp_path, capsys):
         ["--shadow-dir", str(shadow), "--influx-command", f"{fake} query --raw"]
     )
     assert code == 1
-    assert "exited 1: Error: unauthorized" in capsys.readouterr().err
+    assert "production CSV command failed" in capsys.readouterr().err
 
 
 def _simulate_run(connection: sqlite3.Connection, stamp: str, status: str) -> None:
@@ -1333,3 +1333,66 @@ def test_compare_bounds_fetched_csv(tmp_path, monkeypatch):
         compare.fetch_prod_csv(
             f"{shlex.quote(sys.executable)} {shlex.quote(str(script))}", None, "unused"
         )
+
+
+@pytest.mark.parametrize(
+    "option,value",
+    [
+        ("--tolerance", "nan"),
+        ("--tolerance", "inf"),
+        ("--tolerance", "-1"),
+        ("--align-seconds", "nan"),
+        ("--align-seconds", "inf"),
+        ("--align-seconds", "0"),
+        ("--align-seconds", "-1"),
+        ("--align-seconds", "86401"),
+    ],
+)
+def test_compare_rejects_invalid_options_before_evidence(
+    tmp_path, capsys, option, value
+):
+    out = tmp_path / "report"
+    assert (
+        compare.main(
+            [
+                "--shadow-dir",
+                str(tmp_path / "missing"),
+                "--json",
+                str(out),
+                option,
+                value,
+            ]
+        )
+        == 1
+    )
+    assert "must be finite" in capsys.readouterr().err
+    assert not out.exists()
+
+
+@pytest.mark.parametrize("value", ["NaN", "Infinity", "-Infinity", "1e999"])
+def test_compare_refuses_nonfinite_observations(tmp_path, value):
+    path = tmp_path / "lp"
+    path.write_text(f"m value={value} 1\n")
+    with pytest.raises(ValueError):
+        compare.read_points_file(path)
+    with pytest.raises(ValueError):
+        compare.influx_points([{"_time": "1", "_value": value}])
+    path.write_text('{"ts":' + value + "}\n")
+    with pytest.raises(ValueError):
+        compare.read_record(path)
+
+
+def test_compare_finite_negative_zero_and_extreme_values(tmp_path):
+    path = tmp_path / "lp"
+    path.write_text("m value=-2 1\nm value=0 2\n")
+    assert [p.value for p in compare.read_points_file(path)[0]] == [-2, 0]
+    assert compare.relative_difference(-1e308, 1e308) == 2
+    assert compare.relative_difference(0, 0) == 0
+
+
+@pytest.mark.parametrize("timestamp", [str(2**63), str(-(2**63) - 1)])
+def test_compare_refuses_unrepresentable_point_times(tmp_path, timestamp):
+    path = tmp_path / "lp"
+    path.write_text(f"m value=1 {timestamp}\n")
+    with pytest.raises(ValueError):
+        compare.read_points_file(path)
