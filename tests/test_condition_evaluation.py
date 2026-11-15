@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 
 import pytest
@@ -252,7 +253,7 @@ def test_one_breaching_series_next_to_healthy_one_is_critical(monkeypatch):
 
         assert result.status == StatusLevel.CRITICAL
         assert result.last_value == 0.95
-        assert "mountpoint=/data" in result.message
+        assert '"mountpoint"="/data"' in result.message
         assert "1 of 2 series" in result.message
 
 
@@ -283,7 +284,7 @@ def test_stale_series_next_to_fresh_one_is_warning(monkeypatch, settings):
 
         assert result.status == StatusLevel.WARNING
         assert "stale" in result.message.lower()
-        assert "mountpoint=/backup" in result.message
+        assert '"mountpoint"="/backup"' in result.message
         assert result.last_value == 0.50
 
 
@@ -333,7 +334,7 @@ def test_series_split_by_collector_dimension(monkeypatch):
     result = evaluate_condition(_condition(), now=now)
 
     assert result.status == StatusLevel.CRITICAL
-    assert "collector_host=macmini" in result.message
+    assert '"collector_host"="macmini"' in result.message
     assert result.last_value == 80.0
 
 
@@ -853,3 +854,47 @@ def test_noncanonical_stored_json_still_publishes(monkeypatch):
     condition.refresh_from_db()
     assert condition.last_evaluated is not None
     assert condition.message == "No samples available in condition window"
+
+
+@pytest.mark.parametrize("healthy", [False, True])
+@pytest.mark.parametrize("tag_kind", ["delimiter", "missing", "escaped"])
+def test_series_identity_breaks_ties_independently_of_display(
+    monkeypatch, healthy, tag_kind
+):
+    from graphyard.services import _series_key, _series_labels
+
+    now = datetime(2026, 3, 4, 12, 0, tzinfo=UTC)
+    tags = [{"a": "x, b=y", "b": "z"}, {"a": "x", "b": "y, b=z"}]
+    if tag_kind == "missing":
+        tags = [{"a": ""}, {}]
+    elif tag_kind == "escaped":
+        tags = [{"a": '"'}, {"a": "A"}]
+    series = []
+    for index, dimensions in enumerate(tags):
+        samples = [
+            _sample(now, minutes_ago=i, value=(20 if healthy else 80) + index)
+            for i in [5, 0]
+        ]
+        series.append([replace(sample, tags=dimensions) for sample in samples])
+    keys = [_series_key(samples[0]) for samples in series]
+    labels = _series_labels(keys)
+    assert labels[keys[0]] != labels[keys[1]]
+    expected = (max if healthy else min)(range(2), key=lambda i: keys[i])
+    results = []
+    for ordered in (_flux_order(*series), _flux_order(*reversed(series))):
+        monkeypatch.setattr(
+            "graphyard.services.influx.query_condition_window", lambda *a, **k: ordered
+        )
+        result = evaluate_condition(_condition(), now=now)
+        assert result.last_value == (20 if healthy else 80) + expected
+        results.append(result)
+    assert results[0] == results[1]
+
+
+def test_series_labels_quote_names_values_and_missing_members():
+    from graphyard.services import _series_labels
+
+    keys = [(('a"=, \\é', 'x"=, \\雪'),), ()]
+    labels = _series_labels(keys)
+    assert labels[keys[0]] == '"a\\"=, \\\\é"="x\\"=, \\\\雪"'
+    assert labels[keys[1]] == '"a\\"=, \\\\é"=null'

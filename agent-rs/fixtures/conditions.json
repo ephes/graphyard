@@ -625,7 +625,7 @@
    "query_now": "2026-03-04T12:00:00+00:00",
    "result": {
     "status": "critical",
-    "message": "host.filesystem_used_ratio gte 0.9 for 5m [series: mountpoint=/data] (1 of 2 series not OK)",
+    "message": "host.filesystem_used_ratio gte 0.9 for 5m [series: \"mountpoint\"=\"/data\"] (1 of 2 series not OK)",
     "last_value": "0.95",
     "evaluated_at": "2026-03-04T12:00:00+00:00"
    }
@@ -886,7 +886,7 @@
    "query_now": "2026-03-04T12:00:00+00:00",
    "result": {
     "status": "critical",
-    "message": "host.filesystem_used_ratio gte 0.9 for 5m [series: mountpoint=/data] (1 of 2 series not OK)",
+    "message": "host.filesystem_used_ratio gte 0.9 for 5m [series: \"mountpoint\"=\"/data\"] (1 of 2 series not OK)",
     "last_value": "0.95",
     "evaluated_at": "2026-03-04T12:00:00+00:00"
    }
@@ -1147,7 +1147,7 @@
    "query_now": "2026-03-04T12:00:00+00:00",
    "result": {
     "status": "critical",
-    "message": "host.filesystem_used_ratio gte 0.9 for 5m [series: mountpoint=/data] (1 of 2 series not OK)",
+    "message": "host.filesystem_used_ratio gte 0.9 for 5m [series: \"mountpoint\"=\"/data\"] (1 of 2 series not OK)",
     "last_value": "0.95",
     "evaluated_at": "2026-03-04T12:00:00+00:00"
    }
@@ -1289,7 +1289,7 @@
    "query_now": "2026-03-04T12:00:00+00:00",
    "result": {
     "status": "warning",
-    "message": "Latest sample is stale (600s old) [series: mountpoint=/backup] (1 of 2 series not OK)",
+    "message": "Latest sample is stale (600s old) [series: \"mountpoint\"=\"/backup\"] (1 of 2 series not OK)",
     "last_value": "0.5",
     "evaluated_at": "2026-03-04T12:00:00+00:00"
    }
@@ -1431,7 +1431,7 @@
    "query_now": "2026-03-04T12:00:00+00:00",
    "result": {
     "status": "warning",
-    "message": "Latest sample is stale (600s old) [series: mountpoint=/backup] (1 of 2 series not OK)",
+    "message": "Latest sample is stale (600s old) [series: \"mountpoint\"=\"/backup\"] (1 of 2 series not OK)",
     "last_value": "0.5",
     "evaluated_at": "2026-03-04T12:00:00+00:00"
    }
@@ -1573,7 +1573,7 @@
    "query_now": "2026-03-04T12:00:00+00:00",
    "result": {
     "status": "warning",
-    "message": "Latest sample is stale (600s old) [series: mountpoint=/backup] (1 of 2 series not OK)",
+    "message": "Latest sample is stale (600s old) [series: \"mountpoint\"=\"/backup\"] (1 of 2 series not OK)",
     "last_value": "0.5",
     "evaluated_at": "2026-03-04T12:00:00+00:00"
    }
@@ -1918,7 +1918,7 @@
    "query_now": "2026-03-04T12:00:00+00:00",
    "result": {
     "status": "critical",
-    "message": "ha.sensor.office_humidity gt 75.0 for 5m [series: collector_host=macmini] (1 of 2 series not OK)",
+    "message": "ha.sensor.office_humidity gt 75.0 for 5m [series: \"collector_host\"=\"macmini\"] (1 of 2 series not OK)",
     "last_value": "80.0",
     "evaluated_at": "2026-03-04T12:00:00+00:00"
    }
@@ -12208,7 +12208,7 @@
    }
   },
   {
-   "name": "empty_tag_value_splits_series_with_equal_labels",
+   "name": "empty_tag_value_and_missing_tag_have_distinct_labels",
    "condition": {
     "metric_name": "ha.sensor.office_humidity",
     "operator": "gt",
@@ -12417,13 +12417,13 @@
    "query_now": "2026-03-04T12:00:00+00:00",
    "result": {
     "status": "critical",
-    "message": "ha.sensor.office_humidity gt 75.0 for 5m [series: foo=] (2 of 2 series not OK)",
+    "message": "ha.sensor.office_humidity gt 75.0 for 5m [series: \"foo\"=\"\"] (2 of 2 series not OK)",
     "last_value": "80.0",
     "evaluated_at": "2026-03-04T12:00:00+00:00"
    }
   },
   {
-   "name": "empty_tag_value_equal_labels_healthy_takes_first",
+   "name": "empty_tag_value_healthy_takes_structural_maximum",
    "condition": {
     "metric_name": "ha.sensor.office_humidity",
     "operator": "gt",
@@ -12633,12 +12633,12 @@
    "result": {
     "status": "ok",
     "message": "Condition is within thresholds (2 series)",
-    "last_value": "40.0",
+    "last_value": "30.0",
     "evaluated_at": "2026-03-04T12:00:00+00:00"
    }
   },
   {
-   "name": "ties_by_latest_sample_then_label",
+   "name": "ties_by_latest_sample_then_structural_key",
    "condition": {
     "metric_name": "ha.sensor.office_humidity",
     "operator": "gt",
@@ -12925,7 +12925,7 @@
    "query_now": "2026-03-04T12:00:00+00:00",
    "result": {
     "status": "critical",
-    "message": "ha.sensor.office_humidity gt 75.0 for 5m [series: collector_host=mid] (3 of 3 series not OK)",
+    "message": "ha.sensor.office_humidity gt 75.0 for 5m [series: \"collector_host\"=\"mid\"] (3 of 3 series not OK)",
     "last_value": "80.0",
     "evaluated_at": "2026-03-04T12:00:00+00:00"
    }
@@ -13128,7 +13128,7 @@
    "query_now": "2026-03-04T12:00:00+00:00",
    "result": {
     "status": "critical",
-    "message": "ha.sensor.office_humidity gt 75.0 for 5m [series: collector_host=alpha] (2 of 2 series not OK)",
+    "message": "ha.sensor.office_humidity gt 75.0 for 5m [series: \"collector_host\"=\"alpha\"] (2 of 2 series not OK)",
     "last_value": "90.0",
     "evaluated_at": "2026-03-04T12:00:00+00:00"
    }
@@ -13624,7 +13624,7 @@
    "query_now": "2026-03-04T12:00:00+00:00",
    "result": {
     "status": "critical",
-    "message": "ha.sensor.office_humidity gt 75.0 for 5m [series: collector_host=c] (2 of 3 series not OK)",
+    "message": "ha.sensor.office_humidity gt 75.0 for 5m [series: \"collector_host\"=\"c\"] (2 of 3 series not OK)",
     "last_value": "80.0",
     "evaluated_at": "2026-03-04T12:00:00+00:00"
    }
@@ -13752,7 +13752,7 @@
    "query_now": "2026-03-04T12:00:00+00:00",
    "result": {
     "status": "warning",
-    "message": "Latest sample is stale (1200s old) [series: collector_host=stale] (2 of 2 series not OK)",
+    "message": "Latest sample is stale (1200s old) [series: \"collector_host\"=\"stale\"] (2 of 2 series not OK)",
     "last_value": "10.0",
     "evaluated_at": "2026-03-04T12:00:00+00:00"
    }
@@ -14172,7 +14172,7 @@
    "query_now": "2026-03-04T12:00:00+00:00",
    "result": {
     "status": "critical",
-    "message": "ha.sensor.office_humidity gt 75.0 for 5m [series: collector_host=x, fs=apfs] (1 of 2 series not OK)",
+    "message": "ha.sensor.office_humidity gt 75.0 for 5m [series: \"collector_host\"=\"x\", \"fs\"=\"apfs\"] (1 of 2 series not OK)",
     "last_value": "80.0",
     "evaluated_at": "2026-03-04T12:00:00+00:00"
    }
@@ -14375,7 +14375,7 @@
    "query_now": "2026-03-04T12:00:00+00:00",
    "result": {
     "status": "critical",
-    "message": "ha.sensor.office_humidity gt 75.0 for 5m [series: metric=a.metric] (1 of 2 series not OK)",
+    "message": "ha.sensor.office_humidity gt 75.0 for 5m [series: \"metric\"=\"a.metric\"] (1 of 2 series not OK)",
     "last_value": "80.0",
     "evaluated_at": "2026-03-04T12:00:00+00:00"
    }
@@ -14596,7 +14596,7 @@
    "query_now": "2026-03-04T12:00:00+00:00",
    "result": {
     "status": "critical",
-    "message": "ha.sensor.office_humidity gt 75.0 for 5m [series: aa=2, collector_host=ch, collector_service=cs, host=homeassistant, service=svc, source_entity_id=ent, source_instance=inst, source_system=sys, subject_id=sid, subject_type=host, zz=1] (1 of 2 series not OK)",
+    "message": "ha.sensor.office_humidity gt 75.0 for 5m [series: \"aa\"=\"2\", \"collector_host\"=\"ch\", \"collector_service\"=\"cs\", \"host\"=\"homeassistant\", \"service\"=\"svc\", \"source_entity_id\"=\"ent\", \"source_instance\"=\"inst\", \"source_system\"=\"sys\", \"subject_id\"=\"sid\", \"subject_type\"=\"host\", \"zz\"=\"1\"] (1 of 2 series not OK)",
     "last_value": "80.0",
     "evaluated_at": "2026-03-04T12:00:00+00:00"
    }
@@ -14925,7 +14925,7 @@
    "query_now": "2026-03-04T12:00:00+00:00",
    "result": {
     "status": "critical",
-    "message": "ha.sensor.office_humidity gt 75.0 for 5m [series: name=Zulu] (3 of 3 series not OK)",
+    "message": "ha.sensor.office_humidity gt 75.0 for 5m [series: \"name\"=\"Zulu\"] (3 of 3 series not OK)",
     "last_value": "80.0",
     "evaluated_at": "2026-03-04T12:00:00+00:00"
    }
@@ -15152,7 +15152,1811 @@
    "query_now": "2026-03-04T12:00:00+00:00",
    "result": {
     "status": "critical",
-    "message": "ha.sensor.office_humidity gt 75.0 for 5m [series: a=, b=2] (2 of 2 series not OK)",
+    "message": "ha.sensor.office_humidity gt 75.0 for 5m [series: \"a\"=\"1\", \"b\"=null] (2 of 2 series not OK)",
+    "last_value": "80.0",
+    "evaluated_at": "2026-03-04T12:00:00+00:00"
+   }
+  },
+  {
+   "name": "injective_series[True-0-False]",
+   "condition": {
+    "metric_name": "ha.sensor.office_humidity",
+    "operator": "gt",
+    "warning_threshold": "60.0",
+    "critical_threshold": "75.0",
+    "breach_minutes": 5,
+    "stale_after_seconds": null,
+    "alert_when_stale": true
+   },
+   "stale_warning_seconds": 600,
+   "now": "2026-03-04T12:00:00+00:00",
+   "samples": [
+    {
+     "ts": "2026-03-04T11:55:00+00:00",
+     "value": "20",
+     "host": "homeassistant",
+     "metric": "ha.sensor.office_humidity",
+     "service": "homeassistant",
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "a": "x, b=y",
+      "b": "z"
+     }
+    },
+    {
+     "ts": "2026-03-04T12:00:00+00:00",
+     "value": "20",
+     "host": "homeassistant",
+     "metric": "ha.sensor.office_humidity",
+     "service": "homeassistant",
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "a": "x, b=y",
+      "b": "z"
+     }
+    },
+    {
+     "ts": "2026-03-04T11:55:00+00:00",
+     "value": "21",
+     "host": "homeassistant",
+     "metric": "ha.sensor.office_humidity",
+     "service": "homeassistant",
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "a": "x",
+      "b": "y, b=z"
+     }
+    },
+    {
+     "ts": "2026-03-04T12:00:00+00:00",
+     "value": "21",
+     "host": "homeassistant",
+     "metric": "ha.sensor.office_humidity",
+     "service": "homeassistant",
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "a": "x",
+      "b": "y, b=z"
+     }
+    }
+   ],
+   "query_now": "2026-03-04T12:00:00+00:00",
+   "result": {
+    "status": "ok",
+    "message": "Condition is within thresholds (2 series)",
+    "last_value": "20.0",
+    "evaluated_at": "2026-03-04T12:00:00+00:00"
+   }
+  },
+  {
+   "name": "injective_series[True-0-True]",
+   "condition": {
+    "metric_name": "ha.sensor.office_humidity",
+    "operator": "gt",
+    "warning_threshold": "60.0",
+    "critical_threshold": "75.0",
+    "breach_minutes": 5,
+    "stale_after_seconds": null,
+    "alert_when_stale": true
+   },
+   "stale_warning_seconds": 600,
+   "now": "2026-03-04T12:00:00+00:00",
+   "samples": [
+    {
+     "ts": "2026-03-04T11:55:00+00:00",
+     "value": "21",
+     "host": "homeassistant",
+     "metric": "ha.sensor.office_humidity",
+     "service": "homeassistant",
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "a": "x",
+      "b": "y, b=z"
+     }
+    },
+    {
+     "ts": "2026-03-04T12:00:00+00:00",
+     "value": "21",
+     "host": "homeassistant",
+     "metric": "ha.sensor.office_humidity",
+     "service": "homeassistant",
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "a": "x",
+      "b": "y, b=z"
+     }
+    },
+    {
+     "ts": "2026-03-04T11:55:00+00:00",
+     "value": "20",
+     "host": "homeassistant",
+     "metric": "ha.sensor.office_humidity",
+     "service": "homeassistant",
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "a": "x, b=y",
+      "b": "z"
+     }
+    },
+    {
+     "ts": "2026-03-04T12:00:00+00:00",
+     "value": "20",
+     "host": "homeassistant",
+     "metric": "ha.sensor.office_humidity",
+     "service": "homeassistant",
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "a": "x, b=y",
+      "b": "z"
+     }
+    }
+   ],
+   "query_now": "2026-03-04T12:00:00+00:00",
+   "result": {
+    "status": "ok",
+    "message": "Condition is within thresholds (2 series)",
+    "last_value": "20.0",
+    "evaluated_at": "2026-03-04T12:00:00+00:00"
+   }
+  },
+  {
+   "name": "injective_series[True-1-False]",
+   "condition": {
+    "metric_name": "ha.sensor.office_humidity",
+    "operator": "gt",
+    "warning_threshold": "60.0",
+    "critical_threshold": "75.0",
+    "breach_minutes": 5,
+    "stale_after_seconds": null,
+    "alert_when_stale": true
+   },
+   "stale_warning_seconds": 600,
+   "now": "2026-03-04T12:00:00+00:00",
+   "samples": [
+    {
+     "ts": "2026-03-04T11:55:00+00:00",
+     "value": "20",
+     "host": "homeassistant",
+     "metric": "ha.sensor.office_humidity",
+     "service": "homeassistant",
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "a": ""
+     }
+    },
+    {
+     "ts": "2026-03-04T12:00:00+00:00",
+     "value": "20",
+     "host": "homeassistant",
+     "metric": "ha.sensor.office_humidity",
+     "service": "homeassistant",
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "a": ""
+     }
+    },
+    {
+     "ts": "2026-03-04T11:55:00+00:00",
+     "value": "21",
+     "host": "homeassistant",
+     "metric": "ha.sensor.office_humidity",
+     "service": "homeassistant",
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {}
+    },
+    {
+     "ts": "2026-03-04T12:00:00+00:00",
+     "value": "21",
+     "host": "homeassistant",
+     "metric": "ha.sensor.office_humidity",
+     "service": "homeassistant",
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {}
+    }
+   ],
+   "query_now": "2026-03-04T12:00:00+00:00",
+   "result": {
+    "status": "ok",
+    "message": "Condition is within thresholds (2 series)",
+    "last_value": "21.0",
+    "evaluated_at": "2026-03-04T12:00:00+00:00"
+   }
+  },
+  {
+   "name": "injective_series[True-1-True]",
+   "condition": {
+    "metric_name": "ha.sensor.office_humidity",
+    "operator": "gt",
+    "warning_threshold": "60.0",
+    "critical_threshold": "75.0",
+    "breach_minutes": 5,
+    "stale_after_seconds": null,
+    "alert_when_stale": true
+   },
+   "stale_warning_seconds": 600,
+   "now": "2026-03-04T12:00:00+00:00",
+   "samples": [
+    {
+     "ts": "2026-03-04T11:55:00+00:00",
+     "value": "21",
+     "host": "homeassistant",
+     "metric": "ha.sensor.office_humidity",
+     "service": "homeassistant",
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {}
+    },
+    {
+     "ts": "2026-03-04T12:00:00+00:00",
+     "value": "21",
+     "host": "homeassistant",
+     "metric": "ha.sensor.office_humidity",
+     "service": "homeassistant",
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {}
+    },
+    {
+     "ts": "2026-03-04T11:55:00+00:00",
+     "value": "20",
+     "host": "homeassistant",
+     "metric": "ha.sensor.office_humidity",
+     "service": "homeassistant",
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "a": ""
+     }
+    },
+    {
+     "ts": "2026-03-04T12:00:00+00:00",
+     "value": "20",
+     "host": "homeassistant",
+     "metric": "ha.sensor.office_humidity",
+     "service": "homeassistant",
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "a": ""
+     }
+    }
+   ],
+   "query_now": "2026-03-04T12:00:00+00:00",
+   "result": {
+    "status": "ok",
+    "message": "Condition is within thresholds (2 series)",
+    "last_value": "21.0",
+    "evaluated_at": "2026-03-04T12:00:00+00:00"
+   }
+  },
+  {
+   "name": "injective_series[True-2-False]",
+   "condition": {
+    "metric_name": "ha.sensor.office_humidity",
+    "operator": "gt",
+    "warning_threshold": "60.0",
+    "critical_threshold": "75.0",
+    "breach_minutes": 5,
+    "stale_after_seconds": null,
+    "alert_when_stale": true
+   },
+   "stale_warning_seconds": 600,
+   "now": "2026-03-04T12:00:00+00:00",
+   "samples": [
+    {
+     "ts": "2026-03-04T11:55:00+00:00",
+     "value": "20",
+     "host": "homeassistant",
+     "metric": "ha.sensor.office_humidity",
+     "service": "homeassistant",
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "a\"=, \\\u00e9": "x\"=, \\\u96ea"
+     }
+    },
+    {
+     "ts": "2026-03-04T12:00:00+00:00",
+     "value": "20",
+     "host": "homeassistant",
+     "metric": "ha.sensor.office_humidity",
+     "service": "homeassistant",
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "a\"=, \\\u00e9": "x\"=, \\\u96ea"
+     }
+    },
+    {
+     "ts": "2026-03-04T11:55:00+00:00",
+     "value": "21",
+     "host": "homeassistant",
+     "metric": "ha.sensor.office_humidity",
+     "service": "homeassistant",
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {}
+    },
+    {
+     "ts": "2026-03-04T12:00:00+00:00",
+     "value": "21",
+     "host": "homeassistant",
+     "metric": "ha.sensor.office_humidity",
+     "service": "homeassistant",
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {}
+    }
+   ],
+   "query_now": "2026-03-04T12:00:00+00:00",
+   "result": {
+    "status": "ok",
+    "message": "Condition is within thresholds (2 series)",
+    "last_value": "21.0",
+    "evaluated_at": "2026-03-04T12:00:00+00:00"
+   }
+  },
+  {
+   "name": "injective_series[True-2-True]",
+   "condition": {
+    "metric_name": "ha.sensor.office_humidity",
+    "operator": "gt",
+    "warning_threshold": "60.0",
+    "critical_threshold": "75.0",
+    "breach_minutes": 5,
+    "stale_after_seconds": null,
+    "alert_when_stale": true
+   },
+   "stale_warning_seconds": 600,
+   "now": "2026-03-04T12:00:00+00:00",
+   "samples": [
+    {
+     "ts": "2026-03-04T11:55:00+00:00",
+     "value": "21",
+     "host": "homeassistant",
+     "metric": "ha.sensor.office_humidity",
+     "service": "homeassistant",
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {}
+    },
+    {
+     "ts": "2026-03-04T12:00:00+00:00",
+     "value": "21",
+     "host": "homeassistant",
+     "metric": "ha.sensor.office_humidity",
+     "service": "homeassistant",
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {}
+    },
+    {
+     "ts": "2026-03-04T11:55:00+00:00",
+     "value": "20",
+     "host": "homeassistant",
+     "metric": "ha.sensor.office_humidity",
+     "service": "homeassistant",
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "a\"=, \\\u00e9": "x\"=, \\\u96ea"
+     }
+    },
+    {
+     "ts": "2026-03-04T12:00:00+00:00",
+     "value": "20",
+     "host": "homeassistant",
+     "metric": "ha.sensor.office_humidity",
+     "service": "homeassistant",
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "a\"=, \\\u00e9": "x\"=, \\\u96ea"
+     }
+    }
+   ],
+   "query_now": "2026-03-04T12:00:00+00:00",
+   "result": {
+    "status": "ok",
+    "message": "Condition is within thresholds (2 series)",
+    "last_value": "21.0",
+    "evaluated_at": "2026-03-04T12:00:00+00:00"
+   }
+  },
+  {
+   "name": "injective_series[True-3-False]",
+   "condition": {
+    "metric_name": "ha.sensor.office_humidity",
+    "operator": "gt",
+    "warning_threshold": "60.0",
+    "critical_threshold": "75.0",
+    "breach_minutes": 5,
+    "stale_after_seconds": null,
+    "alert_when_stale": true
+   },
+   "stale_warning_seconds": 600,
+   "now": "2026-03-04T12:00:00+00:00",
+   "samples": [
+    {
+     "ts": "2026-03-04T11:55:00+00:00",
+     "value": "20",
+     "host": "homeassistant",
+     "metric": "ha.sensor.office_humidity",
+     "service": "homeassistant",
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "a": "\u00e9"
+     }
+    },
+    {
+     "ts": "2026-03-04T12:00:00+00:00",
+     "value": "20",
+     "host": "homeassistant",
+     "metric": "ha.sensor.office_humidity",
+     "service": "homeassistant",
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "a": "\u00e9"
+     }
+    },
+    {
+     "ts": "2026-03-04T11:55:00+00:00",
+     "value": "21",
+     "host": "homeassistant",
+     "metric": "ha.sensor.office_humidity",
+     "service": "homeassistant",
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "a": "z"
+     }
+    },
+    {
+     "ts": "2026-03-04T12:00:00+00:00",
+     "value": "21",
+     "host": "homeassistant",
+     "metric": "ha.sensor.office_humidity",
+     "service": "homeassistant",
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "a": "z"
+     }
+    }
+   ],
+   "query_now": "2026-03-04T12:00:00+00:00",
+   "result": {
+    "status": "ok",
+    "message": "Condition is within thresholds (2 series)",
+    "last_value": "20.0",
+    "evaluated_at": "2026-03-04T12:00:00+00:00"
+   }
+  },
+  {
+   "name": "injective_series[True-3-True]",
+   "condition": {
+    "metric_name": "ha.sensor.office_humidity",
+    "operator": "gt",
+    "warning_threshold": "60.0",
+    "critical_threshold": "75.0",
+    "breach_minutes": 5,
+    "stale_after_seconds": null,
+    "alert_when_stale": true
+   },
+   "stale_warning_seconds": 600,
+   "now": "2026-03-04T12:00:00+00:00",
+   "samples": [
+    {
+     "ts": "2026-03-04T11:55:00+00:00",
+     "value": "21",
+     "host": "homeassistant",
+     "metric": "ha.sensor.office_humidity",
+     "service": "homeassistant",
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "a": "z"
+     }
+    },
+    {
+     "ts": "2026-03-04T12:00:00+00:00",
+     "value": "21",
+     "host": "homeassistant",
+     "metric": "ha.sensor.office_humidity",
+     "service": "homeassistant",
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "a": "z"
+     }
+    },
+    {
+     "ts": "2026-03-04T11:55:00+00:00",
+     "value": "20",
+     "host": "homeassistant",
+     "metric": "ha.sensor.office_humidity",
+     "service": "homeassistant",
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "a": "\u00e9"
+     }
+    },
+    {
+     "ts": "2026-03-04T12:00:00+00:00",
+     "value": "20",
+     "host": "homeassistant",
+     "metric": "ha.sensor.office_humidity",
+     "service": "homeassistant",
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "a": "\u00e9"
+     }
+    }
+   ],
+   "query_now": "2026-03-04T12:00:00+00:00",
+   "result": {
+    "status": "ok",
+    "message": "Condition is within thresholds (2 series)",
+    "last_value": "20.0",
+    "evaluated_at": "2026-03-04T12:00:00+00:00"
+   }
+  },
+  {
+   "name": "injective_series[True-4-False]",
+   "condition": {
+    "metric_name": "ha.sensor.office_humidity",
+    "operator": "gt",
+    "warning_threshold": "60.0",
+    "critical_threshold": "75.0",
+    "breach_minutes": 5,
+    "stale_after_seconds": null,
+    "alert_when_stale": true
+   },
+   "stale_warning_seconds": 600,
+   "now": "2026-03-04T12:00:00+00:00",
+   "samples": [
+    {
+     "ts": "2026-03-04T11:55:00+00:00",
+     "value": "20",
+     "host": "homeassistant",
+     "metric": "ha.sensor.office_humidity",
+     "service": "homeassistant",
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "a": "\""
+     }
+    },
+    {
+     "ts": "2026-03-04T12:00:00+00:00",
+     "value": "20",
+     "host": "homeassistant",
+     "metric": "ha.sensor.office_humidity",
+     "service": "homeassistant",
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "a": "\""
+     }
+    },
+    {
+     "ts": "2026-03-04T11:55:00+00:00",
+     "value": "21",
+     "host": "homeassistant",
+     "metric": "ha.sensor.office_humidity",
+     "service": "homeassistant",
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "a": "A"
+     }
+    },
+    {
+     "ts": "2026-03-04T12:00:00+00:00",
+     "value": "21",
+     "host": "homeassistant",
+     "metric": "ha.sensor.office_humidity",
+     "service": "homeassistant",
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "a": "A"
+     }
+    }
+   ],
+   "query_now": "2026-03-04T12:00:00+00:00",
+   "result": {
+    "status": "ok",
+    "message": "Condition is within thresholds (2 series)",
+    "last_value": "21.0",
+    "evaluated_at": "2026-03-04T12:00:00+00:00"
+   }
+  },
+  {
+   "name": "injective_series[True-4-True]",
+   "condition": {
+    "metric_name": "ha.sensor.office_humidity",
+    "operator": "gt",
+    "warning_threshold": "60.0",
+    "critical_threshold": "75.0",
+    "breach_minutes": 5,
+    "stale_after_seconds": null,
+    "alert_when_stale": true
+   },
+   "stale_warning_seconds": 600,
+   "now": "2026-03-04T12:00:00+00:00",
+   "samples": [
+    {
+     "ts": "2026-03-04T11:55:00+00:00",
+     "value": "21",
+     "host": "homeassistant",
+     "metric": "ha.sensor.office_humidity",
+     "service": "homeassistant",
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "a": "A"
+     }
+    },
+    {
+     "ts": "2026-03-04T12:00:00+00:00",
+     "value": "21",
+     "host": "homeassistant",
+     "metric": "ha.sensor.office_humidity",
+     "service": "homeassistant",
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "a": "A"
+     }
+    },
+    {
+     "ts": "2026-03-04T11:55:00+00:00",
+     "value": "20",
+     "host": "homeassistant",
+     "metric": "ha.sensor.office_humidity",
+     "service": "homeassistant",
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "a": "\""
+     }
+    },
+    {
+     "ts": "2026-03-04T12:00:00+00:00",
+     "value": "20",
+     "host": "homeassistant",
+     "metric": "ha.sensor.office_humidity",
+     "service": "homeassistant",
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "a": "\""
+     }
+    }
+   ],
+   "query_now": "2026-03-04T12:00:00+00:00",
+   "result": {
+    "status": "ok",
+    "message": "Condition is within thresholds (2 series)",
+    "last_value": "21.0",
+    "evaluated_at": "2026-03-04T12:00:00+00:00"
+   }
+  },
+  {
+   "name": "injective_series[False-0-False]",
+   "condition": {
+    "metric_name": "ha.sensor.office_humidity",
+    "operator": "gt",
+    "warning_threshold": "60.0",
+    "critical_threshold": "75.0",
+    "breach_minutes": 5,
+    "stale_after_seconds": null,
+    "alert_when_stale": true
+   },
+   "stale_warning_seconds": 600,
+   "now": "2026-03-04T12:00:00+00:00",
+   "samples": [
+    {
+     "ts": "2026-03-04T11:55:00+00:00",
+     "value": "80",
+     "host": "homeassistant",
+     "metric": "ha.sensor.office_humidity",
+     "service": "homeassistant",
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "a": "x, b=y",
+      "b": "z"
+     }
+    },
+    {
+     "ts": "2026-03-04T12:00:00+00:00",
+     "value": "80",
+     "host": "homeassistant",
+     "metric": "ha.sensor.office_humidity",
+     "service": "homeassistant",
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "a": "x, b=y",
+      "b": "z"
+     }
+    },
+    {
+     "ts": "2026-03-04T11:55:00+00:00",
+     "value": "81",
+     "host": "homeassistant",
+     "metric": "ha.sensor.office_humidity",
+     "service": "homeassistant",
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "a": "x",
+      "b": "y, b=z"
+     }
+    },
+    {
+     "ts": "2026-03-04T12:00:00+00:00",
+     "value": "81",
+     "host": "homeassistant",
+     "metric": "ha.sensor.office_humidity",
+     "service": "homeassistant",
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "a": "x",
+      "b": "y, b=z"
+     }
+    }
+   ],
+   "query_now": "2026-03-04T12:00:00+00:00",
+   "result": {
+    "status": "critical",
+    "message": "ha.sensor.office_humidity gt 75.0 for 5m [series: \"a\"=\"x\", \"b\"=\"y, b=z\"] (2 of 2 series not OK)",
+    "last_value": "81.0",
+    "evaluated_at": "2026-03-04T12:00:00+00:00"
+   }
+  },
+  {
+   "name": "injective_series[False-0-True]",
+   "condition": {
+    "metric_name": "ha.sensor.office_humidity",
+    "operator": "gt",
+    "warning_threshold": "60.0",
+    "critical_threshold": "75.0",
+    "breach_minutes": 5,
+    "stale_after_seconds": null,
+    "alert_when_stale": true
+   },
+   "stale_warning_seconds": 600,
+   "now": "2026-03-04T12:00:00+00:00",
+   "samples": [
+    {
+     "ts": "2026-03-04T11:55:00+00:00",
+     "value": "81",
+     "host": "homeassistant",
+     "metric": "ha.sensor.office_humidity",
+     "service": "homeassistant",
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "a": "x",
+      "b": "y, b=z"
+     }
+    },
+    {
+     "ts": "2026-03-04T12:00:00+00:00",
+     "value": "81",
+     "host": "homeassistant",
+     "metric": "ha.sensor.office_humidity",
+     "service": "homeassistant",
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "a": "x",
+      "b": "y, b=z"
+     }
+    },
+    {
+     "ts": "2026-03-04T11:55:00+00:00",
+     "value": "80",
+     "host": "homeassistant",
+     "metric": "ha.sensor.office_humidity",
+     "service": "homeassistant",
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "a": "x, b=y",
+      "b": "z"
+     }
+    },
+    {
+     "ts": "2026-03-04T12:00:00+00:00",
+     "value": "80",
+     "host": "homeassistant",
+     "metric": "ha.sensor.office_humidity",
+     "service": "homeassistant",
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "a": "x, b=y",
+      "b": "z"
+     }
+    }
+   ],
+   "query_now": "2026-03-04T12:00:00+00:00",
+   "result": {
+    "status": "critical",
+    "message": "ha.sensor.office_humidity gt 75.0 for 5m [series: \"a\"=\"x\", \"b\"=\"y, b=z\"] (2 of 2 series not OK)",
+    "last_value": "81.0",
+    "evaluated_at": "2026-03-04T12:00:00+00:00"
+   }
+  },
+  {
+   "name": "injective_series[False-1-False]",
+   "condition": {
+    "metric_name": "ha.sensor.office_humidity",
+    "operator": "gt",
+    "warning_threshold": "60.0",
+    "critical_threshold": "75.0",
+    "breach_minutes": 5,
+    "stale_after_seconds": null,
+    "alert_when_stale": true
+   },
+   "stale_warning_seconds": 600,
+   "now": "2026-03-04T12:00:00+00:00",
+   "samples": [
+    {
+     "ts": "2026-03-04T11:55:00+00:00",
+     "value": "80",
+     "host": "homeassistant",
+     "metric": "ha.sensor.office_humidity",
+     "service": "homeassistant",
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "a": ""
+     }
+    },
+    {
+     "ts": "2026-03-04T12:00:00+00:00",
+     "value": "80",
+     "host": "homeassistant",
+     "metric": "ha.sensor.office_humidity",
+     "service": "homeassistant",
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "a": ""
+     }
+    },
+    {
+     "ts": "2026-03-04T11:55:00+00:00",
+     "value": "81",
+     "host": "homeassistant",
+     "metric": "ha.sensor.office_humidity",
+     "service": "homeassistant",
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {}
+    },
+    {
+     "ts": "2026-03-04T12:00:00+00:00",
+     "value": "81",
+     "host": "homeassistant",
+     "metric": "ha.sensor.office_humidity",
+     "service": "homeassistant",
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {}
+    }
+   ],
+   "query_now": "2026-03-04T12:00:00+00:00",
+   "result": {
+    "status": "critical",
+    "message": "ha.sensor.office_humidity gt 75.0 for 5m [series: \"a\"=\"\"] (2 of 2 series not OK)",
+    "last_value": "80.0",
+    "evaluated_at": "2026-03-04T12:00:00+00:00"
+   }
+  },
+  {
+   "name": "injective_series[False-1-True]",
+   "condition": {
+    "metric_name": "ha.sensor.office_humidity",
+    "operator": "gt",
+    "warning_threshold": "60.0",
+    "critical_threshold": "75.0",
+    "breach_minutes": 5,
+    "stale_after_seconds": null,
+    "alert_when_stale": true
+   },
+   "stale_warning_seconds": 600,
+   "now": "2026-03-04T12:00:00+00:00",
+   "samples": [
+    {
+     "ts": "2026-03-04T11:55:00+00:00",
+     "value": "81",
+     "host": "homeassistant",
+     "metric": "ha.sensor.office_humidity",
+     "service": "homeassistant",
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {}
+    },
+    {
+     "ts": "2026-03-04T12:00:00+00:00",
+     "value": "81",
+     "host": "homeassistant",
+     "metric": "ha.sensor.office_humidity",
+     "service": "homeassistant",
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {}
+    },
+    {
+     "ts": "2026-03-04T11:55:00+00:00",
+     "value": "80",
+     "host": "homeassistant",
+     "metric": "ha.sensor.office_humidity",
+     "service": "homeassistant",
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "a": ""
+     }
+    },
+    {
+     "ts": "2026-03-04T12:00:00+00:00",
+     "value": "80",
+     "host": "homeassistant",
+     "metric": "ha.sensor.office_humidity",
+     "service": "homeassistant",
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "a": ""
+     }
+    }
+   ],
+   "query_now": "2026-03-04T12:00:00+00:00",
+   "result": {
+    "status": "critical",
+    "message": "ha.sensor.office_humidity gt 75.0 for 5m [series: \"a\"=\"\"] (2 of 2 series not OK)",
+    "last_value": "80.0",
+    "evaluated_at": "2026-03-04T12:00:00+00:00"
+   }
+  },
+  {
+   "name": "injective_series[False-2-False]",
+   "condition": {
+    "metric_name": "ha.sensor.office_humidity",
+    "operator": "gt",
+    "warning_threshold": "60.0",
+    "critical_threshold": "75.0",
+    "breach_minutes": 5,
+    "stale_after_seconds": null,
+    "alert_when_stale": true
+   },
+   "stale_warning_seconds": 600,
+   "now": "2026-03-04T12:00:00+00:00",
+   "samples": [
+    {
+     "ts": "2026-03-04T11:55:00+00:00",
+     "value": "80",
+     "host": "homeassistant",
+     "metric": "ha.sensor.office_humidity",
+     "service": "homeassistant",
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "a\"=, \\\u00e9": "x\"=, \\\u96ea"
+     }
+    },
+    {
+     "ts": "2026-03-04T12:00:00+00:00",
+     "value": "80",
+     "host": "homeassistant",
+     "metric": "ha.sensor.office_humidity",
+     "service": "homeassistant",
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "a\"=, \\\u00e9": "x\"=, \\\u96ea"
+     }
+    },
+    {
+     "ts": "2026-03-04T11:55:00+00:00",
+     "value": "81",
+     "host": "homeassistant",
+     "metric": "ha.sensor.office_humidity",
+     "service": "homeassistant",
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {}
+    },
+    {
+     "ts": "2026-03-04T12:00:00+00:00",
+     "value": "81",
+     "host": "homeassistant",
+     "metric": "ha.sensor.office_humidity",
+     "service": "homeassistant",
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {}
+    }
+   ],
+   "query_now": "2026-03-04T12:00:00+00:00",
+   "result": {
+    "status": "critical",
+    "message": "ha.sensor.office_humidity gt 75.0 for 5m [series: \"a\\\"=, \\\\\u00e9\"=\"x\\\"=, \\\\\u96ea\"] (2 of 2 series not OK)",
+    "last_value": "80.0",
+    "evaluated_at": "2026-03-04T12:00:00+00:00"
+   }
+  },
+  {
+   "name": "injective_series[False-2-True]",
+   "condition": {
+    "metric_name": "ha.sensor.office_humidity",
+    "operator": "gt",
+    "warning_threshold": "60.0",
+    "critical_threshold": "75.0",
+    "breach_minutes": 5,
+    "stale_after_seconds": null,
+    "alert_when_stale": true
+   },
+   "stale_warning_seconds": 600,
+   "now": "2026-03-04T12:00:00+00:00",
+   "samples": [
+    {
+     "ts": "2026-03-04T11:55:00+00:00",
+     "value": "81",
+     "host": "homeassistant",
+     "metric": "ha.sensor.office_humidity",
+     "service": "homeassistant",
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {}
+    },
+    {
+     "ts": "2026-03-04T12:00:00+00:00",
+     "value": "81",
+     "host": "homeassistant",
+     "metric": "ha.sensor.office_humidity",
+     "service": "homeassistant",
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {}
+    },
+    {
+     "ts": "2026-03-04T11:55:00+00:00",
+     "value": "80",
+     "host": "homeassistant",
+     "metric": "ha.sensor.office_humidity",
+     "service": "homeassistant",
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "a\"=, \\\u00e9": "x\"=, \\\u96ea"
+     }
+    },
+    {
+     "ts": "2026-03-04T12:00:00+00:00",
+     "value": "80",
+     "host": "homeassistant",
+     "metric": "ha.sensor.office_humidity",
+     "service": "homeassistant",
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "a\"=, \\\u00e9": "x\"=, \\\u96ea"
+     }
+    }
+   ],
+   "query_now": "2026-03-04T12:00:00+00:00",
+   "result": {
+    "status": "critical",
+    "message": "ha.sensor.office_humidity gt 75.0 for 5m [series: \"a\\\"=, \\\\\u00e9\"=\"x\\\"=, \\\\\u96ea\"] (2 of 2 series not OK)",
+    "last_value": "80.0",
+    "evaluated_at": "2026-03-04T12:00:00+00:00"
+   }
+  },
+  {
+   "name": "injective_series[False-3-False]",
+   "condition": {
+    "metric_name": "ha.sensor.office_humidity",
+    "operator": "gt",
+    "warning_threshold": "60.0",
+    "critical_threshold": "75.0",
+    "breach_minutes": 5,
+    "stale_after_seconds": null,
+    "alert_when_stale": true
+   },
+   "stale_warning_seconds": 600,
+   "now": "2026-03-04T12:00:00+00:00",
+   "samples": [
+    {
+     "ts": "2026-03-04T11:55:00+00:00",
+     "value": "80",
+     "host": "homeassistant",
+     "metric": "ha.sensor.office_humidity",
+     "service": "homeassistant",
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "a": "\u00e9"
+     }
+    },
+    {
+     "ts": "2026-03-04T12:00:00+00:00",
+     "value": "80",
+     "host": "homeassistant",
+     "metric": "ha.sensor.office_humidity",
+     "service": "homeassistant",
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "a": "\u00e9"
+     }
+    },
+    {
+     "ts": "2026-03-04T11:55:00+00:00",
+     "value": "81",
+     "host": "homeassistant",
+     "metric": "ha.sensor.office_humidity",
+     "service": "homeassistant",
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "a": "z"
+     }
+    },
+    {
+     "ts": "2026-03-04T12:00:00+00:00",
+     "value": "81",
+     "host": "homeassistant",
+     "metric": "ha.sensor.office_humidity",
+     "service": "homeassistant",
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "a": "z"
+     }
+    }
+   ],
+   "query_now": "2026-03-04T12:00:00+00:00",
+   "result": {
+    "status": "critical",
+    "message": "ha.sensor.office_humidity gt 75.0 for 5m [series: \"a\"=\"z\"] (2 of 2 series not OK)",
+    "last_value": "81.0",
+    "evaluated_at": "2026-03-04T12:00:00+00:00"
+   }
+  },
+  {
+   "name": "injective_series[False-3-True]",
+   "condition": {
+    "metric_name": "ha.sensor.office_humidity",
+    "operator": "gt",
+    "warning_threshold": "60.0",
+    "critical_threshold": "75.0",
+    "breach_minutes": 5,
+    "stale_after_seconds": null,
+    "alert_when_stale": true
+   },
+   "stale_warning_seconds": 600,
+   "now": "2026-03-04T12:00:00+00:00",
+   "samples": [
+    {
+     "ts": "2026-03-04T11:55:00+00:00",
+     "value": "81",
+     "host": "homeassistant",
+     "metric": "ha.sensor.office_humidity",
+     "service": "homeassistant",
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "a": "z"
+     }
+    },
+    {
+     "ts": "2026-03-04T12:00:00+00:00",
+     "value": "81",
+     "host": "homeassistant",
+     "metric": "ha.sensor.office_humidity",
+     "service": "homeassistant",
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "a": "z"
+     }
+    },
+    {
+     "ts": "2026-03-04T11:55:00+00:00",
+     "value": "80",
+     "host": "homeassistant",
+     "metric": "ha.sensor.office_humidity",
+     "service": "homeassistant",
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "a": "\u00e9"
+     }
+    },
+    {
+     "ts": "2026-03-04T12:00:00+00:00",
+     "value": "80",
+     "host": "homeassistant",
+     "metric": "ha.sensor.office_humidity",
+     "service": "homeassistant",
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "a": "\u00e9"
+     }
+    }
+   ],
+   "query_now": "2026-03-04T12:00:00+00:00",
+   "result": {
+    "status": "critical",
+    "message": "ha.sensor.office_humidity gt 75.0 for 5m [series: \"a\"=\"z\"] (2 of 2 series not OK)",
+    "last_value": "81.0",
+    "evaluated_at": "2026-03-04T12:00:00+00:00"
+   }
+  },
+  {
+   "name": "injective_series[False-4-False]",
+   "condition": {
+    "metric_name": "ha.sensor.office_humidity",
+    "operator": "gt",
+    "warning_threshold": "60.0",
+    "critical_threshold": "75.0",
+    "breach_minutes": 5,
+    "stale_after_seconds": null,
+    "alert_when_stale": true
+   },
+   "stale_warning_seconds": 600,
+   "now": "2026-03-04T12:00:00+00:00",
+   "samples": [
+    {
+     "ts": "2026-03-04T11:55:00+00:00",
+     "value": "80",
+     "host": "homeassistant",
+     "metric": "ha.sensor.office_humidity",
+     "service": "homeassistant",
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "a": "\""
+     }
+    },
+    {
+     "ts": "2026-03-04T12:00:00+00:00",
+     "value": "80",
+     "host": "homeassistant",
+     "metric": "ha.sensor.office_humidity",
+     "service": "homeassistant",
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "a": "\""
+     }
+    },
+    {
+     "ts": "2026-03-04T11:55:00+00:00",
+     "value": "81",
+     "host": "homeassistant",
+     "metric": "ha.sensor.office_humidity",
+     "service": "homeassistant",
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "a": "A"
+     }
+    },
+    {
+     "ts": "2026-03-04T12:00:00+00:00",
+     "value": "81",
+     "host": "homeassistant",
+     "metric": "ha.sensor.office_humidity",
+     "service": "homeassistant",
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "a": "A"
+     }
+    }
+   ],
+   "query_now": "2026-03-04T12:00:00+00:00",
+   "result": {
+    "status": "critical",
+    "message": "ha.sensor.office_humidity gt 75.0 for 5m [series: \"a\"=\"\\\"\"] (2 of 2 series not OK)",
+    "last_value": "80.0",
+    "evaluated_at": "2026-03-04T12:00:00+00:00"
+   }
+  },
+  {
+   "name": "injective_series[False-4-True]",
+   "condition": {
+    "metric_name": "ha.sensor.office_humidity",
+    "operator": "gt",
+    "warning_threshold": "60.0",
+    "critical_threshold": "75.0",
+    "breach_minutes": 5,
+    "stale_after_seconds": null,
+    "alert_when_stale": true
+   },
+   "stale_warning_seconds": 600,
+   "now": "2026-03-04T12:00:00+00:00",
+   "samples": [
+    {
+     "ts": "2026-03-04T11:55:00+00:00",
+     "value": "81",
+     "host": "homeassistant",
+     "metric": "ha.sensor.office_humidity",
+     "service": "homeassistant",
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "a": "A"
+     }
+    },
+    {
+     "ts": "2026-03-04T12:00:00+00:00",
+     "value": "81",
+     "host": "homeassistant",
+     "metric": "ha.sensor.office_humidity",
+     "service": "homeassistant",
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "a": "A"
+     }
+    },
+    {
+     "ts": "2026-03-04T11:55:00+00:00",
+     "value": "80",
+     "host": "homeassistant",
+     "metric": "ha.sensor.office_humidity",
+     "service": "homeassistant",
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "a": "\""
+     }
+    },
+    {
+     "ts": "2026-03-04T12:00:00+00:00",
+     "value": "80",
+     "host": "homeassistant",
+     "metric": "ha.sensor.office_humidity",
+     "service": "homeassistant",
+     "subject_type": null,
+     "subject_id": null,
+     "source_system": null,
+     "source_instance": null,
+     "source_entity_id": null,
+     "collector_service": null,
+     "collector_host": null,
+     "tags": {
+      "a": "\""
+     }
+    }
+   ],
+   "query_now": "2026-03-04T12:00:00+00:00",
+   "result": {
+    "status": "critical",
+    "message": "ha.sensor.office_humidity gt 75.0 for 5m [series: \"a\"=\"\\\"\"] (2 of 2 series not OK)",
     "last_value": "80.0",
     "evaluated_at": "2026-03-04T12:00:00+00:00"
    }

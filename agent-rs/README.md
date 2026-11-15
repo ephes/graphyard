@@ -27,7 +27,10 @@ configuration check (`graphyard_influx::InfluxWriter`,
 servers. S5: the
 condition evaluation (`graphyard_core::conditions`: `evaluate_condition`
 over a `SampleSource`, `evaluate_samples` on samples already read), pinned
-by `conditions.json`.
+by `conditions.json`. Multi-series diagnostics use the shared
+[structural tie-break and quoted-label contract](../README.md#conditions-that-match-several-series);
+the corpus includes delimiter collisions, missing versus empty tags, Unicode and
+escaped quotes in both input orders.
 
 Slice S8 makes `graphyard-agent` the agent (PLAN.md 3): the CLI of
 `manage.py start_agent` plus the Rust-only flags, the scheduler loop, the

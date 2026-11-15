@@ -409,3 +409,17 @@ fn far_apart_timestamps_do_not_panic() {
     assert_eq!(result.status, StatusLevel::Warning);
     assert!(result.message.starts_with("Latest sample is stale ("));
 }
+
+#[test]
+fn injective_series_ties_match_in_both_orders() {
+    let fixture = fixture();
+    let cases: Vec<_> = fixture
+        .list_field("cases")
+        .iter()
+        .filter(|case| case.str_field("name").starts_with("injective_series["))
+        .collect();
+    assert_eq!(cases.len(), 20);
+    for case in cases {
+        assert_case(case);
+    }
+}

@@ -885,17 +885,17 @@ def _series_cases() -> list[dict[str, Any]]:
             ],
         ),
         _case(
-            "empty_tag_value_splits_series_with_equal_labels",
+            "empty_tag_value_and_missing_tag_have_distinct_labels",
             _condition(),
             [*series(80.0, tags={"foo": ""}), *series(90.0)],
         ),
         _case(
-            "empty_tag_value_equal_labels_healthy_takes_first",
+            "empty_tag_value_healthy_takes_structural_maximum",
             _condition(),
             [*series(40.0, tags={"foo": ""}), *series(30.0)],
         ),
         _case(
-            "ties_by_latest_sample_then_label",
+            "ties_by_latest_sample_then_structural_key",
             _condition(),
             [
                 *series(80.0, collector_host="zeta"),
@@ -1011,6 +1011,41 @@ def _series_cases() -> list[dict[str, Any]]:
     return cases
 
 
+def _injective_series_cases() -> list[dict[str, Any]]:
+    cases = []
+    tag_pairs = [
+        ({"a": "x, b=y", "b": "z"}, {"a": "x", "b": "y, b=z"}),
+        ({"a": ""}, {}),
+        ({'a"=, \\é': 'x"=, \\雪'}, {}),
+        ({"a": "é"}, {"a": "z"}),
+        ({"a": '"'}, {"a": "A"}),
+    ]
+    for healthy in (True, False):
+        for index, pair in enumerate(tag_pairs):
+            series = [
+                [
+                    _sample_at(
+                        NOW,
+                        seconds_ago=age,
+                        value=(20 if healthy else 80) + i,
+                        tags=tags,
+                    )
+                    for age in (300, 0)
+                ]
+                for i, tags in enumerate(pair)
+            ]
+            for reverse in (False, True):
+                ordered = list(reversed(series)) if reverse else series
+                cases.append(
+                    _case(
+                        f"injective_series[{healthy}-{index}-{reverse}]",
+                        _condition(),
+                        [sample for group in ordered for sample in group],
+                    )
+                )
+    return cases
+
+
 def _query_error_cases() -> list[dict[str, Any]]:
     return [
         _case(
@@ -1075,6 +1110,7 @@ def build_conditions() -> dict[str, Any]:
             *_coverage_cases(),
             *_overflow_cases(),
             *_series_cases(),
+            *_injective_series_cases(),
             *_query_error_cases(),
         ],
         "total_seconds": _total_seconds(),

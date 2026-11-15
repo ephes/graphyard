@@ -1287,9 +1287,12 @@ supersedes the anchor, one-minute grace without a usable anchor (one that reache
 within its carry lifetime), all evaluated samples
 must breach; every adjacent gap and the final carry to now must fit the same
 carry allowance). One series → its result. Several → worst status, ties by
-oldest latest sample then label; `ok` reports the newest series value with
+oldest latest sample then lexicographically smallest structural series key;
+`ok` reports the newest series value (largest structural key at equal time) with
 ` (<n> series)`; otherwise ` [series: <label>] (<k> of <n> series not OK)`.
-Thresholds in messages use `py_float_repr`. Pinned by `conditions.json`
+Labels JSON-quote dimension/tag names and values, keep Unicode readable, and
+render missing values as `null` rather than the quoted empty string. Display
+escaping never orders series. Thresholds in messages use `py_float_repr`. Pinned by `conditions.json`
 (generated from `evaluate_condition` with the query stubbed and the clock
 injected), covering every test of `tests/test_condition_evaluation.py`.
 
