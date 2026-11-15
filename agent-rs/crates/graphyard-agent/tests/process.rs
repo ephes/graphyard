@@ -115,10 +115,10 @@ fn check_schema_reports_in_one_line() {
     assert_eq!(output.status.code(), Some(1));
     assert_eq!(
         text(&output.stderr),
-        "database schema is older than the agent contract; missing columns: \
+        "database schema does not satisfy the agent contract; missing columns: \
          condition_definition.stale_after_seconds; missing migration: \
-         graphyard.0015_alter_conditiondefinition_breach_minutes_and_more; run `manage.py migrate` before starting \
-         the agent\n"
+         graphyard.0015_alter_conditiondefinition_breach_minutes_and_more; stop the agent and run `manage.py migrate` \
+         or restore the migrated schema before starting the agent\n"
     );
     // The same check fails the agent before its first run (D-2).
     let output = agent(&["--run-once", "--db", db_arg(&db)], &[]);
@@ -372,4 +372,49 @@ fn sigterm_during_a_locked_startup_exits_0() {
     );
     assert_eq!(status.code(), Some(0), "{status:?}");
     holder.execute_batch("COMMIT").unwrap();
+}
+
+#[test]
+fn damaged_storage_refuses_startup_before_collectors_or_sinks() {
+    let db = TestDb::new();
+    let server = FakeServer::start();
+    common::insert_spec(
+        &db,
+        "synthetic",
+        "http_json_metric",
+        &json!({
+            "url": server.url("/value"), "metric_path": "$.value", "metric_name": "synthetic.value"
+        }),
+    );
+    db.execute(
+        "ALTER TABLE metric_collection_spec RENAME COLUMN enabled TO old_enabled; \
+        ALTER TABLE metric_collection_spec ADD COLUMN enabled bool NULL;",
+    );
+    let directory = tempfile::tempdir().unwrap();
+    let sink = directory.path().join("must-not-exist.lp");
+    let output = agent(
+        &[
+            "--run-once",
+            "--db",
+            db_arg(&db),
+            "--influx-write-file",
+            sink.to_str().unwrap(),
+        ],
+        &[],
+    );
+    assert_eq!(output.status.code(), Some(1), "{output:?}");
+    assert!(
+        text(&output.stderr)
+            .contains("metric_collection_spec.enabled (affinity/nullability/primary key)")
+    );
+    // The existing startup path opens the shadow file before schema admission;
+    // no collector runs and no metric line may be written to it.
+    assert!(
+        std::fs::read_to_string(&sink)
+            .unwrap()
+            .lines()
+            .all(|line| line.starts_with('#'))
+    );
+    assert!(server.requests().is_empty());
+    assert_eq!(db.count("pipeline_heartbeat"), 0);
 }

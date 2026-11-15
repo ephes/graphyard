@@ -597,3 +597,24 @@ def fixed_ingest_clock(monkeypatch):
     monkeypatch.setattr(
         "graphyard.views._ingest_now", lambda: datetime(2026, 3, 4, 12, tzinfo=UTC)
     )
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("count", [1, 100])
+def test_ingest_validates_scope_entries_once_per_locked_request(
+    client, written, monkeypatch, count
+):
+    from graphyard import token_scope
+
+    scope = [f"h{idx}" for idx in range(63)] + ["web-*"]
+    make_token(host_scope=scope)
+    validate = token_scope._is_valid_entry
+    validations = []
+
+    def counted(entry):
+        validations.append(entry)
+        return validate(entry)
+
+    monkeypatch.setattr(token_scope, "_is_valid_entry", counted)
+    assert post(client, [point("web-1")] * count).status_code == 202
+    assert validations == scope

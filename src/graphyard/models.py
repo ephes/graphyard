@@ -413,7 +413,10 @@ class InventoryHost(models.Model):
     """Explicit enrollment; absence of reports must remain visible."""
 
     host = models.OneToOneField(HostRegistry, on_delete=models.PROTECT)
-    warning_after_seconds = models.PositiveIntegerField(default=172800)
+    warning_after_seconds = models.PositiveIntegerField(
+        default=172800,
+        validators=[MinValueValidator(60), MaxValueValidator(2147483647)],
+    )
     # Sleeping laptops still show age but do not generate freshness alerts.
     alert_when_stale = models.BooleanField(default=True)
 

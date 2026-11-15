@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Verify Rust agent storage affinity, nullability, generated row identity and
+  unconditional unique keys against migrated fixtures before starting collectors.
+  Read the complete readiness contract in one deferred SQLite snapshot; schema
+  checking remains read-only and operational migrations require a stopped agent.
+- Validate and canonicalize ingest host scopes once per locked request while
+  retaining fail-closed matching and current credential authority.
+- Admit inventory freshness thresholds in the portable 60–2,147,483,647 second
+  range before credential rotation; share model/admin validators (migration 0016).
 - Project inventory application freshness and software health at one response
   timestamp, including wall-clock steps and exact freshness boundaries.
 - Count malformed Home Assistant entity rows as skipped in Rust scans,

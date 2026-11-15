@@ -45,8 +45,25 @@ with `--check-schema`) it checks that every column of the six agent tables
 exists and that `django_migrations` contains
 `graphyard.0015_alter_conditiondefinition_breach_minutes_and_more`, the conservative
 migration floor (the last migration touching an agent model, including field
-validators). It exits 1 with one line naming every missing table, column and
-migration otherwise (D-2). Extra columns are accepted.
+validators). It also checks each required column's SQLite affinity, nullability
+and primary-key position, the auto-generated integer row identity, and the
+unconditional binary unique keys used by scheduling, heartbeat and registry
+identity lookups. Partial, expression and nonunique indexes cannot supply those
+keys. Equivalent declared types with the same affinity are accepted (the rowid
+key must remain `INTEGER PRIMARY KEY`); extra columns and indexes are accepted.
+These storage expectations are generated from a migrated synthetic database in
+`fixtures/schema/storage_contract.rs`, compiled into the agent and covered by the
+fixture drift gate. An incompatible database exits 1 before collection or metric
+sink calls, with a single diagnostic naming the failed contract properties. Stop the agent,
+apply missing Django migrations or restore the damaged migrated schema, then
+restart; the check itself never repairs storage.
+
+All table, storage/key, migration-marker and journal-mode reads share one explicit
+deferred read transaction on the opened connection. A concurrent atomic rebuild
+cannot combine observations from different schema generations. SQLite's existing
+busy timeout still applies; `--check-schema` issues no DDL or journal/settings
+writes. This startup snapshot does not authorize live migration while collection
+is running: stop the agent for operational migrations.
 
 The rule for Python changes: `tests/test_agent_rs_schema_contract.py`
 regenerates `agent-rs/fixtures/schema/` from the migrations and fails when a

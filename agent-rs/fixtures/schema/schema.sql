@@ -81,4 +81,5 @@ INSERT INTO django_migrations (app, name, applied) VALUES ('graphyard', '0012_in
 INSERT INTO django_migrations (app, name, applied) VALUES ('graphyard', '0013_inventory_single_enabled_credential', '2000-01-01 00:00:00');
 INSERT INTO django_migrations (app, name, applied) VALUES ('graphyard', '0014_inventoryreleaseregistry', '2000-01-01 00:00:00');
 INSERT INTO django_migrations (app, name, applied) VALUES ('graphyard', '0015_alter_conditiondefinition_breach_minutes_and_more', '2000-01-01 00:00:00');
+INSERT INTO django_migrations (app, name, applied) VALUES ('graphyard', '0016_alter_inventoryhost_warning_after_seconds', '2000-01-01 00:00:00');
 INSERT INTO django_migrations (app, name, applied) VALUES ('sessions', '0001_initial', '2000-01-01 00:00:00');

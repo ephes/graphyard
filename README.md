@@ -286,6 +286,9 @@ just manage create_ingest_token --name webfarm --host-scope 'web-*,lb1'
 - `--rotate`, and re-creating a revoked name, keep the scope of the replaced token. Pass
   `--host-scope` to change it or `--unrestricted` to drop it. The scope can also be edited in the
   Django admin (ingest token → host scope, one entry per line or comma-separated).
+- The locked current token scope is validated and canonicalized once per request;
+  matching all points reuses only that immutable request-local representation.
+  No matcher is retained across credential or scope changes.
 - A stored scope that is not a valid list (damaged by hand, for example) allows nothing. Rotating
   or re-creating such a token fails and changes nothing until `--host-scope` or `--unrestricted`
   is given.

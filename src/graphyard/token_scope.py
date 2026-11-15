@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Iterable
+from dataclasses import dataclass
 
 from django.core.exceptions import ValidationError
 
@@ -88,26 +89,44 @@ def is_valid_stored_scope(scope: object) -> bool:
     return True
 
 
-def host_in_scope(scope: object, identifier: str) -> bool:
-    """Whether ``identifier`` is allowed by ``scope``.
+@dataclass(frozen=True)
+class AdmittedHostScope:
+    """Immutable, request-local matcher; never cache across token admissions."""
 
-    Fails closed: a stored scope that is not a list of valid entries allows
-    nothing, so a damaged row can never widen a token.
-    """
-    if not is_scoped(scope):
-        return True
-    if not is_valid_stored_scope(scope):
-        return False
-    assert isinstance(scope, list)
-    candidate = canonical_host_identifier(identifier)
-    if not candidate:
-        return False
-    for entry in scope:
-        if entry.endswith("*"):
-            # Keep a trailing separator of the prefix: "web-*" must not match "web".
-            prefix = _NON_IDENTIFIER_RUN.sub("_", entry[:-1])
-            if candidate.startswith(prefix):
-                return True
-        elif candidate == canonical_host_identifier(entry):
+    unrestricted: bool = False
+    exact: frozenset[str] = frozenset()
+    prefixes: tuple[str, ...] = ()
+
+    def allows(self, identifier: str) -> bool:
+        if self.unrestricted:
             return True
-    return False
+        candidate = canonical_host_identifier(identifier)
+        return bool(candidate) and (
+            candidate in self.exact or candidate.startswith(self.prefixes)
+        )
+
+
+def admit_host_scope(scope: object) -> AdmittedHostScope:
+    """Validate once, canonicalize once; damaged stored scopes allow nothing."""
+    if not is_valid_stored_scope(scope):
+        return AdmittedHostScope()
+    assert isinstance(scope, list)
+    return AdmittedHostScope(
+        unrestricted=not scope,
+        exact=frozenset(
+            canonical_host_identifier(entry)
+            for entry in scope
+            if not entry.endswith("*")
+        ),
+        # Keep a trailing separator: "web-*" must not match "web".
+        prefixes=tuple(
+            _NON_IDENTIFIER_RUN.sub("_", entry[:-1])
+            for entry in scope
+            if entry.endswith("*")
+        ),
+    )
+
+
+def host_in_scope(scope: object, identifier: str) -> bool:
+    """Single lookup convenience API, failing closed for damaged scopes."""
+    return admit_host_scope(scope).allows(identifier)

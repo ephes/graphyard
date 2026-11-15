@@ -94,6 +94,7 @@ def test_contract_detects_a_migration_that_drops_an_agent_column(
     assert _stale(driver, rendered) == [
         "schema/agent_tables.json",
         "schema/schema.sql",
+        "schema/storage_contract.rs",
     ]
     tables: Any = rendered["schema/agent_tables.json"]
     assert "stale_after_seconds" not in tables["tables"]["condition_definition"]
@@ -152,4 +153,30 @@ def test_minimum_migration_of_the_real_migrations(rendered: dict[str, Any]) -> N
     assert contract["min_graphyard_migration"] == [
         "graphyard",
         "0015_alter_conditiondefinition_breach_minutes_and_more",
+    ]
+
+
+@pytest.mark.parametrize(
+    ("old", "new"),
+    [
+        ('"name" varchar(255) NOT NULL UNIQUE', '"name" varchar(255) NOT NULL'),
+        ('"enabled" bool NOT NULL', '"enabled" bool NULL'),
+        ('"interval_seconds" integer unsigned', '"interval_seconds" text'),
+    ],
+)
+def test_contract_tracks_storage_properties(schema, driver, old, new):
+    def rebuild(db_path):
+        with sqlite3.connect(db_path) as connection:
+            ddl = connection.execute(
+                "SELECT sql FROM sqlite_master WHERE name = 'metric_collection_spec'"
+            ).fetchone()[0]
+            assert old in ddl
+            connection.execute("DROP TABLE metric_collection_spec")
+            connection.execute(ddl.replace(old, new))
+        connection.close()
+
+    rendered = schema.render(prepare=rebuild)
+    assert _stale(driver, rendered) == [
+        "schema/schema.sql",
+        "schema/storage_contract.rs",
     ]

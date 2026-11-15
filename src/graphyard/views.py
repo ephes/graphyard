@@ -40,7 +40,7 @@ from .services import (
     record_token_host_usage,
     touch_registry_from_points,
 )
-from .token_scope import canonical_host_identifier, host_in_scope, is_scoped
+from .token_scope import admit_host_scope, canonical_host_identifier
 
 logger = logging.getLogger(__name__)
 
@@ -426,12 +426,12 @@ def _point_host_identifiers(point: MetricPoint) -> tuple[str, ...]:
 def _first_out_of_scope_index(
     token: IngestToken, points: list[MetricPoint]
 ) -> int | None:
-    scope = token.host_scope
-    if not is_scoped(scope):
+    scope = admit_host_scope(token.host_scope)
+    if scope.unrestricted:
         return None
     for idx, point in enumerate(points):
         for identifier in _point_host_identifiers(point):
-            if not host_in_scope(scope, identifier):
+            if not scope.allows(identifier):
                 return idx
     return None
 
