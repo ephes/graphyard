@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+- Rust agent (`agent-rs/`): version 0.4.0, released as `agent-rs-v0.4.0`.
+  It carries the Rust fixes merged since `agent-rs-v0.3.0` (scout rounds 87
+  to 99 and the common timestamp domain), among them due-spec claims renewed
+  through collection and publication, fenced delayed observations and query
+  replies bound to their selection, a DB actor bounded to 64 jobs, metric
+  identities without control characters and with the API's dimension/tag
+  limits, write batches refused above 8 MiB, the common InfluxDB v2/v3
+  timestamp domain for `INFLUX_API_MODE=auto`, page-probe source identities
+  without credentials, query or fragment, and unambiguous UniFi site,
+  controller URL and interface selection. Upgrade notes: a page probe whose
+  URL has query parameters now needs `config.source_entity_id` (otherwise the
+  run is critical); a UniFi spec with a controller URL containing `?` or `#`,
+  an invalid `site_id`, or a port selector matching several interfaces fails;
+  out-of-domain timestamps are skipped in auto mode. `--check-schema` still
+  needs graphyard migration
+  `0015_alter_conditiondefinition_breach_minutes_and_more`. macmini keeps
+  running 0.3.0 until ops-control pins the new release.
+
 - Order public release publication by owned registry generation across wall-clock
   rollback; report current results that cannot publish as incomplete.
 - Reject duplicate members throughout public release JSON, retaining previous
