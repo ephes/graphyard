@@ -307,7 +307,9 @@ def test_recorder_writes_incremental_snapshots_without_secrets(tmp_path):
     stop = threading.Event()
 
     def tick() -> dict:
-        recorder.record(prod_rec, shadow_rec, units, out, 0, stop, 1, systemctl, proc)
+        recorder.record(
+            prod_rec, shadow_rec, units, out, 0.001, stop, 1, systemctl, proc
+        )
         return json.loads(out.read_text().splitlines()[-1])
 
     first = tick()
@@ -1075,3 +1077,81 @@ def test_recorder_restart_replaces_baseline(tmp_path):
     assert history.rows("host_registry") == []
     assert history.ticks == 2
     assert len(history.rows("metric_collection_spec")) == 4
+
+
+@pytest.mark.parametrize(
+    "option,value",
+    [
+        ("--interval", "nan"),
+        ("--interval", "inf"),
+        ("--interval", "0"),
+        ("--interval", "-1"),
+        ("--interval", "86401"),
+        ("--ticks", "0"),
+        ("--ticks", "-1"),
+    ],
+)
+def test_recorder_rejects_loop_options_before_io(tmp_path, option, value):
+    with pytest.raises(SystemExit) as exc:
+        recorder.main(
+            [
+                "--prod-db",
+                str(tmp_path / "absent"),
+                "--shadow-db",
+                "absent2",
+                "--out",
+                str(tmp_path / "out"),
+                option,
+                value,
+            ]
+        )
+    assert exc.value.code == 2
+    assert not (tmp_path / "out").exists()
+
+
+@pytest.mark.parametrize("mode", ["hang", "flood", "descendant"])
+def test_unit_probe_has_owned_deadline_and_capture(tmp_path, mode):
+    import subprocess
+
+    helper = tmp_path / "helper"
+    helper.write_text(
+        f"#!{sys.executable}\n"
+        + """import os, sys, time
+mode = """
+        + repr(mode)
+        + """
+if mode == 'descendant':
+    if os.fork():
+        sys.exit(0)
+if mode == 'flood':
+    while True:
+        os.write(1, b'private-helper-output' * 1000)
+time.sleep(30)
+"""
+    )
+    helper.chmod(0o755)
+    script = f"""import sys
+sys.path.insert(0, {str(PARITY)!r})
+import shadow_record as r
+from pathlib import Path
+r.UNIT_TIMEOUT = 0.15
+sample = r.unit_sample('fake', {str(helper)!r}, Path('/nonexistent'))
+assert sample == {{'error': 'unit probe unavailable'}}
+"""
+    import signal
+
+    process = subprocess.Popen(
+        [sys.executable, "-c", script],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        start_new_session=True,
+    )
+    try:
+        _, stderr = process.communicate(timeout=3)
+        assert process.returncode == 0, stderr.decode()
+    finally:
+        try:
+            os.killpg(process.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        process.wait()

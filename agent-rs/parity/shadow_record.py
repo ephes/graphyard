@@ -39,8 +39,10 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import json
+import math
 import os
 import shutil
+import selectors
 import signal
 import sqlite3
 import stat
@@ -68,6 +70,10 @@ UNIT_PROPERTIES = (
     "MemoryPeak",
     "CPUUsageNSec",
 )
+UNIT_TIMEOUT = 2.0
+UNIT_MAX_BYTES = 64 * 1024
+MAX_INTERVAL = 86400
+
 PROC_KEYS = ("VmRSS", "VmHWM", "RssAnon", "RssFile")
 
 
@@ -132,26 +138,62 @@ def _blob(value: object) -> str:
     raise TypeError(f"cannot record {type(value).__name__}")
 
 
-def unit_sample(unit: str, systemctl: str, proc: Path) -> dict[str, Any]:
+def unit_sample(
+    unit: str, systemctl: str, proc: Path, stop: threading.Event | None = None
+) -> dict[str, Any]:
     """``systemctl show`` properties of ``unit`` plus ``/proc`` memory."""
     if shutil.which(systemctl) is None:
-        return {"error": f"{systemctl} not found"}
-    completed = subprocess.run(
-        [systemctl, "show", "-p", ",".join(UNIT_PROPERTIES), unit],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    if completed.returncode != 0:
-        return {"error": completed.stderr.strip() or f"exit {completed.returncode}"}
+        return {"error": "unit probe unavailable"}
     sample: dict[str, Any] = {}
-    for line in completed.stdout.splitlines():
-        key, _, value = line.partition("=")
-        sample[key] = value
+    try:
+        with subprocess.Popen(
+            [systemctl, "show", "-p", ",".join(UNIT_PROPERTIES), unit],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            start_new_session=True,
+        ) as child:
+            try:
+                assert child.stdout is not None
+                os.set_blocking(child.stdout.fileno(), False)
+                captured = bytearray()
+                deadline = time.monotonic() + UNIT_TIMEOUT
+                with selectors.DefaultSelector() as selector:
+                    selector.register(child.stdout, selectors.EVENT_READ)
+                    while True:
+                        remaining = deadline - time.monotonic()
+                        if remaining <= 0 or (stop is not None and stop.is_set()):
+                            raise ValueError("probe deadline")
+                        if not selector.select(min(remaining, 0.05)):
+                            continue
+                        chunk = os.read(
+                            child.stdout.fileno(),
+                            min(8192, UNIT_MAX_BYTES + 1 - len(captured)),
+                        )
+                        if not chunk:
+                            break
+                        captured.extend(chunk)
+                        if len(captured) > UNIT_MAX_BYTES:
+                            raise ValueError("probe output limit")
+                if child.wait(timeout=max(0.001, deadline - time.monotonic())) != 0:
+                    raise ValueError("probe failed")
+                for line in captured.decode("utf-8").splitlines():
+                    key, _, value = line.partition("=")
+                    if key in UNIT_PROPERTIES:
+                        sample[key] = value
+            finally:
+                # The process group was created for this probe, including pipe holders.
+                try:
+                    os.killpg(child.pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+                child.wait()
+    except (OSError, ValueError, subprocess.TimeoutExpired):
+        return {"error": "unit probe unavailable"}
     pid = sample.get("MainPID", "0")
     if pid.isdigit() and pid != "0":
         try:
-            status = (proc / pid / "status").read_text(encoding="utf-8")
+            with (proc / pid / "status").open(encoding="utf-8") as status_file:
+                status = status_file.read(UNIT_MAX_BYTES)
         except OSError:
             status = ""
         for line in status.splitlines():
@@ -159,6 +201,13 @@ def unit_sample(unit: str, systemctl: str, proc: Path) -> dict[str, Any]:
             if key in PROC_KEYS:
                 sample[key] = value.strip()
     return sample
+
+
+def validate_loop(interval: float, ticks: int | None) -> None:
+    if not math.isfinite(interval) or not 0 < interval <= MAX_INTERVAL:
+        raise ValueError("interval must be finite and in (0, 86400] seconds")
+    if ticks is not None and (type(ticks) is not int or ticks <= 0):
+        raise ValueError("ticks must be a positive integer")
 
 
 def record(
@@ -173,6 +222,7 @@ def record(
     proc: Path = Path("/proc"),
 ) -> int:
     """Append ticks to ``out`` until ``stop`` is set (or ``ticks`` ran)."""
+    validate_loop(interval, ticks)
     done = 0
     # Hold admitted input descriptors until output identity has been checked.
     from contextlib import ExitStack
@@ -214,6 +264,7 @@ def record(
             raise
     with os.fdopen(fd, "a", encoding="utf-8") as stream:
         while not stop.is_set():
+            started = time.monotonic()
             now = time.time()
             line = {
                 "ts": round(now, 3),
@@ -222,7 +273,7 @@ def record(
                 ),
                 "dbs": {"prod": prod.tick(), "shadow": shadow.tick()},
                 "units": {
-                    role: unit_sample(unit, systemctl, proc)
+                    role: unit_sample(unit, systemctl, proc, stop)
                     for role, unit in units.items()
                 },
             }
@@ -231,7 +282,7 @@ def record(
             done += 1
             if ticks is not None and done >= ticks:
                 break
-            stop.wait(max(0.0, interval - (time.time() - now)))
+            stop.wait(max(0.0, interval - (time.monotonic() - started)))
     return done
 
 
@@ -250,6 +301,10 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--ticks", type=int, help="stop after this many ticks")
     args = parser.parse_args(argv)
+    try:
+        validate_loop(args.interval, args.ticks)
+    except ValueError as err:
+        parser.error(str(err))
     for path in (args.prod_db, args.shadow_db):
         if not path.is_file():
             print(f"database not found: {path}", file=sys.stderr)

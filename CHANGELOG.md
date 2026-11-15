@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Bound recorder unit probes by deadline/output and retire their owned process
+  groups; reject nonfinite or invalid sampling controls before resource access.
+
 - Refuse recorder output aliases of input databases and replay explicit session
   baselines so offline deletions cannot survive recorder restarts.
 

@@ -346,3 +346,11 @@ Legacy recordings without markers retain incremental replay compatibility, but a
 legacy file concatenated across restarts cannot prove offline deletions: start a
 new recording for qualification. Older comparators do not support baseline markers;
 use the updated recorder and comparator together.
+
+Recorder intervals must be finite and in `(0, 86400]` seconds; `--ticks` must
+be a positive integer. Invalid options fail before any database or output open.
+Each unit probe has a two-second monotonic budget and 64 KiB stdout cap; stderr
+is discarded. Timeout, cancellation, excess output and helper failures emit only
+`unit probe unavailable`. The recorder kills and reaps its dedicated helper
+process group (including descendants holding the pipe); SIGTERM interrupts probe
+polling. Missing unit evidence remains unavailable in qualification.
