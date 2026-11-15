@@ -260,7 +260,8 @@ def refresh(data, force=False):
                         pk=key, enabled=True, definition=definition
                     ).update(**values)
                     if not published:
-                        skipped += 1
+                        # A failed lookup already counts as failed, not also as skipped.
+                        skipped += "version" in values
             if superseded:
                 # A newer refresh owns the registry: this result was discarded and
                 # the remaining sources needing a lookup are not looked up at all.

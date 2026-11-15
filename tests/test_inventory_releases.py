@@ -1135,6 +1135,16 @@ def test_current_refresh_reports_unpublishable_result(monkeypatch):
     assert not result.complete and result.skipped == 1
 
 
+def test_current_refresh_counts_unpublishable_failure_once(monkeypatch):
+    def lookup(*args, **kwargs):
+        InventoryRelease.objects.all().delete()
+        raise httpx.ConnectError("synthetic outage")
+
+    monkeypatch.setattr(releases, "fetch", lookup)
+    result = releases.refresh([definition()], force=True)
+    assert (result.failures, result.skipped) == (1, 0)
+
+
 @pytest.mark.parametrize(
     "item,body",
     [
