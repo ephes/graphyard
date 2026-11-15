@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Refuse recorder output aliases of input databases and replay explicit session
+  baselines so offline deletions cannot survive recorder restarts.
+
 - Fence token admin security edits with signed current-state revisions and narrow
   saves; preserve credentials, revocation and ingest usage. Registry admin edits
   preserve observed telemetry/provenance, protect existing identifiers and refuse

@@ -1025,3 +1025,53 @@ def test_values_that_cannot_be_paired_are_an_inconclusive_finding(tmp_path, caps
         if f["detail"] == "no value pair to compare (inconclusive)"
     }
     assert inconclusive == {"ha env", "json temp"}
+
+
+@pytest.mark.parametrize("role", ["prod", "shadow"])
+@pytest.mark.parametrize("alias", ["same", "hard", "symlink"])
+def test_recorder_output_alias_is_refused(tmp_path, role, alias):
+    paths = {r: tmp_path / f"{r}.sqlite3" for r in ("prod", "shadow")}
+    for path in paths.values():
+        _database(path).close()
+    before = {r: p.read_bytes() for r, p in paths.items()}
+    out = paths[role] if alias == "same" else tmp_path / "record"
+    if alias == "hard":
+        os.link(paths[role], out)
+    elif alias == "symlink":
+        out.symlink_to(paths[role])
+    with pytest.raises((OSError, ValueError)):
+        recorder.record(
+            *(recorder.DatabaseRecorder(paths[r]) for r in ("prod", "shadow")),
+            {},
+            out,
+            1,
+            threading.Event(),
+            1,
+        )
+    assert {r: p.read_bytes() for r, p in paths.items()} == before
+
+
+def test_recorder_restart_replaces_baseline(tmp_path):
+    paths = [tmp_path / f"{r}.sqlite3" for r in ("prod", "shadow")]
+    for path in paths:
+        _database(path).close()
+    out = tmp_path / "record"
+
+    def session():
+        recorder.record(
+            *(recorder.DatabaseRecorder(p) for p in paths),
+            {},
+            out,
+            1,
+            threading.Event(),
+            1,
+        )
+
+    session()
+    with sqlite3.connect(paths[1]) as db:
+        db.execute("DELETE FROM host_registry")
+    session()
+    history = compare.read_record(out).dbs["shadow"]
+    assert history.rows("host_registry") == []
+    assert history.ticks == 2
+    assert len(history.rows("metric_collection_spec")) == 4

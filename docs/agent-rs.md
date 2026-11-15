@@ -334,3 +334,15 @@ docker stop graphyard-r89-influx2
 
 `tests/timestamp_oracle.rs` uses only fixed loopback ports, a synthetic bucket and
 synthetic credentials. Normal workspace tests leave it explicitly ignored.
+
+### Recorder file and restart contract
+
+The recorder appends only to a caller-owned regular 0600 file, refuses symlink
+outputs and compares its opened inode with both input databases (including hard
+links). The first successful snapshot of each new DatabaseRecorder session carries
+`"baseline": true`; replay replaces that database's state before applying it.
+Earlier events remain historical evidence; a baseline is not a collector run.
+Legacy recordings without markers retain incremental replay compatibility, but a
+legacy file concatenated across restarts cannot prove offline deletions: start a
+new recording for qualification. Older comparators do not support baseline markers;
+use the updated recorder and comparator together.

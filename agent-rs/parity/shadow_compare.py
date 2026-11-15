@@ -398,9 +398,14 @@ class DatabaseHistory:
         if "error" in line:
             self.errors.append((ts, str(line["error"])))
             return
-        first = self.ticks == 0
+        baseline = line.get("baseline") is True
+        if baseline:
+            self.state.clear()
+        first = self.ticks == 0 or baseline
         self.ticks += 1
         for key, value in line.items():
+            if key == "baseline":
+                continue
             if key.endswith("_deleted"):
                 table = key[: -len("_deleted")]
                 for row_id in value:

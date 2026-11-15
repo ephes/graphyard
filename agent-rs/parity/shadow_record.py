@@ -43,6 +43,7 @@ import os
 import shutil
 import signal
 import sqlite3
+import stat
 import subprocess
 import sys
 import threading
@@ -93,7 +94,7 @@ class DatabaseRecorder:
             return {"error": f"{type(exc).__name__}: {exc}"}
         finally:
             connection.close()
-        out: dict[str, Any] = {}
+        out: dict[str, Any] = {"baseline": True} if self.rows is None else {}
         previous = self.rows or {}
         for table, rows in snapshot.items():
             before = previous.get(table, {})
@@ -173,7 +174,44 @@ def record(
 ) -> int:
     """Append ticks to ``out`` until ``stop`` is set (or ``ticks`` ran)."""
     done = 0
-    fd = os.open(out, os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600)
+    # Hold admitted input descriptors until output identity has been checked.
+    from contextlib import ExitStack
+
+    with ExitStack() as inputs:
+        identities = []
+        for source in (prod.path, shadow.path):
+            try:
+                fd_in = os.open(source, os.O_RDONLY | os.O_NONBLOCK)
+            except FileNotFoundError:
+                continue  # The tick records an unavailable database, then retries.
+
+            inputs.callback(os.close, fd_in)
+            info = os.fstat(fd_in)
+            if not stat.S_ISREG(info.st_mode):
+                raise ValueError("database must be a regular file")
+            identities.append((info.st_dev, info.st_ino))
+        if len(identities) == 2 and identities[0] == identities[1]:
+            raise ValueError("production and shadow database are the same file")
+        fd = os.open(
+            out,
+            os.O_WRONLY | os.O_CREAT | os.O_APPEND | os.O_NONBLOCK | os.O_NOFOLLOW,
+            0o600,
+        )
+        try:
+            info = os.fstat(fd)
+            if (info.st_dev, info.st_ino) in identities:
+                raise ValueError("output aliases an input database")
+            if (
+                not stat.S_ISREG(info.st_mode)
+                or info.st_uid != os.geteuid()
+                or stat.S_IMODE(info.st_mode) != 0o600
+            ):
+                raise ValueError(
+                    "output must be a private regular file owned by the caller (0600)"
+                )
+        except BaseException:
+            os.close(fd)
+            raise
     with os.fdopen(fd, "a", encoding="utf-8") as stream:
         while not stop.is_set():
             now = time.time()
@@ -225,17 +263,21 @@ def main(argv: list[str] | None = None) -> int:
     units = (
         {} if args.no_units else {"prod": args.prod_unit, "shadow": args.shadow_unit}
     )
-    ticks = record(
-        DatabaseRecorder(args.prod_db),
-        DatabaseRecorder(args.shadow_db),
-        units,
-        args.out,
-        args.interval,
-        stop,
-        args.ticks,
-        args.systemctl,
-        args.proc,
-    )
+    try:
+        ticks = record(
+            DatabaseRecorder(args.prod_db),
+            DatabaseRecorder(args.shadow_db),
+            units,
+            args.out,
+            args.interval,
+            stop,
+            args.ticks,
+            args.systemctl,
+            args.proc,
+        )
+    except (OSError, ValueError) as err:
+        print(f"shadow_record: {err}", file=sys.stderr)
+        return 1
     print(f"recorded {ticks} tick(s) to {args.out}")
     return 0
 

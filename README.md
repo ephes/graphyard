@@ -1181,3 +1181,7 @@ bytes, including newlines, before sending or appending a shadow file. No partial
 chunks or automatic retries are introduced. Input points remain caller-owned;
 this bounds additional writer memory, not collector response allocation. The
 Python rollback writer does not yet apply this encoded request budget.
+
+Shadow qualification tools require a separate private recorder output, and new
+recording sessions reset replay baselines. See the [shadow tool contracts](docs/agent-rs.md#recorder-file-and-restart-contract)
+for compatibility and evidence admission.
