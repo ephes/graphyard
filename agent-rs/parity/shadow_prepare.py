@@ -43,11 +43,13 @@ import os
 import sqlite3
 import stat
 import sys
+import time
 from pathlib import Path
 from typing import Any
 
 COPY_NAME = "db.sqlite3"
 META_NAME = "shadow.json"
+BACKUP_TIMEOUT = 30.0
 
 #: CPython's default ``sys.get_int_max_str_digits()``.
 INT_MAX_STR_DIGITS = 4300
@@ -254,17 +256,30 @@ def check_shadow_dir(path: Path) -> str | None:
 
 
 def backup(source: Path, dest: Path) -> None:
-    src = sqlite3.connect(f"file:{source}?mode=ro", uri=True, timeout=30)
+    deadline = time.monotonic() + BACKUP_TIMEOUT
+    owned = False
     try:
-        fd = os.open(dest, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-        os.close(fd)
-        out = sqlite3.connect(dest)
+        src = sqlite3.connect(f"file:{source}?mode=ro", uri=True, timeout=0.05)
         try:
-            src.backup(out)
+            fd = os.open(dest, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+            owned = True
+            os.close(fd)
+            out = sqlite3.connect(dest, timeout=0.05)
+            try:
+
+                def progress(status: int, remaining: int, total: int) -> None:
+                    if time.monotonic() >= deadline:
+                        raise RuntimeError("backup deadline exceeded")
+
+                src.backup(out, pages=128, progress=progress, sleep=0.01)
+            finally:
+                out.close()
         finally:
-            out.close()
-    finally:
-        src.close()
+            src.close()
+    except BaseException:
+        if owned:
+            dest.unlink()
+        raise
 
 
 def prepare(dest: Path, disable: list[str]) -> dict[str, Any]:
@@ -282,8 +297,8 @@ def prepare(dest: Path, disable: list[str]) -> dict[str, Any]:
                 ).rowcount
                 if not changed:
                     missing.append(name)
-        if missing:
-            raise RuntimeError(f"no spec named {', '.join(map(repr, missing))}")
+            if missing:
+                raise RuntimeError(f"no spec named {', '.join(map(repr, missing))}")
         specs = connection.execute(
             "SELECT spec_type, COUNT(*) FROM metric_collection_spec WHERE enabled"
             " GROUP BY spec_type ORDER BY spec_type"

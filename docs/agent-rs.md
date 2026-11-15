@@ -354,3 +354,8 @@ is discarded. Timeout, cancellation, excess output and helper failures emit only
 `unit probe unavailable`. The recorder kills and reaps its dedicated helper
 process group (including descendants holding the pipe); SIGTERM interrupts probe
 polling. Missing unit evidence remains unavailable in qualification.
+
+Shadow backups have a 30-second monotonic total budget, 50 ms SQLite busy waits
+and bounded-page progress callbacks. Failure removes only the newly created
+incomplete backup. A requested disable set commits atomically: any missing spec
+rolls back every flag in that request.

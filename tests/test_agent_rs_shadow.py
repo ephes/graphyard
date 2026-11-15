@@ -899,7 +899,7 @@ def test_prepare_record_compare_chain_on_two_databases(tmp_path, capsys):
             shadow_rec,
             units,
             record_path,
-            0,
+            0.001,
             threading.Event(),
             1,
             systemctl,
@@ -948,7 +948,7 @@ def test_prepare_record_compare_chain_on_two_databases(tmp_path, capsys):
         shadow_rec,
         units,
         record_path,
-        0,
+        0.001,
         threading.Event(),
         1,
         systemctl,
@@ -1155,3 +1155,43 @@ assert sample == {{'error': 'unit probe unavailable'}}
         except ProcessLookupError:
             pass
         process.wait()
+
+
+def test_prepare_mixed_disable_rolls_back(tmp_path):
+    path = tmp_path / "db"
+    _database(path).close()
+    with pytest.raises(RuntimeError, match="no spec named"):
+        prepare.prepare(path, ["unifi", "absent"])
+    with sqlite3.connect(path) as db:
+        assert db.execute(
+            "SELECT enabled FROM metric_collection_spec WHERE name='unifi'"
+        ).fetchone() == (1,)
+
+
+def test_backup_progress_has_elapsed_budget(tmp_path, monkeypatch):
+    path = tmp_path / "db"
+    _database(path).close()
+    times = iter([0.0, 100.0])
+    monkeypatch.setattr(prepare.time, "monotonic", lambda: next(times))
+    dest = tmp_path / "copy"
+    with pytest.raises(RuntimeError, match="backup deadline"):
+        prepare.backup(path, dest)
+    assert not dest.exists()
+
+
+def test_backup_busy_source_exits_and_removes_owned_copy(tmp_path, monkeypatch):
+    import time
+
+    source = tmp_path / "source"
+    db = _database(source)
+    db.execute("BEGIN EXCLUSIVE")
+    monkeypatch.setattr(prepare, "BACKUP_TIMEOUT", 0.1)
+    dest = tmp_path / "copy"
+    started = time.monotonic()
+    try:
+        with pytest.raises(RuntimeError, match="backup deadline"):
+            prepare.backup(source, dest)
+    finally:
+        db.close()
+    assert time.monotonic() - started < 2
+    assert not dest.exists()

@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Give shadow backups a total elapsed deadline and roll back the whole requested
+  disable set when any specification is missing.
+
 - Bound recorder unit probes by deadline/output and retire their owned process
   groups; reject nonfinite or invalid sampling controls before resource access.
 
