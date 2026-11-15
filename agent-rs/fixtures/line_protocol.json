@@ -1872,7 +1872,8 @@
    "env": {
     "INFLUX_URL": "{server}",
     "INFLUX_TOKEN": "t0k",
-    "INFLUX_ORG": "graphyard"
+    "INFLUX_ORG": "graphyard",
+    "INFLUX_API_MODE": "v2"
    },
    "respond": {},
    "points": [
@@ -1923,7 +1924,7 @@
     }
    ],
    "result": {
-    "written": 1
+    "written": 3
    },
    "requests": [
     {
@@ -1952,28 +1953,16 @@
       ],
       [
        "Content-Length",
-       "205"
+       "649"
       ]
      ],
-     "body": "graphyard_metrics,collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,subject_id=macmini,subject_type=host value=0.5 -1000"
+     "body": "graphyard_metrics,collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,subject_id=macmini,subject_type=host value=0.5 -1000\ngraphyard_metrics,collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,subject_id=macmini,subject_type=host value=0.5 253402300799999999000\ngraphyard_metrics,collector_host=macmini,collector_service=vector,host=macmini,metric=host.cpu_usage,source_instance=vector-macmini,source_system=vector,subject_id=macmini,subject_type=host value=0.5 -62135596800000000000"
     }
    ],
    "logs": [
     {
-     "level": "ERROR",
-     "message": "Metric point validation failed metric=host.cpu_usage subject_type=host subject_id=macmini: timestamp outside common InfluxDB v2/v3 domain"
-    },
-    {
-     "level": "ERROR",
-     "message": "Metric point validation failed metric=host.cpu_usage subject_type=host subject_id=macmini: timestamp outside common InfluxDB v2/v3 domain"
-    },
-    {
      "level": "INFO",
      "message": "HTTP Request: POST {server}/api/v2/write?org=graphyard&bucket=graphyard&precision=ns \"HTTP/1.1 204 No Content\""
-    },
-    {
-     "level": "WARNING",
-     "message": "metrics_write_rejected category=normalization rejected_points=2 written_points=1 total_points=3"
     }
    ]
   },

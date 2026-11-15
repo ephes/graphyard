@@ -468,8 +468,9 @@ WRITES: list[tuple[str, dict[str, str], list[dict[str, Any]], dict[str, Any]]] =
         {},
     ),
     (
+        # Explicit v2 keeps end-to-end wire coverage of timestamps outside i64.
         "timestamps",
-        V2,
+        {**V2, "INFLUX_API_MODE": "v2"},
         [
             _p(ts=datetime(1969, 12, 31, 23, 59, 59, 999999, tzinfo=UTC)),
             _p(ts=datetime(9999, 12, 31, 23, 59, 59, 999999, tzinfo=UTC)),
