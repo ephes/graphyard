@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+- Rust agent (`agent-rs/`): release `agent-rs-v0.4.0`
+  (<https://github.com/ephes/graphyard/releases/tag/agent-rs-v0.4.0>), built by
+  the release workflow from `3d6616d`. Asset
+  `graphyard-agent-0.4.0-x86_64-unknown-linux-gnu.tar.gz`, sha256
+  `1528155d1c6fc8208ac22109ca158232c0302605fda1540b7721dc07a078eb7a`; the binary
+  needs at most `GLIBC_2.34`. ops-control `281d408f` pins it, and the
+  `graphyard_core` deploy of 2026-11-15 installed and selected it on macmini
+  (T1 07:08:36 UTC, `/proc/<pid>/exe` `/opt/graphyard-agent/0.4.0/graphyard-agent`,
+  `--check-schema` exit 0 for 0.4.0 and the rollback target 0.3.0). One hour
+  later: no restart, all 32 specs ran without failures, the 71 InfluxDB series
+  keys of the hour before were written again and no new key appeared,
+  `/v1/health` as before, `RssAnon` 5.1 MiB, CPU 3.5 s in the first hour.
+
 - Rust agent (`agent-rs/`): version 0.4.0, released as `agent-rs-v0.4.0`.
   It carries the Rust fixes merged since `agent-rs-v0.3.0` (scout rounds 87
   to 99 and the common timestamp domain), among them due-spec claims renewed
