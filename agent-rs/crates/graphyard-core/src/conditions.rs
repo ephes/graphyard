@@ -205,13 +205,13 @@ pub fn evaluate_samples(
     }
 
     // Worst status first; among equals the oldest latest sample, then the
-    // label (a stable sort, like Python's `list.sort`).
+    // structural series key (independent of display escaping).
     results.sort_by(|a, b| {
         b.status
             .severity()
             .cmp(&a.status.severity())
             .then(a.latest.cmp(&b.latest))
-            .then_with(|| labels[a.index].cmp(&labels[b.index]))
+            .then_with(|| keys[a.index].cmp(keys[b.index]))
     });
     let total = results.len();
     let not_ok = results
@@ -221,10 +221,10 @@ pub fn evaluate_samples(
 
     let worst = &results[0];
     if worst.status == StatusLevel::Ok {
-        // `max(results, key=(latest, label))`: the first maximal element.
+        // `max(results, key=(latest, structural_key))`.
         let mut newest = worst;
         for result in &results[1..] {
-            if (result.latest, &labels[result.index]) > (newest.latest, &labels[newest.index]) {
+            if (result.latest, keys[result.index]) > (newest.latest, keys[newest.index]) {
                 newest = result;
             }
         }
@@ -316,9 +316,9 @@ fn dimension<'a>(key: &'a SeriesKey, name: &str) -> Option<&'a str> {
         .map(|index| key[index].1.as_str())
 }
 
-/// `_series_labels`: `name=value` of the names whose value (or absence)
-/// differs between the series; with nothing varying (one series) every name
-/// but `metric`. A missing name renders as `name=`.
+/// `_series_labels`: JSON-quoted names/values of the dimensions that differ;
+/// with nothing varying (one series) every name but `metric`. Missing values
+/// render as `null`, distinct from the quoted empty string.
 fn series_labels(keys: &[&SeriesKey]) -> Vec<String> {
     let all_names: BTreeSet<&str> = keys
         .iter()
@@ -348,7 +348,14 @@ fn series_labels(keys: &[&SeriesKey]) -> Vec<String> {
         .map(|key| {
             names
                 .iter()
-                .map(|name| format!("{name}={}", dimension(key, name).unwrap_or("")))
+                .map(|name| {
+                    format!(
+                        "{}={}",
+                        serde_json::to_string(name).expect("string serialization"),
+                        serde_json::to_string(&dimension(key, name))
+                            .expect("optional string serialization")
+                    )
+                })
                 .collect::<Vec<_>>()
                 .join(", ")
         })

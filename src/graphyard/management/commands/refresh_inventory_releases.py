@@ -56,7 +56,7 @@ class Command(BaseCommand):
         )
         if not result.complete:
             raise CommandError(
-                "Release refresh incomplete: elapsed budget or superseded registry"
+                "Release refresh incomplete: elapsed budget, superseded registry or unpublished result"
             )
         if result.failures:
             raise CommandError("Some release sources could not be checked")

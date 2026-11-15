@@ -483,6 +483,10 @@ HTTP redirects, proxy environment settings, prereleases/dev/local versions, yank
 PyPI releases, disabled formulae and oversized responses are refused. No GitHub
 credential is used; rate limits appear as failed checks. PyPI's latest project
 release must have at least one non-yanked artifact; no compatibility resolver is run.
+Release response JSON rejects duplicate object members at every depth, including
+escaped-equivalent names, identical values and ignored metadata. Repeated array
+entries remain supported. Such ambiguity is a private, fixed-text lookup failure:
+the prior successful version/timestamp survive and independent sources continue.
 
 The explicit registry defines package identity; matching a distribution name is not
 proof of its original download registry. Private/repacked distributions must not be
@@ -506,6 +510,11 @@ are serialized by a private `.inventory-releases.lock` next to the Django databa
 rsync must exclude that lock from both deletion and replacement. `--check` validates without DB/network/lock writes;
 `--force` bypasses the cache age for an operator acceptance check. Removed sources
 are disabled on the next valid refresh; invalid configuration changes nothing.
+Registry generations alone order publication, including forced refreshes after
+a backward wall-clock adjustment. Wall times remain observation/freshness data;
+future-dated evidence is still unknown for comparison. An older in-flight generation
+cannot publish even if its wall time is later. A current result that cannot update
+its enabled, matching source counts as skipped and makes the command incomplete.
 A disabled timer retains previous cache rows, which become stale normally.
 
 Apply migration 0009 before serving this page. Rollback can disable the timer and

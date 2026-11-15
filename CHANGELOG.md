@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Order public release publication by owned registry generation across wall-clock
+  rollback; report current results that cannot publish as incomplete.
+- Reject duplicate members throughout public release JSON, retaining previous
+  successful cache evidence and isolating failed sources.
+- Choose condition diagnostics by structural series identity in Python and Rust;
+  JSON-quote tag names/values and distinguish missing from empty dimensions.
+
 - Use binary nearest-time matching with existing tie/reuse semantics and mark
   enabled specifications with missing observations as inconclusive.
 

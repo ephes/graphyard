@@ -24,8 +24,12 @@ producer schedules.
 Cached public releases belong to the exact configured source definition,
 including comparison targets. Changes clear prior success before the next lookup;
 older in-flight results cannot publish after a newer registry refresh, including
-removal and A → B → A changes. Release refreshes have a five-minute monotonic
-budget (60 seconds per source); skipped unchanged sources retain their observation
+removal and A → B → A changes. Registry generations order publications even
+when the wall clock moves backwards; timestamps govern freshness and display.
+Unpublishable results make the refresh incomplete. Public release JSON rejects
+duplicate object members at every depth, preserving prior successful evidence
+and continuing independent sources after a failed lookup. Release refreshes have
+a five-minute monotonic budget (60 seconds per source); skipped unchanged sources retain their observation
 times, and an incomplete command reports skipped counts and exits unsuccessfully.
 See [release cache policy](docs/inventory.md) for transport limits.
 
@@ -851,9 +855,17 @@ status (`critical` > `warning` > `ok`):
   condition `critical`, even if other series are healthy;
 - one stale series makes the condition at least `warning`, even if other series are fresh;
 - the message names the deciding series by the dimensions that differ, for example
-  `... [series: mountpoint=/data] (1 of 3 series not OK)`, and `last_value` comes
+  `... [series: "mountpoint"="/data"] (1 of 3 series not OK)`, and `last_value` comes
   from that series. When every series is healthy, `last_value` is the newest
   sample and the message is `Condition is within thresholds (N series)`.
+
+Python and Rust use severity, then the oldest latest-sample time, then the
+lexicographically smallest structural series key (sorted dimension/tag pairs)
+to choose a non-OK diagnostic. Healthy ties use the newest time and largest
+structural key. Input series order and label escaping do not affect this choice.
+Display labels JSON-quote both names and values (Unicode remains readable);
+missing dimensions render as `null`, distinct from `""`. Commas, equals signs,
+quotes and backslashes inside tags cannot impersonate another series.
 
 Conditions that match a single series behave exactly as before. A series with no
 samples in the condition window at all is not visible to the evaluator; pin the

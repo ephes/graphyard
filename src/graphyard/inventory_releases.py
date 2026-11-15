@@ -8,7 +8,7 @@ from time import monotonic
 
 import httpx
 from django.db import transaction
-from django.db.models import F, Q
+from django.db.models import F
 from django.utils import timezone
 from packaging.version import InvalidVersion, Version
 
@@ -92,6 +92,15 @@ def stable(value):
     return value
 
 
+def _unique_release_object(pairs):
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError("Duplicate release response member")
+        result[key] = value
+    return result
+
+
 def fetch(client, definition, *, deadline=None):
     now = monotonic()
     deadline = (
@@ -131,7 +140,7 @@ def fetch(client, definition, *, deadline=None):
             raw.extend(chunk)
     check_deadline()
     try:
-        data = json.loads(raw)
+        data = json.loads(raw, object_pairs_hook=_unique_release_object)
     except RecursionError as exc:
         raise ValueError("Release response nested too deeply") from exc
     check_deadline()
@@ -245,11 +254,14 @@ def refresh(data, force=False):
                     pk=1, generation=generation
                 ).update(generation=F("generation"))
                 if not superseded:
-                    InventoryRelease.objects.filter(
+                    # The owned generation orders publications, even if the
+                    # wall clock has moved backwards since the previous attempt.
+                    published = InventoryRelease.objects.filter(
                         pk=key, enabled=True, definition=definition
-                    ).filter(
-                        Q(attempted_at__isnull=True) | Q(attempted_at__lte=started)
                     ).update(**values)
+                    if not published:
+                        # A failed lookup already counts as failed, not also as skipped.
+                        skipped += "version" in values
             if superseded:
                 # A newer refresh owns the registry: this result was discarded and
                 # the remaining sources needing a lookup are not looked up at all.

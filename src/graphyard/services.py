@@ -209,7 +209,11 @@ def _series_labels(keys: list[SeriesKey]) -> dict[SeriesKey, str]:
     for key in keys:
         dims = as_dicts[key]
         names = varying or [name for name in all_names if name != "metric"]
-        labels[key] = ", ".join(f"{name}={dims.get(name, '')}" for name in names)
+        labels[key] = ", ".join(
+            f"{json.dumps(name, ensure_ascii=False)}="
+            f"{json.dumps(dims.get(name), ensure_ascii=False)}"
+            for name in names
+        )
     return labels
 
 
@@ -324,10 +328,8 @@ def evaluate_condition(
         )
 
     # Worst status wins; among equals prefer stale (oldest latest sample),
-    # then the series label for a deterministic choice.
-    results.sort(
-        key=lambda item: (-_STATUS_SEVERITY[item[2]], item[1], labels[item[0]])
-    )
+    # then the structural series key for a deterministic choice.
+    results.sort(key=lambda item: (-_STATUS_SEVERITY[item[2]], item[1], item[0]))
     total = len(results)
     not_ok = sum(1 for item in results if item[2] != StatusLevel.OK)
     key, _, status, message, last_value = results[0]
@@ -335,7 +337,7 @@ def evaluate_condition(
     if status == StatusLevel.OK:
         # Report the most recent value across all healthy series.
         key, _, status, message, last_value = max(
-            results, key=lambda item: (item[1], labels[item[0]])
+            results, key=lambda item: (item[1], item[0])
         )
         message = f"{message} ({total} series)"
     else:

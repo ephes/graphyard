@@ -530,10 +530,13 @@ def test_monitor_status_reports_cached_release_failures_without_fetch(
     assert status["releases"]["total"] == 0
 
 
+@pytest.mark.parametrize("clock_step", [-1, 1])
 @pytest.mark.parametrize("old_failure", [False, True])
-def test_older_refresh_cannot_overwrite_newer_completion(monkeypatch, old_failure):
+def test_older_refresh_cannot_overwrite_newer_completion(
+    monkeypatch, old_failure, clock_step
+):
     old = timezone.now()
-    newer = old + timedelta(seconds=1)
+    newer = old + timedelta(seconds=clock_step)
     times = iter([old, newer, newer, old + timedelta(seconds=2)])
     monkeypatch.setattr(releases.timezone, "now", lambda: next(times))
     nested = False
@@ -1097,3 +1100,126 @@ def test_separate_connection_cannot_publish_obsolete_lookup(monkeypatch, replace
             resume.set()
         future.result(timeout=10)
     assert list(InventoryRelease.objects.values()) == expected
+
+
+@pytest.mark.parametrize("failed", [False, True])
+def test_current_refresh_publishes_after_wall_clock_rollback(monkeypatch, failed):
+    now = timezone.now()
+    row = cache(attempted_at=now)
+    old_checked_at = row.checked_at
+    rolled_back = now - timedelta(hours=1)
+    monkeypatch.setattr(releases.timezone, "now", lambda: rolled_back)
+    monkeypatch.setattr(
+        releases,
+        "fetch",
+        Mock(side_effect=ValueError("private detail"))
+        if failed
+        else Mock(return_value="6.2"),
+    )
+    result = releases.refresh([definition()], force=True)
+    row.refresh_from_db()
+    assert result.complete and result.failures == int(failed)
+    assert row.attempted_at == rolled_back
+    assert row.version == ("6.0" if failed else "6.2")
+    assert row.checked_at == (old_checked_at if failed else rolled_back)
+    assert row.error == ("Release lookup failed" if failed else "")
+
+
+def test_current_refresh_reports_unpublishable_result(monkeypatch):
+    def lookup(*args, **kwargs):
+        InventoryRelease.objects.all().delete()
+        return "6.2"
+
+    monkeypatch.setattr(releases, "fetch", lookup)
+    result = releases.refresh([definition()], force=True)
+    assert not result.complete and result.skipped == 1
+
+
+def test_current_refresh_counts_unpublishable_failure_once(monkeypatch):
+    def lookup(*args, **kwargs):
+        InventoryRelease.objects.all().delete()
+        raise httpx.ConnectError("synthetic outage")
+
+    monkeypatch.setattr(releases, "fetch", lookup)
+    result = releases.refresh([definition()], force=True)
+    assert (result.failures, result.skipped) == (1, 0)
+
+
+@pytest.mark.parametrize(
+    "item,body",
+    [
+        (
+            definition("github", "sample/widget", "application"),
+            b'{"tag_name":"1.0","tag_name":"2.0","draft":false,"prerelease":false}',
+        ),
+        (
+            definition("github", "sample/widget", "application"),
+            b'{"tag_name":"2.0","draft":true,"draft":false,"prerelease":false}',
+        ),
+        (
+            definition("github", "sample/widget", "application"),
+            b'{"tag_name":"2.0","draft":false,"prerelease":true,"prerelease":false}',
+        ),
+        (
+            definition(),
+            b'{"info":{"name":"django","version":"1.0","version":"2.0","yanked":false},"urls":[{"yanked":false}]}',
+        ),
+        (
+            definition(),
+            b'{"info":{"name":"other","name":"django","version":"2.0","yanked":false},"urls":[{"yanked":false}]}',
+        ),
+        (
+            definition(),
+            b'{"info":{"name":"django","version":"2.0","yanked":true,"yanked":false},"urls":[{"yanked":false}]}',
+        ),
+        (
+            definition(),
+            b'{"info":{"name":"django","version":"2.0","yanked":false},"urls":[{"yanked":true,"yanked":false}]}',
+        ),
+        (
+            definition("brew", "git", "brew"),
+            b'{"name":"git","disabled":true,"disabled":false,"versions":{"stable":"2.0"}}',
+        ),
+        (
+            definition("brew", "git", "brew"),
+            b'{"name":"git","disabled":false,"versions":{"stable":"1.0","stable":"2.0"}}',
+        ),
+        (
+            definition("brew", "git", "brew"),
+            b'{"name":"git","disabled":false,"versions":{"stable":"2.0"},"extra":{"x":1,"\\u0078":1}}',
+        ),
+    ],
+)
+def test_duplicate_release_members_preserve_cache_and_isolate_source(
+    monkeypatch, item, body
+):
+    key = next(iter(releases.definitions([item])))
+    row = InventoryRelease.objects.create(
+        source_id=key, definition=item, version="1.0", checked_at=timezone.now()
+    )
+    checked = row.checked_at
+    sibling = definition(project="flask")
+
+    def handler(request):
+        if str(request.url) == releases.url(item):
+            return httpx.Response(200, content=body)
+        return httpx.Response(
+            200,
+            json={
+                "info": {"name": "flask", "version": "3.1", "yanked": False},
+                "urls": [{"yanked": False}, {"yanked": False}],
+            },
+        )
+
+    factory = httpx.Client
+    monkeypatch.setattr(
+        releases.httpx,
+        "Client",
+        lambda **kw: factory(transport=httpx.MockTransport(handler), **kw),
+    )
+    result = releases.refresh([item, sibling], force=True)
+    assert result.complete and result.failures == 1
+    row.refresh_from_db()
+    assert row.version == "1.0" and row.checked_at == checked
+    assert row.error == "Release lookup failed"
+    assert InventoryRelease.objects.get(pk="pypi:flask").version == "3.1"
