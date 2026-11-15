@@ -2,6 +2,29 @@
 
 ## Unreleased
 
+- Use binary nearest-time matching with existing tie/reuse semantics and mark
+  enabled specifications with missing observations as inconclusive.
+
+- Reject nonfinite qualification controls, observations and unrepresentable point
+  timestamps; preserve finite signed values and avoid difference overflow.
+
+- Stage shadow preparation privately and publish a synced v2 completion marker
+  last; preserve incomplete generations with an explicit safe recovery path.
+- Bound individual and cumulative comparison evidence bytes, rows, history nodes
+  and nesting, including growing files and fetched production CSV.
+
+- Give shadow backups a total elapsed deadline and roll back the whole requested
+  disable set when any specification is missing.
+
+- Bound recorder unit probes by deadline/output and retire their owned process
+  groups; reject nonfinite or invalid sampling controls before resource access.
+  Kill helper groups before reaping their leader where `os.waitid` exists, keep
+  the original error when Darwin reports EPERM for a zombie-only group, and
+  refuse wrongly shaped comparison records with a located error.
+
+- Refuse recorder output aliases of input databases and replay explicit session
+  baselines so offline deletions cannot survive recorder restarts.
+
 - Fence token admin security edits with signed current-state revisions and narrow
   saves; preserve credentials, revocation and ingest usage. Registry admin edits
   preserve observed telemetry/provenance, protect existing identifiers and refuse

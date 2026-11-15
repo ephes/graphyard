@@ -16,6 +16,7 @@ import sqlite3
 import stat
 import sys
 import threading
+import time
 from pathlib import Path
 from types import ModuleType
 
@@ -307,7 +308,9 @@ def test_recorder_writes_incremental_snapshots_without_secrets(tmp_path):
     stop = threading.Event()
 
     def tick() -> dict:
-        recorder.record(prod_rec, shadow_rec, units, out, 0, stop, 1, systemctl, proc)
+        recorder.record(
+            prod_rec, shadow_rec, units, out, 0.001, stop, 1, systemctl, proc
+        )
         return json.loads(out.read_text().splitlines()[-1])
 
     first = tick()
@@ -825,7 +828,7 @@ def test_compare_queries_influx_through_the_command(tmp_path, capsys):
         ["--shadow-dir", str(shadow), "--influx-command", f"{fake} query --raw"]
     )
     assert code == 1
-    assert "exited 1: Error: unauthorized" in capsys.readouterr().err
+    assert "production CSV command failed" in capsys.readouterr().err
 
 
 def _simulate_run(connection: sqlite3.Connection, stamp: str, status: str) -> None:
@@ -897,20 +900,21 @@ def test_prepare_record_compare_chain_on_two_databases(tmp_path, capsys):
             shadow_rec,
             units,
             record_path,
-            0,
+            0.001,
             threading.Event(),
             1,
             systemctl,
             proc,
         )
     points = [
-        ("json temp", "host.temp", 50.0, t0 + 30 + 60 * minute, {})
+        (name, "host.temp", 50.0, t0 + 30 + 60 * minute, {})
         for minute in range(4)
+        for name, _, _ in SPECS
     ]
     (tmp_path / "prod.csv").write_text(_csv(points))
     (shadow_dir / "points.lp").write_text(
         f"# write {compare.ns_text((t0 + 300) * 10**9)} points=4\n"
-        + "\n".join(_line(s, m, v, ts + 2) for s, m, v, ts, _ in points)
+        + "\n".join(_line(s, m, v, ts) for s, m, v, ts, _ in points)
         + "\n"
     )
     report_path = tmp_path / "report.json"
@@ -946,7 +950,7 @@ def test_prepare_record_compare_chain_on_two_databases(tmp_path, capsys):
         shadow_rec,
         units,
         record_path,
-        0,
+        0.001,
         threading.Event(),
         1,
         systemctl,
@@ -1025,3 +1029,578 @@ def test_values_that_cannot_be_paired_are_an_inconclusive_finding(tmp_path, caps
         if f["detail"] == "no value pair to compare (inconclusive)"
     }
     assert inconclusive == {"ha env", "json temp"}
+
+
+@pytest.mark.parametrize("role", ["prod", "shadow"])
+@pytest.mark.parametrize("alias", ["same", "hard", "symlink"])
+def test_recorder_output_alias_is_refused(tmp_path, role, alias):
+    paths = {r: tmp_path / f"{r}.sqlite3" for r in ("prod", "shadow")}
+    for path in paths.values():
+        _database(path).close()
+    before = {r: p.read_bytes() for r, p in paths.items()}
+    out = paths[role] if alias == "same" else tmp_path / "record"
+    if alias == "hard":
+        os.link(paths[role], out)
+    elif alias == "symlink":
+        out.symlink_to(paths[role])
+    with pytest.raises((OSError, ValueError)):
+        recorder.record(
+            *(recorder.DatabaseRecorder(paths[r]) for r in ("prod", "shadow")),
+            {},
+            out,
+            1,
+            threading.Event(),
+            1,
+        )
+    assert {r: p.read_bytes() for r, p in paths.items()} == before
+
+
+def test_recorder_restart_replaces_baseline(tmp_path):
+    paths = [tmp_path / f"{r}.sqlite3" for r in ("prod", "shadow")]
+    for path in paths:
+        _database(path).close()
+    out = tmp_path / "record"
+
+    def session():
+        recorder.record(
+            *(recorder.DatabaseRecorder(p) for p in paths),
+            {},
+            out,
+            1,
+            threading.Event(),
+            1,
+        )
+
+    session()
+    with sqlite3.connect(paths[1]) as db:
+        db.execute("DELETE FROM host_registry")
+    session()
+    history = compare.read_record(out).dbs["shadow"]
+    assert history.rows("host_registry") == []
+    assert history.ticks == 2
+    assert len(history.rows("metric_collection_spec")) == 4
+
+
+@pytest.mark.parametrize(
+    "option,value",
+    [
+        ("--interval", "nan"),
+        ("--interval", "inf"),
+        ("--interval", "0"),
+        ("--interval", "-1"),
+        ("--interval", "86401"),
+        ("--ticks", "0"),
+        ("--ticks", "-1"),
+    ],
+)
+def test_recorder_rejects_loop_options_before_io(tmp_path, option, value):
+    with pytest.raises(SystemExit) as exc:
+        recorder.main(
+            [
+                "--prod-db",
+                str(tmp_path / "absent"),
+                "--shadow-db",
+                "absent2",
+                "--out",
+                str(tmp_path / "out"),
+                option,
+                value,
+            ]
+        )
+    assert exc.value.code == 2
+    assert not (tmp_path / "out").exists()
+
+
+@pytest.mark.parametrize("mode", ["hang", "flood", "descendant"])
+def test_unit_probe_has_owned_deadline_and_capture(tmp_path, mode):
+    import subprocess
+
+    helper = tmp_path / "helper"
+    helper.write_text(
+        f"#!{sys.executable}\n"
+        + """import os, sys, time
+mode = """
+        + repr(mode)
+        + """
+if mode == 'descendant':
+    if os.fork():
+        sys.exit(0)
+if mode == 'flood':
+    while True:
+        os.write(1, b'private-helper-output' * 1000)
+time.sleep(30)
+"""
+    )
+    helper.chmod(0o755)
+    script = f"""import sys
+sys.path.insert(0, {str(PARITY)!r})
+import shadow_record as r
+from pathlib import Path
+r.UNIT_TIMEOUT = 0.15
+sample = r.unit_sample('fake', {str(helper)!r}, Path('/nonexistent'))
+assert sample == {{'error': 'unit probe unavailable'}}
+"""
+    import signal
+
+    process = subprocess.Popen(
+        [sys.executable, "-c", script],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        start_new_session=True,
+    )
+    try:
+        _, stderr = process.communicate(timeout=3)
+        assert process.returncode == 0, stderr.decode()
+    finally:
+        try:
+            os.killpg(process.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        process.wait()
+
+
+def test_prepare_mixed_disable_rolls_back(tmp_path):
+    path = tmp_path / "db"
+    _database(path).close()
+    with pytest.raises(RuntimeError, match="no spec named"):
+        prepare.prepare(path, ["unifi", "absent"])
+    with sqlite3.connect(path) as db:
+        assert db.execute(
+            "SELECT enabled FROM metric_collection_spec WHERE name='unifi'"
+        ).fetchone() == (1,)
+
+
+def test_backup_progress_has_elapsed_budget(tmp_path, monkeypatch):
+    path = tmp_path / "db"
+    _database(path).close()
+    times = iter([0.0, 100.0])
+    monkeypatch.setattr(prepare.time, "monotonic", lambda: next(times))
+    dest = tmp_path / "copy"
+    with pytest.raises(RuntimeError, match="backup deadline"):
+        prepare.backup(path, dest)
+    assert not dest.exists()
+
+
+def test_backup_busy_source_exits_and_removes_owned_copy(tmp_path, monkeypatch):
+    import time
+
+    source = tmp_path / "source"
+    db = _database(source)
+    db.execute("BEGIN EXCLUSIVE")
+    monkeypatch.setattr(prepare, "BACKUP_TIMEOUT", 0.1)
+    dest = tmp_path / "copy"
+    started = time.monotonic()
+    try:
+        with pytest.raises(RuntimeError, match="backup deadline"):
+            prepare.backup(source, dest)
+    finally:
+        db.close()
+    assert time.monotonic() - started < 2
+    assert not dest.exists()
+
+
+@pytest.mark.parametrize("phase", ["backup", "disable", "metadata"])
+def test_prepare_process_death_never_completes_half_generation(tmp_path, phase):
+    import select
+    import subprocess
+
+    source = tmp_path / "db"
+    _database(source).close()
+    shadow = _shadow_dir(tmp_path)
+    module, name = (
+        ("p.json", "dump")
+        if phase == "metadata"
+        else ("p", "backup" if phase == "backup" else "prepare")
+    )
+    script = f"""import sys, time
+sys.path.insert(0, {str(PARITY)!r})
+import shadow_prepare as p
+original = {module}.{name}
+def paused(*a, **kw):
+    result = original(*a, **kw)
+    print('paused', flush=True)
+    time.sleep(30)
+    return result
+{module}.{name} = paused
+p.main(['--source', {str(source)!r}, '--shadow-dir', {str(shadow)!r}, '--disable-spec', 'unifi'])
+"""
+    child = subprocess.Popen(
+        [sys.executable, "-c", script], stdout=subprocess.PIPE, stderr=subprocess.PIPE
+    )
+    try:
+        assert select.select([child.stdout], [], [], 5)[0]
+        assert child.stdout.readline() == b"paused\n"
+        child.kill()
+        child.wait(timeout=3)
+    finally:
+        if child.poll() is None:
+            child.kill()
+        child.communicate()
+    assert not (shadow / "shadow.json").exists()
+    again = subprocess.run(
+        [
+            sys.executable,
+            str(PARITY / "shadow_prepare.py"),
+            "--source",
+            str(source),
+            "--shadow-dir",
+            str(shadow),
+        ],
+        capture_output=True,
+        timeout=5,
+    )
+    assert again.returncode == 1
+    assert b"incomplete preparation" in again.stderr
+    assert b"fresh 0700 directory" in again.stderr
+
+
+def test_prepare_publishes_synced_completion_last(tmp_path, monkeypatch):
+    source = tmp_path / "db"
+    _database(source).close()
+    shadow = _shadow_dir(tmp_path)
+    events = []
+    real_link, real_sync = os.link, os.fsync
+
+    def link(src, dest):
+        events.append(Path(dest).name)
+        return real_link(src, dest)
+
+    def sync(fd):
+        events.append("sync")
+        return real_sync(fd)
+
+    monkeypatch.setattr(prepare.os, "link", link)
+    monkeypatch.setattr(prepare.os, "fsync", sync)
+    assert prepare.main(["--source", str(source), "--shadow-dir", str(shadow)]) == 0
+    meta = json.loads((shadow / "shadow.json").read_text())
+    assert meta["preparation_version"] == 2 and meta["complete"] is True
+    assert events.index("db.sqlite3") < events.index("shadow.json")
+    assert events[events.index("db.sqlite3") + 1] == "sync"
+    assert events[-1] == "sync"
+    assert list(shadow.glob(".prepare-*")) == []
+
+
+def test_compare_readers_bound_individual_and_combined_inputs(tmp_path, monkeypatch):
+    monkeypatch.setattr(compare, "MAX_FILE_BYTES", 40)
+    monkeypatch.setattr(compare, "MAX_TOTAL_BYTES", 60)
+    path = tmp_path / "points"
+    path.write_bytes(b"#" + b"x" * 39)
+    budget = compare.EvidenceBudget()
+    assert compare.read_points_file(path, budget) == ([], [])
+    with pytest.raises(ValueError, match="evidence byte limit"):
+        compare.read_points_file(path, budget)
+    path.write_bytes(b"x" * 41)
+    with pytest.raises(ValueError, match="evidence byte limit"):
+        compare.read_points_file(path)
+    with path.open("wb") as stream:
+        stream.truncate(10**8)
+    with pytest.raises(ValueError, match="evidence byte limit"):
+        compare.read_record(path)
+
+
+def test_compare_bounds_rows_and_json_history(tmp_path, monkeypatch):
+    monkeypatch.setattr(compare, "MAX_ROWS", 2)
+    path = tmp_path / "record"
+    path.write_text('{"ts":1}\n' * 2)
+    assert compare.read_record(path).last_ts == 1
+    path.write_text('{"ts":1}\n' * 3)
+    with pytest.raises(ValueError, match="evidence row limit"):
+        compare.read_record(path)
+    monkeypatch.setattr(compare, "MAX_JSON_NODES", 3)
+    path.write_text('{"ts":1,"dbs":{"prod":{}}}\n')
+    with pytest.raises(ValueError, match="evidence history limit"):
+        compare.read_record(path)
+
+
+def test_compare_detects_growing_input_during_bounded_reads(tmp_path, monkeypatch):
+    path = tmp_path / "growing"
+    path.write_text("#one\n")
+    monkeypatch.setattr(compare, "MAX_FILE_BYTES", 10)
+    budget = compare.EvidenceBudget()
+    lines = compare.evidence_lines(path, budget)
+    assert next(lines) == "#one\n"
+    with path.open("a") as stream:
+        stream.write("#two\n#three\n")
+    with pytest.raises(ValueError, match="evidence byte limit"):
+        list(lines)
+
+
+def test_compare_bounds_fetched_csv(tmp_path, monkeypatch):
+    import shlex
+
+    script = tmp_path / "csv-helper"
+    script.write_text("print('x' * 10000)\n")
+    monkeypatch.setattr(compare, "MAX_FILE_BYTES", 100)
+    with pytest.raises(ValueError, match="evidence byte limit"):
+        compare.fetch_prod_csv(
+            f"{shlex.quote(sys.executable)} {shlex.quote(str(script))}", None, "unused"
+        )
+
+
+def test_compare_fetch_keeps_admission_error_when_group_kill_reports_eperm(
+    tmp_path, monkeypatch
+):
+    """Darwin reports EPERM for a zombie-only group; the real error must win."""
+    import shlex
+
+    script = tmp_path / "csv-helper"
+    script.write_text("print('x' * 10000)\n")
+    monkeypatch.setattr(compare, "MAX_FILE_BYTES", 100)
+
+    def eperm(pgid, sig):
+        raise PermissionError(1, "Operation not permitted")
+
+    monkeypatch.setattr(compare.os, "killpg", eperm)
+    with pytest.raises(ValueError, match="evidence byte limit"):
+        compare.fetch_prod_csv(
+            f"{shlex.quote(sys.executable)} {shlex.quote(str(script))}", None, "unused"
+        )
+
+
+@pytest.mark.parametrize("module_name", ["compare", "recorder"])
+@pytest.mark.skipif(not hasattr(os, "waitid"), reason="needs os.waitid (Linux)")
+def test_group_is_killed_before_the_leader_is_reaped(monkeypatch, module_name):
+    """The group kill must run while the leader's PID/PGID is still reserved."""
+    import subprocess
+
+    module = compare if module_name == "compare" else recorder
+    seen = []
+    real_killpg = module.os.killpg
+
+    def killpg(pgid, sig):
+        seen.append(child.returncode)
+        real_killpg(pgid, sig)
+
+    monkeypatch.setattr(module.os, "killpg", killpg)
+    with subprocess.Popen(
+        [sys.executable, "-c", "pass"],
+        stdout=subprocess.DEVNULL,
+        start_new_session=True,
+    ) as child:
+        assert module.leader_exit_status(child, time.monotonic() + 10) == 0
+        module.retire_group(child)
+    assert seen == [None]
+    assert child.returncode == 0
+
+
+@pytest.mark.parametrize(
+    "line",
+    [
+        '{"ts":1,"units":[]}',
+        '{"ts":1,"dbs":{"prod":[]}}',
+        '{"ts":1,"dbs":[]}',
+        '{"ts":1,"units":{"prod":1}}',
+        '{"ts":1,"dbs":{"prod":{"configs":[]}}}',
+        '{"ts":1,"dbs":{"prod":{"metric_collection_spec":{"1":5}}}}',
+        '{"ts":1,"dbs":{"prod":{"configs":{"1":[]}}}}',
+        '{"ts":1,"dbs":{"prod":{"configs_deleted":5}}}',
+        "[1]",
+    ],
+)
+def test_compare_refuses_wrongly_shaped_records_with_location(tmp_path, line):
+    path = tmp_path / "record"
+    path.write_text('{"ts":0}\n' + line + "\n")
+    with pytest.raises(ValueError, match=r"record:2: invalid record"):
+        compare.read_record(path)
+
+
+@pytest.mark.parametrize(
+    "option,value",
+    [
+        ("--tolerance", "nan"),
+        ("--tolerance", "inf"),
+        ("--tolerance", "-1"),
+        ("--align-seconds", "nan"),
+        ("--align-seconds", "inf"),
+        ("--align-seconds", "0"),
+        ("--align-seconds", "-1"),
+        ("--align-seconds", "86401"),
+    ],
+)
+def test_compare_rejects_invalid_options_before_evidence(
+    tmp_path, capsys, option, value
+):
+    out = tmp_path / "report"
+    assert (
+        compare.main(
+            [
+                "--shadow-dir",
+                str(tmp_path / "missing"),
+                "--json",
+                str(out),
+                option,
+                value,
+            ]
+        )
+        == 1
+    )
+    assert "must be finite" in capsys.readouterr().err
+    assert not out.exists()
+
+
+@pytest.mark.parametrize("value", ["NaN", "Infinity", "-Infinity", "1e999"])
+def test_compare_refuses_nonfinite_observations(tmp_path, value):
+    path = tmp_path / "lp"
+    path.write_text(f"m value={value} 1\n")
+    with pytest.raises(ValueError):
+        compare.read_points_file(path)
+    with pytest.raises(ValueError):
+        compare.influx_points([{"_time": "1", "_value": value}])
+    path.write_text('{"ts":' + value + "}\n")
+    with pytest.raises(ValueError):
+        compare.read_record(path)
+
+
+def test_compare_finite_negative_zero_and_extreme_values(tmp_path):
+    path = tmp_path / "lp"
+    path.write_text("m value=-2 1\nm value=0 2\n")
+    assert [p.value for p in compare.read_points_file(path)[0]] == [-2, 0]
+    assert compare.relative_difference(-1e308, 1e308) == 2
+    assert compare.relative_difference(0, 0) == 0
+
+
+@pytest.mark.parametrize("timestamp", [str(2**63), str(-(2**63) - 1)])
+def test_compare_refuses_unrepresentable_point_times(tmp_path, timestamp):
+    path = tmp_path / "lp"
+    path.write_text(f"m value=1 {timestamp}\n")
+    with pytest.raises(ValueError):
+        compare.read_points_file(path)
+
+
+def test_nearest_alignment_preserves_exhaustive_ties_duplicates_and_reuse(monkeypatch):
+    import random
+
+    randomizer = random.Random(97)
+    series = ("m", (("spec_name", "s"),))
+    prod = [
+        compare.Point(series, ts, float(i + 1))
+        for i, ts in enumerate(
+            [10, 10, 20, 30] + [randomizer.randrange(100) for _ in range(40)]
+        )
+    ]
+    ordered = sorted(prod, key=lambda p: p.ts)
+    shadow = [
+        compare.Point(series, ts, min(ordered, key=lambda p: abs(p.ts - ts)).value)
+        for ts in [-1, 15, 15, 25, 101] + list(range(100))
+    ]
+    report = compare.Report()
+    result = compare._compare_aligned(
+        report, "s", {"prod": prod, "shadow": shadow}, 0, 1000
+    )
+    assert result == {"pairs": len(shadow), "beyond_tolerance": 0, "unpaired_shadow": 0}
+    assert report.findings == []
+
+
+def test_nearest_alignment_work_does_not_multiply_series_lengths(monkeypatch):
+    import builtins
+
+    series = ("m", (("spec_name", "s"),))
+    size = 2000
+    prod = [compare.Point(series, ts * 10, 1) for ts in range(size)]
+    shadow = [compare.Point(series, ts * 10 + 4, 1) for ts in range(size)]
+    calls = 0
+
+    def counted_abs(value):
+        nonlocal calls
+        calls += 1
+        return builtins.abs(value)
+
+    monkeypatch.setattr(compare, "abs", counted_abs, raising=False)
+    result = compare._compare_aligned(
+        compare.Report(), "s", {"prod": prod, "shadow": shadow}, 0, 10
+    )
+    assert result["pairs"] == size
+    assert calls <= size * 10
+
+
+@pytest.mark.parametrize(
+    "spec_type", [*compare.HA_TYPES, *compare.ALIGNED_TYPES, compare.PAGE_PROBE]
+)
+@pytest.mark.parametrize("side", ["neither", "prod", "shadow"])
+def test_required_spec_without_observations_is_inconclusive(spec_type, side):
+    point = compare.Point(("m", (("spec_name", "s"),)), 10, 1)
+    report = compare.Report()
+    compare.compare_points(
+        report,
+        [point] if side == "prod" else [],
+        [point] if side == "shadow" else [],
+        {"s": spec_type},
+        0.05,
+        60,
+    )
+    assert any(
+        f["section"] == "values" and "inconclusive" in str(f["detail"])
+        for f in report.findings
+    )
+    excluded_report = compare.Report()
+    compare.compare_points(excluded_report, [], [], {}, 0.05, 60)
+    assert not excluded_report.findings
+
+
+def test_no_samples_fail_cli_qualification(tmp_path):
+    shadow = _write_run(tmp_path, [200] * 10)
+    (shadow / "points.lp").write_text(
+        f"# write {compare.ns_text((T0 + 600) * 10**9)} points=0\n"
+    )
+    (tmp_path / "prod.csv").write_text("")
+    report = tmp_path / "report"
+    assert (
+        compare.main(
+            [
+                "--shadow-dir",
+                str(shadow),
+                "--prod-csv",
+                str(tmp_path / "prod.csv"),
+                "--json",
+                str(report),
+                "--fail-on-findings",
+            ]
+        )
+        == 1
+    )
+    assert any(
+        "inconclusive" in str(f["detail"])
+        for f in json.loads(report.read_text())["findings"]
+    )
+
+
+def test_history_work_is_refused_before_json_materialization(monkeypatch):
+    monkeypatch.setattr(compare, "MAX_JSON_NODES", 3)
+
+    def unexpected_decode(*args, **kwargs):
+        pytest.fail("over-budget history reached the JSON decoder")
+
+    monkeypatch.setattr(compare.json, "loads", unexpected_decode)
+    with pytest.raises(ValueError, match="evidence history limit"):
+        compare.EvidenceBudget().json("[0,0,0]", "synthetic:1")
+
+
+def test_json_history_limits_count_escaped_strings_and_exact_depth(monkeypatch):
+    monkeypatch.setattr(compare, "MAX_JSON_NODES", 5)
+    assert compare.EvidenceBudget().json('{"x":["a\\"[",0]}', "synthetic") == {
+        "x": ['a"[', 0]
+    }
+    monkeypatch.setattr(compare, "MAX_JSON_DEPTH", 2)
+    assert compare.EvidenceBudget().json("[[0]]", "synthetic") == [[0]]
+    with pytest.raises(ValueError, match="evidence history limit"):
+        compare.EvidenceBudget().json("[[[0]]]", "synthetic")
+
+
+def test_completion_sync_failure_preserves_published_artifacts(
+    tmp_path, monkeypatch, capsys
+):
+    source = tmp_path / "db"
+    _database(source).close()
+    shadow = _shadow_dir(tmp_path)
+    original = prepare.sync_directory
+
+    def fail_final_sync(path):
+        if (shadow / "shadow.json").exists():
+            raise OSError("synthetic sync failure")
+        original(path)
+
+    monkeypatch.setattr(prepare, "sync_directory", fail_final_sync)
+    assert prepare.main(["--source", str(source), "--shadow-dir", str(shadow)]) == 1
+    assert (shadow / "db.sqlite3").exists()
+    assert (shadow / "shadow.json").exists()
+    assert "uncertain publication" in capsys.readouterr().err

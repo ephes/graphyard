@@ -334,3 +334,75 @@ docker stop graphyard-r89-influx2
 
 `tests/timestamp_oracle.rs` uses only fixed loopback ports, a synthetic bucket and
 synthetic credentials. Normal workspace tests leave it explicitly ignored.
+
+### Recorder file and restart contract
+
+The recorder appends only to a caller-owned regular 0600 file, refuses symlink
+outputs and compares its opened inode with both input databases (including hard
+links). The first successful snapshot of each new DatabaseRecorder session carries
+`"baseline": true`; replay replaces that database's state before applying it.
+Earlier events remain historical evidence; a baseline is not a collector run.
+Legacy recordings without markers retain incremental replay compatibility, but a
+legacy file concatenated across restarts cannot prove offline deletions: start a
+new recording for qualification. Older comparators do not support baseline markers;
+use the updated recorder and comparator together.
+
+Recorder intervals must be finite and in `(0, 86400]` seconds; `--ticks` must
+be a positive integer. Invalid options fail before any database or output open.
+Each unit probe has a two-second monotonic budget and 64 KiB stdout cap; stderr
+is discarded. Timeout, cancellation, excess output and helper failures emit only
+`unit probe unavailable`. The recorder kills and reaps its dedicated helper
+process group (including descendants holding the pipe); SIGTERM interrupts probe
+polling. Missing unit evidence remains unavailable in qualification. The same
+group retirement applies to `shadow_compare`'s production CSV helper. Where
+`os.waitid` exists (e.g. Linux) the leader's exit status is read without reaping it,
+so the group kill runs while its process-group ID is still reserved; an EPERM
+from a zombie-only group (Darwin) counts as already gone and never hides the
+original deadline/limit error. Wrongly shaped record lines (non-object `dbs`,
+`units`, samples, tables or rows, non-list `_deleted`) fail with a location-only
+`invalid record shape` error.
+
+Shadow backups have a 30-second monotonic total budget, 50 ms SQLite busy waits
+and bounded-page progress callbacks. Failure removes only the newly created
+incomplete backup. A requested disable set commits atomically: any missing spec
+rolls back every flag in that request.
+
+### Preparation completion and evidence limits
+
+Preparation stages a private `.prepare-*` generation. It syncs the database,
+publishes `db.sqlite3` without replacing any target, syncs the directory, then
+publishes and syncs `shadow.json` last. This v2 completion record contains
+`preparation_version: 2` and `complete: true`. Scan findings still require review
+(exit 2). Never launch a copy without its completion record. On failure or process
+death, an incomplete generation is preserved and the next invocation refuses with
+a recovery instruction: inspect/preserve that directory and retry in a **fresh
+0700 directory**. No existing copy is automatically replaced or removed. Late
+publication/sync failure can leave visible artifacts with uncertain durability;
+a failure message does not mean rollback. Legacy metadata remains readable, but
+has no durable completion guarantee; prepare new evidence with the updated tool.
+
+The comparator admits at most 64 MiB per file, 128 MiB across metadata, LP,
+JSONL and production CSV, 1 MiB per physical line, 500,000 combined input rows
+(physical file lines plus parsed CSV rows), and 1,000,000 JSON history nodes
+(including member names), with depth at most 64. Exact limits are accepted.
+JSON nodes/depth are counted before decoding containers. Regular opened files
+are checked by size and bounded reads, including growth;
+limits include ignored/out-of-window evidence. Fetched CSV has a 30-second owned
+process budget and the same file cap. Admission failure exits 1 before publishing
+a qualification report; split a larger recording into meaningful complete windows.
+
+Qualification controls are admitted before evidence I/O: tolerance must be finite
+and nonnegative; alignment must be finite and between one nanosecond and 86400
+seconds inclusive. Numeric point values, numeric LP fields and JSON observations
+must be finite; point timestamps must fit signed 64-bit nanoseconds. Invalid
+observations refuse the complete input set with a location-only diagnostic.
+Finite negative/zero measurements remain supported; relative differences scale
+before subtraction when opposite-sign finite values would overflow.
+
+Nearest-time alignment uses ordered binary lookup, preserving the earlier-time
+tie rule, first production point for duplicate timestamps, and reuse of production
+points. Search is O(P log P + S log P) per series rather than P×S. Every selected
+enabled spec needs observations on both sides; supported exact/aligned types also
+need at least one comparable pair. Missing evidence is an `inconclusive` finding,
+so `--fail-on-findings` fails even when both sides are empty. Explicitly disabled
+specs remain excluded. Matching empty sets cannot qualify a required collector.

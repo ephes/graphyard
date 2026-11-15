@@ -43,11 +43,14 @@ import os
 import sqlite3
 import stat
 import sys
+import time
+import tempfile
 from pathlib import Path
 from typing import Any
 
 COPY_NAME = "db.sqlite3"
 META_NAME = "shadow.json"
+BACKUP_TIMEOUT = 30.0
 
 #: CPython's default ``sys.get_int_max_str_digits()``.
 INT_MAX_STR_DIGITS = 4300
@@ -247,6 +250,14 @@ def check_shadow_dir(path: Path) -> str | None:
             f"shadow directory {path} must have mode 0700, "
             f"has {stat.S_IMODE(info.st_mode):04o}"
         )
+    if any(path.glob(".prepare-*")) or (
+        (path / COPY_NAME).exists() and not (path / META_NAME).exists()
+    ):
+        return (
+            f"incomplete preparation in {path}; do not launch this copy. "
+            "Preserve it for inspection and retry in a fresh 0700 directory; "
+            "do not replace existing targets."
+        )
     for name in (COPY_NAME, f"{COPY_NAME}-wal", f"{COPY_NAME}-shm", META_NAME):
         if (path / name).exists():
             return f"refusing to overwrite {path / name}"
@@ -254,17 +265,30 @@ def check_shadow_dir(path: Path) -> str | None:
 
 
 def backup(source: Path, dest: Path) -> None:
-    src = sqlite3.connect(f"file:{source}?mode=ro", uri=True, timeout=30)
+    deadline = time.monotonic() + BACKUP_TIMEOUT
+    owned = False
     try:
-        fd = os.open(dest, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-        os.close(fd)
-        out = sqlite3.connect(dest)
+        src = sqlite3.connect(f"file:{source}?mode=ro", uri=True, timeout=0.05)
         try:
-            src.backup(out)
+            fd = os.open(dest, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+            owned = True
+            os.close(fd)
+            out = sqlite3.connect(dest, timeout=0.05)
+            try:
+
+                def progress(status: int, remaining: int, total: int) -> None:
+                    if time.monotonic() >= deadline:
+                        raise RuntimeError("backup deadline exceeded")
+
+                src.backup(out, pages=128, progress=progress, sleep=0.01)
+            finally:
+                out.close()
         finally:
-            out.close()
-    finally:
-        src.close()
+            src.close()
+    except BaseException:
+        if owned:
+            dest.unlink()
+        raise
 
 
 def prepare(dest: Path, disable: list[str]) -> dict[str, Any]:
@@ -282,8 +306,8 @@ def prepare(dest: Path, disable: list[str]) -> dict[str, Any]:
                 ).rowcount
                 if not changed:
                     missing.append(name)
-        if missing:
-            raise RuntimeError(f"no spec named {', '.join(map(repr, missing))}")
+            if missing:
+                raise RuntimeError(f"no spec named {', '.join(map(repr, missing))}")
         specs = connection.execute(
             "SELECT spec_type, COUNT(*) FROM metric_collection_spec WHERE enabled"
             " GROUP BY spec_type ORDER BY spec_type"
@@ -300,6 +324,14 @@ def prepare(dest: Path, disable: list[str]) -> dict[str, Any]:
         "disabled_specs": sorted(disable),
         "findings": findings,
     }
+
+
+def sync_directory(path: Path) -> None:
+    fd = os.open(path, os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        os.fsync(fd)
+    finally:
+        os.close(fd)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -334,23 +366,45 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     t0 = dt.datetime.now(dt.UTC)
     try:
-        backup(args.source, dest)
-        summary = prepare(dest, args.disable_spec)
-    except (sqlite3.Error, RuntimeError) as err:
-        print(f"prepare failed: {err} (copy: {dest})", file=sys.stderr)
+        # A private generation is retained on failure for explicit safe recovery.
+        stage = Path(tempfile.mkdtemp(prefix=".prepare-", dir=args.shadow_dir))
+        sync_directory(args.shadow_dir)
+        staged_db = stage / COPY_NAME
+        backup(args.source, staged_db)
+        summary = prepare(staged_db, args.disable_spec)
+        meta = {
+            "preparation_version": 2,
+            "complete": True,
+            "t0": utc_text(t0),
+            "source": str(args.source),
+            "copy": str(dest),
+            **summary,
+        }
+        staged_meta = stage / META_NAME
+        fd = os.open(staged_meta, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(fd, "w", encoding="utf-8") as out:
+            json.dump(meta, out, indent=1)
+            out.write("\n")
+            out.flush()
+            os.fsync(out.fileno())
+        with staged_db.open("rb") as db_file:
+            os.fsync(db_file.fileno())
+        # Hard links publish without clobber; marker becomes visible only after DB sync.
+        os.link(staged_db, dest)
+        sync_directory(args.shadow_dir)
+        os.link(staged_meta, args.shadow_dir / META_NAME)
+        sync_directory(args.shadow_dir)
+        staged_meta.unlink()
+        staged_db.unlink()
+        stage.rmdir()
+        sync_directory(args.shadow_dir)
+    except (OSError, sqlite3.Error, RuntimeError) as err:
+        print(
+            f"prepare failed: {err}; incomplete preparation or uncertain publication "
+            f"in {args.shadow_dir}. Preserve it and retry in a fresh 0700 directory.",
+            file=sys.stderr,
+        )
         return 1
-    meta = {
-        "t0": utc_text(t0),
-        "source": str(args.source),
-        "copy": str(dest),
-        **summary,
-    }
-    fd = os.open(
-        args.shadow_dir / META_NAME, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600
-    )
-    with os.fdopen(fd, "w", encoding="utf-8") as out:
-        json.dump(meta, out, indent=1)
-        out.write("\n")
     print(f"T0={meta['t0']}")
     print(f"copy {dest}")
     print(f"enabled specs by type: {meta['enabled_specs']}")

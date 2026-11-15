@@ -39,10 +39,13 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import json
+import math
 import os
 import shutil
+import selectors
 import signal
 import sqlite3
+import stat
 import subprocess
 import sys
 import threading
@@ -67,6 +70,10 @@ UNIT_PROPERTIES = (
     "MemoryPeak",
     "CPUUsageNSec",
 )
+UNIT_TIMEOUT = 2.0
+UNIT_MAX_BYTES = 64 * 1024
+MAX_INTERVAL = 86400
+
 PROC_KEYS = ("VmRSS", "VmHWM", "RssAnon", "RssFile")
 
 
@@ -93,7 +100,7 @@ class DatabaseRecorder:
             return {"error": f"{type(exc).__name__}: {exc}"}
         finally:
             connection.close()
-        out: dict[str, Any] = {}
+        out: dict[str, Any] = {"baseline": True} if self.rows is None else {}
         previous = self.rows or {}
         for table, rows in snapshot.items():
             before = previous.get(table, {})
@@ -131,26 +138,89 @@ def _blob(value: object) -> str:
     raise TypeError(f"cannot record {type(value).__name__}")
 
 
-def unit_sample(unit: str, systemctl: str, proc: Path) -> dict[str, Any]:
+# leader_exit_status/retire_group are kept identical in shadow_compare.py: the parity
+# tools are standalone scripts copied and run individually.
+def leader_exit_status(child: subprocess.Popen[bytes], deadline: float) -> int:
+    """Exit status of a process-group leader before the group is retired.
+
+    Where ``os.waitid`` exists (e.g. Linux, where these tools run) the leader stays
+    unreaped (``WNOWAIT``), so its PID, and with it the process-group ID, cannot
+    be reused before ``retire_group`` sends the group kill. Elsewhere this falls
+    back to ``wait``; the group ID then stays reserved only while descendants live.
+    """
+    waitid = getattr(os, "waitid", None)
+    if waitid is None:
+        return child.wait(timeout=max(0.001, deadline - time.monotonic()))
+    flags = os.WEXITED | os.WNOHANG | os.WNOWAIT
+    while (state := waitid(os.P_PID, child.pid, flags)) is None:
+        if time.monotonic() >= deadline:
+            raise subprocess.TimeoutExpired(child.args, 0)
+        time.sleep(0.005)
+    return state.si_status if state.si_code == os.CLD_EXITED else -state.si_status
+
+
+def retire_group(child: subprocess.Popen[bytes]) -> None:
+    """Kill the child's own process group (pipe holders included), then reap it."""
+    try:
+        os.killpg(child.pid, signal.SIGKILL)
+    except (ProcessLookupError, PermissionError):
+        # Already gone; Darwin reports EPERM for a group holding only a zombie.
+        pass
+    child.wait()
+
+
+def unit_sample(
+    unit: str, systemctl: str, proc: Path, stop: threading.Event | None = None
+) -> dict[str, Any]:
     """``systemctl show`` properties of ``unit`` plus ``/proc`` memory."""
     if shutil.which(systemctl) is None:
-        return {"error": f"{systemctl} not found"}
-    completed = subprocess.run(
-        [systemctl, "show", "-p", ",".join(UNIT_PROPERTIES), unit],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    if completed.returncode != 0:
-        return {"error": completed.stderr.strip() or f"exit {completed.returncode}"}
+        return {"error": "unit probe unavailable"}
     sample: dict[str, Any] = {}
-    for line in completed.stdout.splitlines():
-        key, _, value = line.partition("=")
-        sample[key] = value
+    try:
+        with subprocess.Popen(
+            [systemctl, "show", "-p", ",".join(UNIT_PROPERTIES), unit],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            start_new_session=True,
+        ) as child:
+            try:
+                assert child.stdout is not None
+                os.set_blocking(child.stdout.fileno(), False)
+                captured = bytearray()
+                deadline = time.monotonic() + UNIT_TIMEOUT
+                with selectors.DefaultSelector() as selector:
+                    selector.register(child.stdout, selectors.EVENT_READ)
+                    while True:
+                        remaining = deadline - time.monotonic()
+                        if remaining <= 0 or (stop is not None and stop.is_set()):
+                            raise ValueError("probe deadline")
+                        if not selector.select(min(remaining, 0.05)):
+                            continue
+                        chunk = os.read(
+                            child.stdout.fileno(),
+                            min(8192, UNIT_MAX_BYTES + 1 - len(captured)),
+                        )
+                        if not chunk:
+                            break
+                        captured.extend(chunk)
+                        if len(captured) > UNIT_MAX_BYTES:
+                            raise ValueError("probe output limit")
+                if leader_exit_status(child, deadline) != 0:
+                    raise ValueError("probe failed")
+                for line in captured.decode("utf-8").splitlines():
+                    key, _, value = line.partition("=")
+                    if key in UNIT_PROPERTIES:
+                        sample[key] = value
+            finally:
+                # The process group was created for this probe, including pipe holders.
+                retire_group(child)
+    except (OSError, ValueError, subprocess.TimeoutExpired):
+        return {"error": "unit probe unavailable"}
     pid = sample.get("MainPID", "0")
     if pid.isdigit() and pid != "0":
         try:
-            status = (proc / pid / "status").read_text(encoding="utf-8")
+            with (proc / pid / "status").open(encoding="utf-8") as status_file:
+                status = status_file.read(UNIT_MAX_BYTES)
         except OSError:
             status = ""
         for line in status.splitlines():
@@ -158,6 +228,13 @@ def unit_sample(unit: str, systemctl: str, proc: Path) -> dict[str, Any]:
             if key in PROC_KEYS:
                 sample[key] = value.strip()
     return sample
+
+
+def validate_loop(interval: float, ticks: int | None) -> None:
+    if not math.isfinite(interval) or not 0 < interval <= MAX_INTERVAL:
+        raise ValueError("interval must be finite and in (0, 86400] seconds")
+    if ticks is not None and (type(ticks) is not int or ticks <= 0):
+        raise ValueError("ticks must be a positive integer")
 
 
 def record(
@@ -172,10 +249,49 @@ def record(
     proc: Path = Path("/proc"),
 ) -> int:
     """Append ticks to ``out`` until ``stop`` is set (or ``ticks`` ran)."""
+    validate_loop(interval, ticks)
     done = 0
-    fd = os.open(out, os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600)
+    # Hold admitted input descriptors until output identity has been checked.
+    from contextlib import ExitStack
+
+    with ExitStack() as inputs:
+        identities = []
+        for source in (prod.path, shadow.path):
+            try:
+                fd_in = os.open(source, os.O_RDONLY | os.O_NONBLOCK)
+            except FileNotFoundError:
+                continue  # The tick records an unavailable database, then retries.
+
+            inputs.callback(os.close, fd_in)
+            info = os.fstat(fd_in)
+            if not stat.S_ISREG(info.st_mode):
+                raise ValueError("database must be a regular file")
+            identities.append((info.st_dev, info.st_ino))
+        if len(identities) == 2 and identities[0] == identities[1]:
+            raise ValueError("production and shadow database are the same file")
+        fd = os.open(
+            out,
+            os.O_WRONLY | os.O_CREAT | os.O_APPEND | os.O_NONBLOCK | os.O_NOFOLLOW,
+            0o600,
+        )
+        try:
+            info = os.fstat(fd)
+            if (info.st_dev, info.st_ino) in identities:
+                raise ValueError("output aliases an input database")
+            if (
+                not stat.S_ISREG(info.st_mode)
+                or info.st_uid != os.geteuid()
+                or stat.S_IMODE(info.st_mode) != 0o600
+            ):
+                raise ValueError(
+                    "output must be a private regular file owned by the caller (0600)"
+                )
+        except BaseException:
+            os.close(fd)
+            raise
     with os.fdopen(fd, "a", encoding="utf-8") as stream:
         while not stop.is_set():
+            started = time.monotonic()
             now = time.time()
             line = {
                 "ts": round(now, 3),
@@ -184,7 +300,7 @@ def record(
                 ),
                 "dbs": {"prod": prod.tick(), "shadow": shadow.tick()},
                 "units": {
-                    role: unit_sample(unit, systemctl, proc)
+                    role: unit_sample(unit, systemctl, proc, stop)
                     for role, unit in units.items()
                 },
             }
@@ -193,7 +309,7 @@ def record(
             done += 1
             if ticks is not None and done >= ticks:
                 break
-            stop.wait(max(0.0, interval - (time.time() - now)))
+            stop.wait(max(0.0, interval - (time.monotonic() - started)))
     return done
 
 
@@ -212,6 +328,10 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--ticks", type=int, help="stop after this many ticks")
     args = parser.parse_args(argv)
+    try:
+        validate_loop(args.interval, args.ticks)
+    except ValueError as err:
+        parser.error(str(err))
     for path in (args.prod_db, args.shadow_db):
         if not path.is_file():
             print(f"database not found: {path}", file=sys.stderr)
@@ -225,17 +345,21 @@ def main(argv: list[str] | None = None) -> int:
     units = (
         {} if args.no_units else {"prod": args.prod_unit, "shadow": args.shadow_unit}
     )
-    ticks = record(
-        DatabaseRecorder(args.prod_db),
-        DatabaseRecorder(args.shadow_db),
-        units,
-        args.out,
-        args.interval,
-        stop,
-        args.ticks,
-        args.systemctl,
-        args.proc,
-    )
+    try:
+        ticks = record(
+            DatabaseRecorder(args.prod_db),
+            DatabaseRecorder(args.shadow_db),
+            units,
+            args.out,
+            args.interval,
+            stop,
+            args.ticks,
+            args.systemctl,
+            args.proc,
+        )
+    except (OSError, ValueError) as err:
+        print(f"shadow_record: {err}", file=sys.stderr)
+        return 1
     print(f"recorded {ticks} tick(s) to {args.out}")
     return 0
 
