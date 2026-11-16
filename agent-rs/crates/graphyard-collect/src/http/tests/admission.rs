@@ -83,6 +83,8 @@ async fn single_label_cookie_domains_cannot_cross_sites() {
                 ("Location", "/same"),
                 ("Set-Cookie", "injected=bad; Domain=.com; Path=/"),
                 ("Set-Cookie", "injected2=bad; Domain=com; Path=/"),
+                ("Set-Cookie", "injected3=bad; Domain=..com; Path=/"),
+                ("Set-Cookie", "injected4=bad; Domain=com.; Path=/"),
                 ("Set-Cookie", "host=ok; Path=/"),
             ],
             b"",

@@ -572,8 +572,9 @@ and reconstruct cookies from the jar for the destination, matching httpx.
 ### HTTP cookie scope admission
 
 The Rust jar ignores cookies with an explicit single-label `Domain` (for example
-`com` or `.com`), preventing transfer between unrelated sites under that label.
-The maintained cookie parser removes a leading dot before this check; its normal
+`com`, `.com`, `..com` or `com.`), preventing transfer between unrelated sites
+under that label. The check ignores all leading and trailing dots itself instead
+of relying on the cookie parser's normalization; the jar's normal
 domain/path/secure matching still applies. Host-only cookies (including local
 names) and ordinary multi-label domain cookies remain supported. This preserves
 Python's top-level-domain refusal for public hosts; it deliberately also refuses

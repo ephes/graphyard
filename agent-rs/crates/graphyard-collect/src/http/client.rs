@@ -715,7 +715,13 @@ impl HttpClient {
             .filter_map(|text| RawCookie::parse(text.to_owned()).ok())
             // Match Python's top-level-domain refusal using the cookie parser's
             // public domain API. Host-only cookies on local names remain valid.
-            .filter(|cookie| cookie.domain().is_none_or(|domain| domain.contains('.')))
+            // Trim every leading/trailing dot so `..com` or `com.` cannot pass as
+            // dotted, independent of the parser's normalization.
+            .filter(|cookie| {
+                cookie
+                    .domain()
+                    .is_none_or(|domain| domain.trim_matches('.').contains('.'))
+            })
             .collect();
         if !cookies.is_empty() {
             let mut jar = self.jar.lock().unwrap_or_else(PoisonError::into_inner);
