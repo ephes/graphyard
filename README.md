@@ -561,6 +561,11 @@ possible regex evaluations and 4 MiB of aggregate match-input bytes. Admission
 counts every row against every rule plus the inclusion filter, even if filtering
 or first-match selection would avoid some work. Patterns are cached before the
 row loop and `fancy-regex` allows at most 1000 backtracking steps per match.
+Plain patterns without fancy-regex-only features (lookaround, backreferences,
+atomic or possessive groups, conditionals, `\K`, `\G`; all production patterns
+are plain) run on the linear `regex` engine and do not count against that limit. Ordinary lookaround
+patterns fit it on 255-byte entity ids; an unbounded backreference such as
+`(\w+)_\1` on a long id can exceed it and then fails the collection as critical.
 
 Output admission reserves at most 8 MiB of point string/tag bytes: for each row,
 the largest configured extra-tags rule, both projected attribute tags, and eight

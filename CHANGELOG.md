@@ -9,7 +9,9 @@
 - Bound Rust Home Assistant regex backtracking, collection-wide matching work,
   and point/tag amplification before normalization. Exhausted collections fail
   critical without partial metric or registry writes; ordinary reference
-  fixtures remain compatible.
+  fixtures remain compatible; plain patterns (no lookaround, backreferences,
+  atomic/possessive groups or conditionals) do not use the 1000-step backtrack
+  limit.
 
 - Rust agent (`agent-rs/`): release `agent-rs-v0.4.0`
   (<https://github.com/ephes/graphyard/releases/tag/agent-rs-v0.4.0>), built by

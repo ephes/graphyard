@@ -215,7 +215,8 @@ that differs is a bug.
   limit while matching fails with `regex match failed: <error>`, which the
   HA executors report as `critical`, `collector failure: ValueError`; Python
   keeps backtracking (the agent hangs on such a pattern). Round 100 sets the
-  public engine backtrack limit to 1000 and precompiles admitted patterns. The
+  public engine backtrack limit to 1000 and precompiles admitted patterns
+  (lookaround fits on 255-byte ids; long unbounded backreferences may not). The
   Rust-only collection envelope is 4096 rows/points, 128 mapping rules, 4096
   bytes per pattern, 16,384 possible matches, 4 MiB match-input bytes and an
   8 MiB conservative point-text/tag reservation before normalization. All
