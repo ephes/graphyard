@@ -416,7 +416,15 @@ The agent runs no DDL; Django's migrations own the schema (PLAN.md 5.1).
 `fixtures/gen_schema.py` migrates a temporary database and writes
 `fixtures/schema/schema.sql` and `fixtures/schema/agent_tables.json` (the
 columns of the six agent tables and the minimum graphyard migration, the last
-one whose operations touch an agent model). `tests/test_agent_rs_schema_contract.py`
+one whose operations touch an agent model). It also generates
+`fixtures/schema/storage_contract.rs`: column affinity/nullability/primary keys
+and unconditional unique identity keys, compiled into the readiness check.
+Verification reads one deferred SQLite snapshot, never mixes migration generations
+and never issues DDL or changes journal settings. Stop the agent for migrations;
+a readiness check does not make live migration safe. Incompatible storage fails
+before collectors or metric sink calls; repair it through Django migrations or restore
+the migrated schema. Extra columns/indexes remain supported.
+`tests/test_agent_rs_schema_contract.py`
 fails when a migration changes them; then run `just rs-fixtures`, update
 `REQUIRED_COLUMNS` / `MIN_GRAPHYARD_MIGRATION` in
 `crates/graphyard-store/src/schema.rs` (its tests compare them with

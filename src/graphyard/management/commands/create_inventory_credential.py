@@ -3,6 +3,7 @@
 import hashlib
 import secrets
 
+from django.core.exceptions import ValidationError
 from django.core.management.base import BaseCommand, CommandError
 from django.db import IntegrityError, OperationalError, connections, transaction
 
@@ -27,11 +28,15 @@ class Command(BaseCommand):
         parser.add_argument("--warning-after-seconds", type=int, default=None)
 
     def handle(self, *args, **options):
-        if (
-            options["warning_after_seconds"] is not None
-            and options["warning_after_seconds"] < 60
-        ):
-            raise CommandError("warning-after-seconds must be at least 60")
+        if options["warning_after_seconds"] is not None:
+            try:
+                InventoryHost._meta.get_field("warning_after_seconds").clean(
+                    options["warning_after_seconds"], InventoryHost()
+                )
+            except ValidationError as exc:
+                raise CommandError(
+                    "warning-after-seconds must be between 60 and 2147483647"
+                ) from exc
         alias = credential_database(
             (HostRegistry, InventoryHost, InventoryCredential), options["database"]
         )

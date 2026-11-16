@@ -627,3 +627,12 @@ freshness, application-observation freshness and every software-health row. A
 clock step during projection cannot change the verdict between rows or helpers.
 Health source time remains distinct from report observation time; persistence
 keeps its own receive/observation timestamps. Rendering is read-only.
+
+### Freshness setting admission
+
+`--warning-after-seconds` and the InventoryHost model/admin accept 60 through
+2,147,483,647 seconds inclusive, the portable PositiveIntegerField range. Invalid
+CLI values fail before any database query, credential retirement or secret output.
+Rotation without the option preserves the existing policy. Migration 0016 records
+the shared validators; it does not change the storage type or rewrite existing
+policies. Existing out-of-range policies need an explicit operator correction.

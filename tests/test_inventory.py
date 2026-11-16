@@ -567,7 +567,7 @@ def test_invalid_freshness_threshold_does_not_issue_credential(enrolled):
     from django.core.management.base import CommandError
 
     before = InventoryCredential.objects.count()
-    with pytest.raises(CommandError, match="at least 60"):
+    with pytest.raises(CommandError, match="between 60 and 2147483647"):
         call_command(
             "create_inventory_credential",
             host="studio",
