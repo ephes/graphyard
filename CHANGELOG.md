@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Escape terminal controls and bound displayed names to 128 characters in ingest
+  token issuance diagnostics, preserving stored names and exact once-only secrets.
+- Keep ingest token issuance conflicts private with fixed diagnostics and no raw
+  database exception chain; failed rotation still rolls back without printing a secret.
+
 - Charge raw Rust collector response bytes before decoding: at most 64 MiB per
   response, tightened to the decoded allowance plus 64 KiB when smaller. Abort
   overflowing connections without accepting partial successful metrics.

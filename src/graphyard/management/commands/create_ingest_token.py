@@ -10,10 +10,22 @@ from django.utils import timezone
 from graphyard.credential_database import credential_database
 
 from graphyard.models import IngestToken
+from graphyard.token_reports import terminal_text
 from graphyard.token_scope import (
     is_valid_stored_scope,
     parse_host_scope_text,
 )
+
+
+MAX_NAME_LABEL_CHARS = 128
+
+
+def token_name_label(name: str) -> str:
+    # Bound work before escaping, then bound the expanded presentation too.
+    label = terminal_text(name[:MAX_NAME_LABEL_CHARS])
+    if len(name) > MAX_NAME_LABEL_CHARS or len(label) > MAX_NAME_LABEL_CHARS:
+        return label[: MAX_NAME_LABEL_CHARS - 3] + "..."
+    return label
 
 
 def retired_token_name(token: IngestToken) -> str:
@@ -52,6 +64,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options) -> None:
         name: str = options["name"]
+        name_label = token_name_label(name)
         rotate: bool = options["rotate"]
         scope_args: list[str] | None = options.get("host_scope")
         unrestricted: bool = bool(options.get("unrestricted"))
@@ -90,7 +103,7 @@ class Command(BaseCommand):
                     if previous.enabled:
                         if not rotate:
                             raise CommandError(
-                                f"Enabled token with name '{name}' exists. Use --rotate to replace it."
+                                f"Enabled token with name '{name_label}' exists. Use --rotate to replace it."
                             )
                         previous.enabled = False
                         previous.revoked_at = timezone.now()
@@ -106,20 +119,20 @@ class Command(BaseCommand):
                         # Replacing a token must never silently widen it.
                         if not is_valid_stored_scope(previous.host_scope):
                             raise CommandError(
-                                f"The host scope stored for '{name}' is invalid. "
+                                f"The host scope stored for '{name_label}' is invalid. "
                                 "Pass --host-scope or --unrestricted."
                             )
                         host_scope = previous.host_scope
                 ingest_token.host_scope = [] if host_scope is None else host_scope
                 ingest_token.save(using=alias)
-        except IntegrityError as err:
+        except IntegrityError:
             raise CommandError(
-                f"Could not create token '{name}'; no token was changed: {err}"
-            ) from err
+                "Token issuance conflicted; no token was changed. Retry the command."
+            ) from None
 
         self.stdout.write(self.style.SUCCESS("Created ingest token"))
         self.stdout.write(f"id={ingest_token.id}")
-        self.stdout.write(f"name={ingest_token.name}")
+        self.stdout.write(f"name={name_label}")
         scope = ingest_token.host_scope
         self.stdout.write(
             "host_scope="

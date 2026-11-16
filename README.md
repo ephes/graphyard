@@ -175,6 +175,16 @@ the write router; inventory issuance refuses split write aliases before reading
 any rows. Locks, retirement, related enrollment writes and replacement creation
 use one selected transaction. Plaintext is printed only after its commit.
 
+`create_ingest_token` displays nonsecret names with C0/DEL/C1 controls escaped
+as visible `\xNN` text. Each name label is limited to 128 output characters,
+including a trailing `...` when truncated. This applies to success and refusal
+messages; stored names remain unchanged. The generated credential is printed
+exactly once, unchanged, on its own `token=` line after successful commit.
+Database integrity conflicts emit the fixed category `Token issuance conflicted`
+without driver details or exception chains, including with `--traceback`. No
+credential is printed on refusal, and retirement and creation both roll back.
+Retry the command; if the conflict persists, review the token records privately.
+
 Rotation is atomic: either the new token exists and the previous one is revoked, or the command
 fails and nothing changed, so the previous token stays valid. Token names are unique, so the
 previous row is kept as history under the name `<name> (retired #<id>)` (revoked, with its
