@@ -11,7 +11,10 @@ use std::collections::HashSet;
 use graphyard_core::diagnostics::collector_failure;
 use serde_json::Value;
 
-use graphyard_core::home_assistant::{HaSpec, normalize_state, regex_search};
+use graphyard_core::home_assistant::{
+    HaSpec, admit_output, admit_work, entity_name_slug, normalize_state, prepare_mappings,
+    regex_search,
+};
 use graphyard_core::model::{SpecOutcome, Tags};
 use graphyard_core::pycompat::{py_str, py_strip};
 use graphyard_core::spec_config::Config;
@@ -96,6 +99,13 @@ pub async fn execute_home_assistant_sensor<S: MetricSink>(
     let Value::Object(state) = &payload else {
         return Ok(warning(1, "invalid JSON payload"));
     };
+    if let Err(message) = admit_work(config, std::slice::from_ref(&payload)) {
+        return Ok(critical(message));
+    }
+    if let Err(message) = admit_output(config, name, std::slice::from_ref(&payload)) {
+        return Ok(critical(message));
+    }
+    prepare_mappings(config, &mut run.mappings);
     let point = normalize_state(
         state,
         HaSpec { name, config },
@@ -152,6 +162,10 @@ pub async fn execute_home_assistant_env_scan<S: MetricSink>(
     let knobs = HttpKnobs::from_config(config)?;
     let include_device_classes = device_classes(config);
     let entity_regex_value = config_text(config, "entity_id_regex", DEFAULT_ENTITY_ID_REGEX);
+
+    if let Err(message) = admit_work(config, &[]) {
+        return Ok(critical(message));
+    }
     let entity_pattern = match run.mappings.compile(&entity_regex_value, true) {
         Ok(pattern) => pattern,
         Err(err) => return Ok(critical(format!("invalid entity_id_regex: {err}"))),
@@ -168,18 +182,34 @@ pub async fn execute_home_assistant_env_scan<S: MetricSink>(
         return Ok(critical("states response is not a list"));
     };
 
+    if let Err(message) = admit_work(config, items) {
+        return Ok(critical(message));
+    }
+    if let Err(message) = admit_output(config, name, items) {
+        return Ok(critical(message));
+    }
+    prepare_mappings(config, &mut run.mappings);
+
     let ha_spec = HaSpec { name, config };
     let extra_tags = spec_name_tag(name);
     let mut points = Vec::new();
     let mut skipped: u64 = 0;
     for item in items {
         let Value::Object(item) = item else {
+            skipped += 1;
             continue;
         };
         let Some(Value::String(entity_id)) = item.get("entity_id") else {
+            skipped += 1;
             continue;
         };
         if !(entity_id.starts_with("sensor.") || entity_id.starts_with("binary_sensor.")) {
+            continue;
+        }
+        // Invalid upstream identities are row failures, independent of whether
+        // a static subject mapping could otherwise hide the malformed source.
+        if entity_name_slug(entity_id).is_err() {
+            skipped += 1;
             continue;
         }
         let device_class = match item.get("attributes") {

@@ -213,8 +213,34 @@ that differs is a bug.
   groups, such as `(?i)(?x)`, set verbose mode gets a line break before the
   closing parenthesis, which ends a trailing comment). A pattern that exhausts `fancy-regex`'s backtracking
   limit while matching fails with `regex match failed: <error>`, which the
-  HA executors report as `critical` with that message; Python keeps
-  backtracking (the agent hangs on such a pattern).
+  HA executors report as `critical`, `collector failure: ValueError`; Python
+  keeps backtracking (the agent hangs on such a pattern). Round 100 sets the
+  public engine backtrack limit to 1000 and precompiles admitted patterns
+  (lookaround fits on 255-byte ids; long unbounded backreferences may not). The
+  Rust-only collection envelope is 4096 rows/points, 128 mapping rules, 4096
+  bytes per pattern, 16,384 possible matches, 4 MiB match-input bytes and an
+  8 MiB conservative point-text/tag reservation before normalization. All
+  rows/rules count even when ignored; see the README's HA limits for the
+  reservation formula. Exhaustion returns critical with
+  `collector failure: _HomeAssistantLimitExceeded`, without sink/registry writes.
+  This deliberately extends the Rust safety contract without reviving the
+  retired Python collector. Existing Python-generated mapping/executor fixtures
+  pin within-envelope behavior; Rust core boundary and real-socket executor
+  tests pin the intentional divergence and adversarial regex/tag products.
+  Rust scans also count malformed HA rows/invalid entity slugs as skipped
+  before mapping, preserving valid neighbors. Single-sensor outcomes stay
+  unchanged; invalid inclusion configuration still fails the scan.
+  The pure Python/Rust mapping fixtures retain their historical low-level slug
+  exceptions: this classification belongs to the Rust executor boundary.
+  `ha_json_executors.json` keeps the Python item-shape outcome and explicitly
+  records `rust_skipped=5` for the five malformed rows. The legacy fatal-slug
+  scan also retains its Python observation; `rust_expected` records the Python
+  executor's result on just its valid neighbor, with skipped=1. Points, requests,
+  logs and all other fields remain exact under these explicit expectations.
+  The whole-agent parity corpus uses a valid out-of-domain switch in place of
+  its non-object HA row, keeping the shared-semantics comparison exact without
+  masking aggregate skipped counts. Malformed-row coverage stays in the above
+  fixture and the real-socket Rust tests.
 - **D-6 Unicode digits and spaces.** Python `str.isdigit()` in
   `_resolve_json_path`, `float()` on Unicode digit strings, and `str.strip()`
   of non-`White_Space` separators (`\x1c`–`\x1f`) accept more than ASCII.

@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- Project inventory application freshness and software health at one response
+  timestamp, including wall-clock steps and exact freshness boundaries.
+- Count malformed Home Assistant entity rows as skipped in Rust scans,
+  preserving valid neighbors while configuration/runtime failures remain fatal.
+- Bound Rust Home Assistant regex backtracking, collection-wide matching work,
+  and point/tag amplification before normalization. Exhausted collections fail
+  critical without partial metric or registry writes; ordinary reference
+  fixtures remain compatible; plain patterns (no lookaround, backreferences,
+  atomic/possessive groups or conditionals) do not use the 1000-step backtrack
+  limit.
+
 - Rust agent (`agent-rs/`): release `agent-rs-v0.4.0`
   (<https://github.com/ephes/graphyard/releases/tag/agent-rs-v0.4.0>), built by
   the release workflow from `3d6616d`. Asset

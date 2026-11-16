@@ -26,6 +26,162 @@ use crate::pycompat::{
     PyError, PyErrorKind, py_float_of, py_fromisoformat, py_repr, py_str, py_strip, py_type_name,
 };
 
+/// Hard collector-wide ceilings, independent of HTTP byte/deadline knobs.
+pub const HA_MAX_ENTITIES: usize = 4096;
+pub const HA_MAX_MAPPING_RULES: usize = 128;
+pub const HA_MAX_MATCHES: usize = 16_384;
+pub const HA_MAX_MATCH_INPUT_BYTES: usize = 4 * 1024 * 1024;
+pub const HA_REGEX_BACKTRACK_LIMIT: usize = 1000;
+pub const HA_MAX_PATTERN_BYTES: usize = 4096;
+pub const HA_MAX_OUTPUT_BYTES: usize = 8 * 1024 * 1024;
+
+/// Admit a conservative upper bound before any entity filtering/normalisation.
+/// Count every row and every configured rule, including ignored ones. Each row
+/// may search the inclusion pattern and every subject/metric rule once.
+///
+/// # Errors
+/// A fixed collector limit was exceeded; callers must publish no points.
+pub fn admit_work(config: &Map<String, Value>, items: &[Value]) -> Result<(), &'static str> {
+    let rules = ["subject_mapping", "metric_mapping"]
+        .iter()
+        .filter_map(|key| config.get(*key)?.get("rules")?.as_array())
+        .map(Vec::len)
+        .sum::<usize>();
+    for key in ["subject_mapping", "metric_mapping"] {
+        if let Some(rules) = config
+            .get(key)
+            .and_then(|m| m.get("rules"))
+            .and_then(Value::as_array)
+        {
+            for rule in rules.iter().filter_map(Value::as_object) {
+                if get_str(rule, "match_entity_id_regex", "").len() > HA_MAX_PATTERN_BYTES {
+                    return Err("collector failure: _HomeAssistantLimitExceeded");
+                }
+            }
+        }
+    }
+    if get_str(config, "entity_id_regex", "").len() > HA_MAX_PATTERN_BYTES {
+        return Err("collector failure: _HomeAssistantLimitExceeded");
+    }
+    let matches_per_row = rules.saturating_add(1);
+    let input_bytes = items.iter().fold(0usize, |total, item| {
+        let bytes = item.get("entity_id").map_or(0, |id| py_str(id).len());
+        total.saturating_add(bytes.saturating_mul(matches_per_row))
+    });
+    if items.len() > HA_MAX_ENTITIES
+        || rules > HA_MAX_MAPPING_RULES
+        || items.len().saturating_mul(matches_per_row) > HA_MAX_MATCHES
+        || input_bytes > HA_MAX_MATCH_INPUT_BYTES
+    {
+        return Err("collector failure: _HomeAssistantLimitExceeded");
+    }
+    Ok(())
+}
+
+/// Reserve a conservative output string/tag envelope before constructing any
+/// points. The largest configured rule applies to every row for admission, even
+/// when filtering or a different first-match rule would produce fewer bytes.
+/// Entity-derived dimensions and lowercased config text get an eightfold reserve
+/// for their repeated copies and Unicode expansion. Container overhead is bounded
+/// separately by the entity/rule/spec-shape ceilings.
+///
+/// # Errors
+/// The collection cannot fit in the output envelope; no partial batch is allowed.
+pub fn admit_output(
+    config: &Map<String, Value>,
+    name: &str,
+    items: &[Value],
+) -> Result<(), &'static str> {
+    let mut dimensions = 256 + name.len();
+    for key in [
+        "source_system",
+        "source_instance",
+        "host_id",
+        "service_id",
+        "collector_service",
+        "collector_host",
+        "metric_name",
+        "metric_prefix",
+    ] {
+        dimensions = dimensions.saturating_add(get_str(config, key, "").len());
+    }
+    let mut mapped_tags = 0;
+    for key in ["subject_mapping", "metric_mapping"] {
+        let mut max_dimension = 0;
+        if let Some(rules) = config
+            .get(key)
+            .and_then(|m| m.get("rules"))
+            .and_then(Value::as_array)
+        {
+            for rule in rules.iter().filter_map(Value::as_object) {
+                max_dimension = max_dimension.max(
+                    get_str(rule, "subject_id_template", "")
+                        .len()
+                        .saturating_add(get_str(rule, "metric_name", "").len()),
+                );
+                if let Some(tags) = rule.get("extra_tags").and_then(Value::as_object) {
+                    let bytes = tags.iter().fold(0usize, |sum, (k, v)| {
+                        sum.saturating_add(k.len()).saturating_add(py_str(v).len())
+                    });
+                    mapped_tags = mapped_tags.max(bytes);
+                }
+            }
+        }
+        dimensions = dimensions.saturating_add(max_dimension);
+    }
+    let mut total = 0usize;
+    for item in items {
+        let entity_bytes = item.get("entity_id").map_or(0, |v| py_str(v).len());
+        let mut bytes = dimensions
+            .saturating_add(entity_bytes)
+            .saturating_mul(8)
+            .saturating_add(mapped_tags);
+        if let Some(attributes) = item.get("attributes").and_then(Value::as_object) {
+            for key in ["device_class", "unit_of_measurement"] {
+                if let Some(value) = attributes.get(key) {
+                    bytes = bytes
+                        .saturating_add(key.len())
+                        .saturating_add(py_str(value).len());
+                }
+            }
+        }
+        total = total.saturating_add(bytes);
+        if total > HA_MAX_OUTPUT_BYTES {
+            return Err("collector failure: _HomeAssistantLimitExceeded");
+        }
+    }
+    Ok(())
+}
+
+/// Compile each admitted mapping pattern (and the subject fullmatch form) once
+/// before the row loop. Invalid rules retain the existing warning/skip policy.
+pub fn prepare_mappings(config: &Map<String, Value>, state: &mut MappingState) {
+    for key in ["subject_mapping", "metric_mapping"] {
+        if let Some(rules) = config
+            .get(key)
+            .and_then(|m| m.get("rules"))
+            .and_then(Value::as_array)
+        {
+            for rule in rules.iter().filter_map(Value::as_object) {
+                let pattern = get_str(rule, "match_entity_id_regex", "");
+                let pattern = py_strip(&pattern);
+                if !pattern.is_empty()
+                    && state.compile(pattern, false).is_ok()
+                    && key == "subject_mapping"
+                {
+                    let _ = state.compile(&fullmatch_pattern(pattern), false);
+                }
+            }
+        }
+    }
+}
+
+fn fullmatch_pattern(pattern: &str) -> String {
+    // End a trailing verbose-mode comment before appending the anchor.
+    let line_break = if verbose(pattern) { "\n" } else { "" };
+    format!("\\A(?:{pattern}{line_break})\\z")
+}
+
 /// The spec as the mapping functions see it: its name and config object.
 #[derive(Clone, Copy, Debug)]
 pub struct HaSpec<'a> {
@@ -83,6 +239,7 @@ impl MappingState {
             .or_insert_with(|| {
                 RegexBuilder::new(pattern)
                     .case_insensitive(case_insensitive)
+                    .backtrack_limit(HA_REGEX_BACKTRACK_LIMIT)
                     .build()
                     .map(Arc::new)
                     .map_err(|err| err.to_string())
@@ -93,10 +250,7 @@ impl MappingState {
     /// `re.compile(pattern).fullmatch(text) is not None`: the pattern
     /// anchored at both ends, compiled after the pattern itself compiled.
     fn fullmatch(&mut self, pattern: &str, text: &str) -> Result<bool, PyError> {
-        // A pattern with a leading verbose flag (`(?x)`) may end in a
-        // comment; the line break ends it before the anchor.
-        let line_break = if verbose(pattern) { "\n" } else { "" };
-        let anchored = format!("\\A(?:{pattern}{line_break})\\z");
+        let anchored = fullmatch_pattern(pattern);
         let regex = self
             .compile(&anchored, false)
             .map_err(|err| regex_runtime_error(&err))?;

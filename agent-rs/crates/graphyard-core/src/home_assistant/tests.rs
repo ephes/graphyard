@@ -225,3 +225,76 @@ fn compiled_regexes_are_cached_per_flags() {
     assert!(!regex_search(&sensitive, "ABC").expect("search"));
     assert!(state.compile("(unclosed", false).is_err());
 }
+
+#[test]
+fn explicit_regex_backtracking_limit_is_lower_than_engine_default() {
+    let mut state = MappingState::new();
+    let regex = state.compile("(a|aa)+\\1x", false).unwrap();
+    assert!(regex_search(&regex, &"a".repeat(18)).is_err());
+}
+
+#[test]
+fn ordinary_lookaround_patterns_fit_the_backtrack_limit_on_long_entity_ids() {
+    // Lookaround patterns run on fancy-regex's backtracking VM; the lowered
+    // limit must still admit realistic ones on the longest entity ids, both
+    // when they match and when they do not. Unbounded backreferences such as
+    // `(\w+)_\1` on long ids can exceed it (README, HA limits).
+    let mut state = MappingState::new();
+    let filler = "x".repeat(230);
+    let cases: &[(&str, String, bool)] = &[
+        (
+            r"(?<!binary_)sensor\..*_temp.*",
+            format!("sensor.{filler}_temp"),
+            true,
+        ),
+        (
+            r"(?<!binary_)sensor\..*_temp.*",
+            format!("binary_sensor.{filler}_tem"),
+            false,
+        ),
+        (
+            r"^sensor\.(?!.*_battery$).*_power$",
+            format!("sensor.{filler}_power"),
+            true,
+        ),
+        (
+            r"^sensor\.(?!.*_battery$).*_power$",
+            format!("sensor.{filler}_battery"),
+            false,
+        ),
+        (
+            r"sensor\.(?=\w*_energy)\w+",
+            format!("sensor.{filler}_energy"),
+            true,
+        ),
+        (
+            r"(?i)^(?:sensor|switch)\.(?!test_).+",
+            format!("SWITCH.{filler}"),
+            true,
+        ),
+    ];
+    for (pattern, text, expected) in cases {
+        assert!(text.len() <= 255, "{pattern}: {} bytes", text.len());
+        let regex = state.compile(pattern, false).expect("compiles");
+        let got = regex_search(&regex, text).unwrap_or_else(|err| panic!("{pattern}: {err:?}"));
+        assert_eq!(got, *expected, "{pattern}");
+        let anchored = state.fullmatch(pattern, text);
+        assert!(anchored.is_ok(), "{pattern}: {anchored:?}");
+    }
+}
+
+#[test]
+fn collection_envelopes_accept_exact_boundaries() {
+    use serde_json::json;
+    let empty = serde_json::Map::new();
+    assert!(super::admit_work(&empty, &vec![Value::Null; super::HA_MAX_ENTITIES]).is_ok());
+    let config = json!({"metric_mapping": {"rules": vec![Value::Null; 127]}});
+    let rows = vec![json!({"entity_id": "a".repeat(256)}); 128];
+    // 128 * 128 == 16,384 matches; 16,384 * 256 == 4 MiB input.
+    assert!(super::admit_work(config.as_object().unwrap(), &rows).is_ok());
+    let config = json!({"metric_mapping": {"rules": [{"extra_tags": {
+        "x": "a".repeat(super::HA_MAX_OUTPUT_BYTES - 256 * 8 - 1)
+    }}]}});
+    assert!(super::admit_output(config.as_object().unwrap(), "", &[json!({})]).is_ok());
+    assert!(super::admit_output(config.as_object().unwrap(), "x", &[json!({})]).is_err());
+}

@@ -619,3 +619,11 @@ Inventory JSON rejects duplicate object names at every depth, including escaped
 equivalents, before storing reports or changing category pointers. Repeated array
 entries remain valid. All inventory reader HTML, JSON and SBOM responses carry
 `Cache-Control: private, no-store`, including errors and login redirects.
+
+### Projection clock
+
+The application response captures one timestamp at entry and uses it for host
+freshness, application-observation freshness and every software-health row. A
+clock step during projection cannot change the verdict between rows or helpers.
+Health source time remains distinct from report observation time; persistence
+keeps its own receive/observation timestamps. Rendering is read-only.

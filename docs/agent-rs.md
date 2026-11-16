@@ -416,3 +416,14 @@ enabled spec needs observations on both sides; supported exact/aligned types als
 need at least one comparable pair. Missing evidence is an `inconclusive` finding,
 so `--fail-on-findings` fails even when both sides are empty. Explicitly disabled
 specs remain excluded. Matching empty sets cannot qualify a required collector.
+
+### Home Assistant collection envelopes
+
+Rust HA collection admission and its fixed matching/output ceilings are specified
+in the [HA configuration contract](../README.md#metric-collection-specs) and
+[PLAN.md D-5](../agent-rs/PLAN.md). Admission precedes point construction; neither
+limit exhaustion nor regex runtime failure publishes a partial batch or registry
+update. HTTP timeout/body knobs do not increase synchronous work/output limits.
+The Python reference fixtures continue to cover admitted ordinary batches;
+Rust-specific boundary/exhaustion cases live in core `home_assistant/tests.rs`
+and collector `executors/tests/ha_json_budget.rs`.

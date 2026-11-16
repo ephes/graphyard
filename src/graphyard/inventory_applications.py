@@ -85,7 +85,7 @@ def applications(entries):
             yield app
 
 
-def health_projection(evidence, host_id, observed_at):
+def health_projection(evidence, host_id, observed_at, *, now=None):
     """Monitoring results retain their own source time and restricted meaning."""
     if "software_health" not in evidence:
         return None
@@ -159,10 +159,11 @@ def health_projection(evidence, host_id, observed_at):
         or (apt.get("status") == "ok" and count is None)
     ):
         return unavailable
+    projection_ts = time.time() if now is None else now.timestamp()
     return {
         "available": True,
         "observed_at": datetime.fromtimestamp(stamp, UTC),
-        "historical": not 0 <= time.time() - stamp <= HEALTH_MAX_AGE_SECONDS,
+        "historical": not 0 <= projection_ts - stamp <= HEALTH_MAX_AGE_SECONDS,
         "checks": rows,
         "security_count": count
         if apt["status"] == "ok" and apt["indexes_fresh"]
@@ -205,7 +206,7 @@ def related_units(evidence):
     return {"valid": True, "status": status, "rows": result}
 
 
-def project(app, host_id=None, observed_at=None):
+def project(app, host_id=None, observed_at=None, *, now=None):
     """Never render arbitrary nested report values or infer unsupported freshness."""
     from .inventory_sbom import eligible
 
@@ -270,7 +271,7 @@ def project(app, host_id=None, observed_at=None):
     dirty = checkout.get("dirty")
     return {
         "related_units": related_units(evidence),
-        "health": health_projection(evidence, host_id, observed_at),
+        "health": health_projection(evidence, host_id, observed_at, now=now),
         "sbom_id": app["id"] if eligible(app) else None,
         "name": text(app.get("id"), default="Unnamed application"),
         "kind": text(app.get("kind"), default="Registered application probe"),

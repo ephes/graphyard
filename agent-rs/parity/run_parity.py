@@ -269,7 +269,10 @@ ENV_SCAN_STATES = [
     ha_state("sensor.fritz_box_7590_ax_link_uptime", "123456", "duration"),
     ha_state("binary_sensor.bad_humidity_alarm", "off", "moisture"),
     {"entity_id": "light.kitchen", "state": "on", "attributes": {}},
-    "not an object",
+    # Keep whole-agent parity on shared reference semantics. Malformed rows
+    # intentionally differ in Rust; ha_json_executors.json and the real-socket
+    # row-isolation tests pin their explicit outcomes without summary masking.
+    {"entity_id": "switch.synthetic", "state": "off", "attributes": {}},
 ]
 
 NON_NUMERIC_STATES = [
