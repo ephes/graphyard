@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Honor explicit Rust collector Cookie headers ahead of jar credentials;
+  redirects continue to rebuild destination cookies from the jar.
+
 - Refresh explicit Rust collector Host headers on cross-origin redirects, while
   preserving same-origin virtual hosts and the existing authorization policy.
 

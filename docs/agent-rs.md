@@ -564,3 +564,7 @@ Rust redirects preserve a custom `Host` on the same origin. A changed origin
 uses the destination authority (including port and IPv6 brackets), as httpx
 0.28.1 does. Authorization is still removed on cross-origin redirects except
 for the existing same-host HTTP-to-HTTPS upgrade rule.
+
+Explicit request/client `Cookie` headers, including an empty header, take
+precedence over the per-execution jar. Redirects remove that explicit header
+and reconstruct cookies from the jar for the destination, matching httpx.

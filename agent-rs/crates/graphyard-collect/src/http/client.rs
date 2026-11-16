@@ -666,7 +666,9 @@ impl HttpClient {
             let value = HeaderValue::from_str(value).map_err(|err| local(&err))?;
             headers.insert(name, value);
         }
-        if let Some(cookie) = self.cookie_header(&request.url) {
+        if !headers.contains_key(hyper::header::COOKIE)
+            && let Some(cookie) = self.cookie_header(&request.url)
+        {
             headers.insert(hyper::header::COOKIE, cookie);
         }
         Ok(outgoing)
