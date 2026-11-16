@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Bound Rust collector cookie jars to 256 retained entries and 64 KiB of names
+  and values per execution. Reject overflowing responses before publication,
+  with a fixed diagnostic and without changing the previous jar.
+
 - Ignore explicit single-label cookie domains in Rust collectors to prevent
   top-level-domain credential propagation across unrelated hosts.
 

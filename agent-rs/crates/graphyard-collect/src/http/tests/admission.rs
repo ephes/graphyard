@@ -135,3 +135,87 @@ async fn single_label_cookie_domains_cannot_cross_sites() {
     }
     assert_eq!(server.requests()[4].header_values("cookie"), ["shared=ok"]);
 }
+
+#[tokio::test]
+async fn cookie_jar_count_is_bounded_across_redirects() {
+    let server = Server::start(|request| {
+        let hop: usize = request.target.trim_start_matches('/').parse().unwrap();
+        let mut headers = vec![("Location".to_owned(), format!("/{}", hop + 1))];
+        headers.extend((0..16).map(|i| {
+            (
+                "Set-Cookie".to_owned(),
+                format!("c{}=x; Path=/", hop * 16 + i),
+            )
+        }));
+        let headers: Vec<_> = headers
+            .iter()
+            .map(|(k, v)| (k.as_str(), v.as_str()))
+            .collect();
+        response("302 Found", &headers, b"")
+    })
+    .await;
+    let client = HttpClient::new(&HttpContext::new(), &ClientOptions::new(5.0, true));
+    let request = client
+        .build_request(Method::Get, &format!("{}/0", server.origin()), &[], None)
+        .unwrap();
+    let err = send_following_redirects(&client, request.clone())
+        .await
+        .unwrap_err();
+    assert_eq!(err.message, "collector cookie jar limit exceeded");
+    assert_eq!(err.safe_message(), err.message);
+    assert_eq!(server.requests().len(), 17);
+    let outgoing = client.hyper_request(&request).unwrap();
+    assert_eq!(
+        outgoing.headers()["cookie"]
+            .to_str()
+            .unwrap()
+            .split("; ")
+            .count(),
+        256
+    );
+    // A new spec client has its own empty jar.
+    let independent = HttpClient::new(&HttpContext::new(), &ClientOptions::new(5.0, true));
+    assert!(
+        !independent
+            .hyper_request(&request)
+            .unwrap()
+            .headers()
+            .contains_key("cookie")
+    );
+}
+
+#[tokio::test]
+async fn cookie_jar_bytes_account_for_replacements_without_accumulating() {
+    let server = Server::start(|request| {
+        let value = match request.target.as_str() {
+            "/exact" => format!("c={}; Path=/", "x".repeat(65535)),
+            "/grow" => format!("c={}; Path=/", "x".repeat(65536)),
+            "/shrink" => "c=x; Path=/".to_owned(),
+            _ => format!("d={}; Path=/", "x".repeat(65533)),
+        };
+        response("200 OK", &[("Set-Cookie", &value)], b"")
+    })
+    .await;
+    let client = HttpClient::new(&HttpContext::new(), &ClientOptions::new(5.0, true));
+    for path in ["exact", "exact", "grow", "shrink", "extra"] {
+        let request = client
+            .build_request(
+                Method::Get,
+                &format!("{}/{path}", server.origin()),
+                &[],
+                None,
+            )
+            .unwrap();
+        let result = client.send(&request).await;
+        if path == "grow" {
+            assert_eq!(
+                result.unwrap_err().message,
+                "collector cookie jar limit exceeded"
+            );
+            let outgoing = client.hyper_request(&request).unwrap();
+            assert_eq!(outgoing.headers()["cookie"].as_bytes().len(), 65537);
+        } else {
+            result.unwrap();
+        }
+    }
+}

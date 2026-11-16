@@ -126,6 +126,11 @@ impl HttpError {
 
     /// Safe collector persistence metadata, independent of URLs and remote bodies.
     pub fn safe_message(&self) -> String {
+        if self.kind == ErrorKind::LimitExceeded
+            && self.message == "collector cookie jar limit exceeded"
+        {
+            return self.message.clone();
+        }
         if self.kind == ErrorKind::ValueError
             && matches!(
                 self.message.as_str(),

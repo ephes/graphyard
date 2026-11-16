@@ -579,3 +579,14 @@ names) and ordinary multi-label domain cookies remain supported. This preserves
 Python's top-level-domain refusal for public hosts; it deliberately also refuses
 explicit local single-label domains. This is not a full public suffix list check:
 for example `co.uk` retains the pinned Python client's compatibility behavior.
+
+Each spec execution retains at most 256 cookies and 64 KiB of combined UTF-8
+name/value bytes across all responses and redirects. Replacements charge their
+current size, not their history; expired entries still retained by `cookie_store`
+count toward both limits. Domain/path metadata is separately bounded by the
+100 KiB response-header ceiling and cookie count. An overflowing response leaves
+the previous jar intact, closes its connection and fails collection with
+`collector cookie jar limit exceeded`, before publishing any successful metric
+or registry update (page probes retain their normal failure metrics). New specs
+start with an independent empty jar. This finite retention policy is Rust-specific;
+normal UniFi session cookies remain supported.

@@ -40,6 +40,10 @@ pub const USER_AGENT: &str = "python-httpx/0.28.1";
 pub const ACCEPT_ENCODING: &str = "gzip, deflate";
 /// `httpx.Client().max_redirects`.
 pub const MAX_REDIRECTS: u32 = 20;
+/// Retained cookies per spec execution, including expired entries.
+const MAX_COOKIE_COUNT: usize = 256;
+/// Combined retained cookie name/value bytes per execution.
+const MAX_COOKIE_BYTES: usize = 64 * 1024;
 /// `_PAGE_PROBE_CLOSE_JOIN_SECONDS`: how long a cancelled request's lookups
 /// may keep running before they count as abandoned.
 pub const CLOSE_JOIN: Duration = Duration::from_secs(1);
@@ -542,7 +546,7 @@ impl HttpClient {
             .await
             .map_err(|err| HttpError::transport(&err, false))?;
         let (parts, body) = response.into_parts();
-        self.store_cookies(url, &parts.headers);
+        self.store_cookies(url, &parts.headers)?;
         let status = parts.status.as_u16();
         let server_reason = parts
             .extensions
@@ -691,9 +695,9 @@ impl HttpClient {
         HeaderValue::from_str(&text).ok()
     }
 
-    fn store_cookies(&self, url: &HttpxUrl, headers: &HeaderMap) {
+    fn store_cookies(&self, url: &HttpxUrl, headers: &HeaderMap) -> Result<(), HttpError> {
         let Some(url) = cookie_url(url) else {
-            return;
+            return Ok(());
         };
         let cookies: Vec<RawCookie<'static>> = headers
             .get_all(hyper::header::SET_COOKIE)
@@ -706,8 +710,27 @@ impl HttpClient {
             .collect();
         if !cookies.is_empty() {
             let mut jar = self.jar.lock().unwrap_or_else(PoisonError::into_inner);
-            jar.store_response_cookies(cookies.into_iter(), &url);
+            // Admit the whole response transactionally. A refused update leaves
+            // the prior bounded jar intact, including on replacements/deletions.
+            let mut candidate = jar.clone();
+            for cookie in cookies {
+                let _ = candidate.insert_raw(&cookie, &url);
+                let mut count = 0;
+                let mut bytes = 0;
+                for stored in candidate.iter_any() {
+                    count += 1;
+                    bytes += stored.name().len() + stored.value().len();
+                    if count > MAX_COOKIE_COUNT || bytes > MAX_COOKIE_BYTES {
+                        return Err(HttpError::new(
+                            ErrorKind::LimitExceeded,
+                            "collector cookie jar limit exceeded",
+                        ));
+                    }
+                }
+            }
+            *jar = candidate;
         }
+        Ok(())
     }
 }
 
