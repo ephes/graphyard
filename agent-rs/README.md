@@ -234,6 +234,12 @@ From the repository root:
 `just test`, `just lint` and `just typecheck` run the Python checks and then
 the Rust ones. `just rs-parity` runs separately (CI job `parity`).
 
+Shadow append I/O runs on Tokio's blocking pool, one queued/running job per
+writer. Cancellation retains the job's admission and file lock until completion;
+filesystem writes and sync are not interruptible. See the
+[shadow framing and recovery contract](../docs/agent-rs.md#complete-shadow-batches-and-recovery)
+for uncertain acceptance and operator recovery.
+
 ## Running the agent
 
 ```bash

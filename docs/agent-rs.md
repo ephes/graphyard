@@ -484,7 +484,12 @@ count before reuse; comment-only preambles remain supported.
 
 Cooperating writers hold the same opened data inode's OS lock over suffix
 validation, complete append and sync. In-process and OS-lock admission share a
-one-second wait budget. Lock wait yields to the async runtime; process death
+one-second wait budget, including blocking-pool queueing. Suffix validation,
+append, flush and sync run on Tokio's blocking pool, with at most one queued or
+running job per writer. The job owns its descriptor, in-process slot and OS lock
+until it actually finishes, even when its async caller is canceled. Cancellation
+can therefore leave acceptance uncertain; it does not interrupt filesystem I/O
+or permit an overlapping append. No automatic replay is attempted. Process death
 releases the OS lock. This contract requires local filesystem locking and trusted
 parent directories. Never unlink, rotate, replace or externally truncate the
 file while writers are running; locks do not exclude noncooperating writers.

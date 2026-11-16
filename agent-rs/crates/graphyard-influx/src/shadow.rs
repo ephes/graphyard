@@ -1,6 +1,7 @@
 //! Complete shadow batches under a cooperating local-filesystem lock.
 use std::fs::File;
 use std::io::{self, BufRead, BufReader, Read, Seek, SeekFrom, Write};
+use std::sync::Arc;
 use std::time::Duration;
 
 use graphyard_core::line_protocol::WRITE_MAX_REQUEST_BYTES;
@@ -139,38 +140,55 @@ fn validate(file: &File, start: u64) -> io::Result<u64> {
     }
 }
 
-pub(crate) async fn append(file: &Mutex<ShadowFile>, record: &[u8]) -> io::Result<()> {
-    // Both in-process admission and OS-lock waiting share one elapsed deadline.
+pub(crate) async fn append(file: &Arc<Mutex<ShadowFile>>, record: &[u8]) -> io::Result<()> {
+    append_with(file, record, || {}).await
+}
+
+async fn append_with(
+    file: &Arc<Mutex<ShadowFile>>,
+    record: &[u8],
+    before_write: impl FnOnce() + Send + 'static,
+) -> io::Result<()> {
+    // One running/queued blocking job per writer. The job owns this guard,
+    // descriptor and record even if the async caller stops waiting.
     let deadline = tokio::time::Instant::now() + Duration::from_secs(1);
-    let mut state = tokio::time::timeout_at(deadline, file.lock())
+    let mut state = tokio::time::timeout_at(deadline, file.clone().lock_owned())
         .await
         .map_err(|_| io::Error::new(io::ErrorKind::TimedOut, "shadow lock deadline"))?;
-    loop {
-        if tokio::time::Instant::now() >= deadline {
-            return Err(io::Error::new(
-                io::ErrorKind::TimedOut,
-                "shadow lock deadline",
-            ));
-        }
-        match state.file.try_lock() {
-            Ok(()) => break,
-            Err(std::fs::TryLockError::WouldBlock) => {
-                tokio::time::sleep(Duration::from_millis(10)).await;
+    let record = record.to_vec();
+    tokio::task::spawn_blocking(move || {
+        // Pool queueing, in-process admission and OS-lock wait share a deadline.
+        let deadline = deadline.into_std();
+        loop {
+            if std::time::Instant::now() >= deadline {
+                return Err(io::Error::new(
+                    io::ErrorKind::TimedOut,
+                    "shadow lock deadline",
+                ));
             }
-            Err(std::fs::TryLockError::Error(err)) => return Err(err),
+            match state.file.try_lock() {
+                Ok(()) => break,
+                Err(std::fs::TryLockError::WouldBlock) => {
+                    std::thread::sleep(Duration::from_millis(10));
+                }
+                Err(std::fs::TryLockError::Error(err)) => return Err(err),
+            }
         }
-    }
-    let end = {
-        let _locked = Locked(&state.file);
-        validate(&state.file, state.validated_end)?;
-        let mut output = &state.file;
-        output.write_all(record)?;
-        output.flush()?;
-        state.file.sync_data()?;
-        state.file.metadata()?.len()
-    };
-    state.validated_end = end;
-    Ok(())
+        let end = {
+            let _locked = Locked(&state.file);
+            validate(&state.file, state.validated_end)?;
+            before_write();
+            let mut output = &state.file;
+            output.write_all(&record)?;
+            output.flush()?;
+            state.file.sync_data()?;
+            state.file.metadata()?.len()
+        };
+        state.validated_end = end;
+        Ok(())
+    })
+    .await
+    .map_err(|_| io::Error::other("shadow blocking job failed"))?
 }
 
 #[cfg(test)]
@@ -184,6 +202,92 @@ mod tests {
             body.len(),
             body.len()
         )
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn stalled_io_does_not_stop_runtime_heartbeat() {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        let state = Arc::new(Mutex::new(ShadowFile::new(tempfile::tempfile().unwrap())));
+        let beats = Arc::new(AtomicUsize::new(0));
+        let heartbeat = tokio::spawn({
+            let beats = beats.clone();
+            async move {
+                loop {
+                    tokio::time::sleep(Duration::from_millis(5)).await;
+                    beats.fetch_add(1, Ordering::SeqCst);
+                }
+            }
+        });
+        let (entered, ready) = std::sync::mpsc::channel();
+        let (release, gate) = std::sync::mpsc::channel();
+        let observer = std::thread::spawn(move || {
+            ready.recv_timeout(Duration::from_secs(3)).unwrap();
+            std::thread::sleep(Duration::from_millis(150));
+            let observed = beats.load(Ordering::SeqCst);
+            release.send(()).unwrap();
+            observed
+        });
+        append_with(&state, record(1).as_bytes(), move || {
+            entered.send(()).unwrap();
+            gate.recv_timeout(Duration::from_secs(3)).unwrap();
+        })
+        .await
+        .unwrap();
+        heartbeat.abort();
+        assert!(
+            observer.join().unwrap() > 0,
+            "disk I/O blocked the runtime heartbeat"
+        );
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn canceled_waiter_retains_job_capacity_and_os_lock() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("capture.lp");
+        let file = std::fs::OpenOptions::new()
+            .create_new(true)
+            .read(true)
+            .append(true)
+            .open(&path)
+            .unwrap();
+        let state = Arc::new(Mutex::new(ShadowFile::new(file)));
+        let (entered, ready) = tokio::sync::oneshot::channel();
+        let (release, gate) = std::sync::mpsc::channel();
+        let waiter = tokio::spawn({
+            let state = state.clone();
+            async move {
+                append_with(&state, record(1).as_bytes(), move || {
+                    entered.send(()).unwrap();
+                    gate.recv_timeout(Duration::from_secs(3)).unwrap();
+                })
+                .await
+            }
+        });
+        ready.await.unwrap();
+        waiter.abort();
+        assert!(waiter.await.unwrap_err().is_cancelled());
+        assert!(
+            state.try_lock().is_err(),
+            "cancellation freed the running job slot"
+        );
+        let other = File::open(&path).unwrap();
+        assert!(matches!(
+            other.try_lock(),
+            Err(std::fs::TryLockError::WouldBlock)
+        ));
+        assert_eq!(
+            append(&state, record(2).as_bytes())
+                .await
+                .unwrap_err()
+                .kind(),
+            io::ErrorKind::TimedOut
+        );
+        assert!(std::fs::read(&path).unwrap().is_empty());
+        release.send(()).unwrap();
+        append(&state, record(3).as_bytes()).await.unwrap();
+        let text = std::fs::read_to_string(path).unwrap();
+        assert_eq!(text, format!("{}{}", record(1), record(3)));
+        assert_eq!(state.lock().await.validated_end, text.len() as u64);
     }
 
     #[test]
