@@ -43,6 +43,8 @@ from .models import (
     SubjectRegistry,
     SubjectType,
 )
+from .unifi_json import REFUSED as UNIFI_EVIDENCE_REFUSED
+from .unifi_json import UnifiEvidenceError, decode_unifi_json
 from .token_scope import canonical_host_identifier
 
 logger = logging.getLogger(__name__)
@@ -1685,17 +1687,26 @@ def _resolve_unifi_interface_stats(
         interface_name = str(uplink_raw.get("name", "")).strip()
         if interface_name:
             tags["interface"] = interface_name
-        port_idx_raw = uplink_raw.get("port_idx") or uplink_raw.get("num_port")
+        port_idx_raw = uplink_raw.get("port_idx")
+        if port_idx_raw is None:
+            port_idx_raw = uplink_raw.get("num_port")
         if port_idx_raw is not None:
+            if type(port_idx_raw) is not int or port_idx_raw < 0:
+                raise ValueError("UniFi port index must be a nonnegative integer")
             tags["port_idx"] = str(port_idx_raw)
-            for port in port_table:
-                if not isinstance(port, dict):
-                    continue
-                if port.get("port_idx") == port_idx_raw:
-                    port_name = str(port.get("name", "")).strip()
-                    if port_name:
-                        tags["port_name"] = port_name
-                    break
+            matches = [
+                port
+                for port in port_table
+                if isinstance(port, dict)
+                and type(port.get("port_idx")) is int
+                and port["port_idx"] == port_idx_raw
+            ]
+            if len(matches) > 1:
+                raise ValueError("UniFi uplink port metadata must be unique")
+            if matches:
+                port_name = str(matches[0].get("name", "")).strip()
+                if port_name:
+                    tags["port_name"] = port_name
         speed_raw = uplink_raw.get("speed")
         if speed_raw is not None:
             tags["speed_mbps"] = str(speed_raw)
@@ -1792,7 +1803,9 @@ def _unifi_login_response_ok(resp: httpx.Response) -> bool:
         return False
 
     try:
-        payload = resp.json()
+        payload = decode_unifi_json(resp.content)
+    except UnifiEvidenceError:
+        raise ValueError(UNIFI_EVIDENCE_REFUSED) from None
     except ValueError:
         return True
 
@@ -1914,7 +1927,10 @@ def _read_unifi_devices(
                     response, endpoint=endpoint, redactions=(username, password)
                 )
             )
-        payload = response.json()
+        try:
+            payload = decode_unifi_json(response.content)
+        except UnifiEvidenceError:
+            raise ValueError(UNIFI_EVIDENCE_REFUSED) from None
         cancellation.check()
         return payload
 
@@ -2123,6 +2139,8 @@ def _execute_unifi_device_traffic_spec(
             raw_value = interface_stats.get(field_name)
             try:
                 metric_value = influx.parse_finite_float(raw_value)
+                if metric_value < 0:
+                    raise ValueError("negative traffic rate")
             except (TypeError, ValueError):
                 skipped += 1
                 continue
@@ -2149,6 +2167,8 @@ def _execute_unifi_device_traffic_spec(
             return StatusLevel.WARNING, 0, skipped, "no numeric traffic values found"
 
         written = _publish_collected_points(points)
+        if skipped:
+            return StatusLevel.WARNING, written, skipped, "incomplete traffic values"
         return StatusLevel.OK, written, skipped, ""
     except Exception as err:  # noqa: BLE001
         return StatusLevel.CRITICAL, 0, 0, collector_failure(err)

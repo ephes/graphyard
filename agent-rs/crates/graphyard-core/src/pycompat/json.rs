@@ -111,3 +111,92 @@ impl<'de> Visitor<'de> for ArrayVisitor {
         Ok(Value::Array(items))
     }
 }
+
+/// Node budget of [`json_loads_bounded`] (Python `unifi_json.MAX_NODES`).
+pub const BOUNDED_MAX_NODES: usize = 1_000_000;
+/// Items per array admitted by [`json_loads_bounded`] (`MAX_ARRAY_ITEMS`).
+pub const BOUNDED_MAX_ARRAY_ITEMS: usize = 4096;
+
+/// Decode unambiguous JSON with bounded expanded work. Object keys and values
+/// each count as nodes. Containers count as values; the root is level one.
+///
+/// # Errors
+/// Syntax errors, duplicate members or an exceeded expansion budget.
+pub fn json_loads_bounded(text: &str) -> Result<Value, serde_json::Error> {
+    let raw: &RawValue = serde_json::from_str(text)?;
+    let mut nodes = 0;
+    bounded_raw(raw, 0, &mut nodes)
+}
+
+fn charge(nodes: &mut usize) -> Result<(), serde_json::Error> {
+    *nodes += 1;
+    if *nodes > BOUNDED_MAX_NODES {
+        return Err(de::Error::custom("JSON node limit"));
+    }
+    Ok(())
+}
+
+fn bounded_raw(
+    raw: &RawValue,
+    depth: usize,
+    nodes: &mut usize,
+) -> Result<Value, serde_json::Error> {
+    charge(nodes)?;
+    let container = matches!(raw.get().as_bytes().first(), Some(b'{' | b'['));
+    if depth > 32 || (container && depth >= 32) {
+        return Err(de::Error::custom("JSON depth limit"));
+    }
+    match raw.get().as_bytes().first() {
+        Some(b'{') => {
+            serde_json::Deserializer::from_str(raw.get()).deserialize_map(BoundedVisitor {
+                depth: depth + 1,
+                nodes,
+            })
+        }
+        Some(b'[') => {
+            serde_json::Deserializer::from_str(raw.get()).deserialize_seq(BoundedVisitor {
+                depth: depth + 1,
+                nodes,
+            })
+        }
+        _ => from_raw(raw, depth),
+    }
+}
+
+struct BoundedVisitor<'a> {
+    depth: usize,
+    nodes: &'a mut usize,
+}
+
+impl<'de> Visitor<'de> for BoundedVisitor<'_> {
+    type Value = Value;
+
+    fn expecting(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("bounded JSON evidence")
+    }
+
+    fn visit_map<A: MapAccess<'de>>(self, mut access: A) -> Result<Value, A::Error> {
+        let mut map = Map::new();
+        while let Some(key) = access.next_key::<String>()? {
+            charge(self.nodes).map_err(de::Error::custom)?;
+            if map.contains_key(&key) {
+                return Err(de::Error::custom("duplicate JSON member"));
+            }
+            let raw: &RawValue = access.next_value()?;
+            let value = bounded_raw(raw, self.depth, self.nodes).map_err(de::Error::custom)?;
+            map.insert(key, value);
+        }
+        Ok(Value::Object(map))
+    }
+
+    fn visit_seq<A: SeqAccess<'de>>(self, mut access: A) -> Result<Value, A::Error> {
+        let mut items = Vec::new();
+        while let Some(raw) = access.next_element::<&RawValue>()? {
+            if items.len() >= BOUNDED_MAX_ARRAY_ITEMS {
+                return Err(de::Error::custom("JSON array limit"));
+            }
+            items.push(bounded_raw(raw, self.depth, self.nodes).map_err(de::Error::custom)?);
+        }
+        Ok(Value::Array(items))
+    }
+}

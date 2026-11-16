@@ -136,3 +136,41 @@ def test_typed_identity_selects_integer_not_boolean(selector, reverse):
     )
     assert stats["name"] == "valid"
     assert tags["port_idx"] == "1"
+
+
+@pytest.mark.parametrize("index", [True, False, 1.0, "1", -1])
+def test_uplink_identity_refuses_non_integer(index):
+    with pytest.raises(ValueError, match="nonnegative integer"):
+        services._resolve_unifi_interface_stats(
+            {"uplink": {"port_idx": index, "num_port": 2}}, interface_selector="uplink"
+        )
+
+
+def test_uplink_zero_does_not_fall_back_or_use_boolean_metadata():
+    stats, tags = services._resolve_unifi_interface_stats(
+        {
+            "uplink": {"port_idx": 0, "num_port": 2, "rx_bytes-r": 3},
+            "port_table": [
+                {"port_idx": False, "name": "wrong"},
+                {"port_idx": 0, "name": "zero"},
+                {"port_idx": 2, "name": "fallback"},
+            ],
+        },
+        interface_selector="uplink",
+    )
+    assert stats["rx_bytes-r"] == 3
+    assert tags["port_idx"] == "0"
+    assert tags["port_name"] == "zero"
+
+
+@pytest.mark.parametrize("reverse", [False, True])
+def test_uplink_duplicate_metadata_is_refused(reverse):
+    ports = [{"port_idx": 0, "name": "a"}, {"port_idx": 0, "name": "b"}]
+    with pytest.raises(ValueError, match="unique"):
+        services._resolve_unifi_interface_stats(
+            {
+                "uplink": {"port_idx": 0},
+                "port_table": ports[::-1] if reverse else ports,
+            },
+            interface_selector="uplink",
+        )

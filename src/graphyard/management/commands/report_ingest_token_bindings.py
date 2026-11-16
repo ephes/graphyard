@@ -4,7 +4,7 @@ from django.core.management.base import BaseCommand, CommandError
 from django.utils import timezone
 
 from graphyard.models import IngestToken
-from graphyard.token_reports import token_usage_batches
+from graphyard.token_reports import terminal_text, token_usage_batches
 
 
 class Command(BaseCommand):
@@ -32,14 +32,16 @@ class Command(BaseCommand):
         )
         for token, usages in token_usage_batches(tokens, cutoff):
             self.stdout.write(
-                f"name={token['name']} enabled={token['enabled']} binding={token['bound_subject_id'] or 'unbound'}"
+                f"name={terminal_text(token['name'])} enabled={token['enabled']} binding={terminal_text(token['bound_subject_id'] or 'unbound')}"
             )
             for usage in usages:
                 self.stdout.write(
-                    f"  {usage['host_id']} last_seen={usage['last_seen_at'].isoformat()}"
+                    f"  {terminal_text(usage['host_id'])} last_seen={usage['last_seen_at'].isoformat()}"
                 )
             if len(usages) == 1:
-                self.stdout.write(f"  proposed binding={usages[0]['host_id']}")
+                self.stdout.write(
+                    f"  proposed binding={terminal_text(usages[0]['host_id'])}"
+                )
             elif usages:
                 self.stdout.write(
                     "  no proposal: multiple subject/host identifiers; split producers/tokens before binding"

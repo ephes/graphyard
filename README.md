@@ -309,11 +309,30 @@ Usage is recorded at ingest from this release onwards (table
 `ingest_token_host_usage`, `last_seen` updated at most hourly, at most 500 identifiers per token),
 so let it collect for a while before scoping existing tokens.
 
-The binding and host-scope reports stream token metadata in batches of 100 and
-read projected usage once per batch. They never fetch credential hashes or hydrate usage models;
-proposals and disabled/retired token attribution retain their existing semantics.
-The default host-scope report reads usage only for enabled tokens;
-`--include-disabled` admits disabled tokens through the same bounded batches.
+The binding and host-scope reports project token metadata in batches of 100 and
+read usage once per batch, without credential hashes or model hydration. One
+short snapshot covers the **entire** report: SQLite reserves the writer with its
+configured `BEGIN IMMEDIATE`; PostgreSQL uses an outer repeatable-read/read-only
+transaction. Do not wrap report commands in an application transaction on
+PostgreSQL. Concurrent rotation, binding/scope edits and usage writes therefore
+cannot mix report generations. The snapshot is released before token lines or
+suggestions are printed.
+
+A private temporary file holds only these projections (no credentials), is
+removed automatically on completion/failure, and admits at most 64 MiB encoded
+JSON. At most 500 usage identifiers per token are admitted, matching ingest's
+retention cap. Oversized restored history or reports fail before any token lines
+or proposals; narrow `--days` and retry. Memory remains bounded by one batch.
+The default host-scope report reads enabled tokens only; `--include-disabled`
+uses the same limits. Disabled/retired attribution retains its semantics.
+
+Reports display stored C0/DEL/C1 controls as visible `\xNN` escapes; database
+identities remain unchanged. Suggested `--host-scope` operands use POSIX shell
+quoting for printable identifiers and Bash/zsh ANSI-C quoting for controls,
+including trailing newlines. Use Bash/zsh for those exceptional suggestions.
+NUL cannot be represented in a shell argument, so such identifiers get no CLI
+suggestion. Escaping/quoting makes the evidence readable and keeps operands
+literal; it does not validate a proposed scope or replace owner review.
 
 The scope does not limit metric names or `service` tags, and it does not apply to the
 inventory API, which has its own per-host credentials.
@@ -1150,8 +1169,34 @@ writes, regardless of controller ordering. Index selectors use ASCII decimal
 nonnegative integers and match only JSON integer identities, never booleans,
 floats or numeric strings. A name-selected port's optional index must also be a
 nonnegative JSON integer; missing/null indices remain supported. A unique name
-selects its own port even if other ports have that index. `uplink` continues to
-read the device's uplink telemetry and retains its existing tag enrichment.
+selects its own port even if other ports have that index. `uplink` reads the device's own uplink telemetry. Its `port_idx` (or
+`num_port` when missing/null) must be a nonnegative JSON integer; zero is a valid
+identity. Optional port-name enrichment accepts only integer identities and
+refuses duplicate matching metadata rather than choosing the first row. Missing
+metadata remains supported. Both required B/s directions must be finite and
+nonnegative: zero is valid, invalid/missing directions are skipped, and a partial
+collection publishes its valid direction with WARNING and accurate counts.
+
+UniFi login and device JSON rejects duplicate members at every depth (including
+escaped equivalent keys). Ambiguity and expansion refusals abort authentication,
+including auto mode, rather than accepting the legacy empty/non-JSON 2xx fallback.
+Before selection, both runtimes admit at most 1,000,000 nodes (containers, member
+names and values), 32 container levels and 4,096 items in **each** array, including
+ignored arrays, device lists and port tables. Exact limits are accepted. A large
+switch record with a full 48-port `port_table` is roughly 6,000-7,000 nodes, so
+sites with well over a hundred such devices fit. Response `name`, `mac`, `speed`
+and `rc` fields must be scalars with at most 256 characters as decoded (a long
+decimal counts as its float rendering); nested structures are refused before tag
+conversion. These fixed work limits supplement the byte/deadline budgets and refuse
+the whole collection with the fixed diagnostic `UniFi evidence refused` and no
+metric or registry publication. Bodies that are not UTF-8 JSON, contain an integer
+beyond Python's 4,300-digit limit or have a syntax error (anywhere in the document,
+even after a duplicate member or exceeded limit) keep the decoder's own diagnostic (`collector failure: UnicodeDecodeError`,
+`ValueError` or `JSONDecodeError`) and remain "unparseable" for the legacy login
+fallback. Non-standard JSON that Python's `json.loads` would accept (`NaN`,
+`Infinity`, UTF-16/32 bodies) is never returned without admission: like the Rust
+decoder, both runtimes treat it as unparseable (`JSONDecodeError` or
+`UnicodeDecodeError`).
 
 Both Python and Rust UniFi collectors apply `max_body_bytes` (default 10 MiB)
 to the sum of all login attempts, redirect bodies and device responses.

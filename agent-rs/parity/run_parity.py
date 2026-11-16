@@ -679,7 +679,7 @@ def build_corpus(http: HttpFake, https: HttpFake, influx: InfluxFake) -> Corpus:
                 "subject_id": "usw_pro",
                 "verify_tls": False,
             },
-            [OK, WARNING, CRITICAL, OK, NO_TOKEN],
+            [OK, WARNING, CRITICAL, WARNING, NO_TOKEN],
         ),
         Spec(
             "unifi os port",

@@ -48,6 +48,7 @@ import httpx
 
 from graphyard import influx, services
 from graphyard.spec_config import SpecConfigError
+from graphyard.unifi_json import MAX_ARRAY_ITEMS
 
 ORIGIN = "http://probe.test"
 RECORDED_HEADERS = (
@@ -1118,6 +1119,176 @@ for selector, ports in (
                 "routes": _legacy_routes(_json_reply(200, {"data": [device]})),
             }
         )
+
+
+# Raw members preserve ambiguity that a Python dictionary cannot represent.
+for label, stage, body in (
+    ("refuse duplicate rc", "login", b'{"meta":{"rc":"error","rc":"ok"}}'),
+    (
+        "refuse escaped duplicate rc",
+        "login",
+        b'{"meta":{"rc":"error","r\\u0063":"ok"}}',
+    ),
+    ("refuse duplicate data", "device", b'{"data":[],"data":[{}]}'),
+    (
+        "refuse duplicate rate",
+        "device",
+        b'{"data":[{"name":"USW Pro XG 8 PoE","uplink":{"rx_bytes-r":9,"rx_bytes-r":1,"tx_bytes-r":2}}]}',
+    ),
+    (
+        "refuse nested speed",
+        "device",
+        json.dumps(
+            {"data": [{**_DEVICE, "uplink": {"speed": {"nested": 1}}}]}
+        ).encode(),
+    ),
+    (
+        "refuse array limit",
+        "device",
+        json.dumps({"data": [{}] * (MAX_ARRAY_ITEMS + 1)}).encode(),
+    ),
+    # Over-long integers are unparseable wherever they appear, so the legacy
+    # login fallback applies despite the earlier duplicate member.
+    (
+        "digit limit before admission",
+        "login",
+        b'{"meta":{"rc":"error","rc":"ok"},"n":' + b"9" * 5000 + b"}",
+    ),
+    (
+        "digit limit before admission",
+        "device",
+        b'{"data":[],"data":[],"n":' + b"9" * 5000 + b"}",
+    ),
+    ("invalid UTF-8", "device", b'{"data":[\xff]}'),
+    # A syntax error anywhere outranks an earlier ambiguity: unparseable.
+    ("duplicate then syntax error", "login", b'{"meta":{"rc":"error","rc":"ok"}'),
+    ("duplicate then syntax error", "device", b'{"data":[],"data":[]}x'),
+    ("deep nesting", "device", b'{"data":' + b"[" * 10000 + b"]" * 10000 + b"}"),
+    ("deep nesting then syntax error", "login", b"[" * 10000 + b"]" * 9999),
+    ("deep nesting then syntax error", "device", b"[" * 10000 + b"]" * 9999),
+    (
+        "array limit then syntax error",
+        "device",
+        b'{"data":[' + b"{}," * MAX_ARRAY_ITEMS + b"{}],}",
+    ),
+    # Accepted by json.loads but never returned unadmitted: unparseable in both
+    # runtimes (device: decoder error; login: legacy success fallback).
+    (
+        "non-standard NaN",
+        "device",
+        b'{"data":[{"name":"USW Pro XG 8 PoE","uplink":{"rx_bytes-r":NaN}}]}',
+    ),
+    ("non-standard UTF-16", "device", '{"data":[]}'.encode("utf-16")),
+    ("non-standard NaN", "login", b'{"meta":{"rc":NaN}}'),
+    ("non-standard UTF-16", "login", '{"meta":{"rc":"error"}}'.encode("utf-16")),
+):
+    routes = _legacy_routes()
+    routes["/api/login" if stage == "login" else _LEGACY_DEVICES] = _reply(200, body)
+    UNIFI_SCENARIOS.append(
+        {
+            "name": f"UniFi JSON admission: {label} ({stage})",
+            "config": _unifi(),
+            "routes": routes,
+        }
+    )
+
+
+UNIFI_SCENARIOS.append(
+    {
+        "name": "exact UniFi array and scalar boundaries",
+        "config": _unifi(),
+        "routes": _legacy_routes(
+            _json_reply(
+                200,
+                {
+                    "data": [
+                        {
+                            **_DEVICE,
+                            "uplink": {
+                                **_DEVICE["uplink"],
+                                "name": "x" * 256,
+                            },
+                            "port_table": [{}] * MAX_ARRAY_ITEMS,
+                        }
+                    ]
+                },
+            )
+        ),
+    }
+)
+
+
+# Accepted by json.loads but never returned unadmitted: unparseable in both
+# runtimes (device: decoder error; login: legacy success fallback).
+# Metadata length is measured on the decoded value (here the float 1.0), as
+# json.loads and the Rust decoder render it, not on the source digits.
+_LONG_DECIMAL = (
+    json.dumps(
+        {"data": [{**_DEVICE, "uplink": {**_DEVICE["uplink"], "speed": "SPEED"}}]}
+    )
+    .encode()
+    .replace(b'"SPEED"', b"1." + b"0" * 300 + b"1")
+)
+UNIFI_SCENARIOS.append(
+    {
+        "name": "long decimal metadata renders as its float",
+        "config": _unifi(),
+        "routes": _legacy_routes(_reply(200, _LONG_DECIMAL)),
+    }
+)
+
+
+for port_idx in (0, True, False, 1.0, "1", -1, None):
+    for reverse in (False, True):
+        ports = [
+            {"port_idx": False, "name": "boolean"},
+            {"port_idx": 0, "name": "zero"},
+            {"port_idx": 2, "name": "fallback"},
+        ]
+        device = {
+            **_DEVICE,
+            "uplink": {**_DEVICE["uplink"], "port_idx": port_idx, "num_port": 2},
+            "port_table": ports[::-1] if reverse else ports,
+        }
+        UNIFI_SCENARIOS.append(
+            {
+                "name": f"uplink identity {port_idx!r} reverse={reverse}",
+                "config": _unifi(),
+                "routes": _legacy_routes(_json_reply(200, {"data": [device]})),
+            }
+        )
+for reverse in (False, True):
+    ports = [{"port_idx": 0, "name": "a"}, {"port_idx": 0, "name": "b"}]
+    device = {
+        **_DEVICE,
+        "uplink": {**_DEVICE["uplink"], "port_idx": 0},
+        "port_table": ports[::-1] if reverse else ports,
+    }
+    UNIFI_SCENARIOS.append(
+        {
+            "name": f"uplink duplicate metadata reverse={reverse}",
+            "config": _unifi(),
+            "routes": _legacy_routes(_json_reply(200, {"data": [device]})),
+        }
+    )
+for rx, tx in (
+    (-1, 2),
+    (1, -2),
+    (-1, -2),
+    (None, 2),
+    (1, None),
+    ("NaN", 2),
+    (None, None),
+    (0, 0),
+):
+    device = {**_DEVICE, "uplink": {"rx_bytes-r": rx, "tx_bytes-r": tx}}
+    UNIFI_SCENARIOS.append(
+        {
+            "name": f"traffic domain {rx!r} {tx!r}",
+            "config": _unifi(),
+            "routes": _legacy_routes(_json_reply(200, {"data": [device]})),
+        }
+    )
 
 
 def _unifi_cases() -> list[dict[str, Any]]:

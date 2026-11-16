@@ -45,6 +45,20 @@ def report(command, **options):
     return output.getvalue(), [q["sql"] for q in queries]
 
 
+def reads(queries):
+    """Row reads: plain SELECTs, or PostgreSQL server-side cursors over a SELECT.
+
+    Inside the report's snapshot transaction PostgreSQL ``.iterator()`` runs
+    ``DECLARE ... CURSOR ... FOR SELECT``; ``SET TRANSACTION`` is not a read.
+    """
+    return [
+        sql
+        for sql in queries
+        if sql.startswith("SELECT")
+        or (sql.startswith("DECLARE ") and " FOR SELECT " in sql)
+    ]
+
+
 @pytest.mark.django_db
 @pytest.mark.parametrize("count", [2, 100, 205])
 def test_binding_report_batch_budget_and_independent_oracle(count, monkeypatch):
@@ -55,7 +69,7 @@ def test_binding_report_batch_budget_and_independent_oracle(count, monkeypatch):
 
     monkeypatch.setattr(IngestTokenHostUsage, "from_db", no_usage_models)
     output, queries = report("report_ingest_token_bindings")
-    assert len(queries) <= 1 + (count + 99) // 100
+    assert len(reads(queries)) <= 1 + (count + 99) // 100
     assert all('"token_hash"' not in sql for sql in queries)
     assert "never-fetch-this" not in output
     lines = output.splitlines()[1:]
@@ -83,7 +97,7 @@ def test_host_report_selected_usage_projection_and_batch_budget(
         "report_ingest_token_hosts", include_disabled=include_disabled
     )
     selected = enabled + disabled if include_disabled else enabled
-    assert len(queries) == 1 + (len(selected) + 99) // 100
+    assert len(reads(queries)) == 1 + (len(selected) + 99) // 100
     assert all('"token_hash"' not in sql for sql in queries)
     usage_queries = [sql for sql in queries if 'FROM "ingest_token_host_usage"' in sql]
     assert len(usage_queries) == (len(selected) + 99) // 100
@@ -97,3 +111,27 @@ def test_host_report_selected_usage_projection_and_batch_budget(
     assert "outside current scope" in output
     assert "suggested --host-scope host_0" in output
     assert (disabled[0].name in output) == include_disabled
+
+
+@pytest.mark.django_db
+def test_spool_limit_refuses_before_any_token_presentation(monkeypatch):
+    from graphyard import token_reports
+    from django.core.management.base import CommandError
+
+    seed(2)
+    monkeypatch.setattr(token_reports, "MAX_REPORT_BYTES", 1)
+    output = StringIO()
+    with pytest.raises(CommandError, match="64 MiB"):
+        call_command("report_ingest_token_hosts", stdout=output)
+    assert "token id=" not in output.getvalue()
+
+
+@pytest.mark.django_db
+def test_usage_projection_limit_refuses_restored_oversize_history():
+    from django.core.management.base import CommandError
+
+    seed(1, identifiers=501)
+    output = StringIO()
+    with pytest.raises(CommandError, match="500 identifiers"):
+        call_command("report_ingest_token_bindings", stdout=output)
+    assert "name=synthetic" not in output.getvalue()

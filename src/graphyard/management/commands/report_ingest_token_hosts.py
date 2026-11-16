@@ -6,7 +6,7 @@ from django.core.management.base import BaseCommand, CommandError
 from django.utils import timezone
 
 from graphyard.models import IngestToken
-from graphyard.token_reports import token_usage_batches
+from graphyard.token_reports import shell_operand, terminal_text, token_usage_batches
 from graphyard.token_scope import (
     MAX_HOST_SCOPE_ENTRIES,
     host_in_scope,
@@ -65,7 +65,7 @@ class Command(BaseCommand):
             state = "enabled" if token["enabled"] else "disabled"
             self.stdout.write("")
             self.stdout.write(
-                f"token id={token['id']} name={token['name']} {state} host_scope={scope_text}"
+                f"token id={token['id']} name={terminal_text(token['name'])} {state} host_scope={terminal_text(scope_text)}"
             )
             if not usages:
                 self.stdout.write("  (no recorded writes in this period)")
@@ -75,7 +75,7 @@ class Command(BaseCommand):
                 if is_scoped(scope) and not host_in_scope(scope, usage["host_id"]):
                     note = "  outside current scope"
                 self.stdout.write(
-                    f"  {usage['host_id']}  last_seen={usage['last_seen_at'].isoformat(timespec='seconds')}"
+                    f"  {terminal_text(usage['host_id'])}  last_seen={usage['last_seen_at'].isoformat(timespec='seconds')}"
                     f"  first_seen={usage['first_seen_at'].isoformat(timespec='seconds')}{note}"
                 )
             if len(usages) > MAX_HOST_SCOPE_ENTRIES:
@@ -85,7 +85,8 @@ class Command(BaseCommand):
                     "(for example 'web-*') or split the token"
                 )
             else:
-                self.stdout.write(
-                    "  suggested --host-scope "
-                    + ",".join(usage["host_id"] for usage in usages)
-                )
+                operand = shell_operand(",".join(usage["host_id"] for usage in usages))
+                if operand is None:
+                    self.stdout.write("  no suggestion: NUL cannot be a shell argument")
+                else:
+                    self.stdout.write("  suggested --host-scope " + operand)

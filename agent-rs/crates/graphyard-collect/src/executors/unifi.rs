@@ -14,14 +14,15 @@
 use std::sync::OnceLock;
 
 use graphyard_core::diagnostics::collector_failure;
-use num_traits::{Signed as _, Zero as _};
+use num_traits::Signed as _;
 use regex::Regex;
 use serde_json::{Map, Value};
 
 use graphyard_core::model::{MetricPoint, SpecOutcome, StatusLevel, SubjectType, Tags};
 use graphyard_core::normalize::parse_finite_float;
 use graphyard_core::pycompat::{
-    PyError, PyNumber, json_loads, py_eq, py_int, py_number, py_split_whitespace, py_str, py_strip,
+    PyError, PyNumber, int_digit_limit_error, json_loads, json_loads_bounded, py_eq, py_int,
+    py_number, py_split_whitespace, py_str, py_strip,
 };
 use graphyard_core::spec_config::{
     Config, DEFAULT_PAGE_PROBE_MAX_BODY_BYTES, bool_config, page_probe_total_timeout_config,
@@ -337,6 +338,10 @@ async fn collect<S: MetricSink>(
             skipped += 1;
             continue;
         };
+        if value < 0.0 {
+            skipped += 1;
+            continue;
+        }
         let mut tags = base_tags.clone();
         tags.insert("traffic_direction".to_owned(), direction.to_owned());
         let mut point = MetricPoint::new(
@@ -366,6 +371,14 @@ async fn collect<S: MetricSink>(
     }
     let written = sink.write_points(&points).await?;
     sink.touch_registry(&points).await?;
+    if skipped > 0 {
+        return Ok(SpecOutcome::new(
+            StatusLevel::Warning,
+            written,
+            skipped,
+            "incomplete traffic values",
+        ));
+    }
     Ok(SpecOutcome::new(StatusLevel::Ok, written, skipped, ""))
 }
 
@@ -404,7 +417,7 @@ async fn login(
         )?;
         let (response, response_body) =
             send_unifi_request(client, request, remaining, spec.max_body_bytes).await?;
-        if login_response_ok(response.status, &response_body) {
+        if checked_login_response_ok(response.status, &response_body)? {
             let csrf = response.header("x-csrf-token").unwrap_or_default();
             let csrf = py_strip(&csrf);
             let mut headers = vec![("Accept", "application/json".to_owned())];
@@ -427,29 +440,89 @@ pub fn login_body(username: &str, password: &str) -> Vec<u8> {
     serde_json::to_vec(&Value::Object(payload)).unwrap_or_default()
 }
 
-/// `resp.json()`: [`decode_json`], which applies `json.loads`' integer
-/// digit limit too (D-11). Error texts are P2 except the digit limit.
+/// The fixed diagnostic of an admission refusal (`UNIFI_EVIDENCE_REFUSED`).
+const EVIDENCE_REFUSED: &str = "UniFi evidence refused";
+
+fn refused() -> Failure {
+    Failure(EVIDENCE_REFUSED.to_owned())
+}
+
+/// `decode_unifi_json(resp.content)`: undecodable bytes, over-long integers
+/// (checked first, wherever they appear) and syntax errors are reported by
+/// [`decode_json`] like `json.loads`; ambiguity, expansion and non-scalar
+/// metadata are refused with [`EVIDENCE_REFUSED`].
 fn response_json(body: &[u8]) -> Result<Value, Failure> {
-    Ok(decode_json(body)?)
+    let stripped = body.strip_prefix(b"\xef\xbb\xbf").unwrap_or(body);
+    let Ok(text) = std::str::from_utf8(stripped) else {
+        return Ok(decode_json(body)?);
+    };
+    if int_digit_limit_error(text).is_some() {
+        return Ok(decode_json(body)?);
+    }
+    match json_loads_bounded(text) {
+        Ok(payload) => {
+            validate_metadata(&payload)?;
+            Ok(payload)
+        }
+        Err(err) if err.is_data() => Err(refused()),
+        Err(_) => {
+            // Never return a document the bounded pass could not admit.
+            decode_json(body)?;
+            Err(refused())
+        }
+    }
+}
+
+fn validate_metadata(value: &Value) -> Result<(), Failure> {
+    match value {
+        Value::Object(map) => {
+            for (key, value) in map {
+                if matches!(key.as_str(), "name" | "mac" | "speed" | "rc")
+                    && (value.is_object()
+                        || value.is_array()
+                        || py_str(value).chars().count() > 256)
+                {
+                    return Err(refused());
+                }
+                validate_metadata(value)?;
+            }
+        }
+        Value::Array(items) => {
+            for item in items {
+                validate_metadata(item)?;
+            }
+        }
+        _ => {}
+    }
+    Ok(())
 }
 
 /// `_unifi_login_response_ok(resp)`: a 2xx status whose body, if it is a
 /// JSON object with a `meta` object, has `meta.rc` (default `"ok"`) equal to
 /// `ok` in any case. Unparseable and non-object bodies count as success.
 pub fn login_response_ok(status: u16, body: &[u8]) -> bool {
+    checked_login_response_ok(status, body).unwrap_or(false)
+}
+
+fn checked_login_response_ok(status: u16, body: &[u8]) -> Result<bool, Failure> {
     if !(200..300).contains(&status) {
-        return false;
+        return Ok(false);
     }
-    let Ok(payload) = response_json(body) else {
-        return true;
+    // Empty/non-JSON successes remain supported, but admission failures
+    // never take that compatibility path or trigger another login attempt.
+    let payload = match response_json(body) {
+        Ok(payload) => payload,
+        Err(failure) if failure.0 == EVIDENCE_REFUSED => return Err(failure),
+        Err(_) => return Ok(true),
     };
     let Some(Value::Object(meta)) = payload.as_object().and_then(|map| map.get("meta")) else {
-        return true;
+        return Ok(true);
     };
-    meta.get("rc")
+    Ok(meta
+        .get("rc")
         .map_or_else(|| "ok".to_owned(), py_str)
         .to_lowercase()
-        == "ok"
+        == "ok")
 }
 
 /// `resp.text` of a body: UTF-8 with replacement characters (httpx's
@@ -535,21 +608,6 @@ pub fn find_device<'a>(
     }
 }
 
-/// Python truthiness of a decoded JSON value.
-fn py_truthy(value: &Value) -> bool {
-    match value {
-        Value::Null => false,
-        Value::Bool(flag) => *flag,
-        Value::Number(number) => match py_number(number) {
-            PyNumber::Int(int) => !int.is_zero(),
-            PyNumber::Float(float) => float != 0.0,
-        },
-        Value::String(text) => !text.is_empty(),
-        Value::Array(items) => !items.is_empty(),
-        Value::Object(map) => !map.is_empty(),
-    }
-}
-
 /// `dict.get(key)` with JSON `null` as `None`.
 fn get_some<'a>(map: &'a Map<String, Value>, key: &str) -> Option<&'a Value> {
     map.get(key).filter(|value| !value.is_null())
@@ -613,17 +671,25 @@ pub fn resolve_interface_stats<'a>(
         if !interface.is_empty() {
             tags.insert("interface".to_owned(), interface);
         }
-        // `uplink.get("port_idx") or uplink.get("num_port")`
-        let port_idx = match uplink.get("port_idx") {
-            Some(value) if py_truthy(value) => Some(value),
-            _ => get_some(uplink, "num_port"),
-        };
+        let port_idx = get_some(uplink, "port_idx").or_else(|| get_some(uplink, "num_port"));
         if let Some(port_idx) = port_idx {
+            if !integer_port_index(port_idx) {
+                return Err(PyError::value_error(
+                    "UniFi port index must be a nonnegative integer",
+                ));
+            }
             tags.insert("port_idx".to_owned(), py_str(port_idx));
-            if let Some(port) = ports().find(|port| {
+            let mut matches = ports().filter(|port| {
                 port.get("port_idx")
-                    .is_some_and(|value| py_eq(value, port_idx))
-            }) {
+                    .is_some_and(|value| integer_port_index(value) && py_eq(value, port_idx))
+            });
+            let first = matches.next();
+            if matches.next().is_some() {
+                return Err(PyError::value_error(
+                    "UniFi uplink port metadata must be unique",
+                ));
+            }
+            if let Some(port) = first {
                 insert_port_name(&mut tags, port);
             }
         }

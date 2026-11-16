@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+- Read token-audit policy and usage in one credential-free database snapshot,
+  spool bounded projections privately, and release the transaction before output.
+  Escape stored terminal controls and quote suggested scope operands literally.
+
+- Preserve UniFi uplink port zero, reject invalid integer identities and ambiguous
+  port metadata, and warn on missing/invalid/negative receive or transmit rates.
+
+- Refuse ambiguous UniFi login/device JSON in Python and Rust, including escaped
+  duplicate members, without using the legacy login fallback. Bound expanded
+  nodes (1,000,000), depth (32), arrays (4,096 items) and scalar metadata before
+  selection and publication; refusals report `UniFi evidence refused`, while
+  undecodable, over-long-integer and syntax errors keep the decoder diagnostic.
+
 - Own Rust HTTP connection tasks before headers and bound running/queued DNS
   jobs across production contexts, retaining admission through cancellation.
 - Bound expanded Flux records/cells in Python and Rust and remove remote column
