@@ -43,6 +43,7 @@ from .models import (
     SubjectRegistry,
     SubjectType,
 )
+from .unifi_json import REFUSED as UNIFI_EVIDENCE_REFUSED
 from .unifi_json import UnifiEvidenceError, decode_unifi_json
 from .token_scope import canonical_host_identifier
 
@@ -1804,7 +1805,7 @@ def _unifi_login_response_ok(resp: httpx.Response) -> bool:
     try:
         payload = decode_unifi_json(resp.content)
     except UnifiEvidenceError:
-        raise ValueError("UniFi evidence refused") from None
+        raise ValueError(UNIFI_EVIDENCE_REFUSED) from None
     except ValueError:
         return True
 
@@ -1929,7 +1930,7 @@ def _read_unifi_devices(
         try:
             payload = decode_unifi_json(response.content)
         except UnifiEvidenceError:
-            raise ValueError("UniFi evidence refused") from None
+            raise ValueError(UNIFI_EVIDENCE_REFUSED) from None
         cancellation.check()
         return payload
 

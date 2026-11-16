@@ -48,6 +48,7 @@ import httpx
 
 from graphyard import influx, services
 from graphyard.spec_config import SpecConfigError
+from graphyard.unifi_json import MAX_ARRAY_ITEMS
 
 ORIGIN = "http://probe.test"
 RECORDED_HEADERS = (
@@ -1121,27 +1122,71 @@ for selector, ports in (
 
 
 # Raw members preserve ambiguity that a Python dictionary cannot represent.
-for stage, body in (
-    ("login", b'{"meta":{"rc":"error","rc":"ok"}}'),
-    ("login", b'{"meta":{"rc":"error","r\\u0063":"ok"}}'),
-    ("device", b'{"data":[],"data":[{}]}'),
+for label, stage, body in (
+    ("refuse duplicate rc", "login", b'{"meta":{"rc":"error","rc":"ok"}}'),
     (
+        "refuse escaped duplicate rc",
+        "login",
+        b'{"meta":{"rc":"error","r\\u0063":"ok"}}',
+    ),
+    ("refuse duplicate data", "device", b'{"data":[],"data":[{}]}'),
+    (
+        "refuse duplicate rate",
         "device",
         b'{"data":[{"name":"USW Pro XG 8 PoE","uplink":{"rx_bytes-r":9,"rx_bytes-r":1,"tx_bytes-r":2}}]}',
     ),
     (
+        "refuse nested speed",
         "device",
         json.dumps(
             {"data": [{**_DEVICE, "uplink": {"speed": {"nested": 1}}}]}
         ).encode(),
     ),
-    ("device", json.dumps({"data": [{}] * 1025}).encode()),
+    (
+        "refuse array limit",
+        "device",
+        json.dumps({"data": [{}] * (MAX_ARRAY_ITEMS + 1)}).encode(),
+    ),
+    # Over-long integers are unparseable wherever they appear, so the legacy
+    # login fallback applies despite the earlier duplicate member.
+    (
+        "digit limit before admission",
+        "login",
+        b'{"meta":{"rc":"error","rc":"ok"},"n":' + b"9" * 5000 + b"}",
+    ),
+    (
+        "digit limit before admission",
+        "device",
+        b'{"data":[],"data":[],"n":' + b"9" * 5000 + b"}",
+    ),
+    ("invalid UTF-8", "device", b'{"data":[\xff]}'),
+    # A syntax error anywhere outranks an earlier ambiguity: unparseable.
+    ("duplicate then syntax error", "login", b'{"meta":{"rc":"error","rc":"ok"}'),
+    ("duplicate then syntax error", "device", b'{"data":[],"data":[]}x'),
+    ("deep nesting", "device", b'{"data":' + b"[" * 10000 + b"]" * 10000 + b"}"),
+    ("deep nesting then syntax error", "login", b"[" * 10000 + b"]" * 9999),
+    ("deep nesting then syntax error", "device", b"[" * 10000 + b"]" * 9999),
+    (
+        "array limit then syntax error",
+        "device",
+        b'{"data":[' + b"{}," * MAX_ARRAY_ITEMS + b"{}],}",
+    ),
+    # Accepted by json.loads but never returned unadmitted: unparseable in both
+    # runtimes (device: decoder error; login: legacy success fallback).
+    (
+        "non-standard NaN",
+        "device",
+        b'{"data":[{"name":"USW Pro XG 8 PoE","uplink":{"rx_bytes-r":NaN}}]}',
+    ),
+    ("non-standard UTF-16", "device", '{"data":[]}'.encode("utf-16")),
+    ("non-standard NaN", "login", b'{"meta":{"rc":NaN}}'),
+    ("non-standard UTF-16", "login", '{"meta":{"rc":"error"}}'.encode("utf-16")),
 ):
     routes = _legacy_routes()
     routes["/api/login" if stage == "login" else _LEGACY_DEVICES] = _reply(200, body)
     UNIFI_SCENARIOS.append(
         {
-            "name": f"refuse ambiguous or expanded {stage} {len(UNIFI_SCENARIOS)}",
+            "name": f"UniFi JSON admission: {label} ({stage})",
             "config": _unifi(),
             "routes": routes,
         }
@@ -1159,13 +1204,36 @@ UNIFI_SCENARIOS.append(
                     "data": [
                         {
                             **_DEVICE,
-                            "uplink": {**_DEVICE["uplink"], "name": "x" * 256},
-                            "port_table": [{}] * 1024,
+                            "uplink": {
+                                **_DEVICE["uplink"],
+                                "name": "x" * 256,
+                            },
+                            "port_table": [{}] * MAX_ARRAY_ITEMS,
                         }
                     ]
                 },
             )
         ),
+    }
+)
+
+
+# Accepted by json.loads but never returned unadmitted: unparseable in both
+# runtimes (device: decoder error; login: legacy success fallback).
+# Metadata length is measured on the decoded value (here the float 1.0), as
+# json.loads and the Rust decoder render it, not on the source digits.
+_LONG_DECIMAL = (
+    json.dumps(
+        {"data": [{**_DEVICE, "uplink": {**_DEVICE["uplink"], "speed": "SPEED"}}]}
+    )
+    .encode()
+    .replace(b'"SPEED"', b"1." + b"0" * 300 + b"1")
+)
+UNIFI_SCENARIOS.append(
+    {
+        "name": "long decimal metadata renders as its float",
+        "config": _unifi(),
+        "routes": _legacy_routes(_reply(200, _LONG_DECIMAL)),
     }
 )
 

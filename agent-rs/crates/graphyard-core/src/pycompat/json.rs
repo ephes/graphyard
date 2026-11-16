@@ -112,6 +112,11 @@ impl<'de> Visitor<'de> for ArrayVisitor {
     }
 }
 
+/// Node budget of [`json_loads_bounded`] (Python `unifi_json.MAX_NODES`).
+pub const BOUNDED_MAX_NODES: usize = 1_000_000;
+/// Items per array admitted by [`json_loads_bounded`] (`MAX_ARRAY_ITEMS`).
+pub const BOUNDED_MAX_ARRAY_ITEMS: usize = 4096;
+
 /// Decode unambiguous JSON with bounded expanded work. Object keys and values
 /// each count as nodes. Containers count as values; the root is level one.
 ///
@@ -125,7 +130,7 @@ pub fn json_loads_bounded(text: &str) -> Result<Value, serde_json::Error> {
 
 fn charge(nodes: &mut usize) -> Result<(), serde_json::Error> {
     *nodes += 1;
-    if *nodes > 100_000 {
+    if *nodes > BOUNDED_MAX_NODES {
         return Err(de::Error::custom("JSON node limit"));
     }
     Ok(())
@@ -187,7 +192,7 @@ impl<'de> Visitor<'de> for BoundedVisitor<'_> {
     fn visit_seq<A: SeqAccess<'de>>(self, mut access: A) -> Result<Value, A::Error> {
         let mut items = Vec::new();
         while let Some(raw) = access.next_element::<&RawValue>()? {
-            if items.len() >= 1024 {
+            if items.len() >= BOUNDED_MAX_ARRAY_ITEMS {
                 return Err(de::Error::custom("JSON array limit"));
             }
             items.push(bounded_raw(raw, self.depth, self.nodes).map_err(de::Error::custom)?);

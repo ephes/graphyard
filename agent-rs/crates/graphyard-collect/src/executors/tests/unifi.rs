@@ -7,7 +7,7 @@ use std::sync::{Arc, OnceLock};
 use serde_json::{Value, json};
 
 use graphyard_core::model::StatusLevel;
-use graphyard_core::pycompat::py_strip;
+use graphyard_core::pycompat::{BOUNDED_MAX_ARRAY_ITEMS, BOUNDED_MAX_NODES, py_strip};
 
 use super::support::{RecordingSink, Run, hex_bytes, replay, text};
 use crate::executors::execute_unifi_device_traffic;
@@ -366,16 +366,18 @@ async fn unsolicited_compression_is_rejected_before_decoding() {
 #[tokio::test]
 async fn ambiguous_and_expanded_evidence_never_reaches_sink() {
     let valid = br#"{"data":[{"name":"synthetic","uplink":{"rx_bytes-r":1,"tx_bytes-r":2}}]}"#;
+    let over = BOUNDED_MAX_ARRAY_ITEMS + 1;
+    let rows = BOUNDED_MAX_NODES / 4000;
     let cases: Vec<(bool, Vec<u8>)> = vec![
         (true, br#"{"meta":{"rc":"error","rc":"ok"}}"#.to_vec()),
         (true, br#"{"meta":{"rc":"error","r\u0063":"ok"}}"#.to_vec()),
         (false, br#"{"data":[],"data":[{"name":"synthetic"}]}"#.to_vec()),
         (false, br#"{"data":[{"name":"synthetic","uplink":{"rx_bytes-r":9,"rx_bytes-r":1,"tx_bytes-r":2}}]}"#.to_vec()),
-        (false, format!("{{\"data\":[{}]}}", vec!["{}"; 1025].join(",")).into_bytes()),
-        (false, format!("{{\"data\":[{{\"port_table\":[{}]}}]}}", vec!["{}"; 1025].join(",")).into_bytes()),
+        (false, format!("{{\"data\":[{}]}}", vec!["{}"; over].join(",")).into_bytes()),
+        (false, format!("{{\"data\":[{{\"port_table\":[{}]}}]}}", vec!["{}"; over].join(",")).into_bytes()),
         (false, format!("{{\"x\":{}0{}}}", "[".repeat(33), "]".repeat(33)).into_bytes()),
         (false, br#"{"data":[{"name":"synthetic","uplink":{"speed":{"x":1},"rx_bytes-r":1,"tx_bytes-r":2}}]}"#.to_vec()),
-        (false, format!("{{\"x\":[{}]}}", vec![format!("[{}]", vec!["0"; 1000].join(",")); 101].join(",")).into_bytes()),
+        (false, format!("{{\"x\":[{}]}}", vec![format!("[{}]", vec!["0"; 4000].join(",")); rows].join(",")).into_bytes()),
     ];
     for (login, body) in cases {
         let controller = Server::start(move |request| {
@@ -403,7 +405,7 @@ async fn ambiguous_and_expanded_evidence_never_reaches_sink() {
         .await
         .unwrap();
         assert_eq!(outcome.status, StatusLevel::Critical, "{outcome:?}");
-        assert_eq!(outcome.message, "collector failure: ValueError");
+        assert_eq!(outcome.message, "UniFi evidence refused");
         assert!(sink.calls.borrow().is_empty());
         if login {
             assert_eq!(controller.requests().len(), 1);

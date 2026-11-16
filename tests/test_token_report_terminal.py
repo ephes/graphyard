@@ -5,6 +5,7 @@ import subprocess
 
 import pytest
 from django.core.management import call_command
+from django.db import connection
 from django.utils import timezone
 
 from graphyard.models import IngestToken, IngestTokenHostUsage
@@ -70,6 +71,8 @@ def test_printable_shell_syntax_is_one_literal_operand():
 
 @pytest.mark.django_db
 def test_nul_cannot_mint_a_lossy_shell_operand():
+    if connection.vendor == "postgresql":
+        pytest.skip("PostgreSQL text cannot store NUL; the SQLite case covers it")
     token = IngestToken.objects.create(name="invented", token_hash="never-print")
     now = timezone.now()
     IngestTokenHostUsage.objects.create(

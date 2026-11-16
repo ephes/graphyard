@@ -53,6 +53,7 @@ SAFE_VALIDATION_MESSAGES = frozenset(
         "UniFi redirect outside controller origin refused",
         "UniFi compressed response refused",
         "UniFi controller URL must be absolute HTTP or HTTPS",
+        "UniFi evidence refused",
     }
 )
 

@@ -11,7 +11,9 @@
 
 - Refuse ambiguous UniFi login/device JSON in Python and Rust, including escaped
   duplicate members, without using the legacy login fallback. Bound expanded
-  nodes, depth, arrays and scalar metadata before selection and publication.
+  nodes (1,000,000), depth (32), arrays (4,096 items) and scalar metadata before
+  selection and publication; refusals report `UniFi evidence refused`, while
+  undecodable, over-long-integer and syntax errors keep the decoder diagnostic.
 
 - Own Rust HTTP connection tasks before headers and bound running/queued DNS
   jobs across production contexts, retaining admission through cancellation.

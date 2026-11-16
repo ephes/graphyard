@@ -43,7 +43,7 @@ pub use datetime::{
     PY_DATETIME_MAX_MICROS, PY_DATETIME_MIN_MICROS, PyDateTime, date_out_of_range, py_datetime_add,
     py_fromisoformat, py_isoformat_utc, py_timedelta_minutes, py_timedelta_repr, py_total_seconds,
 };
-pub use json::{json_loads, json_loads_bounded};
+pub use json::{BOUNDED_MAX_ARRAY_ITEMS, BOUNDED_MAX_NODES, json_loads, json_loads_bounded};
 pub use num::{
     PyNumber, bigint_to_i64_saturating, py_float, py_float_of, py_float_repr, py_format_g, py_int,
     py_int_true_divide, py_number,

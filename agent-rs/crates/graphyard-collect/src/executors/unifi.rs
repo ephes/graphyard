@@ -440,21 +440,37 @@ pub fn login_body(username: &str, password: &str) -> Vec<u8> {
     serde_json::to_vec(&Value::Object(payload)).unwrap_or_default()
 }
 
-/// `resp.json()`: [`decode_json`], which applies `json.loads`' integer
-/// digit limit too (D-11). Error texts are P2 except the digit limit.
+/// The fixed diagnostic of an admission refusal (`UNIFI_EVIDENCE_REFUSED`).
+const EVIDENCE_REFUSED: &str = "UniFi evidence refused";
+
+fn refused() -> Failure {
+    Failure(EVIDENCE_REFUSED.to_owned())
+}
+
+/// `decode_unifi_json(resp.content)`: undecodable bytes, over-long integers
+/// (checked first, wherever they appear) and syntax errors are reported by
+/// [`decode_json`] like `json.loads`; ambiguity, expansion and non-scalar
+/// metadata are refused with [`EVIDENCE_REFUSED`].
 fn response_json(body: &[u8]) -> Result<Value, Failure> {
-    let body = body.strip_prefix(b"\xef\xbb\xbf").unwrap_or(body);
-    let text = std::str::from_utf8(body).map_err(|_| Failure(collector_failure("ValueError")))?;
-    let payload = match json_loads_bounded(text) {
-        Ok(payload) => payload,
-        Err(err) if err.is_data() => return Err(Failure(collector_failure("ValueError"))),
-        Err(_) => return Ok(decode_json(body)?),
+    let stripped = body.strip_prefix(b"\xef\xbb\xbf").unwrap_or(body);
+    let Ok(text) = std::str::from_utf8(stripped) else {
+        return Ok(decode_json(body)?);
     };
-    validate_metadata(&payload)?;
     if int_digit_limit_error(text).is_some() {
-        return Err(Failure(collector_failure("ValueError")));
+        return Ok(decode_json(body)?);
     }
-    Ok(payload)
+    match json_loads_bounded(text) {
+        Ok(payload) => {
+            validate_metadata(&payload)?;
+            Ok(payload)
+        }
+        Err(err) if err.is_data() => Err(refused()),
+        Err(_) => {
+            // Never return a document the bounded pass could not admit.
+            decode_json(body)?;
+            Err(refused())
+        }
+    }
 }
 
 fn validate_metadata(value: &Value) -> Result<(), Failure> {
@@ -466,7 +482,7 @@ fn validate_metadata(value: &Value) -> Result<(), Failure> {
                         || value.is_array()
                         || py_str(value).chars().count() > 256)
                 {
-                    return Err(Failure(collector_failure("ValueError")));
+                    return Err(refused());
                 }
                 validate_metadata(value)?;
             }
@@ -494,21 +510,10 @@ fn checked_login_response_ok(status: u16, body: &[u8]) -> Result<bool, Failure> 
     }
     // Empty/non-JSON successes remain supported, but admission failures
     // never take that compatibility path or trigger another login attempt.
-    let text = std::str::from_utf8(body.strip_prefix(b"\xef\xbb\xbf").unwrap_or(body));
-    if let Ok(text) = text {
-        match json_loads_bounded(text) {
-            Ok(payload) => validate_metadata(&payload)?,
-            Err(err) if err.is_data() => return Err(Failure(collector_failure("ValueError"))),
-            Err(_) => return Ok(true),
-        }
-    }
-    if let Ok(text) = text
-        && int_digit_limit_error(text).is_some()
-    {
-        return Ok(true);
-    }
-    let Ok(payload) = response_json(body) else {
-        return Ok(true);
+    let payload = match response_json(body) {
+        Ok(payload) => payload,
+        Err(failure) if failure.0 == EVIDENCE_REFUSED => return Err(failure),
+        Err(_) => return Ok(true),
     };
     let Some(Value::Object(meta)) = payload.as_object().and_then(|map| map.get("meta")) else {
         return Ok(true);
