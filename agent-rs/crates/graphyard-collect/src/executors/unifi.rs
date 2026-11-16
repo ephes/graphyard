@@ -502,10 +502,10 @@ fn checked_login_response_ok(status: u16, body: &[u8]) -> Result<bool, Failure> 
             Err(_) => return Ok(true),
         }
     }
-    if let Ok(text) = text {
-        if int_digit_limit_error(text).is_some() {
-            return Ok(true);
-        }
+    if let Ok(text) = text
+        && int_digit_limit_error(text).is_some()
+    {
+        return Ok(true);
     }
     let Ok(payload) = response_json(body) else {
         return Ok(true);
