@@ -726,12 +726,19 @@ their datetimes, 5.3), so the store selects every column too, including
   includes state-only field changes on agent models. Agent columns last changed
   in `0010`; the duration migration does not rewrite historical definitions.
 
-Extra columns are accepted (a newer, compatible schema). A failed check is
-one line naming every missing table, column and the migration, e.g.
-`database schema is older than the agent contract; missing columns:
+Extra columns and equivalent indexes are accepted (a newer, compatible schema).
+Round 101 adds the generated storage contract
+(`agent-rs/fixtures/schema/storage_contract.rs`: column affinity, nullability,
+rowid primary keys and unconditional unique identity keys) to the same check,
+and reads all introspection and migration rows in one deferred SQLite read
+snapshot, so a concurrent rebuild cannot mix migration generations. The check
+stays read-only (no DDL, no journal changes). A failed check is one line naming
+every missing table, column, incompatible storage property and the migration,
+e.g. `database schema does not satisfy the agent contract; missing columns:
 condition_definition.stale_after_seconds; missing migration:
-graphyard.0015_alter_conditiondefinition_breach_minutes_and_more; run `manage.py migrate` before
-starting the agent`; a passing one reads `database schema satisfies the agent
+graphyard.0015_alter_conditiondefinition_breach_minutes_and_more; stop the agent
+and run `manage.py migrate` or restore the migrated schema before starting the
+agent`; a passing one reads `database schema satisfies the agent
 contract (graphyard.0015_alter_conditiondefinition_breach_minutes_and_more, journal_mode=wal)`.
 
 `agent-rs/fixtures/gen_schema.py` (part of `just rs-fixtures`) migrates a
