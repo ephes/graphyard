@@ -18,6 +18,7 @@ pub mod config;
 pub mod error;
 pub mod flux;
 pub mod query;
+mod shadow;
 pub mod sql;
 pub mod window;
 pub mod write;

@@ -134,9 +134,7 @@ impl FluxValue {
     }
 }
 
-/// A `FluxRecord`'s `values`: column label to value, in column order (a
-/// repeated label keeps its first position and takes the later value, like
-/// the Python `dict`).
+/// A `FluxRecord`'s `values`: unique column labels in column order.
 pub type FluxRecord = IndexMap<String, FluxValue>;
 
 #[derive(Clone, Debug)]
@@ -152,6 +150,9 @@ const ANNOTATIONS: [&str; 3] = ["#default", "#group", "#datatype"];
 /// Python's `csv` module refuses a field longer than this many characters
 /// (`csv.field_size_limit()` default).
 const CSV_FIELD_LIMIT: usize = 131_072;
+const MAX_EXPANDED_BYTES: usize = 16 * 1024 * 1024;
+const MAX_RECORDS: usize = 100_000;
+const MAX_CELLS: usize = 500_000;
 
 /// `_FluxCsvParserMetadata` plus the parsed columns of the current table.
 #[derive(Default)]
@@ -162,6 +163,9 @@ struct ParserState {
     start_new_table: bool,
     groups: Vec<String>,
     parsing_state_error: bool,
+    expanded_bytes: usize,
+    records: usize,
+    cells: usize,
 }
 
 /// `FluxCsvParser._to_value`.
@@ -181,12 +185,6 @@ fn to_value(text: &str, column: &FluxColumn) -> Result<FluxValue, QueryError> {
         "dateTime:RFC3339" | "dateTime:RFC3339Nano" => FluxValue::DateTime(py_fromisoformat(text)?),
         _ => FluxValue::None,
     })
-}
-
-/// Python's `repr` of a `list` of `str`.
-fn py_list_repr(items: &[String]) -> String {
-    let parts: Vec<String> = items.iter().map(|item| py_str_repr(item)).collect();
-    format!("[{}]", parts.join(", "))
 }
 
 impl ParserState {
@@ -247,13 +245,14 @@ impl ParserState {
                     return Err(QueryError::index_error());
                 }
                 let mut seen = std::collections::HashSet::new();
-                if !csv.iter().all(|label| seen.insert(label)) {
-                    log::warn!(
-                        "The response contains columns with duplicated names: '{}'.\n\nYou should \
-                         use the 'record.row' to access your data instead of 'record.values' \
-                         dictionary.\n",
-                        py_list_repr(csv)
-                    );
+                let duplicates = csv
+                    .iter()
+                    .skip(1)
+                    .filter(|label| !seen.insert(*label))
+                    .count();
+                if duplicates > 0 {
+                    log::warn!("InfluxDB Flux duplicate_columns count={duplicates}");
+                    return Err(QueryError::config("InfluxDB Flux duplicate column labels"));
                 }
                 for (i, column) in self.columns.iter_mut().enumerate() {
                     column.label = Some(cell(i + 1)?.clone());
@@ -267,9 +266,29 @@ impl ParserState {
                     Some(id) if *id == current_id => {}
                     _ => self.table_id = Some(current_id),
                 }
+                self.records += 1;
+                if self.records > MAX_RECORDS {
+                    return Err(crate::write::budget_error("Flux", "record limit", &[]).into());
+                }
                 let mut record = FluxRecord::new();
                 for column in &self.columns {
                     let text = cell(column.index + 1)?;
+                    let expanded = if text.is_empty() {
+                        column.default_value.as_deref().unwrap_or("")
+                    } else {
+                        text
+                    };
+                    // Charge before materialization, including duplicated labels
+                    // and a conservative allowance for each retained map cell.
+                    self.expanded_bytes = self.expanded_bytes.saturating_add(
+                        expanded.len() + column.label.as_deref().unwrap_or("None").len() + 64,
+                    );
+                    self.cells += 1;
+                    if self.expanded_bytes > MAX_EXPANDED_BYTES || self.cells > MAX_CELLS {
+                        return Err(
+                            crate::write::budget_error("Flux", "expanded cell limit", &[]).into(),
+                        );
+                    }
                     let value = to_value(text, column)?;
                     let label = column.label.clone().unwrap_or_else(|| "None".to_owned());
                     record.insert(label, value);
@@ -293,25 +312,32 @@ fn for_each_csv_row(
         .flexible(true)
         .from_reader(text.as_bytes());
     let mut record = csv::StringRecord::new();
-    loop {
-        match reader.read_record(&mut record) {
-            Ok(false) => return Ok(()),
-            Ok(true) => {
-                let row: Vec<String> = record.iter().map(str::to_owned).collect();
-                if row
-                    .iter()
-                    .any(|field| field.chars().count() > CSV_FIELD_LIMIT)
-                {
-                    return Err(QueryError::python(
-                        "Error",
-                        format!("field larger than field limit ({CSV_FIELD_LIMIT})"),
-                    ));
-                }
-                on_row(&row)?;
-            }
-            Err(err) => return Err(QueryError::python("Error", err.to_string())),
-        }
+    while let Some(row) = read_csv_row(&mut reader, &mut record)? {
+        on_row(&row)?;
     }
+    Ok(())
+}
+
+fn read_csv_row(
+    reader: &mut csv::Reader<&[u8]>,
+    record: &mut csv::StringRecord,
+) -> Result<Option<Vec<String>>, QueryError> {
+    if !reader
+        .read_record(record)
+        .map_err(|err| QueryError::python("Error", err.to_string()))?
+    {
+        return Ok(None);
+    }
+    if record
+        .iter()
+        .any(|field| field.chars().count() > CSV_FIELD_LIMIT)
+    {
+        return Err(QueryError::python(
+            "Error",
+            format!("field larger than field limit ({CSV_FIELD_LIMIT})"),
+        ));
+    }
+    Ok(Some(record.iter().map(str::to_owned).collect()))
 }
 
 /// `str(UnicodeDecodeError)` of the UTF-8 decoder as `codecs.iterdecode`
@@ -354,19 +380,7 @@ fn unicode_decode_error(body: &[u8], err: &std::str::Utf8Error) -> QueryError {
 /// (`IndexError`, `ValueError` of the typed conversions, `binascii.Error`,
 /// `FluxQueryException`, `FluxCsvParserException`, `UnicodeDecodeError`).
 pub fn parse_annotated_csv(body: &[u8]) -> Result<Vec<FluxRecord>, QueryError> {
-    let (text, decode_error) = match std::str::from_utf8(body) {
-        Ok(text) => (text, None),
-        Err(err) => {
-            // The lines before the undecodable one are parsed first.
-            let valid = &body[..err.valid_up_to()];
-            let line_start = valid
-                .iter()
-                .rposition(|byte| *byte == b'\n')
-                .map_or(0, |i| i + 1);
-            let prefix = std::str::from_utf8(&body[..line_start]).unwrap_or_default();
-            (prefix, Some(unicode_decode_error(body, &err)))
-        }
-    };
+    let (text, decode_error) = decoded_csv_text(body);
     let mut state = ParserState::default();
     let mut records = Vec::new();
     for_each_csv_row(text, |row| {
@@ -378,6 +392,22 @@ pub fn parse_annotated_csv(body: &[u8]) -> Result<Vec<FluxRecord>, QueryError> {
     match decode_error {
         Some(err) => Err(err),
         None => Ok(records),
+    }
+}
+
+fn decoded_csv_text(body: &[u8]) -> (&str, Option<QueryError>) {
+    match std::str::from_utf8(body) {
+        Ok(text) => (text, None),
+        Err(err) => {
+            // The lines before the undecodable one are parsed first.
+            let valid = &body[..err.valid_up_to()];
+            let line_start = valid
+                .iter()
+                .rposition(|byte| *byte == b'\n')
+                .map_or(0, |i| i + 1);
+            let prefix = std::str::from_utf8(&body[..line_start]).unwrap_or_default();
+            (prefix, Some(unicode_decode_error(body, &err)))
+        }
     }
 }
 
@@ -466,5 +496,65 @@ pub fn flux_samples(
             tags,
         });
     }
+    Ok(samples)
+}
+
+fn check_parse_deadline(deadline: tokio::time::Instant) -> Result<(), QueryError> {
+    if tokio::time::Instant::now() >= deadline {
+        return Err(crate::write::budget_error("Flux", "total deadline", &[]).into());
+    }
+    Ok(())
+}
+
+/// Parse bounded row batches with cooperative scheduling and no partial result.
+pub async fn parse_annotated_csv_cooperative(
+    body: &[u8],
+    deadline: tokio::time::Instant,
+) -> Result<Vec<FluxRecord>, QueryError> {
+    check_parse_deadline(deadline)?;
+    let (text, decode_error) = decoded_csv_text(body);
+    let mut reader = csv::ReaderBuilder::new()
+        .has_headers(false)
+        .flexible(true)
+        .from_reader(text.as_bytes());
+    let mut csv_record = csv::StringRecord::new();
+    let mut state = ParserState::default();
+    let mut records = Vec::new();
+    let mut rows = 0usize;
+    let mut bytes = 0usize;
+    while let Some(row) = read_csv_row(&mut reader, &mut csv_record)? {
+        check_parse_deadline(deadline)?;
+        let before = state.expanded_bytes;
+        if let Some(record) = state.row(&row)? {
+            records.push(record);
+        }
+        rows += 1;
+        bytes += state.expanded_bytes - before + csv_record.as_slice().len();
+        if rows >= 32 || bytes >= 64 * 1024 {
+            tokio::task::yield_now().await;
+            check_parse_deadline(deadline)?;
+            rows = 0;
+            bytes = 0;
+        }
+    }
+    check_parse_deadline(deadline)?;
+    match decode_error {
+        Some(err) => Err(err),
+        None => Ok(records),
+    }
+}
+
+pub(crate) async fn flux_samples_cooperative(
+    records: &[FluxRecord],
+    metric: &str,
+    deadline: tokio::time::Instant,
+) -> Result<Vec<MetricSample>, QueryError> {
+    let mut samples = Vec::new();
+    for chunk in records.chunks(32) {
+        check_parse_deadline(deadline)?;
+        samples.extend(flux_samples(chunk, metric)?);
+        tokio::task::yield_now().await;
+    }
+    check_parse_deadline(deadline)?;
     Ok(samples)
 }

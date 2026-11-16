@@ -116,8 +116,9 @@ The flags of `manage.py start_agent` are unchanged (`--metrics-interval`,
 or schema failure; 2 usage error. One-shot runs every enabled loop before
 reporting failure; warnings alone succeed. Continuous mode keeps scheduling
 after failures. `--influx-write-file PATH` is the shadow mode: every batch the agent
-would write to InfluxDB is appended to `PATH` as line protocol after a
-`# write <utc> points=<n>` comment line; queries still go to InfluxDB.
+would write to InfluxDB is appended to `PATH` as a framed batch: a
+`# write <utc> points=<n> bytes=<b>` header, line-protocol body and matching
+commit trailer. Queries still go to InfluxDB.
 
 ### Evaluating conditions by hand
 
@@ -444,3 +445,76 @@ update. HTTP timeout/body knobs do not increase synchronous work/output limits.
 The Python reference fixtures continue to cover admitted ordinary batches;
 Rust-specific boundary/exhaustion cases live in core `home_assistant/tests.rs`
 and collector `executors/tests/ha_json_budget.rs`.
+
+### HTTP cancellation and resolver admission
+
+The Rust HTTP layer owns its connection task from spawn through response-body
+retirement, including cancellation while waiting for headers. Production
+contexts share four running-or-queued blocking resolver permits. Admission waits
+inside the collector's total deadline; the blocking closure retains its permit
+until it actually finishes, even after caller cancellation. Abandoned lookup
+diagnostics remain available; IP literals bypass resolution. This limits
+resolver jobs, not the number of application futures waiting for admission.
+
+### Flux materialization and sparse labels
+
+Python and Rust admit at most 100,000 Flux records, 500,000 cells and 16 MiB
+expanded cell storage (UTF-8 value/default and label bytes plus 64 bytes per map
+cell). These limits supplement the 10 MiB wire cap. Exceeding a limit refuses the
+entire query as `InfluxTransferError`, preserving the distinction from empty
+results. Duplicate-column warnings contain only a fixed category and count.
+Condition diagnostics visit present dimensions once and format only the selected
+structural series; quoted labels, missing versus empty dimensions and tie order
+remain shared with Python.
+
+Rust shadow output requires Unix regular-file semantics. The final pathname
+component must not be a symlink, FIFO, device or multiply linked file. New files
+use mode 0600; existing admitted files are tightened to 0600 through the opened
+descriptor. Parent directories must be trusted and remain operator-controlled.
+
+### Complete shadow batches and recovery
+
+New captures frame each batch as `# write <utc> points=<n> bytes=<b>`, exactly
+`n` line-protocol lines totaling `b` UTF-8 bytes (including final newline), then
+`# commit points=<n> bytes=<b>`. The writer syncs each completed batch before
+crediting it. The comparison tool refuses incomplete framed evidence, publishing
+no partial report. Earlier unframed captures remain readable; their historical
+format has no commit-trailer guarantee. The writer verifies their declared point
+count before reuse; comment-only preambles remain supported.
+
+Cooperating writers hold the same opened data inode's OS lock over suffix
+validation, complete append and sync. In-process and OS-lock admission share a
+one-second wait budget. Lock wait yields to the async runtime; process death
+releases the OS lock. This contract requires local filesystem locking and trusted
+parent directories. Never unlink, rotate, replace or externally truncate the
+file while writers are running; locks do not exclude noncooperating writers.
+
+An incomplete tail refuses subsequent appends without modifying earlier evidence.
+The error reports the last complete byte offset. Stop all writers, preserve a
+private copy of the entire file, inspect its boundaries and explicitly truncate
+to that offset (or start a separate capture). Never infer completeness from a
+leading marker alone. A complete trailer identifies a structural batch boundary,
+not authentication of externally modified evidence.
+
+### Accepted writes and unambiguous evaluation evidence
+
+Python and Rust credit a successful HTTP status after its bounded complete body
+transfer regardless of body charset. Bounded error diagnostics are handled
+separately (Rust decodes with replacement). Failed or over-budget transfers retain
+uncertain acceptance and are never automatically replayed. Flux refuses duplicate column labels before
+materializing records, emitting only `duplicate_columns count=<n>`. Identical
+values in separate records and ordinary multi-table headers remain supported.
+
+Both evaluators refuse conflicting values at the same series and microsecond
+timestamp before staleness, duration or anchor decisions. Identical duplicates
+(including signed zero equality) remain supported; failure cannot publish a
+partial observed value. Cross-series structural ordering remains unchanged.
+
+Rust Flux CSV parsing and sample conversion share the exchange's absolute total
+deadline. Parsing checks between rows, yields after at most 32 rows or 64 KiB of
+row/expanded-cell work, and checks again before returning; conversion yields in
+32-record batches. One CSV row and one typed conversion remain synchronous under
+the wire/field/output limits. Expiry keeps the existing Flux total-deadline
+category and discards all partial records/samples. Python's synchronous CSV
+library remains outside its async transfer timeout; the cooperative scheduling
+change is Rust-specific.

@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+- Own Rust HTTP connection tasks before headers and bound running/queued DNS
+  jobs across production contexts, retaining admission through cancellation.
+- Bound expanded Flux records/cells in Python and Rust and remove remote column
+  labels from duplicate-column warnings.
+- Format only the selected condition series label with sparse dimension work;
+  open Rust shadow evidence privately and refuse links and special files.
+- Frame and sync complete Rust shadow batches, refuse incomplete tails and hold
+  a bounded-wait OS lock across validation/append; validate framed captures in
+  the comparison tool while retaining legacy-read compatibility.
+- Credit bounded successful writes independently of body charset and reject
+  duplicate Flux labels in both runtimes before decision evidence is built.
+- Refuse conflicting same-series/same-time values in both condition evaluators;
+  cooperatively parse Rust Flux replies within the whole-query deadline.
+
 - Verify Rust agent storage affinity, nullability, generated row identity and
   unconditional unique keys against migrated fixtures before starting collectors.
   Read the complete readiness contract in one deferred SQLite snapshot; schema

@@ -379,11 +379,17 @@ Rust-only additions (absent from the Python CLI, used by deploy and shadow):
 - `--version` — `graphyard-agent <version> (<full git commit>)`.
 - `--influx-write-file PATH` — shadow mode: no InfluxDB write request is ever
   built; every batch that would be written is appended to PATH as line
-  protocol (with a `# write <utc> points=<n>` comment line, `<utc>` in RFC
-  3339 with microseconds and `Z`) and counted as written. The batch passes
+  protocol (a `# write <utc> points=<n> bytes=<b>` header, `<utc>` in RFC
+  3339 with microseconds and `Z`, and a matching `# commit points=<n> bytes=<b>`
+  trailer), synced and counted as written. The batch passes
   the same normalisation, configuration, timeout and URL checks as a real
   write first, so spec statuses match. PATH is opened (created) for
-  appending at startup; a failure exits 1. Queries still go to InfluxDB.
+  appending at startup; a failure exits 1. Final symlinks/special files and hard
+  links are refused; new and existing files use mode 0600. Cooperating local
+  writers hold the opened file's OS lock across tail validation, append and sync,
+  with a one-second admission wait. Incomplete tails refuse reuse without
+  truncation; see `docs/agent-rs.md` for explicit recovery and legacy compatibility.
+  Queries still go to InfluxDB.
 
 As implemented in S8: argparse conveniences are kept (unique prefixes of
 long flags, the last of repeated flags wins, a negative interval reaches the
@@ -1018,8 +1024,12 @@ abandoned workers are still alive before starting:
 `<n> earlier HTTP collectors are still running past total_timeout_seconds; not starting another`.
 A deadline that passes while the JSON body is being parsed still fails the
 probe (Python checks after `json.loads`). Abandoned workers in Rust (D-3):
-resolver lookups whose request was cancelled and that are still running 1 s
-after the cancellation; each one logs the "still running" warning once.
+resolver lookups whose request was cancelled, including direct caller drops.
+The deadline path logs those still running after its one-second close wait.
+Four process-wide running-or-queued lookup permits are acquired before spawning;
+the closure keeps its permit through actual completion, including cancellation.
+Admission waits within the operation deadline. A spawned connection task has an
+abort-on-drop owner immediately, before response headers arrive.
 Like Python's `worker.join(timeout=1.0)`, the caller waits up to that second
 for a running lookup before it reports the deadline, so the error returns
 within the deadline plus at most one second. A cancelled request never
@@ -1270,9 +1280,14 @@ when every point was rejected. A measurement starting with `#` logs the client's
   empty cells take `#default` (the table id cell does not: `int('')` fails),
   a missing or short `#group`/`#default`/header row is an `IndexError`, an
   `error,reference` table raises `FluxQueryException` whose `str()` is the
-  repr of both values, duplicated column names keep the first position and
-  the last value (Python prints a warning to stdout and through `warnings`,
-  Rust logs it, P2). Then per record: `KeyError` without `_value`/`_time`,
+  repr of both values. Both runtimes reject duplicate column labels before
+  materialization, logging only `duplicate_columns count=<n>`. Expanded defaults
+  and labels charge UTF-8 bytes plus 64 bytes per retained map cell: at most
+  16 MiB, 500,000 cells and 100,000 records per response. Rust parsing checks the
+  absolute query deadline between rows and yields after 32 rows or 64 KiB work;
+  sample conversion yields every 32 records. Failure returns no partial samples.
+  Complete successful write responses do not require UTF-8 bodies.
+  Then per record: `KeyError` without `_value`/`_time`,
   skip when either is `None`, `AttributeError` for a non-datetime `_time`,
   `_value` must be a finite number (`InfluxDB query sample must be a finite
   number`, via `float(str(v))`), tags = every column except the known ones,
@@ -1311,7 +1326,8 @@ when every point was rejected. A measurement starting with `#` logs the client's
 condition window" (or `ok` with "…, not alerting (intermittent)" when
 `alert_when_stale` is false). Group by `_series_key` (metric + non-empty
 canonical dimensions + all custom tags, sorted), sort each series by time,
-label with `_series_labels`, evaluate each with `_evaluate_series`:
+refuse conflicting equal-time values (identical duplicates are accepted), then
+evaluate each with `_evaluate_series`:
 staleness `int((now - latest.ts).total_seconds())` against
 `stale_limit_seconds()` (`stale_after_seconds` or the global), then critical
 before warning via `_is_breached_for_duration` (window start, anchor carry
@@ -1323,6 +1339,7 @@ carry allowance). One series → its result. Several → worst status, ties by
 oldest latest sample then lexicographically smallest structural series key;
 `ok` reports the newest series value (largest structural key at equal time) with
 ` (<n> series)`; otherwise ` [series: <label>] (<k> of <n> series not OK)`.
+Only the selected diagnostic label is built, visiting present dimensions once.
 Labels JSON-quote dimension/tag names and values, keep Unicode readable, and
 render missing values as `null` rather than the quoted empty string. Display
 escaping never orders series. Thresholds in messages use `py_float_repr`. Pinned by `conditions.json`

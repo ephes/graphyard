@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import asyncio
+import csv
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 import json
-from io import BytesIO
+from io import BytesIO, StringIO
 import logging
 import math
 import re
@@ -385,8 +386,6 @@ async def _v2_exchange(
                                 headers=dict(response.headers),
                             )
                         )
-                    if write:
-                        bytes(result).decode("utf-8")
                     return bytes(result)
     except (TimeoutError, httpx.HTTPError, InfluxTransferError) as err:
         if isinstance(err, TimeoutError):
@@ -420,6 +419,56 @@ async def _v2_exchange(
         raise InfluxTransferError(message) from err
 
 
+# Match the Rust parser's retained-output envelope, including map cell overhead.
+_FLUX_MAX_EXPANDED_BYTES = 16 * 1024 * 1024
+_FLUX_MAX_RECORDS = 100_000
+_FLUX_MAX_CELLS = 500_000
+
+
+def _admit_flux_csv(body: bytes) -> None:
+    """Check expanded defaults before the library materializes retained tables."""
+    columns: list[str] = []
+    defaults: list[str] = []
+    labels: list[str] = []
+    new_table = False
+    expanded = records = cells = 0
+    for row in csv.reader(StringIO(body.decode("utf-8"))):
+        if not row:
+            continue
+        token = row[0]
+        if token in {"#datatype", "#group", "#default"}:
+            if not new_table:
+                columns, defaults, labels = [], [], []
+                new_table = True
+            if token == "#datatype":
+                columns.extend(row[1:])
+            elif token == "#default":
+                defaults = row[1:]
+            continue
+        if new_table:
+            labels = row[1:]
+            duplicates = len(labels) - len(set(labels))
+            if duplicates:
+                logger.warning("InfluxDB Flux duplicate_columns count=%d", duplicates)
+                raise InfluxConfigurationError("InfluxDB Flux duplicate column labels")
+            new_table = False
+            continue
+        records += 1
+        if records > _FLUX_MAX_RECORDS:
+            raise InfluxTransferError("InfluxDB Flux response exceeded record limit")
+        for i in range(len(columns)):
+            text = row[i + 1] if i + 1 < len(row) else ""
+            if not text:
+                text = defaults[i] if i < len(defaults) else ""
+            label = labels[i] if i < len(labels) else "None"
+            expanded += len(text.encode("utf-8")) + len(label.encode("utf-8")) + 64
+            cells += 1
+            if expanded > _FLUX_MAX_EXPANDED_BYTES or cells > _FLUX_MAX_CELLS:
+                raise InfluxTransferError(
+                    "InfluxDB Flux response exceeded expanded cell limit"
+                )
+
+
 def _query_flux_tables(flux: str):
     payload = {
         "extern": {"imports": [], "body": []},
@@ -437,7 +486,8 @@ def _query_flux_tables(flux: str):
             "query", {"org": settings.INFLUX_ORG}, json.dumps(payload).encode()
         )
     )
-    # Use the client library's annotated CSV parser on the bounded response.
+    _admit_flux_csv(body)
+    # Use the client library's annotated CSV parser on the admitted response.
     parser = FluxCsvParser(
         HTTPResponse(body=BytesIO(body), preload_content=False),
         serialization_mode=FluxSerializationMode.tables,

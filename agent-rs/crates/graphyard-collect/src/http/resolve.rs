@@ -152,10 +152,14 @@ pub struct AbandonedLookups {
 
 impl AbandonedLookups {
     pub(crate) fn add(&self, handle: LookupHandle) {
-        self.lookups
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-            .push(handle);
+        let mut lookups = self.lookups.lock().unwrap_or_else(PoisonError::into_inner);
+        lookups.retain(LookupHandle::is_running);
+        if !lookups
+            .iter()
+            .any(|existing| existing.0.same_channel(&handle.0))
+        {
+            lookups.push(handle);
+        }
     }
 
     /// `_live_abandoned_page_probe_workers()`: drop the finished ones and
@@ -178,18 +182,38 @@ pub(crate) async fn resolve(
     scope: &LookupScope,
     host: &str,
     service: Option<String>,
+    permits: &Arc<tokio::sync::Semaphore>,
+    abandoned: &AbandonedLookups,
 ) -> Result<Vec<IpAddr>, LookupError> {
     if service.is_none()
         && let Ok(ip) = host.parse::<IpAddr>()
     {
         return Ok(vec![ip]);
     }
+    // Acquire before spawning: the closure owns admission even while queued
+    // or after its caller has stopped waiting. The outer deadline bounds this wait.
+    let permit = Arc::clone(permits)
+        .acquire_owned()
+        .await
+        .map_err(|err| LookupError(err.to_string()))?;
     let (sender, receiver) = watch::channel(false);
-    scope.register(LookupHandle(receiver));
+    let handle = LookupHandle(receiver);
+    scope.register(handle.clone());
+    struct CancelledLookup<'a>(LookupHandle, &'a AbandonedLookups);
+    impl Drop for CancelledLookup<'_> {
+        fn drop(&mut self) {
+            if self.0.is_running() {
+                self.1.add(self.0.clone());
+            }
+        }
+    }
+    let _cancelled = CancelledLookup(handle, abandoned);
     let lookup = Arc::clone(lookup);
     let host = host.to_owned();
+    let finished = Finished(sender);
     tokio::task::spawn_blocking(move || {
-        let _finished = Finished(sender);
+        let _permit = permit;
+        let _finished = finished;
         lookup.lookup_service(&host, service.as_deref())
     })
     .await

@@ -861,7 +861,7 @@ def test_noncanonical_stored_json_still_publishes(monkeypatch):
 def test_series_identity_breaks_ties_independently_of_display(
     monkeypatch, healthy, tag_kind
 ):
-    from graphyard.services import _series_key, _series_labels
+    from graphyard.services import _series_key, _series_label
 
     now = datetime(2026, 3, 4, 12, 0, tzinfo=UTC)
     tags = [{"a": "x, b=y", "b": "z"}, {"a": "x", "b": "y, b=z"}]
@@ -877,7 +877,7 @@ def test_series_identity_breaks_ties_independently_of_display(
         ]
         series.append([replace(sample, tags=dimensions) for sample in samples])
     keys = [_series_key(samples[0]) for samples in series]
-    labels = _series_labels(keys)
+    labels = {key: _series_label(keys, key) for key in keys}
     assert labels[keys[0]] != labels[keys[1]]
     expected = (max if healthy else min)(range(2), key=lambda i: keys[i])
     results = []
@@ -892,9 +892,62 @@ def test_series_identity_breaks_ties_independently_of_display(
 
 
 def test_series_labels_quote_names_values_and_missing_members():
-    from graphyard.services import _series_labels
+    from graphyard.services import _series_label
 
     keys = [(('a"=, \\é', 'x"=, \\雪'),), ()]
-    labels = _series_labels(keys)
+    labels = {key: _series_label(keys, key) for key in keys}
     assert labels[keys[0]] == '"a\\"=, \\\\é"="x\\"=, \\\\雪"'
     assert labels[keys[1]] == '"a\\"=, \\\\é"=null'
+
+
+def test_r102_sparse_series_formats_only_selected_label(monkeypatch, settings):
+    import graphyard.services as services
+
+    settings.CONDITION_DATA_STALE_WARNING_SECONDS = 60
+    now = datetime(2026, 3, 4, 12, 0, tzinfo=UTC)
+    samples = [
+        replace(_sample(now, minutes_ago=10, value=80), tags={f"tag{i:04}": "x"})
+        for i in range(128)
+    ]
+    monkeypatch.setattr(
+        services.influx, "query_condition_window", lambda *a, **k: samples
+    )
+    original = services.json.dumps
+    calls = []
+
+    def count(*args, **kwargs):
+        calls.append(1)
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(services.json, "dumps", count)
+    result = evaluate_condition(_condition(), now=now)
+    assert result.status == StatusLevel.WARNING
+    assert len(calls) <= 2 * 130
+
+
+@pytest.mark.parametrize("minutes", [0, 6])
+@pytest.mark.parametrize("reverse", [False, True])
+def test_r102_conflicting_same_time_evidence_unavailable(monkeypatch, minutes, reverse):
+    now = datetime(2026, 3, 4, 12, 0, tzinfo=UTC)
+    samples = [_sample(now, minutes_ago=i, value=80) for i in range(6)]
+    pair = [_sample(now, minutes_ago=minutes, value=value) for value in [20, 80]]
+    if reverse:
+        pair.reverse()
+    samples.extend(pair)
+    monkeypatch.setattr(
+        "graphyard.services.influx.query_condition_window", lambda *a, **k: samples
+    )
+    with pytest.raises(
+        ValueError, match="Conflicting values for same series and timestamp"
+    ):
+        evaluate_condition(_condition(), now=now)
+
+
+def test_r102_identical_same_time_evidence_supported(monkeypatch):
+    now = datetime(2026, 3, 4, 12, 0, tzinfo=UTC)
+    samples = [_sample(now, minutes_ago=i, value=80) for i in range(6)]
+    samples += samples.copy()
+    monkeypatch.setattr(
+        "graphyard.services.influx.query_condition_window", lambda *a, **k: samples
+    )
+    assert evaluate_condition(_condition(), now=now).status == StatusLevel.CRITICAL

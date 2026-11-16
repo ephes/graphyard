@@ -4141,10 +4141,7 @@
     }
    ],
    "result": {
-    "error": {
-     "class": "UnicodeDecodeError",
-     "p2": true
-    }
+    "written": 1
    },
    "requests": [],
    "logs": [

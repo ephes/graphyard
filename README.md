@@ -1242,3 +1242,10 @@ Python rollback writer does not yet apply this encoded request budget.
 Shadow qualification tools require a separate private recorder output, and new
 recording sessions reset replay baselines. See the [shadow tool contracts](docs/agent-rs.md#recorder-file-and-restart-contract)
 for compatibility and evidence admission.
+
+Rust HTTP cancellation/resolver admission, Flux expansion limits, parser deadlines
+and private, locked shadow-file recovery are documented in the
+[agent boundary contracts](docs/agent-rs.md#http-cancellation-and-resolver-admission).
+Both query runtimes refuse duplicate Flux labels, and both condition evaluators
+refuse conflicting values at the same series/timestamp before duration or anchor
+selection. Identical duplicate observations remain supported.

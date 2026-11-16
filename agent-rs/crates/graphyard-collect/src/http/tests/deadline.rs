@@ -362,3 +362,78 @@ async fn abandoned_lookups_cap_new_operations() {
     }
     assert_eq!(context.live_abandoned(), 0);
 }
+
+#[tokio::test]
+async fn r102_cancel_before_headers_retires_socket() {
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let url = format!("http://{}/", listener.local_addr().unwrap());
+    let (ready_tx, ready_rx) = tokio::sync::oneshot::channel();
+    let server = tokio::spawn(async move {
+        let (mut socket, _) = listener.accept().await.unwrap();
+        let mut request = Vec::new();
+        while !request.ends_with(b"\r\n\r\n") {
+            request.push(socket.read_u8().await.unwrap());
+        }
+        socket.write_all(b"HTTP/1.1 200 OK\r\n").await.unwrap();
+        ready_tx.send(()).unwrap();
+        let mut byte = [0];
+        tokio::time::timeout(Duration::from_millis(300), socket.read(&mut byte)).await
+    });
+    let client = HttpClient::new(&HttpContext::new(), &ClientOptions::new(30.0, true));
+    let task = tokio::spawn(async move {
+        let request = client
+            .build_request(crate::http::client::Method::Get, &url, &[], None)
+            .unwrap();
+        client.send(&request).await
+    });
+    ready_rx.await.unwrap();
+    task.abort();
+    let _ = task.await;
+    let retired = server.await.unwrap();
+    assert!(
+        matches!(retired, Ok(Ok(0)))
+            || matches!(&retired, Ok(Err(err)) if err.kind() == std::io::ErrorKind::ConnectionReset),
+        "socket must close on cancellation: {retired:?}"
+    );
+}
+
+#[tokio::test]
+async fn r102_resolver_admission_survives_caller_cancellation() {
+    let gate = Arc::new(Gate::default());
+    let _release = GateGuard(Arc::clone(&gate));
+    let lookup = Arc::new(StubLookup {
+        gate: Some(gate.clone()),
+        ..StubLookup::loopback()
+    });
+    let context = HttpContext::new()
+        .with_lookup(lookup.clone())
+        .with_limits(Duration::ZERO, 2);
+    let mut tasks = Vec::new();
+    for _ in 0..12 {
+        let context = context.clone();
+        tasks.push(tokio::spawn(async move {
+            probe_with_deadline(&context, "http://slow.test:9/", 10.0, 10.0).await
+        }));
+    }
+    tokio::time::sleep(Duration::from_millis(100)).await;
+    for task in tasks {
+        task.abort();
+        let _ = task.await;
+    }
+    let count = lookup.calls.load(Ordering::SeqCst);
+    gate.open();
+    assert_eq!(
+        count, 2,
+        "running plus queued lookups must stay within admission cap"
+    );
+    let deadline = Instant::now() + Duration::from_secs(2);
+    while context.lookup_permits.available_permits() != 2 && Instant::now() < deadline {
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
+    assert_eq!(context.lookup_permits.available_permits(), 2);
+    assert_eq!(context.live_abandoned(), 0);
+    let healthy = probe_with_deadline(&context, "http://healthy.test:9/", 1.0, 1.0).await;
+    assert_eq!(healthy.unwrap_err().kind, ErrorKind::ConnectError);
+    assert_eq!(lookup.calls.load(Ordering::SeqCst), 3);
+}

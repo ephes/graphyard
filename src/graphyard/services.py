@@ -195,26 +195,33 @@ def _group_samples_by_series(
         grouped.setdefault(_series_key(sample), []).append(sample)
     for series_samples in grouped.values():
         series_samples.sort(key=lambda item: item.ts)
+        if any(
+            a.ts == b.ts and a.value != b.value
+            for a, b in zip(series_samples, series_samples[1:])
+        ):
+            raise ValueError("Conflicting values for same series and timestamp")
     return grouped
 
 
-def _series_labels(keys: list[SeriesKey]) -> dict[SeriesKey, str]:
-    """Label each series by the dimensions that distinguish it from the others."""
-    all_names = sorted({name for key in keys for name, _ in key})
-    as_dicts = {key: dict(key) for key in keys}
-    varying = [
-        name for name in all_names if len({as_dicts[key].get(name) for key in keys}) > 1
-    ]
-    labels: dict[SeriesKey, str] = {}
+def _series_label(keys: list[SeriesKey], selected: SeriesKey) -> str:
+    """Visit present dimensions once and format only the selected series."""
+    dimensions: dict[str, tuple[str, int, bool]] = {}
     for key in keys:
-        dims = as_dicts[key]
-        names = varying or [name for name in all_names if name != "metric"]
-        labels[key] = ", ".join(
-            f"{json.dumps(name, ensure_ascii=False)}="
-            f"{json.dumps(dims.get(name), ensure_ascii=False)}"
-            for name in names
-        )
-    return labels
+        for name, value in key:
+            first, count, differs = dimensions.get(name, (value, 0, False))
+            dimensions[name] = first, count + 1, differs or value != first
+    varying = sorted(
+        name
+        for name, (_, count, differs) in dimensions.items()
+        if count != len(keys) or differs
+    )
+    names = varying or sorted(name for name in dimensions if name != "metric")
+    values = dict(selected)
+    return ", ".join(
+        f"{json.dumps(name, ensure_ascii=False)}="
+        f"{json.dumps(values.get(name), ensure_ascii=False)}"
+        for name in names
+    )
 
 
 def _evaluate_series(
@@ -312,7 +319,6 @@ def evaluate_condition(
         )
 
     grouped = _group_samples_by_series(samples)
-    labels = _series_labels(list(grouped))
     results = [
         (key, series[-1].ts, *_evaluate_series(condition, series, now_utc))
         for key, series in grouped.items()
@@ -341,7 +347,7 @@ def evaluate_condition(
         )
         message = f"{message} ({total} series)"
     else:
-        message = f"{message} [series: {labels[key]}]"
+        message = f"{message} [series: {_series_label(list(grouped), key)}]"
         message += f" ({not_ok} of {total} series not OK)"
 
     return ConditionEvaluation(

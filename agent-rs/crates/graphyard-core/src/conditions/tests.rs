@@ -423,3 +423,57 @@ fn injective_series_ties_match_in_both_orders() {
         assert_case(case);
     }
 }
+
+#[test]
+fn r102_sparse_labels_do_not_build_a_matrix() {
+    let samples: Vec<_> = (0..128)
+        .map(|i| {
+            let mut point = fresh(80.0).remove(0);
+            point.ts = now() - chrono::TimeDelta::minutes(10);
+            point.tags.insert(format!("tag{i:04}"), "x".into());
+            point
+        })
+        .collect();
+    DIMENSION_READS.with(|count| count.set(0));
+    let result = evaluate_samples(&humidity_rule(), &samples, now(), &BigInt::from(60)).unwrap();
+    assert_eq!(result.status, StatusLevel::Warning);
+    assert!(DIMENSION_READS.with(|count| count.get()) <= 260);
+    let mut reversed = samples;
+    reversed.reverse();
+    assert_eq!(
+        result,
+        evaluate_samples(&humidity_rule(), &reversed, now(), &BigInt::from(60)).unwrap()
+    );
+}
+
+#[test]
+fn r102_conflicting_equal_time_evidence_is_unavailable() {
+    for minutes in [0, 6] {
+        for reversed in [false, true] {
+            let mut samples = fresh(80.0);
+            let mut a = samples[0].clone();
+            a.ts = now() - chrono::TimeDelta::minutes(minutes);
+            let mut b = a.clone();
+            b.value = 20.0;
+            if reversed {
+                samples.extend([b, a]);
+            } else {
+                samples.extend([a, b]);
+            }
+            let error = evaluate_samples(&humidity_rule(), &samples, now(), &BigInt::from(600))
+                .expect_err("conflicting evidence");
+            assert_eq!(
+                error.message,
+                "Conflicting values for same series and timestamp"
+            );
+        }
+    }
+    let mut samples = fresh(80.0);
+    samples.extend(samples.clone());
+    assert_eq!(
+        evaluate_samples(&humidity_rule(), &samples, now(), &BigInt::from(600))
+            .unwrap()
+            .status,
+        StatusLevel::Critical
+    );
+}

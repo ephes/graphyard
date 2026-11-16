@@ -33,7 +33,7 @@ fixture no longer matches the Python code.
 | Python behaviour / test | Rust counterpart | Status |
 | --- | --- | --- |
 | `test_condition_evaluation.py`: every `evaluate_condition` test (no samples, staleness, critical/warning paths, grace window, multi-series worst status/label/newest value, collector split, five-minute phase offsets, anchor carry and its staleness bound, window-start sample, breach shorter than the sampling interval, per-condition allowance, intermittent conditions, default staleness), parametrised cases and the three sample orders each | `graphyard-core/src/conditions/tests.rs::every_fixture_case_matches` against `fixtures/conditions.json` (`gen_conditions.py`, one case per scenario named after the test); `::every_python_test_of_the_slice_is_in_the_corpus` | done |
-| `services.py` branches the tests leave open: all four operators at the threshold and with NaN, the lazy `KeyError` of an unknown operator, threshold `repr` in messages, critical before warning, staleness boundaries (truncation, future samples, allowance 0, huge and negative settings), the anchor carry bound by the global setting, grace and window-start boundaries, `breach_minutes = 0`, stable order of equal timestamps, `timedelta`/`datetime` overflow, series keys (empty dimensions, tags never overriding a dimension), label selection, structural tie-breaking, quoted labels and missing/empty values, query errors | `conditions.json` cases; `conditions/tests.rs::overflow_errors_carry_the_cpython_texts`, `::unknown_operator_is_a_key_error_with_the_repr`, `::query_errors_display_as_the_source_error`, `::now_is_truncated_to_microseconds_for_query_and_result` | done |
+| `services.py` branches the tests leave open: all four operators at the threshold and with NaN, the lazy `KeyError` of an unknown operator, threshold `repr` in messages, critical before warning, staleness boundaries (truncation, future samples, allowance 0, huge and negative settings), the anchor carry bound by the global setting, grace and window-start boundaries, `breach_minutes = 0`, conflicting equal-time refusal and identical-duplicate admission, `timedelta`/`datetime` overflow, series keys (empty dimensions, tags never overriding a dimension), label selection, structural tie-breaking, quoted labels and missing/empty values, query errors | `conditions.json` cases; `conditions/tests.rs::overflow_errors_carry_the_cpython_texts`, `::unknown_operator_is_a_key_error_with_the_repr`, `::query_errors_display_as_the_source_error`, `::now_is_truncated_to_microseconds_for_query_and_result` | done |
 | `test_series_identity_breaks_ties_independently_of_display`, `test_series_labels_quote_names_values_and_missing_members`: delimiter collisions, escaped names/values, Unicode, missing versus empty tags, healthy and critical ties in both input orders | `conditions.json` `injective_series` cases; `conditions/tests.rs::injective_series_ties_match_in_both_orders` | done |
 | `timedelta.total_seconds()` (correct rounding beyond 2**53 microseconds) | `conditions/tests.rs::total_seconds_rounds_like_cpython` against `conditions.json` `total_seconds` | done |
 
@@ -328,3 +328,18 @@ endpoints are synthetic; gates exist only in the test executable.
 - Influx `tests/timestamp_oracle.rs` is opt-in against real disposable 2.7.12 and
   3.12.2 sinks. It records storage limits/mixed-batch failures; production domain
   policy is intentionally pending (see `docs/agent-rs.md`).
+
+## Round 102 boundary regressions
+
+- HTTP: `http/tests/deadline.rs::r102_*` covers preheader socket retirement,
+  resolver cancellation/admission, completion and subsequent progress.
+- Flux: `tests/flux.rs::r102_*` covers expanded defaults, safe duplicate warnings,
+  duplicate decision labels, cooperative heartbeat and elapsed parser expiry.
+- Conditions: `conditions/tests.rs::r102_*` and Python condition tests cover
+  sparse label work and conflicting versus identical equal-time observations.
+- Shadow: `tests/write_file.rs::r102_*`, `shadow.rs::tests` and the Python shadow
+  reader regression cover private regular opens, partial tails, every interrupted
+  batch prefix, subprocess exclusion, lock expiry and process-death release.
+- Writes: `tests/write_points.rs::r102_accepted_binary_write_counts_once` and
+  Python transfer tests cover charset-independent accepted writes; existing
+  truncated/oversized transfer cases retain uncertain acceptance without replay.
