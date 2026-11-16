@@ -557,3 +557,10 @@ the wire/field/output limits. Expiry keeps the existing Flux total-deadline
 category and discards all partial records/samples. Python's synchronous CSV
 library remains outside its async transfer timeout; the cooperative scheduling
 change is Rust-specific.
+
+### HTTP request header authority
+
+Rust redirects preserve a custom `Host` on the same origin. A changed origin
+uses the destination authority (including port and IPv6 brackets), as httpx
+0.28.1 does. Authorization is still removed on cross-origin redirects except
+for the existing same-host HTTP-to-HTTPS upgrade rule.

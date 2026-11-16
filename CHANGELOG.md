@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Refresh explicit Rust collector Host headers on cross-origin redirects, while
+  preserving same-origin virtual hosts and the existing authorization policy.
+
 - Refuse over-budget Rust shadow reopen/suffix validation before publication:
   64 MiB, 250,000 total lines and five seconds per scan, preserving evidence and
   verified offsets with explicit rotation/offline-qualification guidance.

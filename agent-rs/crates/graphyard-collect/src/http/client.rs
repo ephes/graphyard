@@ -225,8 +225,11 @@ impl Request {
         };
         let url = self.redirect_url(location)?;
         let mut headers = self.headers.clone();
-        if !same_origin(&url, &self.url) && !is_https_redirect(&self.url, &url) {
-            remove_header(&mut headers, "Authorization");
+        if !same_origin(&url, &self.url) {
+            set_header(&mut headers, "Host", &url.netloc());
+            if !is_https_redirect(&self.url, &url) {
+                remove_header(&mut headers, "Authorization");
+            }
         }
         let mut body = self.body.clone();
         if method != self.method && method == Method::Get {
