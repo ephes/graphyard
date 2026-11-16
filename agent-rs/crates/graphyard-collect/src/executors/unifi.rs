@@ -14,7 +14,7 @@
 use std::sync::OnceLock;
 
 use graphyard_core::diagnostics::collector_failure;
-use num_traits::{Signed as _, Zero as _};
+use num_traits::Signed as _;
 use regex::Regex;
 use serde_json::{Map, Value};
 
@@ -338,6 +338,10 @@ async fn collect<S: MetricSink>(
             skipped += 1;
             continue;
         };
+        if value < 0.0 {
+            skipped += 1;
+            continue;
+        }
         let mut tags = base_tags.clone();
         tags.insert("traffic_direction".to_owned(), direction.to_owned());
         let mut point = MetricPoint::new(
@@ -367,6 +371,14 @@ async fn collect<S: MetricSink>(
     }
     let written = sink.write_points(&points).await?;
     sink.touch_registry(&points).await?;
+    if skipped > 0 {
+        return Ok(SpecOutcome::new(
+            StatusLevel::Warning,
+            written,
+            skipped,
+            "incomplete traffic values",
+        ));
+    }
     Ok(SpecOutcome::new(StatusLevel::Ok, written, skipped, ""))
 }
 
@@ -591,21 +603,6 @@ pub fn find_device<'a>(
     }
 }
 
-/// Python truthiness of a decoded JSON value.
-fn py_truthy(value: &Value) -> bool {
-    match value {
-        Value::Null => false,
-        Value::Bool(flag) => *flag,
-        Value::Number(number) => match py_number(number) {
-            PyNumber::Int(int) => !int.is_zero(),
-            PyNumber::Float(float) => float != 0.0,
-        },
-        Value::String(text) => !text.is_empty(),
-        Value::Array(items) => !items.is_empty(),
-        Value::Object(map) => !map.is_empty(),
-    }
-}
-
 /// `dict.get(key)` with JSON `null` as `None`.
 fn get_some<'a>(map: &'a Map<String, Value>, key: &str) -> Option<&'a Value> {
     map.get(key).filter(|value| !value.is_null())
@@ -669,17 +666,25 @@ pub fn resolve_interface_stats<'a>(
         if !interface.is_empty() {
             tags.insert("interface".to_owned(), interface);
         }
-        // `uplink.get("port_idx") or uplink.get("num_port")`
-        let port_idx = match uplink.get("port_idx") {
-            Some(value) if py_truthy(value) => Some(value),
-            _ => get_some(uplink, "num_port"),
-        };
+        let port_idx = get_some(uplink, "port_idx").or_else(|| get_some(uplink, "num_port"));
         if let Some(port_idx) = port_idx {
+            if !integer_port_index(port_idx) {
+                return Err(PyError::value_error(
+                    "UniFi port index must be a nonnegative integer",
+                ));
+            }
             tags.insert("port_idx".to_owned(), py_str(port_idx));
-            if let Some(port) = ports().find(|port| {
+            let mut matches = ports().filter(|port| {
                 port.get("port_idx")
-                    .is_some_and(|value| py_eq(value, port_idx))
-            }) {
+                    .is_some_and(|value| integer_port_index(value) && py_eq(value, port_idx))
+            });
+            let first = matches.next();
+            if matches.next().is_some() {
+                return Err(PyError::value_error(
+                    "UniFi uplink port metadata must be unique",
+                ));
+            }
+            if let Some(port) = first {
                 insert_port_name(&mut tags, port);
             }
         }

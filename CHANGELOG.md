@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Preserve UniFi uplink port zero, reject invalid integer identities and ambiguous
+  port metadata, and warn on missing/invalid/negative receive or transmit rates.
+
 - Refuse ambiguous UniFi login/device JSON in Python and Rust, including escaped
   duplicate members, without using the legacy login fallback. Bound expanded
   nodes, depth, arrays and scalar metadata before selection and publication.

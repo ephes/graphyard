@@ -1150,8 +1150,13 @@ writes, regardless of controller ordering. Index selectors use ASCII decimal
 nonnegative integers and match only JSON integer identities, never booleans,
 floats or numeric strings. A name-selected port's optional index must also be a
 nonnegative JSON integer; missing/null indices remain supported. A unique name
-selects its own port even if other ports have that index. `uplink` continues to
-read the device's uplink telemetry and retains its existing tag enrichment.
+selects its own port even if other ports have that index. `uplink` reads the device's own uplink telemetry. Its `port_idx` (or
+`num_port` when missing/null) must be a nonnegative JSON integer; zero is a valid
+identity. Optional port-name enrichment accepts only integer identities and
+refuses duplicate matching metadata rather than choosing the first row. Missing
+metadata remains supported. Both required B/s directions must be finite and
+nonnegative: zero is valid, invalid/missing directions are skipped, and a partial
+collection publishes its valid direction with WARNING and accurate counts.
 
 UniFi login and device JSON rejects duplicate members at every depth (including
 escaped equivalent keys). Ambiguity and expansion refusals abort authentication,

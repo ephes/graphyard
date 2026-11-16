@@ -1170,6 +1170,59 @@ UNIFI_SCENARIOS.append(
 )
 
 
+for port_idx in (0, True, False, 1.0, "1", -1, None):
+    for reverse in (False, True):
+        ports = [
+            {"port_idx": False, "name": "boolean"},
+            {"port_idx": 0, "name": "zero"},
+            {"port_idx": 2, "name": "fallback"},
+        ]
+        device = {
+            **_DEVICE,
+            "uplink": {**_DEVICE["uplink"], "port_idx": port_idx, "num_port": 2},
+            "port_table": ports[::-1] if reverse else ports,
+        }
+        UNIFI_SCENARIOS.append(
+            {
+                "name": f"uplink identity {port_idx!r} reverse={reverse}",
+                "config": _unifi(),
+                "routes": _legacy_routes(_json_reply(200, {"data": [device]})),
+            }
+        )
+for reverse in (False, True):
+    ports = [{"port_idx": 0, "name": "a"}, {"port_idx": 0, "name": "b"}]
+    device = {
+        **_DEVICE,
+        "uplink": {**_DEVICE["uplink"], "port_idx": 0},
+        "port_table": ports[::-1] if reverse else ports,
+    }
+    UNIFI_SCENARIOS.append(
+        {
+            "name": f"uplink duplicate metadata reverse={reverse}",
+            "config": _unifi(),
+            "routes": _legacy_routes(_json_reply(200, {"data": [device]})),
+        }
+    )
+for rx, tx in (
+    (-1, 2),
+    (1, -2),
+    (-1, -2),
+    (None, 2),
+    (1, None),
+    ("NaN", 2),
+    (None, None),
+    (0, 0),
+):
+    device = {**_DEVICE, "uplink": {"rx_bytes-r": rx, "tx_bytes-r": tx}}
+    UNIFI_SCENARIOS.append(
+        {
+            "name": f"traffic domain {rx!r} {tx!r}",
+            "config": _unifi(),
+            "routes": _legacy_routes(_json_reply(200, {"data": [device]})),
+        }
+    )
+
+
 def _unifi_cases() -> list[dict[str, Any]]:
     return [
         {

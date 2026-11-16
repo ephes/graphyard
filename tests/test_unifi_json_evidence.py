@@ -123,3 +123,37 @@ def test_normal_array_and_tag_boundary_is_accepted(monkeypatch):
     result, write, registry, _ = collect(monkeypatch, device=body)
     assert result[:3] == ("ok", 2, 0)
     assert write.call_count == registry.call_count == 1
+
+
+@pytest.mark.parametrize(
+    "rx,tx,valid",
+    [
+        (-1, 2, 1),
+        (1, -2, 1),
+        (-1, -2, 0),
+        (None, 2, 1),
+        ("NaN", 2, 1),
+        (1, None, 1),
+        (None, None, 0),
+        (0, 0, 2),
+        (1, 2, 2),
+    ],
+)
+def test_required_directions_and_nonnegative_rate_domain(monkeypatch, rx, tx, valid):
+    import json
+
+    body = json.dumps(
+        {
+            "data": [
+                {"name": "synthetic", "uplink": {"rx_bytes-r": rx, "tx_bytes-r": tx}}
+            ]
+        }
+    ).encode()
+    result, write, registry, _ = collect(monkeypatch, device=body)
+    assert result[:3] == ("ok" if valid == 2 else "warning", valid, 2 - valid)
+    if valid:
+        assert all(point.value >= 0 for point in write.call_args.args[0])
+        assert registry.call_count == 1
+    else:
+        write.assert_not_called()
+        registry.assert_not_called()
