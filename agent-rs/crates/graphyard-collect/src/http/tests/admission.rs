@@ -246,3 +246,95 @@ async fn excessive_content_encoding_is_refused_before_reading_body() {
         );
     }
 }
+
+#[tokio::test]
+async fn encoded_byte_overflow_aborts_a_chunked_connection_before_body_completion() {
+    use std::time::Duration;
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    use tokio::net::TcpListener;
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let address = listener.local_addr().unwrap();
+    let server = tokio::spawn(async move {
+        let (mut stream, _) = listener.accept().await.unwrap();
+        let mut head = Vec::new();
+        while !head.ends_with(b"\r\n\r\n") {
+            head.push(stream.read_u8().await.unwrap());
+        }
+        stream
+            .write_all(
+                b"HTTP/1.1 200 OK\r\nContent-Encoding: gzip\r\nTransfer-Encoding: chunked\r\n\r\n",
+            )
+            .await
+            .unwrap();
+        // Two individually valid gzip metadata fields emit no decoded bytes.
+        let mut body = vec![0x1f, 0x8b, 8, 24, 0, 0, 0, 0, 0, 0xff];
+        body.extend(std::iter::repeat_n(b'f', 40_000));
+        body.push(0);
+        body.extend(std::iter::repeat_n(b'c', 40_000));
+        for chunk in body.chunks(1024) {
+            let mut frame = format!("{:x}\r\n", chunk.len()).into_bytes();
+            frame.extend_from_slice(chunk);
+            frame.extend_from_slice(b"\r\n");
+            if stream.write_all(&frame).await.is_err() {
+                return;
+            }
+        }
+        // Keep the response open: the client must abort, not await EOF/timeout.
+        let mut byte = [0];
+        assert!(matches!(stream.read(&mut byte).await, Ok(0) | Err(_)));
+    });
+    let client = HttpClient::new(&HttpContext::new(), &ClientOptions::new(0.5, true));
+    let request = client
+        .build_request(Method::Get, &format!("http://{address}/"), &[], None)
+        .unwrap();
+    let mut response = client.send(&request).await.unwrap();
+    response.set_body_limit(4);
+    let err = response.chunk().await.unwrap_err();
+    assert_eq!(
+        err.message,
+        "collector encoded response byte limit exceeded"
+    );
+    assert_eq!(err.safe_message(), err.message);
+    // Keep Response alive while observing that its connection was retired.
+    tokio::time::timeout(Duration::from_secs(2), server)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(response.status, 200);
+}
+
+#[tokio::test]
+async fn encoded_byte_diagnostic_survives_page_probe_redirect_accounting() {
+    use crate::http::deadline::Deadline;
+    use crate::http::probe::run_page_probe;
+    use std::io::Write as _;
+    let mut encoder = flate2::GzBuilder::new()
+        .filename(vec![b'f'; 40_000])
+        .comment(vec![b'c'; 40_000])
+        .write(Vec::new(), flate2::Compression::fast());
+    encoder.write_all(b"x").unwrap();
+    let body = encoder.finish().unwrap();
+    let server = Server::start(move |request| {
+        if request.target == "/first" {
+            response("302 Found", &[("Location", "/final")], b"x")
+        } else {
+            response("200 OK", &[("Content-Encoding", "gzip")], &body)
+        }
+    })
+    .await;
+    let client = HttpClient::new(&HttpContext::new(), &ClientOptions::new(5.0, true));
+    let err = run_page_probe(
+        &client,
+        &format!("{}/first", server.origin()),
+        4,
+        true,
+        &Deadline::none(),
+    )
+    .await
+    .unwrap_err();
+    assert_eq!(
+        err.message,
+        "collector encoded response byte limit exceeded"
+    );
+    assert_eq!(server.requests().len(), 2);
+}

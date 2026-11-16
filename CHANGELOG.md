@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Charge raw Rust collector response bytes before decoding: at most 64 MiB per
+  response, tightened to the decoded allowance plus 64 KiB when smaller. Abort
+  overflowing connections without accepting partial successful metrics.
+
 - Admit at most four recognized Rust collector Content-Encoding layers before
   allocating decoders or reading the response body.
 

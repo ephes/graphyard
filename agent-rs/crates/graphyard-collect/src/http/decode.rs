@@ -4,7 +4,8 @@
 //! (`br`, `zstd`: not installed with the Python agent) passes through. The
 //! decoded bytes are what `iter_bytes()` yields and what `max_body_bytes`
 //! counts. When a limit is installed, every intermediate stage also shares
-//! that output allowance, before its vector can grow.
+//! that output allowance, before its vector can grow. Raw input is independently
+//! capped before decoding, even when it emits no output.
 //!
 //! Like `zlib.decompressobj`, a truncated stream is not an error and bytes
 //! after the end of a stream are ignored. Corrupt data is a
@@ -136,12 +137,17 @@ impl Stage {
 
 /// Maximum recognized Content-Encoding layers, including identity.
 const MAX_DECODER_STAGES: usize = 4;
+/// Raw response ceiling, including otherwise unbounded response.read() paths.
+const MAX_ENCODED_BYTES: u64 = 64 * 1024 * 1024;
+/// Encoding metadata/overhead allowance above an installed decoded byte cap.
+const ENCODING_OVERHEAD_BYTES: u64 = 64 * 1024;
 
 /// The decoder of one response body.
 pub(crate) struct BodyDecoder {
     /// In decoding order (the reverse of the header order).
     stages: Vec<Stage>,
     identity: Output,
+    encoded_remaining: u64,
 }
 
 impl BodyDecoder {
@@ -181,10 +187,13 @@ impl BodyDecoder {
         Ok(Self {
             stages,
             identity: Output::default(),
+            encoded_remaining: MAX_ENCODED_BYTES,
         })
     }
 
     pub(crate) fn set_limit(&mut self, limit: u64) {
+        self.encoded_remaining =
+            MAX_ENCODED_BYTES.min(limit.saturating_add(ENCODING_OVERHEAD_BYTES));
         self.identity.set_limit(limit);
         for stage in &mut self.stages {
             stage.set_limit(limit);
@@ -195,8 +204,19 @@ impl BodyDecoder {
     ///
     /// # Errors
     /// `DecodingError` for corrupt compressed data, or `LimitExceeded` when
-    /// any stage exceeds its installed cumulative output allowance.
+    /// raw input or any stage exceeds its cumulative allowance.
     pub(crate) fn decode(&mut self, data: &[u8]) -> Result<Vec<u8>, HttpError> {
+        // Charge the complete transport chunk before any inflater sees it,
+        // including metadata, nonproductive input and bytes after stream end.
+        self.encoded_remaining = self
+            .encoded_remaining
+            .checked_sub(data.len() as u64)
+            .ok_or_else(|| {
+                HttpError::new(
+                    ErrorKind::LimitExceeded,
+                    "collector encoded response byte limit exceeded",
+                )
+            })?;
         if self.stages.is_empty() {
             self.identity
                 .write_all(data)
@@ -279,5 +299,39 @@ mod tests {
         stacked.set_limit(100);
         assert_eq!(stacked.decode(&data).unwrap(), b"ok");
         assert_eq!(decoder.decode(&gzip(b"ok")).unwrap(), b"ok");
+    }
+    #[test]
+    fn encoded_bytes_have_one_cumulative_allowance_before_decoding() {
+        let mut decoder = BodyDecoder::new(["gzip"]).unwrap();
+        decoder.set_limit(1);
+        let mut header = vec![0x1f, 0x8b, 8, 8, 0, 0, 0, 0, 0, 0xff];
+        header.resize(65537, b'f');
+        for chunk in header.chunks(1024) {
+            assert!(decoder.decode(chunk).unwrap().is_empty());
+        }
+        assert_eq!(
+            decoder.decode(b"f").unwrap_err().message,
+            "collector encoded response byte limit exceeded"
+        );
+    }
+    #[test]
+    fn default_raw_ceiling_also_charges_ignored_trailing_bytes() {
+        let mut decoder = BodyDecoder::new(["gzip"]).unwrap();
+        let encoded = gzip(b"");
+        assert!(decoder.decode(&encoded).unwrap().is_empty());
+        let padding = vec![0; 1024 * 1024];
+        for _ in 0..63 {
+            assert!(decoder.decode(&padding).unwrap().is_empty());
+        }
+        assert!(
+            decoder
+                .decode(&padding[..padding.len() - encoded.len()])
+                .unwrap()
+                .is_empty()
+        );
+        assert_eq!(
+            decoder.decode(b"x").unwrap_err().message,
+            "collector encoded response byte limit exceeded"
+        );
     }
 }

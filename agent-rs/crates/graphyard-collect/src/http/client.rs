@@ -361,7 +361,8 @@ impl Response {
         }
     }
 
-    /// Set the cumulative output allowance of every decoding stage before reading.
+    /// Set each stage's cumulative output allowance before reading, and the raw
+    /// allowance to min(64 MiB, limit + 64 KiB) for this response.
     pub fn set_body_limit(&mut self, limit: u64) {
         self.decoder.set_limit(limit);
     }
@@ -375,7 +376,14 @@ impl Response {
         while let Some(frame) = self.body.frame().await {
             let frame = frame.map_err(|err| HttpError::transport(&err, true))?;
             if let Ok(data) = frame.into_data() {
-                let decoded = self.decoder.decode(&data)?;
+                let decoded = match self.decoder.decode(&data) {
+                    Ok(decoded) => decoded,
+                    Err(err) => {
+                        // Retire immediately even if the caller retains Response.
+                        self._connection.0.abort();
+                        return Err(err);
+                    }
+                };
                 if !decoded.is_empty() {
                     return Ok(Some(Bytes::from(decoded)));
                 }
@@ -384,7 +392,8 @@ impl Response {
         Ok(None)
     }
 
-    /// The whole decoded body (`response.read()`), without a cap.
+    /// The whole decoded body (`response.read()`), with the raw transport cap
+    /// and any installed decoding-stage allowance.
     ///
     /// # Errors
     /// The read, timeout or decoding error.

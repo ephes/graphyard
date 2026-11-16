@@ -601,3 +601,18 @@ The limit is Rust-specific. Two-layer compressed bodies remain supported;
 unsupported tokens still pass through and truncated streams retain the existing
 httpx-compatible behavior. Installed `max_body_bytes` allowances still apply
 cumulatively to every decoded stage, including intermediate output.
+
+Raw response-body bytes have a separate cumulative allowance **per response**:
+64 MiB by default, tightened to `min(64 MiB, max_body_bytes + 64 KiB)` when a
+decoded cap is installed. For page-probe redirects, `max_body_bytes` here is
+the remaining decoded allowance; at most 21 response bodies can be encountered
+under the existing redirect cap. This also bounds automatic redirect body reads.
+The extra 64 KiB admits ordinary gzip/deflate metadata and framing for small
+payloads. Raw bytes count before any decoder runs, including nonproductive
+input, optional gzip fields and ignored bytes after stream end; HTTP chunk
+framing and response headers are outside this body count. Overflow aborts the
+connection immediately and returns `collector encoded response byte limit exceeded`,
+without accepting a partial successful metric or registry update. Page probes
+retain normal warning/failure metrics and preserve this diagnostic across redirects.
+This Rust-specific security admission can reject large compressed metadata or
+incompressible transfers even when their final decoded payload would fit.

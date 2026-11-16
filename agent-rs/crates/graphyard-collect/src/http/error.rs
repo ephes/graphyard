@@ -131,6 +131,7 @@ impl HttpError {
                 self.message.as_str(),
                 "collector cookie jar limit exceeded"
                     | "collector content encoding stage limit exceeded"
+                    | "collector encoded response byte limit exceeded"
             )
         {
             return self.message.clone();
@@ -157,6 +158,14 @@ impl HttpError {
             ErrorKind::LimitExceeded,
             format!("response body exceeded max_body_bytes={max_body_bytes}"),
         )
+    }
+
+    /// Distinguish decoder output overflow from other transport admission limits.
+    pub(crate) fn is_body_limit(&self) -> bool {
+        self.kind == ErrorKind::LimitExceeded
+            && self
+                .message
+                .starts_with("response body exceeded max_body_bytes=")
     }
 
     /// `httpx.TooManyRedirects`.
