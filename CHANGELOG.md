@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Ignore explicit single-label cookie domains in Rust collectors to prevent
+  top-level-domain credential propagation across unrelated hosts.
+
 - Honor explicit Rust collector Cookie headers ahead of jar credentials;
   redirects continue to rebuild destination cookies from the jar.
 

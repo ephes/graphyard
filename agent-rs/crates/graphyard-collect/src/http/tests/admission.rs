@@ -71,3 +71,67 @@ async fn explicit_cookie_wins_until_redirect_rebuilds_from_jar() {
     client.send(&empty).await.unwrap();
     assert_eq!(server.requests()[3].header_values("cookie"), [""]);
 }
+
+#[tokio::test]
+async fn single_label_cookie_domains_cannot_cross_sites() {
+    use super::server::StubLookup;
+    use std::sync::Arc;
+    let server = Server::start(|request| match request.target.as_str() {
+        "/seed" => response(
+            "302 Found",
+            &[
+                ("Location", "/same"),
+                ("Set-Cookie", "injected=bad; Domain=.com; Path=/"),
+                ("Set-Cookie", "injected2=bad; Domain=com; Path=/"),
+                ("Set-Cookie", "host=ok; Path=/"),
+            ],
+            b"",
+        ),
+        "/same" => response(
+            "302 Found",
+            &[(
+                "Location",
+                &format!(
+                    "http://b.com{}/other",
+                    request.header_values("host")[0]
+                        .strip_prefix("a.com")
+                        .unwrap()
+                ),
+            )],
+            b"",
+        ),
+        "/domain" => response(
+            "200 OK",
+            &[("Set-Cookie", "shared=ok; Domain=example.com; Path=/")],
+            b"",
+        ),
+        _ => response("200 OK", &[], b"ok"),
+    })
+    .await;
+    let context = HttpContext::new().with_lookup(Arc::new(StubLookup::loopback()));
+    let client = HttpClient::new(&context, &ClientOptions::new(5.0, true));
+    let request = client
+        .build_request(
+            Method::Get,
+            &format!("http://a.com:{}/seed", server.port()),
+            &[],
+            None,
+        )
+        .unwrap();
+    send_following_redirects(&client, request).await.unwrap();
+    let requests = server.requests();
+    assert_eq!(requests[1].header_values("cookie"), ["host=ok"]);
+    assert!(requests[2].header_values("cookie").is_empty());
+    for (host, path) in [("a.example.com", "domain"), ("b.example.com", "other")] {
+        let request = client
+            .build_request(
+                Method::Get,
+                &format!("http://{host}:{}/{path}", server.port()),
+                &[],
+                None,
+            )
+            .unwrap();
+        client.send(&request).await.unwrap();
+    }
+    assert_eq!(server.requests()[4].header_values("cookie"), ["shared=ok"]);
+}
