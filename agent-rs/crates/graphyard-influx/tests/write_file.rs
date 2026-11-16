@@ -417,3 +417,33 @@ fn r102_shadow_fifo_open_never_blocks() {
     );
     assert!(InfluxWriter::to_file(&path).is_err());
 }
+
+#[tokio::test]
+async fn shadow_refuses_hash_measurement_rows_and_stays_appendable() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("writes.lp");
+    let base = [
+        ("INFLUX_URL", "http://127.0.0.1:9"),
+        ("INFLUX_TOKEN", "t"),
+        ("INFLUX_ORG", "o"),
+    ];
+    let mut hashed = base.to_vec();
+    hashed.push(("INFLUX_MEASUREMENT", "#synthetic"));
+    let writer = InfluxWriter::to_file(&path).unwrap();
+    let result = writer
+        .write_points(&settings(&hashed), &[point("synthetic", 1.0)])
+        .await;
+    assert!(
+        result.is_err(),
+        "comment-like rows must not enter the capture"
+    );
+    assert!(std::fs::read(&path).unwrap().is_empty());
+    // A later process (and the comparison reader) still accepts the capture.
+    let reopened = InfluxWriter::to_file(&path).unwrap();
+    reopened
+        .write_points(&settings(&base), &[point("synthetic", 2.0)])
+        .await
+        .unwrap();
+    let text = std::fs::read_to_string(&path).unwrap();
+    assert!(text.starts_with("# write ") && text.contains("\ngraphyard_metrics,"));
+}

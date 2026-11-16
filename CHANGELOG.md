@@ -10,7 +10,8 @@
   open Rust shadow evidence privately and refuse links and special files.
 - Frame and sync complete Rust shadow batches, refuse incomplete tails and hold
   a bounded-wait OS lock across validation/append; validate framed captures in
-  the comparison tool while retaining legacy-read compatibility.
+  the comparison tool while retaining legacy-read compatibility. Validate an
+  existing capture once at open, and refuse `#`-prefixed rows before appending.
 - Credit bounded successful writes independently of body charset and reject
   duplicate Flux labels in both runtimes before decision evidence is built.
 - Refuse conflicting same-series/same-time values in both condition evaluators;

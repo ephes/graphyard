@@ -489,6 +489,14 @@ releases the OS lock. This contract requires local filesystem locking and truste
 parent directories. Never unlink, rotate, replace or externally truncate the
 file while writers are running; locks do not exclude noncooperating writers.
 
+Opening the capture validates the existing file once under the same lock (up to
+five seconds of lock wait) before collectors start, so the first append of a
+process only checks what cooperating writers added since; an invalid or locked
+capture is left to the append path, which refuses it. Batches whose line
+protocol rows start with `#` (an `INFLUX_MEASUREMENT` beginning with `#`, which
+InfluxDB reads as a comment) are refused before appending, so they never make
+the capture unreadable for later writers or the comparison tool.
+
 An incomplete tail refuses subsequent appends without modifying earlier evidence.
 The error reports the last complete byte offset. Stop all writers, preserve a
 private copy of the entire file, inspect its boundaries and explicitly truncate

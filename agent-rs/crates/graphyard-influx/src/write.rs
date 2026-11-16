@@ -479,6 +479,15 @@ async fn append_batch(
     write_url(&config.host, &settings.influx_org, &settings.influx_bucket)?;
     authorization(&config.token)?;
     let body = prepared.body();
+    // A `#`-prefixed measurement makes rows that the capture framing (and
+    // shadow_compare.py) read as comments: refuse before appending, so the
+    // capture stays readable for later writers and the comparison.
+    if body.split('\n').any(|row| row.starts_with('#')) {
+        return Err(WriteError::Transport {
+            class: "ValueError",
+            message: "shadow capture refuses line protocol rows starting with '#'".into(),
+        });
+    }
     let bytes = body.len() + 1;
     let record = format!(
         "# write {} points={} bytes={bytes}\n{}\n# commit points={} bytes={bytes}\n",

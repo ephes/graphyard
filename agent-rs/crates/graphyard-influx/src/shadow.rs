@@ -13,12 +13,32 @@ pub(crate) struct ShadowFile {
 }
 
 impl ShadowFile {
+    /// Validate the existing capture once, before collectors start, so the
+    /// first append of a process only scans what cooperating writers added
+    /// since. An invalid capture, or a lock that cannot be taken in time,
+    /// keeps offset 0: the append path then validates (and refuses) as before.
     pub fn new(file: File) -> Self {
+        let validated_end = validated_at_open(&file).unwrap_or(0);
         Self {
             file,
-            validated_end: 0,
+            validated_end,
         }
     }
+}
+
+fn validated_at_open(file: &File) -> Option<u64> {
+    let deadline = std::time::Instant::now() + Duration::from_secs(5);
+    loop {
+        match file.try_lock() {
+            Ok(()) => break,
+            Err(std::fs::TryLockError::WouldBlock) if std::time::Instant::now() < deadline => {
+                std::thread::sleep(Duration::from_millis(10));
+            }
+            Err(_) => return None,
+        }
+    }
+    let _locked = Locked(file);
+    validate(file, 0).ok()
 }
 
 // The descriptor stays open; never unlink/replace the inode while writers run.
@@ -156,6 +176,37 @@ pub(crate) async fn append(file: &Mutex<ShadowFile>, record: &[u8]) -> io::Resul
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn record(value: usize) -> String {
+        let body = format!("m,host=synthetic value={value} 123\n");
+        format!(
+            "# write 2026-10-21T08:15:30Z points=1 bytes={}\n{body}# commit points=1 bytes={}\n",
+            body.len(),
+            body.len()
+        )
+    }
+
+    #[test]
+    fn an_existing_capture_is_validated_once_at_open() {
+        let mut file = tempfile::tempfile().unwrap();
+        for value in 0..20_000 {
+            file.write_all(record(value).as_bytes()).unwrap();
+        }
+        let len = file.metadata().unwrap().len();
+        // The first append then only scans what other writers added since.
+        assert_eq!(ShadowFile::new(file).validated_end, len);
+    }
+
+    #[test]
+    fn an_incomplete_capture_at_open_is_left_for_the_append_path_to_refuse() {
+        let mut file = tempfile::tempfile().unwrap();
+        file.write_all(record(1).as_bytes()).unwrap();
+        file.write_all(b"# write 2026-10-21T08:15:30Z points=2 bytes=100\npartial\n")
+            .unwrap();
+        let state = ShadowFile::new(file);
+        assert_eq!(state.validated_end, 0);
+        assert!(validate(&state.file, state.validated_end).is_err());
+    }
 
     #[test]
     fn every_interrupted_prefix_preserves_the_last_complete_boundary() {

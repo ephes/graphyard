@@ -339,7 +339,10 @@ endpoints are synthetic; gates exist only in the test executable.
   sparse label work and conflicting versus identical equal-time observations.
 - Shadow: `tests/write_file.rs::r102_*`, `shadow.rs::tests` and the Python shadow
   reader regression cover private regular opens, partial tails, every interrupted
-  batch prefix, subprocess exclusion, lock expiry and process-death release.
+  batch prefix, subprocess exclusion, lock expiry and process-death release;
+  `shadow.rs::tests::an_existing_capture_is_validated_once_at_open` and
+  `write_file.rs::shadow_refuses_hash_measurement_rows_and_stays_appendable`
+  cover open-time validation and `#`-prefixed rows.
 - Writes: `tests/write_points.rs::r102_accepted_binary_write_counts_once` and
   Python transfer tests cover charset-independent accepted writes; existing
   truncated/oversized transfer cases retain uncertain acceptance without replay.
