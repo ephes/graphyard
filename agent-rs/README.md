@@ -236,7 +236,10 @@ the Rust ones. `just rs-parity` runs separately (CI job `parity`).
 
 Shadow append I/O runs on Tokio's blocking pool, one queued/running job per
 writer. Cancellation retains the job's admission and file lock until completion;
-filesystem writes and sync are not interruptible. See the
+filesystem writes and sync are not interruptible. Startup and later suffix
+validation each admit 64 MiB, 250,000 total lines and five seconds of cooperative
+monotonic scan work. Over-budget captures remain nonqualified and unchanged;
+stop writers and rotate, or qualify the preserved history offline. See the
 [shadow framing and recovery contract](../docs/agent-rs.md#complete-shadow-batches-and-recovery)
 for uncertain acceptance and operator recovery.
 

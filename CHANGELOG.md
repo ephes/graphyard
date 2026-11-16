@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Refuse over-budget Rust shadow reopen/suffix validation before publication:
+  64 MiB, 250,000 total lines and five seconds per scan, preserving evidence and
+  verified offsets with explicit rotation/offline-qualification guidance.
+
 - Run Rust shadow validation, append and sync off the async runtime, retaining
   job capacity and file-lock ownership through caller cancellation.
 

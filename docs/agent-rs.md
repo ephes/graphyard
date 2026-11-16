@@ -496,11 +496,31 @@ file while writers are running; locks do not exclude noncooperating writers.
 
 Opening the capture validates the existing file once under the same lock (up to
 five seconds of lock wait) before collectors start, so the first append of a
-process only checks what cooperating writers added since; an invalid or locked
-capture is left to the append path, which refuses it. Batches whose line
+process only checks what cooperating writers added since. Invalid, over-budget
+or locked captures remain nonqualified at offset zero; append must validate them
+before any write rather than treating them as empty. Batches whose line
 protocol rows start with `#` (an `INFLUX_MEASUREMENT` beginning with `#`, which
 InfluxDB reads as a comment) are refused before appending, so they never make
 the capture unreadable for later writers or the comparison tool.
+
+Each startup scan and each later suffix scan admits at most **64 MiB**, **250,000
+lines** (headers, points, trailers, comments and blank lines combined), and
+**five seconds** of monotonic validation work. Bytes are admitted from locked file
+metadata before reading; reads stay within that snapshot. Line and elapsed work
+are checked before each line, elapsed work again after each bounded line and
+before success. The time limit is cooperative: a stalled filesystem call or sync
+cannot be interrupted. Startup lock wait has its separate five-second limit;
+append lock/queue wait retains its one-second limit above.
+
+Over-budget evidence is refused, never accepted as empty. Errors report the
+budget and last complete offset; neither the capture bytes nor the writer's
+previously qualified offset change. Repeated refusals do not incrementally
+qualify an oversized history. A writer's own synced batches advance its offset,
+so a capture can grow past the reopen envelope while it runs. Plan rotation
+before those reopen limits: stop all writers, preserve the full private capture,
+and start a separate file. Qualify larger historical captures offline with
+explicit operator-controlled resources; the agent never trims or resets them
+and the comparison tool does not share this online validation envelope.
 
 An incomplete tail refuses subsequent appends without modifying earlier evidence.
 The error reports the last complete byte offset. Stop all writers, preserve a
