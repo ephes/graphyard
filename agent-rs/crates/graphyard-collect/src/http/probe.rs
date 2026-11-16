@@ -135,7 +135,7 @@ pub async fn run_page_probe(
         response.set_body_limit(max_body_bytes.saturating_sub(body_bytes));
         let headers_received_at = Instant::now();
         while let Some(chunk) = response.chunk().await.map_err(|err| {
-            if err.kind == ErrorKind::LimitExceeded {
+            if err.is_body_limit() {
                 HttpError::body_limit(max_body_bytes)
             } else {
                 err

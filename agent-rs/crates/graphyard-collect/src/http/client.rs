@@ -40,6 +40,10 @@ pub const USER_AGENT: &str = "python-httpx/0.28.1";
 pub const ACCEPT_ENCODING: &str = "gzip, deflate";
 /// `httpx.Client().max_redirects`.
 pub const MAX_REDIRECTS: u32 = 20;
+/// Retained cookies per spec execution, including expired entries.
+const MAX_COOKIE_COUNT: usize = 256;
+/// Combined retained cookie name/value bytes per execution.
+const MAX_COOKIE_BYTES: usize = 64 * 1024;
 /// `_PAGE_PROBE_CLOSE_JOIN_SECONDS`: how long a cancelled request's lookups
 /// may keep running before they count as abandoned.
 pub const CLOSE_JOIN: Duration = Duration::from_secs(1);
@@ -225,8 +229,11 @@ impl Request {
         };
         let url = self.redirect_url(location)?;
         let mut headers = self.headers.clone();
-        if !same_origin(&url, &self.url) && !is_https_redirect(&self.url, &url) {
-            remove_header(&mut headers, "Authorization");
+        if !same_origin(&url, &self.url) {
+            set_header(&mut headers, "Host", &url.netloc());
+            if !is_https_redirect(&self.url, &url) {
+                remove_header(&mut headers, "Authorization");
+            }
         }
         let mut body = self.body.clone();
         if method != self.method && method == Method::Get {
@@ -354,7 +361,8 @@ impl Response {
         }
     }
 
-    /// Set the cumulative output allowance of every decoding stage before reading.
+    /// Set each stage's cumulative output allowance before reading, and the raw
+    /// allowance to min(64 MiB, limit + 64 KiB) for this response.
     pub fn set_body_limit(&mut self, limit: u64) {
         self.decoder.set_limit(limit);
     }
@@ -368,7 +376,14 @@ impl Response {
         while let Some(frame) = self.body.frame().await {
             let frame = frame.map_err(|err| HttpError::transport(&err, true))?;
             if let Ok(data) = frame.into_data() {
-                let decoded = self.decoder.decode(&data)?;
+                let decoded = match self.decoder.decode(&data) {
+                    Ok(decoded) => decoded,
+                    Err(err) => {
+                        // Retire immediately even if the caller retains Response.
+                        self._connection.0.abort();
+                        return Err(err);
+                    }
+                };
                 if !decoded.is_empty() {
                     return Ok(Some(Bytes::from(decoded)));
                 }
@@ -377,7 +392,8 @@ impl Response {
         Ok(None)
     }
 
-    /// The whole decoded body (`response.read()`), without a cap.
+    /// The whole decoded body (`response.read()`), with the raw transport cap
+    /// and any installed decoding-stage allowance.
     ///
     /// # Errors
     /// The read, timeout or decoding error.
@@ -539,7 +555,7 @@ impl HttpClient {
             .await
             .map_err(|err| HttpError::transport(&err, false))?;
         let (parts, body) = response.into_parts();
-        self.store_cookies(url, &parts.headers);
+        self.store_cookies(url, &parts.headers)?;
         let status = parts.status.as_u16();
         let server_reason = parts
             .extensions
@@ -562,7 +578,7 @@ impl HttpClient {
         let encodings = header_text(&parts.headers, "content-encoding").unwrap_or_default();
         let mut response = Response {
             body,
-            decoder: BodyDecoder::new(encodings.split(',')),
+            decoder: BodyDecoder::new(encodings.split(','))?,
             headers: parts.headers,
             _connection: connection,
             status,
@@ -663,7 +679,9 @@ impl HttpClient {
             let value = HeaderValue::from_str(value).map_err(|err| local(&err))?;
             headers.insert(name, value);
         }
-        if let Some(cookie) = self.cookie_header(&request.url) {
+        if !headers.contains_key(hyper::header::COOKIE)
+            && let Some(cookie) = self.cookie_header(&request.url)
+        {
             headers.insert(hyper::header::COOKIE, cookie);
         }
         Ok(outgoing)
@@ -686,20 +704,48 @@ impl HttpClient {
         HeaderValue::from_str(&text).ok()
     }
 
-    fn store_cookies(&self, url: &HttpxUrl, headers: &HeaderMap) {
+    fn store_cookies(&self, url: &HttpxUrl, headers: &HeaderMap) -> Result<(), HttpError> {
         let Some(url) = cookie_url(url) else {
-            return;
+            return Ok(());
         };
         let cookies: Vec<RawCookie<'static>> = headers
             .get_all(hyper::header::SET_COOKIE)
             .iter()
             .filter_map(|value| value.to_str().ok())
             .filter_map(|text| RawCookie::parse(text.to_owned()).ok())
+            // Match Python's top-level-domain refusal using the cookie parser's
+            // public domain API. Host-only cookies on local names remain valid.
+            // Trim every leading/trailing dot so `..com` or `com.` cannot pass as
+            // dotted, independent of the parser's normalization.
+            .filter(|cookie| {
+                cookie
+                    .domain()
+                    .is_none_or(|domain| domain.trim_matches('.').contains('.'))
+            })
             .collect();
         if !cookies.is_empty() {
             let mut jar = self.jar.lock().unwrap_or_else(PoisonError::into_inner);
-            jar.store_response_cookies(cookies.into_iter(), &url);
+            // Admit the whole response transactionally. A refused update leaves
+            // the prior bounded jar intact, including on replacements/deletions.
+            let mut candidate = jar.clone();
+            for cookie in cookies {
+                let _ = candidate.insert_raw(&cookie, &url);
+                let mut count = 0;
+                let mut bytes = 0;
+                for stored in candidate.iter_any() {
+                    count += 1;
+                    bytes += stored.name().len() + stored.value().len();
+                    if count > MAX_COOKIE_COUNT || bytes > MAX_COOKIE_BYTES {
+                        return Err(HttpError::new(
+                            ErrorKind::LimitExceeded,
+                            "collector cookie jar limit exceeded",
+                        ));
+                    }
+                }
+            }
+            *jar = candidate;
         }
+        Ok(())
     }
 }
 

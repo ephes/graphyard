@@ -4,7 +4,8 @@
 //! (`br`, `zstd`: not installed with the Python agent) passes through. The
 //! decoded bytes are what `iter_bytes()` yields and what `max_body_bytes`
 //! counts. When a limit is installed, every intermediate stage also shares
-//! that output allowance, before its vector can grow.
+//! that output allowance, before its vector can grow. Raw input is independently
+//! capped before decoding, even when it emits no output.
 //!
 //! Like `zlib.decompressobj`, a truncated stream is not an error and bytes
 //! after the end of a stream are ignored. Corrupt data is a
@@ -134,36 +135,65 @@ impl Stage {
     }
 }
 
+/// Maximum recognized Content-Encoding layers, including identity.
+const MAX_DECODER_STAGES: usize = 4;
+/// Raw response ceiling, including otherwise unbounded response.read() paths.
+const MAX_ENCODED_BYTES: u64 = 64 * 1024 * 1024;
+/// Encoding metadata/overhead allowance above an installed decoded byte cap.
+const ENCODING_OVERHEAD_BYTES: u64 = 64 * 1024;
+
 /// The decoder of one response body.
 pub(crate) struct BodyDecoder {
     /// In decoding order (the reverse of the header order).
     stages: Vec<Stage>,
     identity: Output,
+    encoded_remaining: u64,
 }
 
 impl BodyDecoder {
     /// `_get_content_decoder` for the comma-split `Content-Encoding` values.
-    pub(crate) fn new<'a>(encodings: impl IntoIterator<Item = &'a str>) -> Self {
-        let mut stages: Vec<Stage> = encodings
+    pub(crate) fn new<'a>(encodings: impl IntoIterator<Item = &'a str>) -> Result<Self, HttpError> {
+        // Admit names before allocating any inflater state. Unsupported tokens
+        // retain httpx's pass-through behavior and do not create stages.
+        let mut admitted = Vec::with_capacity(MAX_DECODER_STAGES);
+        for value in encodings {
+            let value = value.trim();
+            if ["identity", "gzip", "deflate"]
+                .iter()
+                .any(|name| value.eq_ignore_ascii_case(name))
+            {
+                if admitted.len() == MAX_DECODER_STAGES {
+                    return Err(HttpError::new(
+                        ErrorKind::LimitExceeded,
+                        "collector content encoding stage limit exceeded",
+                    ));
+                }
+                admitted.push(value);
+            }
+        }
+        let stages = admitted
             .into_iter()
-            .filter_map(|value| match value.trim().to_ascii_lowercase().as_str() {
-                "identity" => Some(Stage::Identity(Output::default())),
-                "gzip" => Some(Stage::Gzip(Box::new(GzDecoder::new(Output::default())))),
-                "deflate" => Some(Stage::Zlib(
-                    Box::new(ZlibDecoder::new(Output::default())),
-                    true,
-                )),
-                _ => None,
+            .rev()
+            .map(|value| {
+                if value.eq_ignore_ascii_case("gzip") {
+                    Stage::Gzip(Box::new(GzDecoder::new(Output::default())))
+                } else if value.eq_ignore_ascii_case("deflate") {
+                    Stage::Zlib(Box::new(ZlibDecoder::new(Output::default())), true)
+                } else {
+                    Stage::Identity(Output::default())
+                }
             })
             .collect();
-        stages.reverse();
-        Self {
+        Ok(Self {
             stages,
             identity: Output::default(),
-        }
+            encoded_remaining: MAX_ENCODED_BYTES,
+        })
     }
 
     pub(crate) fn set_limit(&mut self, limit: u64) {
+        self.encoded_remaining =
+            MAX_ENCODED_BYTES.min(limit.saturating_add(ENCODING_OVERHEAD_BYTES));
         self.identity.set_limit(limit);
         for stage in &mut self.stages {
             stage.set_limit(limit);
@@ -174,8 +204,19 @@ impl BodyDecoder {
     ///
     /// # Errors
     /// `DecodingError` for corrupt compressed data, or `LimitExceeded` when
-    /// any stage exceeds its installed cumulative output allowance.
+    /// raw input or any stage exceeds its cumulative allowance.
     pub(crate) fn decode(&mut self, data: &[u8]) -> Result<Vec<u8>, HttpError> {
+        // Charge the complete transport chunk before any inflater sees it,
+        // including metadata, nonproductive input and bytes after stream end.
+        self.encoded_remaining = self
+            .encoded_remaining
+            .checked_sub(data.len() as u64)
+            .ok_or_else(|| {
+                HttpError::new(
+                    ErrorKind::LimitExceeded,
+                    "collector encoded response byte limit exceeded",
+                )
+            })?;
         if self.stages.is_empty() {
             self.identity
                 .write_all(data)
@@ -216,7 +257,7 @@ mod tests {
             ("deflate", z.finish().unwrap()),
             ("deflate", raw.finish().unwrap()),
         ] {
-            let mut d = BodyDecoder::new([encoding]);
+            let mut d = BodyDecoder::new([encoding]).unwrap();
             d.set_limit(32);
             assert_eq!(d.decode(&data).unwrap_err().kind, ErrorKind::LimitExceeded);
         }
@@ -224,24 +265,73 @@ mod tests {
     #[test]
     fn intermediate_stage_is_bounded_even_when_final_output_is_small() {
         let data = gzip(&gzip(b"x"));
-        let mut d = BodyDecoder::new(["gzip", "gzip"]);
+        let mut d = BodyDecoder::new(["gzip", "gzip"]).unwrap();
         d.set_limit(16);
         assert_eq!(d.decode(&data).unwrap_err().kind, ErrorKind::LimitExceeded);
     }
     #[test]
     fn split_chunks_keep_one_cumulative_allowance() {
         let data = gzip(b"synthetic normal output");
-        let mut d = BodyDecoder::new(["gzip"]);
+        let mut d = BodyDecoder::new(["gzip"]).unwrap();
         d.set_limit(23);
         let mut result = Vec::new();
         for chunk in data.chunks(3) {
             result.extend(d.decode(chunk).unwrap());
         }
         assert_eq!(result, b"synthetic normal output");
-        let mut d = BodyDecoder::new(["identity"]);
+        let mut d = BodyDecoder::new(["identity"]).unwrap();
         d.set_limit(4);
         assert_eq!(d.decode(b"ab").unwrap(), b"ab");
         assert_eq!(d.decode(b"cd").unwrap(), b"cd");
         assert_eq!(d.decode(b"e").unwrap_err().kind, ErrorKind::LimitExceeded);
+    }
+
+    #[test]
+    fn exact_stage_limit_and_unsupported_tokens_keep_decoding_semantics() {
+        let mut decoder = BodyDecoder::new(["identity"; MAX_DECODER_STAGES]).unwrap();
+        decoder.set_limit(2);
+        assert_eq!(decoder.decode(b"ok").unwrap(), b"ok");
+        assert!(BodyDecoder::new(["identity"; MAX_DECODER_STAGES + 1]).is_err());
+        let mut decoder = BodyDecoder::new(["unsupported", " GZip "]).unwrap();
+        decoder.set_limit(100);
+        let data = gzip(&gzip(b"ok"));
+        let mut stacked = BodyDecoder::new(["gzip", "gzip"]).unwrap();
+        stacked.set_limit(100);
+        assert_eq!(stacked.decode(&data).unwrap(), b"ok");
+        assert_eq!(decoder.decode(&gzip(b"ok")).unwrap(), b"ok");
+    }
+    #[test]
+    fn encoded_bytes_have_one_cumulative_allowance_before_decoding() {
+        let mut decoder = BodyDecoder::new(["gzip"]).unwrap();
+        decoder.set_limit(1);
+        let mut header = vec![0x1f, 0x8b, 8, 8, 0, 0, 0, 0, 0, 0xff];
+        header.resize(65537, b'f');
+        for chunk in header.chunks(1024) {
+            assert!(decoder.decode(chunk).unwrap().is_empty());
+        }
+        assert_eq!(
+            decoder.decode(b"f").unwrap_err().message,
+            "collector encoded response byte limit exceeded"
+        );
+    }
+    #[test]
+    fn default_raw_ceiling_also_charges_ignored_trailing_bytes() {
+        let mut decoder = BodyDecoder::new(["gzip"]).unwrap();
+        let encoded = gzip(b"");
+        assert!(decoder.decode(&encoded).unwrap().is_empty());
+        let padding = vec![0; 1024 * 1024];
+        for _ in 0..63 {
+            assert!(decoder.decode(&padding).unwrap().is_empty());
+        }
+        assert!(
+            decoder
+                .decode(&padding[..padding.len() - encoded.len()])
+                .unwrap()
+                .is_empty()
+        );
+        assert_eq!(
+            decoder.decode(b"x").unwrap_err().message,
+            "collector encoded response byte limit exceeded"
+        );
     }
 }

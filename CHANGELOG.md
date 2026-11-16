@@ -2,6 +2,26 @@
 
 ## Unreleased
 
+- Charge raw Rust collector response bytes before decoding: at most 64 MiB per
+  response, tightened to the decoded allowance plus 64 KiB when smaller. Abort
+  overflowing connections without accepting partial successful metrics.
+
+- Admit at most four recognized Rust collector Content-Encoding layers before
+  allocating decoders or reading the response body.
+
+- Bound Rust collector cookie jars to 256 retained entries and 64 KiB of names
+  and values per execution. Reject overflowing responses before publication,
+  with a fixed diagnostic and without changing the previous jar.
+
+- Ignore explicit single-label cookie domains in Rust collectors to prevent
+  top-level-domain credential propagation across unrelated hosts.
+
+- Honor explicit Rust collector Cookie headers ahead of jar credentials;
+  redirects continue to rebuild destination cookies from the jar.
+
+- Refresh explicit Rust collector Host headers on cross-origin redirects, while
+  preserving same-origin virtual hosts and the existing authorization policy.
+
 - Refuse over-budget Rust shadow reopen/suffix validation before publication:
   64 MiB, 250,000 total lines and five seconds per scan, preserving evidence and
   verified offsets with explicit rotation/offline-qualification guidance.

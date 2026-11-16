@@ -90,6 +90,10 @@ timeout per connect, TLS handshake and socket read/write); httpx's URL model
 with the abandoned-lookup cap (`run_with_deadline`), the JSON reader, the
 page-probe redirect loop and automatic redirects. Pinned by
 `http_errors.json` and fake-server tests; the executors follow in S7a/S7b.
+The [HTTP admission contracts](../docs/agent-rs.md#http-request-header-authority)
+document explicit Host/Cookie precedence, cookie-domain and retention limits,
+and the decoder-count/raw-byte envelope. These security admissions are pinned
+by synthetic loopback regressions in `http/tests/admission.rs`.
 
 Slice S7b adds the first executors in `graphyard-collect::executors`
 (PLAN.md 6.3): `http_page_probe` (the probe under the total deadline, five

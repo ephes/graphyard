@@ -557,3 +557,63 @@ the wire/field/output limits. Expiry keeps the existing Flux total-deadline
 category and discards all partial records/samples. Python's synchronous CSV
 library remains outside its async transfer timeout; the cooperative scheduling
 change is Rust-specific.
+
+### HTTP request header authority
+
+Rust redirects preserve a custom `Host` on the same origin. A changed origin
+uses the destination authority (including port and IPv6 brackets), as httpx
+0.28.1 does. Authorization is still removed on cross-origin redirects except
+for the existing same-host HTTP-to-HTTPS upgrade rule.
+
+Explicit request/client `Cookie` headers, including an empty header, take
+precedence over the per-execution jar. Redirects remove that explicit header
+and reconstruct cookies from the jar for the destination, matching httpx.
+
+### HTTP cookie scope admission
+
+The Rust jar ignores cookies with an explicit single-label `Domain` (for example
+`com`, `.com`, `..com` or `com.`), preventing transfer between unrelated sites
+under that label. The check ignores all leading and trailing dots itself instead
+of relying on the cookie parser's normalization; the jar's normal
+domain/path/secure matching still applies. Host-only cookies (including local
+names) and ordinary multi-label domain cookies remain supported. This preserves
+Python's top-level-domain refusal for public hosts; it deliberately also refuses
+explicit local single-label domains. This is not a full public suffix list check:
+for example `co.uk` retains the pinned Python client's compatibility behavior.
+
+Each spec execution retains at most 256 cookies and 64 KiB of combined UTF-8
+name/value bytes across all responses and redirects. Replacements charge their
+current size, not their history; expired entries still retained by `cookie_store`
+count toward both limits. Domain/path metadata is separately bounded by the
+100 KiB response-header ceiling and cookie count. An overflowing response leaves
+the previous jar intact, closes its connection and fails collection with
+`collector cookie jar limit exceeded`, before publishing any successful metric
+or registry update (page probes retain their normal failure metrics). New specs
+start with an independent empty jar. This finite retention policy is Rust-specific;
+normal UniFi session cookies remain supported.
+
+### HTTP compressed transport work limits
+
+All Rust collector response paths admit at most four recognized Content-Encoding
+layers (`gzip`, `deflate`, `identity`, case insensitive), including identity
+layers. Names are checked before constructing any decoder or reading the body;
+an excessive stack fails with `collector content encoding stage limit exceeded`.
+The limit is Rust-specific. Two-layer compressed bodies remain supported;
+unsupported tokens still pass through and truncated streams retain the existing
+httpx-compatible behavior. Installed `max_body_bytes` allowances still apply
+cumulatively to every decoded stage, including intermediate output.
+
+Raw response-body bytes have a separate cumulative allowance **per response**:
+64 MiB by default, tightened to `min(64 MiB, max_body_bytes + 64 KiB)` when a
+decoded cap is installed. For page-probe redirects, `max_body_bytes` here is
+the remaining decoded allowance; at most 21 response bodies can be encountered
+under the existing redirect cap. This also bounds automatic redirect body reads.
+The extra 64 KiB admits ordinary gzip/deflate metadata and framing for small
+payloads. Raw bytes count before any decoder runs, including nonproductive
+input, optional gzip fields and ignored bytes after stream end; HTTP chunk
+framing and response headers are outside this body count. Overflow aborts the
+connection immediately and returns `collector encoded response byte limit exceeded`,
+without accepting a partial successful metric or registry update. Page probes
+retain normal warning/failure metrics and preserve this diagnostic across redirects.
+This Rust-specific security admission can reject large compressed metadata or
+incompressible transfers even when their final decoded payload would fit.

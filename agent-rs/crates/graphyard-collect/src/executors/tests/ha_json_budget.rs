@@ -419,3 +419,69 @@ async fn ha_malformed_identity_is_counted_without_discarding_valid_neighbors() {
         assert!(sink.touched.borrow().is_none());
     }
 }
+
+#[tokio::test]
+async fn cookie_jar_refusal_publishes_no_metrics() {
+    let server = Server::start(|_| {
+        let cookies: Vec<_> = (0..257).map(|i| format!("c{i}=x; Path=/")).collect();
+        let headers: Vec<_> = cookies.iter().map(|v| ("Set-Cookie", v.as_str())).collect();
+        response("200 OK", &headers, br#"{"value":7}"#)
+    })
+    .await;
+    let config =
+        json!({"url": server.origin(), "metric_path": "$.value", "metric_name": "queue.depth"});
+    let sink = ClockedSink::new(now_utc());
+    let outcome = run(
+        "http_json_metric",
+        &HttpContext::new(),
+        &sink,
+        &mut RunState::new(),
+        &config,
+    )
+    .await;
+    assert_eq!(
+        outcome,
+        SpecOutcome::new(
+            StatusLevel::Critical,
+            0,
+            0,
+            "collector cookie jar limit exceeded"
+        )
+    );
+    assert!(sink.written.borrow().is_none());
+    assert!(sink.touched.borrow().is_none());
+}
+
+#[tokio::test]
+async fn encoded_byte_refusal_publishes_no_metrics() {
+    use std::io::Write as _;
+    let mut encoder = flate2::GzBuilder::new()
+        .filename(vec![b'f'; 40_000])
+        .comment(vec![b'c'; 40_000])
+        .write(Vec::new(), flate2::Compression::fast());
+    encoder.write_all(br#"{"value":7}"#).unwrap();
+    let body = encoder.finish().unwrap();
+    let server =
+        Server::start(move |_| response("200 OK", &[("Content-Encoding", "gzip")], &body)).await;
+    let config = json!({"url": server.origin(), "metric_path": "$.value", "metric_name": "queue.depth", "max_body_bytes":16});
+    let sink = ClockedSink::new(now_utc());
+    let outcome = run(
+        "http_json_metric",
+        &HttpContext::new(),
+        &sink,
+        &mut RunState::new(),
+        &config,
+    )
+    .await;
+    assert_eq!(
+        outcome,
+        SpecOutcome::new(
+            StatusLevel::Critical,
+            0,
+            0,
+            "collector encoded response byte limit exceeded"
+        )
+    );
+    assert!(sink.written.borrow().is_none());
+    assert!(sink.touched.borrow().is_none());
+}

@@ -1220,6 +1220,14 @@ supported. Limit failures retain the existing body-limit category. This tighter
 preallocation guard is Rust-specific; Python's general HTTP decoders still check
 decoded chunks afterward. UniFi uses the separate identity-only policy above.
 
+Rust additionally admits at most four recognized encoding layers before building
+any decoders. Every response has a 64 MiB raw-body ceiling, tightened to the
+installed decoded allowance plus 64 KiB when smaller, so gzip metadata and
+nonproductive input also consume a finite budget. Overflow closes the connection
+and refuses successful metric publication. See the [HTTP transport and cookie
+admission contracts](docs/agent-rs.md#http-request-header-authority) for exact
+limits, explicit Host/Cookie precedence and Rust-specific compatibility changes.
+
 Inventory JSON rejects duplicate object names at every depth, including escaped
 equivalents, before storing reports or changing category pointers. Repeated array
 entries remain valid. All inventory reader HTML, JSON and SBOM responses carry
