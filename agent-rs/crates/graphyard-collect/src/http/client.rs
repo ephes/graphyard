@@ -569,7 +569,7 @@ impl HttpClient {
         let encodings = header_text(&parts.headers, "content-encoding").unwrap_or_default();
         let mut response = Response {
             body,
-            decoder: BodyDecoder::new(encodings.split(',')),
+            decoder: BodyDecoder::new(encodings.split(','))?,
             headers: parts.headers,
             _connection: connection,
             status,

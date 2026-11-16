@@ -134,6 +134,9 @@ impl Stage {
     }
 }
 
+/// Maximum recognized Content-Encoding layers, including identity.
+const MAX_DECODER_STAGES: usize = 4;
+
 /// The decoder of one response body.
 pub(crate) struct BodyDecoder {
     /// In decoding order (the reverse of the header order).
@@ -143,24 +146,42 @@ pub(crate) struct BodyDecoder {
 
 impl BodyDecoder {
     /// `_get_content_decoder` for the comma-split `Content-Encoding` values.
-    pub(crate) fn new<'a>(encodings: impl IntoIterator<Item = &'a str>) -> Self {
-        let mut stages: Vec<Stage> = encodings
+    pub(crate) fn new<'a>(encodings: impl IntoIterator<Item = &'a str>) -> Result<Self, HttpError> {
+        // Admit names before allocating any inflater state. Unsupported tokens
+        // retain httpx's pass-through behavior and do not create stages.
+        let mut admitted = Vec::with_capacity(MAX_DECODER_STAGES);
+        for value in encodings {
+            let value = value.trim();
+            if ["identity", "gzip", "deflate"]
+                .iter()
+                .any(|name| value.eq_ignore_ascii_case(name))
+            {
+                if admitted.len() == MAX_DECODER_STAGES {
+                    return Err(HttpError::new(
+                        ErrorKind::LimitExceeded,
+                        "collector content encoding stage limit exceeded",
+                    ));
+                }
+                admitted.push(value);
+            }
+        }
+        let stages = admitted
             .into_iter()
-            .filter_map(|value| match value.trim().to_ascii_lowercase().as_str() {
-                "identity" => Some(Stage::Identity(Output::default())),
-                "gzip" => Some(Stage::Gzip(Box::new(GzDecoder::new(Output::default())))),
-                "deflate" => Some(Stage::Zlib(
-                    Box::new(ZlibDecoder::new(Output::default())),
-                    true,
-                )),
-                _ => None,
+            .rev()
+            .map(|value| {
+                if value.eq_ignore_ascii_case("gzip") {
+                    Stage::Gzip(Box::new(GzDecoder::new(Output::default())))
+                } else if value.eq_ignore_ascii_case("deflate") {
+                    Stage::Zlib(Box::new(ZlibDecoder::new(Output::default())), true)
+                } else {
+                    Stage::Identity(Output::default())
+                }
             })
             .collect();
-        stages.reverse();
-        Self {
+        Ok(Self {
             stages,
             identity: Output::default(),
-        }
+        })
     }
 
     pub(crate) fn set_limit(&mut self, limit: u64) {
@@ -216,7 +237,7 @@ mod tests {
             ("deflate", z.finish().unwrap()),
             ("deflate", raw.finish().unwrap()),
         ] {
-            let mut d = BodyDecoder::new([encoding]);
+            let mut d = BodyDecoder::new([encoding]).unwrap();
             d.set_limit(32);
             assert_eq!(d.decode(&data).unwrap_err().kind, ErrorKind::LimitExceeded);
         }
@@ -224,24 +245,39 @@ mod tests {
     #[test]
     fn intermediate_stage_is_bounded_even_when_final_output_is_small() {
         let data = gzip(&gzip(b"x"));
-        let mut d = BodyDecoder::new(["gzip", "gzip"]);
+        let mut d = BodyDecoder::new(["gzip", "gzip"]).unwrap();
         d.set_limit(16);
         assert_eq!(d.decode(&data).unwrap_err().kind, ErrorKind::LimitExceeded);
     }
     #[test]
     fn split_chunks_keep_one_cumulative_allowance() {
         let data = gzip(b"synthetic normal output");
-        let mut d = BodyDecoder::new(["gzip"]);
+        let mut d = BodyDecoder::new(["gzip"]).unwrap();
         d.set_limit(23);
         let mut result = Vec::new();
         for chunk in data.chunks(3) {
             result.extend(d.decode(chunk).unwrap());
         }
         assert_eq!(result, b"synthetic normal output");
-        let mut d = BodyDecoder::new(["identity"]);
+        let mut d = BodyDecoder::new(["identity"]).unwrap();
         d.set_limit(4);
         assert_eq!(d.decode(b"ab").unwrap(), b"ab");
         assert_eq!(d.decode(b"cd").unwrap(), b"cd");
         assert_eq!(d.decode(b"e").unwrap_err().kind, ErrorKind::LimitExceeded);
+    }
+
+    #[test]
+    fn exact_stage_limit_and_unsupported_tokens_keep_decoding_semantics() {
+        let mut decoder = BodyDecoder::new(["identity"; MAX_DECODER_STAGES]).unwrap();
+        decoder.set_limit(2);
+        assert_eq!(decoder.decode(b"ok").unwrap(), b"ok");
+        assert!(BodyDecoder::new(["identity"; MAX_DECODER_STAGES + 1]).is_err());
+        let mut decoder = BodyDecoder::new(["unsupported", " GZip "]).unwrap();
+        decoder.set_limit(100);
+        let data = gzip(&gzip(b"ok"));
+        let mut stacked = BodyDecoder::new(["gzip", "gzip"]).unwrap();
+        stacked.set_limit(100);
+        assert_eq!(stacked.decode(&data).unwrap(), b"ok");
+        assert_eq!(decoder.decode(&gzip(b"ok")).unwrap(), b"ok");
     }
 }

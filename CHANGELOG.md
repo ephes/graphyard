@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Admit at most four recognized Rust collector Content-Encoding layers before
+  allocating decoders or reading the response body.
+
 - Bound Rust collector cookie jars to 256 retained entries and 64 KiB of names
   and values per execution. Reject overflowing responses before publication,
   with a fixed diagnostic and without changing the previous jar.

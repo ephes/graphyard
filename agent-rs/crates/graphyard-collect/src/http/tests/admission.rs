@@ -219,3 +219,30 @@ async fn cookie_jar_bytes_account_for_replacements_without_accumulating() {
         }
     }
 }
+
+#[tokio::test]
+async fn excessive_content_encoding_is_refused_before_reading_body() {
+    use super::server::Reply;
+    use std::time::Duration;
+    for encodings in ["gzip, identity,".repeat(6000), "identity, ".repeat(5)] {
+        let server = Server::start(move |_| Reply::Drip {
+            prefix: format!(
+                "HTTP/1.1 200 OK\r\nContent-Encoding: {encodings}\r\nConnection: close\r\n\r\n"
+            )
+            .into_bytes(),
+            drip: b"x".to_vec(),
+            interval: Duration::from_secs(5),
+            give_up: Duration::from_secs(5),
+        })
+        .await;
+        let client = HttpClient::new(&HttpContext::new(), &ClientOptions::new(0.5, true));
+        let request = client
+            .build_request(Method::Get, &server.origin(), &[], None)
+            .unwrap();
+        let err = client.send(&request).await.unwrap_err();
+        assert_eq!(
+            err.message,
+            "collector content encoding stage limit exceeded"
+        );
+    }
+}

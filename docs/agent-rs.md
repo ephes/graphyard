@@ -590,3 +590,14 @@ the previous jar intact, closes its connection and fails collection with
 or registry update (page probes retain their normal failure metrics). New specs
 start with an independent empty jar. This finite retention policy is Rust-specific;
 normal UniFi session cookies remain supported.
+
+### HTTP compressed transport work limits
+
+All Rust collector response paths admit at most four recognized Content-Encoding
+layers (`gzip`, `deflate`, `identity`, case insensitive), including identity
+layers. Names are checked before constructing any decoder or reading the body;
+an excessive stack fails with `collector content encoding stage limit exceeded`.
+The limit is Rust-specific. Two-layer compressed bodies remain supported;
+unsupported tokens still pass through and truncated streams retain the existing
+httpx-compatible behavior. Installed `max_body_bytes` allowances still apply
+cumulatively to every decoded stage, including intermediate output.
