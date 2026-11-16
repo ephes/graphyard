@@ -216,6 +216,24 @@ fn validate(file: &File, start: u64, limits: ValidationLimits) -> io::Result<u64
     Ok(complete)
 }
 
+fn admit_record(record: &[u8], limits: ValidationLimits) -> io::Result<()> {
+    if record.len() as u64 > limits.bytes {
+        return Err(record_budget("bytes"));
+    }
+    let lines = record.iter().filter(|&&byte| byte == b'\n').count()
+        + usize::from(!record.is_empty() && !record.ends_with(b"\n"));
+    if lines > limits.lines {
+        return Err(record_budget("lines"));
+    }
+    Ok(())
+}
+
+fn record_budget(kind: &str) -> io::Error {
+    io::Error::other(format!(
+        "shadow record exceeds validation {kind} budget; refused before write"
+    ))
+}
+
 pub(crate) async fn append(file: &Arc<Mutex<ShadowFile>>, record: &[u8]) -> io::Result<()> {
     append_with(file, record, || {}).await
 }
@@ -233,6 +251,8 @@ async fn append_with(
         .map_err(|_| io::Error::new(io::ErrorKind::TimedOut, "shadow lock deadline"))?;
     let record = record.to_vec();
     tokio::task::spawn_blocking(move || {
+        // A record no cooperating scan could validate is refused before writing.
+        admit_record(&record, state.validation_limits)?;
         // Pool queueing, in-process admission and OS-lock wait share a deadline.
         let deadline = deadline.into_std();
         loop {
@@ -453,6 +473,44 @@ mod tests {
             assert!(error.contains("shadow validation"), "{error}");
             assert_eq!(state.lock().await.validated_end, verified);
             assert_eq!(std::fs::read(&path).unwrap(), before);
+        }
+    }
+
+    #[tokio::test]
+    async fn a_record_outside_the_scan_envelope_is_refused_before_write() {
+        let one = record(1);
+        for (limits, kind) in [
+            (tiny_limits(100_000, 9), "lines"),
+            (tiny_limits((one.len() * 3) as u64, 100), "bytes"),
+        ] {
+            let dir = tempfile::tempdir().unwrap();
+            let path = dir.path().join("capture.lp");
+            let file = std::fs::OpenOptions::new()
+                .create_new(true)
+                .read(true)
+                .append(true)
+                .open(&path)
+                .unwrap();
+            let state = Arc::new(Mutex::new(ShadowFile::with_limits(file, limits)));
+            append(&state, one.as_bytes()).await.unwrap();
+            let verified = state.lock().await.validated_end;
+            let error = append(&state, one.repeat(4).as_bytes())
+                .await
+                .unwrap_err()
+                .to_string();
+            assert!(
+                error.contains(&format!("shadow record exceeds validation {kind} budget")),
+                "{error}"
+            );
+            assert_eq!(state.lock().await.validated_end, verified);
+            assert_eq!(std::fs::read_to_string(&path).unwrap(), one);
+            // A record exactly at the envelope is accepted and stays scannable.
+            append(&state, one.repeat(3).as_bytes()).await.unwrap();
+            let suffix = File::open(&path).unwrap();
+            assert_eq!(
+                validate(&suffix, verified, limits).unwrap(),
+                (one.len() * 4) as u64
+            );
         }
     }
 
