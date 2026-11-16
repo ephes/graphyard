@@ -1153,6 +1153,17 @@ nonnegative JSON integer; missing/null indices remain supported. A unique name
 selects its own port even if other ports have that index. `uplink` continues to
 read the device's uplink telemetry and retains its existing tag enrichment.
 
+UniFi login and device JSON rejects duplicate members at every depth (including
+escaped equivalent keys). Ambiguity and expansion refusals abort authentication,
+including auto mode, rather than accepting the legacy empty/non-JSON 2xx fallback.
+Before selection, both runtimes admit at most 100,000 nodes (containers, member
+names and values), 32 container levels and 1,024 items in **each** array, including
+ignored arrays, device lists and port tables. Exact limits are accepted. Response
+`name`, `mac`, `speed` and `rc` fields must be scalars with at most 256 characters
+when rendered; nested structures are refused before tag conversion. These fixed
+work limits supplement the byte/deadline budgets and refuse the whole collection
+with fixed diagnostics and no metric or registry publication.
+
 Both Python and Rust UniFi collectors apply `max_body_bytes` (default 10 MiB)
 to the sum of all login attempts, redirect bodies and device responses.
 `total_timeout_seconds` (default three times `request_timeout_seconds`, maximum

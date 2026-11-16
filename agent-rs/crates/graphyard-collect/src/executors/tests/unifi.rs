@@ -362,3 +362,51 @@ async fn unsolicited_compression_is_rejected_before_decoding() {
     assert_eq!(outcome.message, "UniFi compressed response refused");
     assert!(sink.calls.borrow().is_empty());
 }
+
+#[tokio::test]
+async fn ambiguous_and_expanded_evidence_never_reaches_sink() {
+    let valid = br#"{"data":[{"name":"synthetic","uplink":{"rx_bytes-r":1,"tx_bytes-r":2}}]}"#;
+    let cases: Vec<(bool, Vec<u8>)> = vec![
+        (true, br#"{"meta":{"rc":"error","rc":"ok"}}"#.to_vec()),
+        (true, br#"{"meta":{"rc":"error","r\u0063":"ok"}}"#.to_vec()),
+        (false, br#"{"data":[],"data":[{"name":"synthetic"}]}"#.to_vec()),
+        (false, br#"{"data":[{"name":"synthetic","uplink":{"rx_bytes-r":9,"rx_bytes-r":1,"tx_bytes-r":2}}]}"#.to_vec()),
+        (false, format!("{{\"data\":[{}]}}", vec!["{}"; 1025].join(",")).into_bytes()),
+        (false, format!("{{\"data\":[{{\"port_table\":[{}]}}]}}", vec!["{}"; 1025].join(",")).into_bytes()),
+        (false, format!("{{\"x\":{}0{}}}", "[".repeat(33), "]".repeat(33)).into_bytes()),
+        (false, br#"{"data":[{"name":"synthetic","uplink":{"speed":{"x":1},"rx_bytes-r":1,"tx_bytes-r":2}}]}"#.to_vec()),
+        (false, format!("{{\"x\":[{}]}}", vec![format!("[{}]", vec!["0"; 1000].join(",")); 101].join(",")).into_bytes()),
+    ];
+    for (login, body) in cases {
+        let controller = Server::start(move |request| {
+            let is_login = request.target == "/api/login";
+            response(
+                "200 OK",
+                &[],
+                if login == is_login {
+                    &body
+                } else if is_login {
+                    b"{}"
+                } else {
+                    valid
+                },
+            )
+        })
+        .await;
+        let sink = RecordingSink::default();
+        let outcome = execute_unifi_device_traffic(
+            &HttpContext::new(),
+            &sink,
+            "synthetic",
+            &synthetic_config(&controller),
+        )
+        .await
+        .unwrap();
+        assert_eq!(outcome.status, StatusLevel::Critical, "{outcome:?}");
+        assert_eq!(outcome.message, "collector failure: ValueError");
+        assert!(sink.calls.borrow().is_empty());
+        if login {
+            assert_eq!(controller.requests().len(), 1);
+        }
+    }
+}

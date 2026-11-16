@@ -1120,6 +1120,56 @@ for selector, ports in (
         )
 
 
+# Raw members preserve ambiguity that a Python dictionary cannot represent.
+for stage, body in (
+    ("login", b'{"meta":{"rc":"error","rc":"ok"}}'),
+    ("login", b'{"meta":{"rc":"error","r\\u0063":"ok"}}'),
+    ("device", b'{"data":[],"data":[{}]}'),
+    (
+        "device",
+        b'{"data":[{"name":"USW Pro XG 8 PoE","uplink":{"rx_bytes-r":9,"rx_bytes-r":1,"tx_bytes-r":2}}]}',
+    ),
+    (
+        "device",
+        json.dumps(
+            {"data": [{**_DEVICE, "uplink": {"speed": {"nested": 1}}}]}
+        ).encode(),
+    ),
+    ("device", json.dumps({"data": [{}] * 1025}).encode()),
+):
+    routes = _legacy_routes()
+    routes["/api/login" if stage == "login" else _LEGACY_DEVICES] = _reply(200, body)
+    UNIFI_SCENARIOS.append(
+        {
+            "name": f"refuse ambiguous or expanded {stage} {len(UNIFI_SCENARIOS)}",
+            "config": _unifi(),
+            "routes": routes,
+        }
+    )
+
+
+UNIFI_SCENARIOS.append(
+    {
+        "name": "exact UniFi array and scalar boundaries",
+        "config": _unifi(),
+        "routes": _legacy_routes(
+            _json_reply(
+                200,
+                {
+                    "data": [
+                        {
+                            **_DEVICE,
+                            "uplink": {**_DEVICE["uplink"], "name": "x" * 256},
+                            "port_table": [{}] * 1024,
+                        }
+                    ]
+                },
+            )
+        ),
+    }
+)
+
+
 def _unifi_cases() -> list[dict[str, Any]]:
     return [
         {

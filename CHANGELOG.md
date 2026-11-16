@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Refuse ambiguous UniFi login/device JSON in Python and Rust, including escaped
+  duplicate members, without using the legacy login fallback. Bound expanded
+  nodes, depth, arrays and scalar metadata before selection and publication.
+
 - Own Rust HTTP connection tasks before headers and bound running/queued DNS
   jobs across production contexts, retaining admission through cancellation.
 - Bound expanded Flux records/cells in Python and Rust and remove remote column

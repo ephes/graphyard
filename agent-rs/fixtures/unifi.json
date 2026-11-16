@@ -7879,7 +7879,7 @@
     "critical",
     0,
     0,
-    "collector failure: JSONDecodeError"
+    "collector failure: ValueError"
    ],
    "p2": true,
    "requests": [
@@ -13673,6 +13673,741 @@
         [
          "port_idx",
          "1"
+        ],
+        [
+         "device_mac",
+         "70:49:a2:21:53:45"
+        ],
+        [
+         "traffic_direction",
+         "transmit"
+        ]
+       ]
+      }
+     ]
+    }
+   ],
+   "log": [
+    "HTTP Request: POST http://probe.test/api/login \"HTTP/1.1 200 OK\"",
+    "HTTP Request: GET http://probe.test/api/s/default/stat/device \"HTTP/1.1 200 OK\""
+   ]
+  },
+  {
+   "name": "refuse ambiguous or expanded login 70",
+   "spec_name": "unifi usw traffic",
+   "config": {
+    "base_url": "http://probe.test",
+    "username": "homeassistant",
+    "password": "secret",
+    "site_id": "default",
+    "device_name": "USW Pro XG 8 PoE",
+    "interface_selector": "uplink",
+    "subject_id": "usw_pro_xg_8_poe",
+    "service_id": "unifi",
+    "collector_host": "macmini",
+    "verify_tls": false
+   },
+   "routes": {
+    "/api/login": [
+     {
+      "status": 200,
+      "headers": [],
+      "body_hex": "7b226d657461223a7b227263223a226572726f72222c227263223a226f6b227d7d"
+     }
+    ],
+    "/api/s/default/stat/device": [
+     {
+      "status": 200,
+      "headers": [],
+      "body_hex": "7b226d657461223a207b227263223a20226f6b227d2c202264617461223a205b7b226e616d65223a20226f74686572222c20226d6163223a202230303a30303a30303a30303a30303a3031227d2c207b226e616d65223a20225553572050726f205847203820506f45222c20226d6163223a202237303a34393a41323a32313a35333a3435222c202275706c696e6b223a207b226e616d65223a202265746830222c2022706f72745f696478223a2031302c20227370656564223a2031303030302c202272785f62797465732d72223a2032323739302e33323633333634343932322c202274785f62797465732d72223a20393232342e3630393935393734383531327d2c2022706f72745f7461626c65223a205b7b22706f72745f696478223a2031302c20226e616d65223a20225346502b2032227d2c207b22706f72745f696478223a20332c20226e616d65223a2022506f72742033222c202272785f62797465732d72223a20352c202274785f62797465732d72223a2022362e35227d5d7d5d7d"
+     }
+    ]
+   },
+   "sink": {
+    "write_error": null,
+    "registry_error": null
+   },
+   "outcome": [
+    "critical",
+    0,
+    0,
+    "collector failure: ValueError"
+   ],
+   "p2": false,
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/login",
+     "headers": [
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ],
+      [
+       "content-length",
+       "64"
+      ]
+     ],
+     "body": "{\"username\":\"homeassistant\",\"password\":\"secret\",\"remember\":true}"
+    }
+   ],
+   "calls": [],
+   "log": [
+    "HTTP Request: POST http://probe.test/api/login \"HTTP/1.1 200 OK\""
+   ]
+  },
+  {
+   "name": "refuse ambiguous or expanded login 71",
+   "spec_name": "unifi usw traffic",
+   "config": {
+    "base_url": "http://probe.test",
+    "username": "homeassistant",
+    "password": "secret",
+    "site_id": "default",
+    "device_name": "USW Pro XG 8 PoE",
+    "interface_selector": "uplink",
+    "subject_id": "usw_pro_xg_8_poe",
+    "service_id": "unifi",
+    "collector_host": "macmini",
+    "verify_tls": false
+   },
+   "routes": {
+    "/api/login": [
+     {
+      "status": 200,
+      "headers": [],
+      "body_hex": "7b226d657461223a7b227263223a226572726f72222c22725c7530303633223a226f6b227d7d"
+     }
+    ],
+    "/api/s/default/stat/device": [
+     {
+      "status": 200,
+      "headers": [],
+      "body_hex": "7b226d657461223a207b227263223a20226f6b227d2c202264617461223a205b7b226e616d65223a20226f74686572222c20226d6163223a202230303a30303a30303a30303a30303a3031227d2c207b226e616d65223a20225553572050726f205847203820506f45222c20226d6163223a202237303a34393a41323a32313a35333a3435222c202275706c696e6b223a207b226e616d65223a202265746830222c2022706f72745f696478223a2031302c20227370656564223a2031303030302c202272785f62797465732d72223a2032323739302e33323633333634343932322c202274785f62797465732d72223a20393232342e3630393935393734383531327d2c2022706f72745f7461626c65223a205b7b22706f72745f696478223a2031302c20226e616d65223a20225346502b2032227d2c207b22706f72745f696478223a20332c20226e616d65223a2022506f72742033222c202272785f62797465732d72223a20352c202274785f62797465732d72223a2022362e35227d5d7d5d7d"
+     }
+    ]
+   },
+   "sink": {
+    "write_error": null,
+    "registry_error": null
+   },
+   "outcome": [
+    "critical",
+    0,
+    0,
+    "collector failure: ValueError"
+   ],
+   "p2": false,
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/login",
+     "headers": [
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ],
+      [
+       "content-length",
+       "64"
+      ]
+     ],
+     "body": "{\"username\":\"homeassistant\",\"password\":\"secret\",\"remember\":true}"
+    }
+   ],
+   "calls": [],
+   "log": [
+    "HTTP Request: POST http://probe.test/api/login \"HTTP/1.1 200 OK\""
+   ]
+  },
+  {
+   "name": "refuse ambiguous or expanded device 72",
+   "spec_name": "unifi usw traffic",
+   "config": {
+    "base_url": "http://probe.test",
+    "username": "homeassistant",
+    "password": "secret",
+    "site_id": "default",
+    "device_name": "USW Pro XG 8 PoE",
+    "interface_selector": "uplink",
+    "subject_id": "usw_pro_xg_8_poe",
+    "service_id": "unifi",
+    "collector_host": "macmini",
+    "verify_tls": false
+   },
+   "routes": {
+    "/api/login": [
+     {
+      "status": 200,
+      "headers": [],
+      "body_hex": "7b226d657461223a207b227263223a20226f6b227d2c202264617461223a205b5d7d"
+     }
+    ],
+    "/api/s/default/stat/device": [
+     {
+      "status": 200,
+      "headers": [],
+      "body_hex": "7b2264617461223a5b5d2c2264617461223a5b7b7d5d7d"
+     }
+    ]
+   },
+   "sink": {
+    "write_error": null,
+    "registry_error": null
+   },
+   "outcome": [
+    "critical",
+    0,
+    0,
+    "collector failure: ValueError"
+   ],
+   "p2": false,
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/login",
+     "headers": [
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ],
+      [
+       "content-length",
+       "64"
+      ]
+     ],
+     "body": "{\"username\":\"homeassistant\",\"password\":\"secret\",\"remember\":true}"
+    },
+    {
+     "method": "GET",
+     "target": "/api/s/default/stat/device",
+     "headers": [
+      [
+       "accept",
+       "application/json"
+      ]
+     ],
+     "body": ""
+    }
+   ],
+   "calls": [],
+   "log": [
+    "HTTP Request: POST http://probe.test/api/login \"HTTP/1.1 200 OK\"",
+    "HTTP Request: GET http://probe.test/api/s/default/stat/device \"HTTP/1.1 200 OK\""
+   ]
+  },
+  {
+   "name": "refuse ambiguous or expanded device 73",
+   "spec_name": "unifi usw traffic",
+   "config": {
+    "base_url": "http://probe.test",
+    "username": "homeassistant",
+    "password": "secret",
+    "site_id": "default",
+    "device_name": "USW Pro XG 8 PoE",
+    "interface_selector": "uplink",
+    "subject_id": "usw_pro_xg_8_poe",
+    "service_id": "unifi",
+    "collector_host": "macmini",
+    "verify_tls": false
+   },
+   "routes": {
+    "/api/login": [
+     {
+      "status": 200,
+      "headers": [],
+      "body_hex": "7b226d657461223a207b227263223a20226f6b227d2c202264617461223a205b5d7d"
+     }
+    ],
+    "/api/s/default/stat/device": [
+     {
+      "status": 200,
+      "headers": [],
+      "body_hex": "7b2264617461223a5b7b226e616d65223a225553572050726f205847203820506f45222c2275706c696e6b223a7b2272785f62797465732d72223a392c2272785f62797465732d72223a312c2274785f62797465732d72223a327d7d5d7d"
+     }
+    ]
+   },
+   "sink": {
+    "write_error": null,
+    "registry_error": null
+   },
+   "outcome": [
+    "critical",
+    0,
+    0,
+    "collector failure: ValueError"
+   ],
+   "p2": false,
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/login",
+     "headers": [
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ],
+      [
+       "content-length",
+       "64"
+      ]
+     ],
+     "body": "{\"username\":\"homeassistant\",\"password\":\"secret\",\"remember\":true}"
+    },
+    {
+     "method": "GET",
+     "target": "/api/s/default/stat/device",
+     "headers": [
+      [
+       "accept",
+       "application/json"
+      ]
+     ],
+     "body": ""
+    }
+   ],
+   "calls": [],
+   "log": [
+    "HTTP Request: POST http://probe.test/api/login \"HTTP/1.1 200 OK\"",
+    "HTTP Request: GET http://probe.test/api/s/default/stat/device \"HTTP/1.1 200 OK\""
+   ]
+  },
+  {
+   "name": "refuse ambiguous or expanded device 74",
+   "spec_name": "unifi usw traffic",
+   "config": {
+    "base_url": "http://probe.test",
+    "username": "homeassistant",
+    "password": "secret",
+    "site_id": "default",
+    "device_name": "USW Pro XG 8 PoE",
+    "interface_selector": "uplink",
+    "subject_id": "usw_pro_xg_8_poe",
+    "service_id": "unifi",
+    "collector_host": "macmini",
+    "verify_tls": false
+   },
+   "routes": {
+    "/api/login": [
+     {
+      "status": 200,
+      "headers": [],
+      "body_hex": "7b226d657461223a207b227263223a20226f6b227d2c202264617461223a205b5d7d"
+     }
+    ],
+    "/api/s/default/stat/device": [
+     {
+      "status": 200,
+      "headers": [],
+      "body_hex": "7b2264617461223a205b7b226e616d65223a20225553572050726f205847203820506f45222c20226d6163223a202237303a34393a41323a32313a35333a3435222c202275706c696e6b223a207b227370656564223a207b226e6573746564223a20317d7d2c2022706f72745f7461626c65223a205b7b22706f72745f696478223a2031302c20226e616d65223a20225346502b2032227d2c207b22706f72745f696478223a20332c20226e616d65223a2022506f72742033222c202272785f62797465732d72223a20352c202274785f62797465732d72223a2022362e35227d5d7d5d7d"
+     }
+    ]
+   },
+   "sink": {
+    "write_error": null,
+    "registry_error": null
+   },
+   "outcome": [
+    "critical",
+    0,
+    0,
+    "collector failure: ValueError"
+   ],
+   "p2": false,
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/login",
+     "headers": [
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ],
+      [
+       "content-length",
+       "64"
+      ]
+     ],
+     "body": "{\"username\":\"homeassistant\",\"password\":\"secret\",\"remember\":true}"
+    },
+    {
+     "method": "GET",
+     "target": "/api/s/default/stat/device",
+     "headers": [
+      [
+       "accept",
+       "application/json"
+      ]
+     ],
+     "body": ""
+    }
+   ],
+   "calls": [],
+   "log": [
+    "HTTP Request: POST http://probe.test/api/login \"HTTP/1.1 200 OK\"",
+    "HTTP Request: GET http://probe.test/api/s/default/stat/device \"HTTP/1.1 200 OK\""
+   ]
+  },
+  {
+   "name": "refuse ambiguous or expanded device 75",
+   "spec_name": "unifi usw traffic",
+   "config": {
+    "base_url": "http://probe.test",
+    "username": "homeassistant",
+    "password": "secret",
+    "site_id": "default",
+    "device_name": "USW Pro XG 8 PoE",
+    "interface_selector": "uplink",
+    "subject_id": "usw_pro_xg_8_poe",
+    "service_id": "unifi",
+    "collector_host": "macmini",
+    "verify_tls": false
+   },
+   "routes": {
+    "/api/login": [
+     {
+      "status": 200,
+      "headers": [],
+      "body_hex": "7b226d657461223a207b227263223a20226f6b227d2c202264617461223a205b5d7d"
+     }
+    ],
+    "/api/s/default/stat/device": [
+     {
+      "status": 200,
+      "headers": [],
+      "body_hex": "7b2264617461223a205b7b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d5d7d"
+     }
+    ]
+   },
+   "sink": {
+    "write_error": null,
+    "registry_error": null
+   },
+   "outcome": [
+    "critical",
+    0,
+    0,
+    "collector failure: ValueError"
+   ],
+   "p2": false,
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/login",
+     "headers": [
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ],
+      [
+       "content-length",
+       "64"
+      ]
+     ],
+     "body": "{\"username\":\"homeassistant\",\"password\":\"secret\",\"remember\":true}"
+    },
+    {
+     "method": "GET",
+     "target": "/api/s/default/stat/device",
+     "headers": [
+      [
+       "accept",
+       "application/json"
+      ]
+     ],
+     "body": ""
+    }
+   ],
+   "calls": [],
+   "log": [
+    "HTTP Request: POST http://probe.test/api/login \"HTTP/1.1 200 OK\"",
+    "HTTP Request: GET http://probe.test/api/s/default/stat/device \"HTTP/1.1 200 OK\""
+   ]
+  },
+  {
+   "name": "exact UniFi array and scalar boundaries",
+   "spec_name": "unifi usw traffic",
+   "config": {
+    "base_url": "http://probe.test",
+    "username": "homeassistant",
+    "password": "secret",
+    "site_id": "default",
+    "device_name": "USW Pro XG 8 PoE",
+    "interface_selector": "uplink",
+    "subject_id": "usw_pro_xg_8_poe",
+    "service_id": "unifi",
+    "collector_host": "macmini",
+    "verify_tls": false
+   },
+   "routes": {
+    "/api/login": [
+     {
+      "status": 200,
+      "headers": [],
+      "body_hex": "7b226d657461223a207b227263223a20226f6b227d2c202264617461223a205b5d7d"
+     }
+    ],
+    "/api/s/default/stat/device": [
+     {
+      "status": 200,
+      "headers": [],
+      "body_hex": "7b2264617461223a205b7b226e616d65223a20225553572050726f205847203820506f45222c20226d6163223a202237303a34393a41323a32313a35333a3435222c202275706c696e6b223a207b226e616d65223a202278787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878222c2022706f72745f696478223a2031302c20227370656564223a2031303030302c202272785f62797465732d72223a2032323739302e33323633333634343932322c202274785f62797465732d72223a20393232342e3630393935393734383531327d2c2022706f72745f7461626c65223a205b7b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d2c207b7d5d7d5d7d"
+     }
+    ]
+   },
+   "sink": {
+    "write_error": null,
+    "registry_error": null
+   },
+   "outcome": [
+    "ok",
+    2,
+    0,
+    ""
+   ],
+   "p2": false,
+   "requests": [
+    {
+     "method": "POST",
+     "target": "/api/login",
+     "headers": [
+      [
+       "accept",
+       "application/json"
+      ],
+      [
+       "content-type",
+       "application/json"
+      ],
+      [
+       "content-length",
+       "64"
+      ]
+     ],
+     "body": "{\"username\":\"homeassistant\",\"password\":\"secret\",\"remember\":true}"
+    },
+    {
+     "method": "GET",
+     "target": "/api/s/default/stat/device",
+     "headers": [
+      [
+       "accept",
+       "application/json"
+      ]
+     ],
+     "body": ""
+    }
+   ],
+   "calls": [
+    {
+     "call": "write",
+     "points": [
+      {
+       "metric": "network_device.network_receive_bytes_per_second",
+       "value": 22790.32633644922,
+       "subject_type": "network_device",
+       "subject_id": "usw_pro_xg_8_poe",
+       "source_system": "unifi",
+       "collector_service": "graphyard-agent",
+       "collector_host": "macmini",
+       "source_instance": "default",
+       "source_entity_id": "70:49:a2:21:53:45",
+       "host": null,
+       "service": "unifi",
+       "tags": [
+        [
+         "device_class",
+         "data_rate"
+        ],
+        [
+         "spec_name",
+         "unifi usw traffic"
+        ],
+        [
+         "traffic_scope",
+         "uplink"
+        ],
+        [
+         "interface",
+         "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+        ],
+        [
+         "port_idx",
+         "10"
+        ],
+        [
+         "speed_mbps",
+         "10000"
+        ],
+        [
+         "device_mac",
+         "70:49:a2:21:53:45"
+        ],
+        [
+         "traffic_direction",
+         "receive"
+        ]
+       ]
+      },
+      {
+       "metric": "network_device.network_transmit_bytes_per_second",
+       "value": 9224.609959748512,
+       "subject_type": "network_device",
+       "subject_id": "usw_pro_xg_8_poe",
+       "source_system": "unifi",
+       "collector_service": "graphyard-agent",
+       "collector_host": "macmini",
+       "source_instance": "default",
+       "source_entity_id": "70:49:a2:21:53:45",
+       "host": null,
+       "service": "unifi",
+       "tags": [
+        [
+         "device_class",
+         "data_rate"
+        ],
+        [
+         "spec_name",
+         "unifi usw traffic"
+        ],
+        [
+         "traffic_scope",
+         "uplink"
+        ],
+        [
+         "interface",
+         "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+        ],
+        [
+         "port_idx",
+         "10"
+        ],
+        [
+         "speed_mbps",
+         "10000"
+        ],
+        [
+         "device_mac",
+         "70:49:a2:21:53:45"
+        ],
+        [
+         "traffic_direction",
+         "transmit"
+        ]
+       ]
+      }
+     ]
+    },
+    {
+     "call": "touch",
+     "points": [
+      {
+       "metric": "network_device.network_receive_bytes_per_second",
+       "value": 22790.32633644922,
+       "subject_type": "network_device",
+       "subject_id": "usw_pro_xg_8_poe",
+       "source_system": "unifi",
+       "collector_service": "graphyard-agent",
+       "collector_host": "macmini",
+       "source_instance": "default",
+       "source_entity_id": "70:49:a2:21:53:45",
+       "host": null,
+       "service": "unifi",
+       "tags": [
+        [
+         "device_class",
+         "data_rate"
+        ],
+        [
+         "spec_name",
+         "unifi usw traffic"
+        ],
+        [
+         "traffic_scope",
+         "uplink"
+        ],
+        [
+         "interface",
+         "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+        ],
+        [
+         "port_idx",
+         "10"
+        ],
+        [
+         "speed_mbps",
+         "10000"
+        ],
+        [
+         "device_mac",
+         "70:49:a2:21:53:45"
+        ],
+        [
+         "traffic_direction",
+         "receive"
+        ]
+       ]
+      },
+      {
+       "metric": "network_device.network_transmit_bytes_per_second",
+       "value": 9224.609959748512,
+       "subject_type": "network_device",
+       "subject_id": "usw_pro_xg_8_poe",
+       "source_system": "unifi",
+       "collector_service": "graphyard-agent",
+       "collector_host": "macmini",
+       "source_instance": "default",
+       "source_entity_id": "70:49:a2:21:53:45",
+       "host": null,
+       "service": "unifi",
+       "tags": [
+        [
+         "device_class",
+         "data_rate"
+        ],
+        [
+         "spec_name",
+         "unifi usw traffic"
+        ],
+        [
+         "traffic_scope",
+         "uplink"
+        ],
+        [
+         "interface",
+         "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+        ],
+        [
+         "port_idx",
+         "10"
+        ],
+        [
+         "speed_mbps",
+         "10000"
         ],
         [
          "device_mac",

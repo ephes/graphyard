@@ -21,7 +21,8 @@ use serde_json::{Map, Value};
 use graphyard_core::model::{MetricPoint, SpecOutcome, StatusLevel, SubjectType, Tags};
 use graphyard_core::normalize::parse_finite_float;
 use graphyard_core::pycompat::{
-    PyError, PyNumber, json_loads, py_eq, py_int, py_number, py_split_whitespace, py_str, py_strip,
+    PyError, PyNumber, int_digit_limit_error, json_loads, json_loads_bounded, py_eq, py_int,
+    py_number, py_split_whitespace, py_str, py_strip,
 };
 use graphyard_core::spec_config::{
     Config, DEFAULT_PAGE_PROBE_MAX_BODY_BYTES, bool_config, page_probe_total_timeout_config,
@@ -404,7 +405,7 @@ async fn login(
         )?;
         let (response, response_body) =
             send_unifi_request(client, request, remaining, spec.max_body_bytes).await?;
-        if login_response_ok(response.status, &response_body) {
+        if checked_login_response_ok(response.status, &response_body)? {
             let csrf = response.header("x-csrf-token").unwrap_or_default();
             let csrf = py_strip(&csrf);
             let mut headers = vec![("Accept", "application/json".to_owned())];
@@ -430,26 +431,81 @@ pub fn login_body(username: &str, password: &str) -> Vec<u8> {
 /// `resp.json()`: [`decode_json`], which applies `json.loads`' integer
 /// digit limit too (D-11). Error texts are P2 except the digit limit.
 fn response_json(body: &[u8]) -> Result<Value, Failure> {
-    Ok(decode_json(body)?)
+    let body = body.strip_prefix(b"\xef\xbb\xbf").unwrap_or(body);
+    let text = std::str::from_utf8(body).map_err(|_| Failure(collector_failure("ValueError")))?;
+    let payload = match json_loads_bounded(text) {
+        Ok(payload) => payload,
+        Err(err) if err.is_data() => return Err(Failure(collector_failure("ValueError"))),
+        Err(_) => return Ok(decode_json(body)?),
+    };
+    validate_metadata(&payload)?;
+    if int_digit_limit_error(text).is_some() {
+        return Err(Failure(collector_failure("ValueError")));
+    }
+    Ok(payload)
+}
+
+fn validate_metadata(value: &Value) -> Result<(), Failure> {
+    match value {
+        Value::Object(map) => {
+            for (key, value) in map {
+                if matches!(key.as_str(), "name" | "mac" | "speed" | "rc")
+                    && (value.is_object()
+                        || value.is_array()
+                        || py_str(value).chars().count() > 256)
+                {
+                    return Err(Failure(collector_failure("ValueError")));
+                }
+                validate_metadata(value)?;
+            }
+        }
+        Value::Array(items) => {
+            for item in items {
+                validate_metadata(item)?;
+            }
+        }
+        _ => {}
+    }
+    Ok(())
 }
 
 /// `_unifi_login_response_ok(resp)`: a 2xx status whose body, if it is a
 /// JSON object with a `meta` object, has `meta.rc` (default `"ok"`) equal to
 /// `ok` in any case. Unparseable and non-object bodies count as success.
 pub fn login_response_ok(status: u16, body: &[u8]) -> bool {
+    checked_login_response_ok(status, body).unwrap_or(false)
+}
+
+fn checked_login_response_ok(status: u16, body: &[u8]) -> Result<bool, Failure> {
     if !(200..300).contains(&status) {
-        return false;
+        return Ok(false);
+    }
+    // Empty/non-JSON successes remain supported, but admission failures
+    // never take that compatibility path or trigger another login attempt.
+    let text = std::str::from_utf8(body.strip_prefix(b"\xef\xbb\xbf").unwrap_or(body));
+    if let Ok(text) = text {
+        match json_loads_bounded(text) {
+            Ok(payload) => validate_metadata(&payload)?,
+            Err(err) if err.is_data() => return Err(Failure(collector_failure("ValueError"))),
+            Err(_) => return Ok(true),
+        }
+    }
+    if let Ok(text) = text {
+        if int_digit_limit_error(text).is_some() {
+            return Ok(true);
+        }
     }
     let Ok(payload) = response_json(body) else {
-        return true;
+        return Ok(true);
     };
     let Some(Value::Object(meta)) = payload.as_object().and_then(|map| map.get("meta")) else {
-        return true;
+        return Ok(true);
     };
-    meta.get("rc")
+    Ok(meta
+        .get("rc")
         .map_or_else(|| "ok".to_owned(), py_str)
         .to_lowercase()
-        == "ok"
+        == "ok")
 }
 
 /// `resp.text` of a body: UTF-8 with replacement characters (httpx's
