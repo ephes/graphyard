@@ -25,8 +25,8 @@
 use std::fmt;
 use std::fs::{File, OpenOptions};
 use std::path::Path;
-use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use chrono::Utc;
@@ -206,7 +206,7 @@ pub(crate) fn build_client(timeout: Option<Duration>) -> Result<reqwest::Client,
 #[derive(Debug)]
 pub struct InfluxWriter {
     clients: Mutex<Option<(Option<Duration>, reqwest::Client)>>,
-    file: Option<tokio::sync::Mutex<crate::shadow::ShadowFile>>,
+    file: Option<Arc<tokio::sync::Mutex<crate::shadow::ShadowFile>>>,
     total_timeout: Duration,
     max_body_bytes: usize,
 }
@@ -240,8 +240,8 @@ impl InfluxWriter {
         let file = open_shadow_file(path)?;
         Ok(Self {
             clients: Mutex::new(None),
-            file: Some(tokio::sync::Mutex::new(crate::shadow::ShadowFile::new(
-                file,
+            file: Some(Arc::new(tokio::sync::Mutex::new(
+                crate::shadow::ShadowFile::new(file),
             ))),
             total_timeout: WRITE_TOTAL_TIMEOUT,
             max_body_bytes: WRITE_MAX_BODY_BYTES,
@@ -470,7 +470,7 @@ fn authorization(token: &str) -> Result<HeaderValue, WriteError> {
 /// setting the real write rejects fails here too), then a locked, validated
 /// append of the framed batch and its commit trailer.
 async fn append_batch(
-    file: &tokio::sync::Mutex<crate::shadow::ShadowFile>,
+    file: &Arc<tokio::sync::Mutex<crate::shadow::ShadowFile>>,
     config: &InfluxClientConfig,
     settings: &Settings,
     prepared: &PreparedWrite,

@@ -1,32 +1,53 @@
 //! Complete shadow batches under a cooperating local-filesystem lock.
 use std::fs::File;
 use std::io::{self, BufRead, BufReader, Read, Seek, SeekFrom, Write};
-use std::time::Duration;
+use std::sync::Arc;
+use std::time::{Duration, Instant};
 
 use graphyard_core::line_protocol::WRITE_MAX_REQUEST_BYTES;
 use tokio::sync::Mutex;
+
+// Per validation invocation, including every header, point, trailer and comment.
+#[derive(Clone, Copy, Debug)]
+struct ValidationLimits {
+    bytes: u64,
+    lines: usize,
+    elapsed: Duration,
+}
+
+const VALIDATION_LIMITS: ValidationLimits = ValidationLimits {
+    bytes: 64 * 1024 * 1024,
+    lines: 250_000,
+    elapsed: Duration::from_secs(5),
+};
 
 #[derive(Debug)]
 pub(crate) struct ShadowFile {
     pub file: File,
     validated_end: u64,
+    validation_limits: ValidationLimits,
 }
 
 impl ShadowFile {
     /// Validate the existing capture once, before collectors start, so the
     /// first append of a process only scans what cooperating writers added
-    /// since. An invalid capture, or a lock that cannot be taken in time,
-    /// keeps offset 0: the append path then validates (and refuses) as before.
+    /// since. Invalid, over-budget or locked captures remain nonqualified at
+    /// offset 0; append must still validate them and cannot treat them as empty.
     pub fn new(file: File) -> Self {
-        let validated_end = validated_at_open(&file).unwrap_or(0);
+        Self::with_limits(file, VALIDATION_LIMITS)
+    }
+
+    fn with_limits(file: File, validation_limits: ValidationLimits) -> Self {
+        let validated_end = validated_at_open(&file, validation_limits).unwrap_or(0);
         Self {
             file,
             validated_end,
+            validation_limits,
         }
     }
 }
 
-fn validated_at_open(file: &File) -> Option<u64> {
+fn validated_at_open(file: &File, limits: ValidationLimits) -> Option<u64> {
     let deadline = std::time::Instant::now() + Duration::from_secs(5);
     loop {
         match file.try_lock() {
@@ -38,7 +59,7 @@ fn validated_at_open(file: &File) -> Option<u64> {
         }
     }
     let _locked = Locked(file);
-    validate(file, 0).ok()
+    validate(file, 0, limits).ok()
 }
 
 // The descriptor stays open; never unlink/replace the inode while writers run.
@@ -58,7 +79,7 @@ fn incomplete(offset: u64) -> io::Error {
     )
 }
 
-fn line(reader: &mut impl BufRead, limit: usize) -> io::Result<Vec<u8>> {
+fn bounded_line(reader: &mut impl BufRead, limit: usize) -> io::Result<Vec<u8>> {
     let mut bytes = Vec::new();
     reader
         .take(limit as u64 + 1)
@@ -69,26 +90,79 @@ fn line(reader: &mut impl BufRead, limit: usize) -> io::Result<Vec<u8>> {
     Ok(bytes)
 }
 
+fn validation_budget(kind: &str, complete: u64) -> io::Error {
+    io::Error::other(format!(
+        "shadow validation {kind} budget exceeded; last complete offset={complete}; preserve file and rotate or qualify offline"
+    ))
+}
+
+struct ValidationWork {
+    limits: ValidationLimits,
+    deadline: Instant,
+    bytes: u64,
+    lines: usize,
+}
+
+impl ValidationWork {
+    fn check_time(&self, complete: u64) -> io::Result<()> {
+        if Instant::now() >= self.deadline {
+            return Err(validation_budget("time", complete));
+        }
+        Ok(())
+    }
+
+    fn line(
+        &mut self,
+        reader: &mut impl BufRead,
+        limit: usize,
+        complete: u64,
+    ) -> io::Result<Vec<u8>> {
+        self.check_time(complete)?;
+        if self.lines >= self.limits.lines {
+            return Err(validation_budget("lines", complete));
+        }
+        let bytes = bounded_line(reader, limit)?;
+        self.bytes += bytes.len() as u64;
+        self.lines += 1;
+        self.check_time(complete)?;
+        Ok(bytes)
+    }
+}
+
 /// Validate only the suffix added since this descriptor last admitted a batch.
 /// Legacy headers are checked by point count; v2 headers require a commit trailer.
-fn validate(file: &File, start: u64) -> io::Result<u64> {
-    if file.metadata()?.len() < start {
+fn validate(file: &File, start: u64, limits: ValidationLimits) -> io::Result<u64> {
+    let mut work = ValidationWork {
+        limits,
+        deadline: Instant::now() + limits.elapsed,
+        bytes: 0,
+        lines: 0,
+    };
+    work.check_time(start)?;
+    let end = file.metadata()?.len();
+    if end < start {
         return Err(incomplete(start));
     }
-    let mut input = BufReader::new(file);
-    input.seek(SeekFrom::Start(start))?;
+    let suffix_bytes = end - start;
+    if suffix_bytes > limits.bytes {
+        return Err(validation_budget("bytes", start));
+    }
+    let mut source = file;
+    source.seek(SeekFrom::Start(start))?;
+    // Admit metadata before reading and never read beyond this locked snapshot.
+    let mut input = BufReader::new(source.take(suffix_bytes));
     let mut complete = start;
-    loop {
-        let header = line(&mut input, 4096)?;
+    while work.bytes < suffix_bytes {
+        let header = work.line(&mut input, 4096, complete)?;
         if header.is_empty() {
-            return Ok(complete);
+            return Err(incomplete(complete));
         }
         if !header.ends_with(b"\n") {
             return Err(incomplete(complete));
         }
         if !header.starts_with(b"# write ") {
             if header.starts_with(b"#") || header == b"\n" {
-                complete = input.stream_position()?;
+                complete = start + work.bytes;
                 continue;
             }
             return Err(incomplete(complete));
@@ -118,9 +192,10 @@ fn validate(file: &File, start: u64) -> io::Result<u64> {
         };
         let mut bytes = 0usize;
         for _ in 0..points {
-            let row = line(
+            let row = work.line(
                 &mut input,
                 (WRITE_MAX_REQUEST_BYTES + 1).saturating_sub(bytes),
+                complete,
             )?;
             if row.len() <= 1 || row.starts_with(b"#") || !row.ends_with(b"\n") {
                 return Err(incomplete(complete));
@@ -128,49 +203,88 @@ fn validate(file: &File, start: u64) -> io::Result<u64> {
             bytes += row.len();
         }
         if let Some(expected) = expected_bytes {
-            let trailer = line(&mut input, 4096)?;
+            let trailer = work.line(&mut input, 4096, complete)?;
             if bytes != expected
                 || trailer != format!("# commit points={points} bytes={bytes}\n").as_bytes()
             {
                 return Err(incomplete(complete));
             }
         }
-        complete = input.stream_position()?;
+        complete = start + work.bytes;
     }
+    work.check_time(complete)?;
+    Ok(complete)
 }
 
-pub(crate) async fn append(file: &Mutex<ShadowFile>, record: &[u8]) -> io::Result<()> {
-    // Both in-process admission and OS-lock waiting share one elapsed deadline.
+fn admit_record(record: &[u8], limits: ValidationLimits) -> io::Result<()> {
+    if record.len() as u64 > limits.bytes {
+        return Err(record_budget("bytes"));
+    }
+    let lines = record.iter().filter(|&&byte| byte == b'\n').count()
+        + usize::from(!record.is_empty() && !record.ends_with(b"\n"));
+    if lines > limits.lines {
+        return Err(record_budget("lines"));
+    }
+    Ok(())
+}
+
+fn record_budget(kind: &str) -> io::Error {
+    io::Error::other(format!(
+        "shadow record exceeds validation {kind} budget; refused before write"
+    ))
+}
+
+pub(crate) async fn append(file: &Arc<Mutex<ShadowFile>>, record: &[u8]) -> io::Result<()> {
+    append_with(file, record, || {}).await
+}
+
+async fn append_with(
+    file: &Arc<Mutex<ShadowFile>>,
+    record: &[u8],
+    before_write: impl FnOnce() + Send + 'static,
+) -> io::Result<()> {
+    // One running/queued blocking job per writer. The job owns this guard,
+    // descriptor and record even if the async caller stops waiting.
     let deadline = tokio::time::Instant::now() + Duration::from_secs(1);
-    let mut state = tokio::time::timeout_at(deadline, file.lock())
+    let mut state = tokio::time::timeout_at(deadline, file.clone().lock_owned())
         .await
         .map_err(|_| io::Error::new(io::ErrorKind::TimedOut, "shadow lock deadline"))?;
-    loop {
-        if tokio::time::Instant::now() >= deadline {
-            return Err(io::Error::new(
-                io::ErrorKind::TimedOut,
-                "shadow lock deadline",
-            ));
-        }
-        match state.file.try_lock() {
-            Ok(()) => break,
-            Err(std::fs::TryLockError::WouldBlock) => {
-                tokio::time::sleep(Duration::from_millis(10)).await;
+    let record = record.to_vec();
+    tokio::task::spawn_blocking(move || {
+        // A record no cooperating scan could validate is refused before writing.
+        admit_record(&record, state.validation_limits)?;
+        // Pool queueing, in-process admission and OS-lock wait share a deadline.
+        let deadline = deadline.into_std();
+        loop {
+            if std::time::Instant::now() >= deadline {
+                return Err(io::Error::new(
+                    io::ErrorKind::TimedOut,
+                    "shadow lock deadline",
+                ));
             }
-            Err(std::fs::TryLockError::Error(err)) => return Err(err),
+            match state.file.try_lock() {
+                Ok(()) => break,
+                Err(std::fs::TryLockError::WouldBlock) => {
+                    std::thread::sleep(Duration::from_millis(10));
+                }
+                Err(std::fs::TryLockError::Error(err)) => return Err(err),
+            }
         }
-    }
-    let end = {
-        let _locked = Locked(&state.file);
-        validate(&state.file, state.validated_end)?;
-        let mut output = &state.file;
-        output.write_all(record)?;
-        output.flush()?;
-        state.file.sync_data()?;
-        state.file.metadata()?.len()
-    };
-    state.validated_end = end;
-    Ok(())
+        let end = {
+            let _locked = Locked(&state.file);
+            validate(&state.file, state.validated_end, state.validation_limits)?;
+            before_write();
+            let mut output = &state.file;
+            output.write_all(&record)?;
+            output.flush()?;
+            state.file.sync_data()?;
+            state.file.metadata()?.len()
+        };
+        state.validated_end = end;
+        Ok(())
+    })
+    .await
+    .map_err(|_| io::Error::other("shadow blocking job failed"))?
 }
 
 #[cfg(test)]
@@ -184,6 +298,234 @@ mod tests {
             body.len(),
             body.len()
         )
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn stalled_io_does_not_stop_runtime_heartbeat() {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        let state = Arc::new(Mutex::new(ShadowFile::new(tempfile::tempfile().unwrap())));
+        let beats = Arc::new(AtomicUsize::new(0));
+        let heartbeat = tokio::spawn({
+            let beats = beats.clone();
+            async move {
+                loop {
+                    tokio::time::sleep(Duration::from_millis(5)).await;
+                    beats.fetch_add(1, Ordering::SeqCst);
+                }
+            }
+        });
+        let (entered, ready) = std::sync::mpsc::channel();
+        let (release, gate) = std::sync::mpsc::channel();
+        let observer = std::thread::spawn(move || {
+            ready.recv_timeout(Duration::from_secs(3)).unwrap();
+            std::thread::sleep(Duration::from_millis(150));
+            let observed = beats.load(Ordering::SeqCst);
+            release.send(()).unwrap();
+            observed
+        });
+        append_with(&state, record(1).as_bytes(), move || {
+            entered.send(()).unwrap();
+            gate.recv_timeout(Duration::from_secs(3)).unwrap();
+        })
+        .await
+        .unwrap();
+        heartbeat.abort();
+        assert!(
+            observer.join().unwrap() > 0,
+            "disk I/O blocked the runtime heartbeat"
+        );
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn canceled_waiter_retains_job_capacity_and_os_lock() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("capture.lp");
+        let file = std::fs::OpenOptions::new()
+            .create_new(true)
+            .read(true)
+            .append(true)
+            .open(&path)
+            .unwrap();
+        let state = Arc::new(Mutex::new(ShadowFile::new(file)));
+        let (entered, ready) = tokio::sync::oneshot::channel();
+        let (release, gate) = std::sync::mpsc::channel();
+        let waiter = tokio::spawn({
+            let state = state.clone();
+            async move {
+                append_with(&state, record(1).as_bytes(), move || {
+                    entered.send(()).unwrap();
+                    gate.recv_timeout(Duration::from_secs(3)).unwrap();
+                })
+                .await
+            }
+        });
+        ready.await.unwrap();
+        waiter.abort();
+        assert!(waiter.await.unwrap_err().is_cancelled());
+        assert!(
+            state.try_lock().is_err(),
+            "cancellation freed the running job slot"
+        );
+        let other = File::open(&path).unwrap();
+        assert!(matches!(
+            other.try_lock(),
+            Err(std::fs::TryLockError::WouldBlock)
+        ));
+        assert_eq!(
+            append(&state, record(2).as_bytes())
+                .await
+                .unwrap_err()
+                .kind(),
+            io::ErrorKind::TimedOut
+        );
+        assert!(std::fs::read(&path).unwrap().is_empty());
+        release.send(()).unwrap();
+        append(&state, record(3).as_bytes()).await.unwrap();
+        let text = std::fs::read_to_string(path).unwrap();
+        assert_eq!(text, format!("{}{}", record(1), record(3)));
+        assert_eq!(state.lock().await.validated_end, text.len() as u64);
+    }
+
+    fn tiny_limits(bytes: u64, lines: usize) -> ValidationLimits {
+        ValidationLimits {
+            bytes,
+            lines,
+            elapsed: Duration::from_secs(5),
+        }
+    }
+
+    #[tokio::test]
+    async fn reopen_total_line_budget_refuses_without_qualifying_a_prefix() {
+        let text = record(1).repeat(20);
+        let mut file = tempfile::tempfile().unwrap();
+        file.write_all(text.as_bytes()).unwrap();
+        let state = Arc::new(Mutex::new(ShadowFile::with_limits(
+            file,
+            tiny_limits(text.len() as u64, 9),
+        )));
+        assert_eq!(
+            state.lock().await.validated_end,
+            0,
+            "over-budget reopen was qualified"
+        );
+        for _ in 0..2 {
+            let error = append(&state, record(2).as_bytes())
+                .await
+                .unwrap_err()
+                .to_string();
+            assert!(error.contains("shadow validation lines budget"), "{error}");
+            assert!(error.contains(&format!("last complete offset={}", 3 * record(1).len())));
+            assert_eq!(state.lock().await.validated_end, 0);
+        }
+        let mut state = state.lock().await;
+        state.file.seek(SeekFrom::Start(0)).unwrap();
+        let mut after = String::new();
+        state.file.read_to_string(&mut after).unwrap();
+        assert_eq!(after, text);
+    }
+
+    #[test]
+    fn exact_total_bytes_and_lines_pass_but_one_more_byte_is_not_read() {
+        let text = record(1).repeat(3);
+        let limits = tiny_limits(text.len() as u64, 9);
+        let mut file = tempfile::tempfile().unwrap();
+        file.write_all(text.as_bytes()).unwrap();
+        assert_eq!(validate(&file, 0, limits).unwrap(), text.len() as u64);
+        file.write_all(b"\n").unwrap();
+        file.seek(SeekFrom::Start(0)).unwrap();
+        let error = validate(&file, 0, limits).unwrap_err().to_string();
+        assert!(error.contains("shadow validation bytes budget"), "{error}");
+        assert_eq!(
+            file.stream_position().unwrap(),
+            0,
+            "byte admission must precede reads"
+        );
+    }
+
+    #[tokio::test]
+    async fn appended_suffix_budget_preserves_verified_offset_and_capture() {
+        for limits in [
+            tiny_limits(100_000, 9),
+            tiny_limits((record(1).len() * 3) as u64, 100),
+        ] {
+            let dir = tempfile::tempdir().unwrap();
+            let path = dir.path().join("capture.lp");
+            let file = std::fs::OpenOptions::new()
+                .create_new(true)
+                .read(true)
+                .append(true)
+                .open(&path)
+                .unwrap();
+            let state = Arc::new(Mutex::new(ShadowFile::with_limits(file, limits)));
+            append(&state, record(1).as_bytes()).await.unwrap();
+            let verified = state.lock().await.validated_end;
+            std::fs::OpenOptions::new()
+                .append(true)
+                .open(&path)
+                .unwrap()
+                .write_all(record(2).repeat(4).as_bytes())
+                .unwrap();
+            let before = std::fs::read(&path).unwrap();
+            let error = append(&state, record(3).as_bytes())
+                .await
+                .unwrap_err()
+                .to_string();
+            assert!(error.contains("shadow validation"), "{error}");
+            assert_eq!(state.lock().await.validated_end, verified);
+            assert_eq!(std::fs::read(&path).unwrap(), before);
+        }
+    }
+
+    #[tokio::test]
+    async fn a_record_outside_the_scan_envelope_is_refused_before_write() {
+        let one = record(1);
+        for (limits, kind) in [
+            (tiny_limits(100_000, 9), "lines"),
+            (tiny_limits((one.len() * 3) as u64, 100), "bytes"),
+        ] {
+            let dir = tempfile::tempdir().unwrap();
+            let path = dir.path().join("capture.lp");
+            let file = std::fs::OpenOptions::new()
+                .create_new(true)
+                .read(true)
+                .append(true)
+                .open(&path)
+                .unwrap();
+            let state = Arc::new(Mutex::new(ShadowFile::with_limits(file, limits)));
+            append(&state, one.as_bytes()).await.unwrap();
+            let verified = state.lock().await.validated_end;
+            let error = append(&state, one.repeat(4).as_bytes())
+                .await
+                .unwrap_err()
+                .to_string();
+            assert!(
+                error.contains(&format!("shadow record exceeds validation {kind} budget")),
+                "{error}"
+            );
+            assert_eq!(state.lock().await.validated_end, verified);
+            assert_eq!(std::fs::read_to_string(&path).unwrap(), one);
+            // A record exactly at the envelope is accepted and stays scannable.
+            append(&state, one.repeat(3).as_bytes()).await.unwrap();
+            let suffix = File::open(&path).unwrap();
+            assert_eq!(
+                validate(&suffix, verified, limits).unwrap(),
+                (one.len() * 4) as u64
+            );
+        }
+    }
+
+    #[test]
+    fn comments_and_elapsed_work_share_the_total_budget() {
+        let mut file = tempfile::tempfile().unwrap();
+        file.write_all(b"# one\n# two\n# three\n# four\n").unwrap();
+        let error = validate(&file, 0, tiny_limits(100, 3))
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("shadow validation lines budget"), "{error}");
+        let mut limits = tiny_limits(100, 100);
+        limits.elapsed = Duration::ZERO;
+        let error = validate(&file, 0, limits).unwrap_err().to_string();
+        assert!(error.contains("shadow validation time budget"), "{error}");
     }
 
     #[test]
@@ -205,7 +547,7 @@ mod tests {
             .unwrap();
         let state = ShadowFile::new(file);
         assert_eq!(state.validated_end, 0);
-        assert!(validate(&state.file, state.validated_end).is_err());
+        assert!(validate(&state.file, state.validated_end, VALIDATION_LIMITS).is_err());
     }
 
     #[test]
@@ -222,7 +564,7 @@ mod tests {
             file.seek(SeekFrom::Start(0)).unwrap();
             file.write_all(record.as_bytes()).unwrap();
             file.write_all(&record.as_bytes()[..end]).unwrap();
-            let result = validate(&file, 0);
+            let result = validate(&file, 0, VALIDATION_LIMITS);
             if end == 0 || end == record.len() {
                 assert_eq!(result.unwrap(), (record.len() + end) as u64);
             } else {

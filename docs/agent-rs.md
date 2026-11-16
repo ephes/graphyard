@@ -484,18 +484,49 @@ count before reuse; comment-only preambles remain supported.
 
 Cooperating writers hold the same opened data inode's OS lock over suffix
 validation, complete append and sync. In-process and OS-lock admission share a
-one-second wait budget. Lock wait yields to the async runtime; process death
+one-second wait budget, including blocking-pool queueing. Suffix validation,
+append, flush and sync run on Tokio's blocking pool, with at most one queued or
+running job per writer. The job owns its descriptor, in-process slot and OS lock
+until it actually finishes, even when its async caller is canceled. Cancellation
+can therefore leave acceptance uncertain; it does not interrupt filesystem I/O
+or permit an overlapping append. No automatic replay is attempted. Process death
 releases the OS lock. This contract requires local filesystem locking and trusted
 parent directories. Never unlink, rotate, replace or externally truncate the
 file while writers are running; locks do not exclude noncooperating writers.
 
 Opening the capture validates the existing file once under the same lock (up to
 five seconds of lock wait) before collectors start, so the first append of a
-process only checks what cooperating writers added since; an invalid or locked
-capture is left to the append path, which refuses it. Batches whose line
+process only checks what cooperating writers added since. Invalid, over-budget
+or locked captures remain nonqualified at offset zero; append must validate them
+before any write rather than treating them as empty. Batches whose line
 protocol rows start with `#` (an `INFLUX_MEASUREMENT` beginning with `#`, which
 InfluxDB reads as a comment) are refused before appending, so they never make
 the capture unreadable for later writers or the comparison tool.
+
+Each startup scan and each later suffix scan admits at most **64 MiB**, **250,000
+lines** (headers, points, trailers, comments and blank lines combined), and
+**five seconds** of monotonic validation work. Bytes are admitted from locked file
+metadata before reading; reads stay within that snapshot. Line and elapsed work
+are checked before each line, elapsed work again after each bounded line and
+before success. The time limit is cooperative: a stalled filesystem call or sync
+cannot be interrupted. Startup lock wait has its separate five-second limit;
+append lock/queue wait retains its one-second limit above. A framed batch whose
+own bytes or lines (header, points and trailer) exceed this envelope is refused
+before OS-lock wait or writing, so no single batch can make the capture
+unscannable for peers or a later reopen.
+
+Over-budget evidence is refused, never accepted as empty. Errors report the
+budget and last complete offset; neither the capture bytes nor the writer's
+previously qualified offset change. Repeated refusals do not incrementally
+qualify an oversized history. A writer's own synced batches advance its offset,
+so a capture can grow past the reopen envelope while it runs. Batches from
+cooperating peers do not: if peers add more than one envelope between two
+appends of a slower writer, that writer's suffix scan stays over budget and it
+refuses every later append until restart, where the reopen scan applies again.
+Plan rotation before those limits: stop all writers, preserve the full private capture,
+and start a separate file. Qualify larger historical captures offline with
+explicit operator-controlled resources; the agent never trims or resets them
+and the comparison tool does not share this online validation envelope.
 
 An incomplete tail refuses subsequent appends without modifying earlier evidence.
 The error reports the last complete byte offset. Stop all writers, preserve a
