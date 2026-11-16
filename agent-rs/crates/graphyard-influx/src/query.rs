@@ -26,7 +26,9 @@ use tokio::time::Instant;
 
 use crate::config::InfluxClientConfig;
 use crate::error::QueryError;
-use crate::flux::{flux_query, flux_request_body, flux_samples, parse_annotated_csv};
+use crate::flux::{
+    flux_query, flux_request_body, flux_samples_cooperative, parse_annotated_csv_cooperative,
+};
 use crate::sql::{sql_query, sql_samples};
 use crate::window::{ConditionQuery, QueryRange, condition_window};
 use crate::write::{
@@ -120,12 +122,17 @@ impl QueryClient {
     /// `_query_range_v2_flux` through `influx._build_client()` and
     /// `QueryApi.query`.
     async fn query_v2(&self, range: &QueryRange) -> Result<Vec<MetricSample>, QueryError> {
-        tokio::time::timeout(self.flux_total_timeout, self.query_v2_exchange(range))
+        let deadline = Instant::now() + self.flux_total_timeout;
+        tokio::time::timeout_at(deadline, self.query_v2_exchange(range, deadline))
             .await
             .unwrap_or_else(|_| Err(budget_error("Flux", "total deadline", &[]).into()))
     }
 
-    async fn query_v2_exchange(&self, range: &QueryRange) -> Result<Vec<MetricSample>, QueryError> {
+    async fn query_v2_exchange(
+        &self,
+        range: &QueryRange,
+        deadline: Instant,
+    ) -> Result<Vec<MetricSample>, QueryError> {
         let settings = &self.settings;
         let flux = flux_query(range, &settings.influx_bucket, &settings.influx_measurement);
         let config =
@@ -181,8 +188,8 @@ impl QueryClient {
         }
         let body =
             bounded_body(response, self.flux_max_body_bytes, "Flux", &target, timeout).await?;
-        let records = parse_annotated_csv(&body)?;
-        flux_samples(&records, &range.metric)
+        let records = parse_annotated_csv_cooperative(&body, deadline).await?;
+        flux_samples_cooperative(&records, &range.metric, deadline).await
     }
 
     /// `_query_range_v3_sql`.

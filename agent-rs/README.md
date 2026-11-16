@@ -261,8 +261,9 @@ failed: ...` / `Condition eval failed: ...` lines. Exit codes: 0 for
 a successful `--run-once`, SIGINT and SIGTERM; 1 if an enabled one-shot loop
 reports failed work or a run error, or for a `CommandError`, an invalid environment value, a missing database or a failed
 schema check; 2 for a usage error. `--influx-write-file PATH` appends every
-batch the agent would write as `# write <utc> points=<n>` followed by its
-line protocol and counts it as written; queries still go to InfluxDB.
+batch the agent would write with a `# write <utc> points=<n> bytes=<b>`
+header, its line protocol and a matching `# commit` trailer, then syncs and
+counts it as written; queries still go to InfluxDB.
 
 Condition writes use the attempt start time as a watermark: stale or tied
 publications (including failures) are ignored. A failure advances

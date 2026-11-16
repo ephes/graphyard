@@ -215,8 +215,8 @@ fn run_once_calls_both_loops_and_writes_only_to_the_file() {
         ["GET /value", "POST /api/v2/query?org=o"]
     );
     let written = std::fs::read_to_string(&writes).unwrap();
-    assert_eq!(written.lines().count(), 2, "{written}");
-    assert!(written.starts_with("# write ") && written.contains(" points=1\n"));
+    assert_eq!(written.lines().count(), 3, "{written}");
+    assert!(written.starts_with("# write ") && written.contains(" points=1 bytes="));
 
     assert_eq!(
         db.text("metric_collection_spec", "json", "last_status"),

@@ -9753,7 +9753,7 @@
    }
   },
   {
-   "name": "duplicate_timestamps_keep_input_order",
+   "name": "conflicting_duplicate_timestamps_refused",
    "condition": {
     "metric_name": "ha.sensor.office_humidity",
     "operator": "gt",
@@ -9873,11 +9873,9 @@
     }
    ],
    "query_now": "2026-03-04T12:00:00+00:00",
-   "result": {
-    "status": "ok",
-    "message": "Condition is within thresholds",
-    "last_value": "81.0",
-    "evaluated_at": "2026-03-04T12:00:00+00:00"
+   "error": {
+    "class": "ValueError",
+    "message": "Conflicting values for same series and timestamp"
    }
   },
   {

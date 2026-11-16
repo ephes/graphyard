@@ -24,7 +24,6 @@
 
 use std::fmt;
 use std::fs::{File, OpenOptions};
-use std::io::Write as _;
 use std::path::Path;
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -53,6 +52,36 @@ pub const WRITE_MAX_BODY_BYTES: usize = 64 * 1024;
 /// Whole-exchange deadline, independent of inactivity timeouts.
 pub const WRITE_TOTAL_TIMEOUT: Duration = Duration::from_secs(30);
 pub(crate) const ERROR_DIAGNOSTIC_BYTES: usize = 1024;
+
+/// Open the final component without following links or blocking on a FIFO.
+#[cfg(unix)]
+fn open_shadow_file(path: &Path) -> std::io::Result<File> {
+    use std::os::unix::fs::{MetadataExt, OpenOptionsExt, PermissionsExt};
+    let file = OpenOptions::new()
+        .create(true)
+        .read(true)
+        .append(true)
+        .mode(0o600)
+        .custom_flags(libc::O_NOFOLLOW | libc::O_NONBLOCK)
+        .open(path)?;
+    let metadata = file.metadata()?;
+    if !metadata.is_file() || metadata.nlink() != 1 {
+        return Err(std::io::Error::other(
+            "shadow output must be a regular file with one link",
+        ));
+    }
+    // Apply through the admitted descriptor, never through the pathname.
+    file.set_permissions(std::fs::Permissions::from_mode(0o600))?;
+    Ok(file)
+}
+
+#[cfg(not(unix))]
+fn open_shadow_file(_path: &Path) -> std::io::Result<File> {
+    Err(std::io::Error::new(
+        std::io::ErrorKind::Unsupported,
+        "private shadow output requires Unix file semantics",
+    ))
+}
 
 /// The write path of the v2 API.
 pub const WRITE_PATH: &str = "/api/v2/write";
@@ -177,7 +206,7 @@ pub(crate) fn build_client(timeout: Option<Duration>) -> Result<reqwest::Client,
 #[derive(Debug)]
 pub struct InfluxWriter {
     clients: Mutex<Option<(Option<Duration>, reqwest::Client)>>,
-    file: Option<Mutex<File>>,
+    file: Option<tokio::sync::Mutex<crate::shadow::ShadowFile>>,
     total_timeout: Duration,
     max_body_bytes: usize,
 }
@@ -202,16 +231,18 @@ impl InfluxWriter {
     /// The shadow writer: opens (creates) `path` for appending. Every batch
     /// goes through the same normalisation, log records, configuration,
     /// timeout and URL checks as a real write, then is appended as a
-    /// `# write <utc> points=<n>` comment line followed by its line
-    /// protocol lines, and counts as written. No HTTP client is built.
+    /// `# write <utc> points=<n> bytes=<b>` header, line protocol and matching
+    /// commit trailer, then synced and counted. No HTTP client is built.
     ///
     /// # Errors
     /// When the file cannot be opened.
     pub fn to_file(path: &Path) -> std::io::Result<Self> {
-        let file = OpenOptions::new().create(true).append(true).open(path)?;
+        let file = open_shadow_file(path)?;
         Ok(Self {
             clients: Mutex::new(None),
-            file: Some(Mutex::new(file)),
+            file: Some(tokio::sync::Mutex::new(crate::shadow::ShadowFile::new(
+                file,
+            ))),
             total_timeout: WRITE_TOTAL_TIMEOUT,
             max_body_bytes: WRITE_MAX_BODY_BYTES,
         })
@@ -281,7 +312,7 @@ impl InfluxWriter {
         let config = InfluxClientConfig::from_settings(settings)?;
         warn_hash_measurement(&settings.influx_measurement);
         match &self.file {
-            Some(file) => append_batch(file, &config, settings, &prepared)?,
+            Some(file) => append_batch(file, &config, settings, &prepared).await?,
             None => self.post(&config, settings, &prepared).await?,
         }
         if let Some(event) = prepared.rejected_event() {
@@ -353,15 +384,12 @@ impl InfluxWriter {
                 )
             })
             .collect();
-        // `preload_content=True`: the whole body is read, then decoded.
+        // Complete the bounded transfer before crediting a successful status.
         let body = bounded_body(response, self.max_body_bytes, "write", &target, timeout).await?;
-        let body = String::from_utf8(body.to_vec()).map_err(|err| WriteError::Transport {
-            class: "UnicodeDecodeError",
-            message: format!("'utf-8' codec can't decode the response body: {err}"),
-        })?;
         if status.is_success() {
             return Ok(());
         }
+        let body = String::from_utf8_lossy(&body[..body.len().min(ERROR_DIAGNOSTIC_BYTES)]);
         Err(WriteError::Api {
             status: status.as_u16(),
             message: api_exception_text(
@@ -439,10 +467,10 @@ fn authorization(token: &str) -> Result<HeaderValue, WriteError> {
 }
 
 /// The shadow write: the request's timeout, URL and header checks (so a
-/// setting the real write rejects fails here too), then one `write_all` of
-/// the comment line and the batch.
-fn append_batch(
-    file: &Mutex<File>,
+/// setting the real write rejects fails here too), then a locked, validated
+/// append of the framed batch and its commit trailer.
+async fn append_batch(
+    file: &tokio::sync::Mutex<crate::shadow::ShadowFile>,
     config: &InfluxClientConfig,
     settings: &Settings,
     prepared: &PreparedWrite,
@@ -450,15 +478,26 @@ fn append_batch(
     config.request_timeout().map_err(WriteError::Timeout)?;
     write_url(&config.host, &settings.influx_org, &settings.influx_bucket)?;
     authorization(&config.token)?;
+    let body = prepared.body();
+    // A `#`-prefixed measurement makes rows that the capture framing (and
+    // shadow_compare.py) read as comments: refuse before appending, so the
+    // capture stays readable for later writers and the comparison.
+    if body.split('\n').any(|row| row.starts_with('#')) {
+        return Err(WriteError::Transport {
+            class: "ValueError",
+            message: "shadow capture refuses line protocol rows starting with '#'".into(),
+        });
+    }
+    let bytes = body.len() + 1;
     let record = format!(
-        "# write {} points={}\n{}\n",
+        "# write {} points={} bytes={bytes}\n{}\n# commit points={} bytes={bytes}\n",
         Utc::now().format("%Y-%m-%dT%H:%M:%S%.6fZ"),
         prepared.written(),
-        prepared.body()
+        body,
+        prepared.written()
     );
-    let mut file = file.lock().unwrap_or_else(|poison| poison.into_inner());
-    file.write_all(record.as_bytes())
-        .and_then(|()| file.flush())
+    crate::shadow::append(file, record.as_bytes())
+        .await
         .map_err(|err| WriteError::Transport {
             class: "OSError",
             message: err.to_string(),

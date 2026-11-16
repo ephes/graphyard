@@ -368,6 +368,57 @@ def parse_line(line: str) -> tuple[str, dict[str, str], dict[str, Any], int | No
     return measurement, tags, fields, timestamp
 
 
+def committed_shadow_lines(path: Path, budget: EvidenceBudget) -> Iterator[str]:
+    """Admit framed batches only after their exact count/byte commit trailer.
+
+    Legacy unframed captures remain readable, without v2 crash guarantees.
+    """
+    pending: list[str] | None = None
+    header = ""
+    count = expected_bytes = actual_bytes = 0
+    for raw in evidence_lines(path, budget):
+        if pending is not None:
+            if raw.startswith("# commit "):
+                if (
+                    len(pending) != count
+                    or actual_bytes != expected_bytes
+                    or raw != f"# commit points={count} bytes={expected_bytes}\n"
+                ):
+                    raise ValueError("incomplete shadow batch")
+                yield header
+                yield from pending
+                pending = None
+            else:
+                actual_bytes += len(raw.encode("utf-8"))
+                if (
+                    raw.startswith("#")
+                    or not raw.endswith("\n")
+                    or len(pending) >= count
+                    or actual_bytes > expected_bytes
+                ):
+                    raise ValueError("incomplete shadow batch")
+                pending.append(raw)
+            continue
+        match = re.fullmatch(r"# write (\S+) points=(\d+) bytes=(\d+)\n", raw)
+        if match:
+            count, expected_bytes = int(match[2]), int(match[3])
+            if (
+                not 0 < count <= 8 * 1024 * 1024
+                or not 0 < expected_bytes <= 8 * 1024 * 1024 + 1
+            ):
+                raise ValueError("incomplete shadow batch")
+            header = f"# write {match[1]} points={count}\n"
+            pending, actual_bytes = [], 0
+        elif raw.startswith("# commit ") or (
+            raw.startswith("# write ") and " bytes=" in raw
+        ):
+            raise ValueError("incomplete shadow batch")
+        else:
+            yield raw
+    if pending is not None:
+        raise ValueError("incomplete shadow batch")
+
+
 def read_points_file(
     path: Path, budget: EvidenceBudget | None = None
 ) -> tuple[list[Point], list[int]]:
@@ -375,7 +426,7 @@ def read_points_file(
     points: list[Point] = []
     batches: list[int] = []
     budget = budget or EvidenceBudget()
-    for number, raw in enumerate(evidence_lines(path, budget), 1):
+    for number, raw in enumerate(committed_shadow_lines(path, budget), 1):
         line = raw.rstrip("\n")
         if not line:
             continue
@@ -643,7 +694,7 @@ def read_record(path: Path, budget: EvidenceBudget | None = None) -> Record:
     units: dict[str, list[tuple[float, dict[str, Any]]]] = defaultdict(list)
     first = last = None
     budget = budget or EvidenceBudget()
-    for number, raw in enumerate(evidence_lines(path, budget), 1):
+    for number, raw in enumerate(committed_shadow_lines(path, budget), 1):
         if not raw.strip():
             continue
         line = budget.json(raw, f"{path}:{number}")

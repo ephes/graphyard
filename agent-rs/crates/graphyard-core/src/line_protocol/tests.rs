@@ -97,7 +97,9 @@ fn prepare_write_matches_write_points() {
         if let Some(request) = requests.first() {
             assert_eq!(requests.len(), 1, "{name}");
             assert_eq!(prepared.body(), request.str_field("body"), "{name}");
-        } else if case.field("result").get("written").is_some() {
+        } else if case.field("result").get("written").is_some()
+            && case.get("respond").and_then(|r| r.get("raw")).is_none()
+        {
             // No request although the call succeeded: nothing to write.
             assert!(prepared.is_empty(), "{name}");
         }

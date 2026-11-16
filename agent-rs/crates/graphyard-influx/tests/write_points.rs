@@ -766,3 +766,14 @@ async fn auto_writer_timestamp_admission() {
         1
     );
 }
+
+#[tokio::test]
+async fn r102_accepted_binary_write_counts_once() {
+    let addr = raw("not_utf8").await;
+    let point = point_of(&fixture()["writes"][1]["points"][0]);
+    let result = InfluxWriter::new()
+        .unwrap()
+        .write_points(&v2_settings(&format!("http://{addr}"), "1000"), &[point])
+        .await;
+    assert_eq!(result.unwrap(), 1);
+}

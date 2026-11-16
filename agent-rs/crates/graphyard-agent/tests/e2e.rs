@@ -497,10 +497,13 @@ fn run_once_writes_the_rows_and_lines_of_every_collector_family() {
 
     // The write file: one batch per collector, every point once.
     let written = std::fs::read_to_string(&writes).unwrap();
-    let comments: Vec<&str> = written.lines().filter(|l| l.starts_with('#')).collect();
+    let comments: Vec<&str> = written
+        .lines()
+        .filter(|l| l.starts_with("# write "))
+        .collect();
     assert_eq!(comments.len(), 3, "{written}");
-    assert!(comments[0].starts_with("# write 20") && comments[0].ends_with("Z points=1"));
-    assert!(comments[1].ends_with(" points=5") && comments[2].ends_with(" points=1"));
+    assert!(comments[0].starts_with("# write 20") && comments[0].contains("Z points=1 bytes="));
+    assert!(comments[1].contains(" points=5 bytes=") && comments[2].contains(" points=1 bytes="));
     let lines: Vec<&str> = written.lines().filter(|l| !l.starts_with('#')).collect();
     assert_eq!(lines.len(), 7, "{written}");
     assert!(lines[0].starts_with(

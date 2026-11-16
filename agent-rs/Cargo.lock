@@ -581,6 +581,7 @@ dependencies = [
  "hyper-util",
  "indexmap",
  "influxdb-line-protocol",
+ "libc",
  "log",
  "num-bigint",
  "num-traits",

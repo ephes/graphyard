@@ -2,7 +2,7 @@
 //!
 //! Python sources: `services.py:evaluate_condition`, `_evaluate_series`,
 //! `_is_breached_for_duration`, `_series_key`, `_group_samples_by_series`,
-//! `_series_labels`, `_STATUS_SEVERITY` and
+//! `_series_label`, `_STATUS_SEVERITY` and
 //! `models.py:ConditionDefinition.stale_limit_seconds`. Pinned by
 //! `fixtures/conditions.json` (`fixtures/gen_conditions.py`), which covers
 //! every `evaluate_condition` test of `tests/test_condition_evaluation.py`.
@@ -22,7 +22,7 @@
 //! has its own allowance, and `stale_after_seconds = 0` means "use the
 //! global setting".
 
-use std::collections::{BTreeMap, BTreeSet, HashSet};
+use std::collections::BTreeMap;
 use std::fmt;
 use std::future::Future;
 
@@ -178,9 +178,8 @@ pub fn evaluate_samples(
         });
     }
 
-    let grouped = group_samples_by_series(samples);
+    let grouped = group_samples_by_series(samples)?;
     let keys: Vec<&SeriesKey> = grouped.keys().collect();
-    let labels = series_labels(&keys);
     let mut results = Vec::with_capacity(grouped.len());
     for (index, series) in grouped.values().enumerate() {
         let latest = series[series.len() - 1].ts;
@@ -238,7 +237,8 @@ pub fn evaluate_samples(
         worst.status,
         format!(
             "{} [series: {}] ({not_ok} of {total} series not OK)",
-            worst.message, labels[worst.index]
+            worst.message,
+            series_label(&keys, keys[worst.index])
         ),
         Some(worst.last_value),
     ))
@@ -295,8 +295,10 @@ fn series_key(sample: &MetricSample) -> SeriesKey {
 }
 
 /// `_group_samples_by_series`: series in order of first appearance, each
-/// sorted by time (stable, so equal timestamps keep the query order).
-fn group_samples_by_series(samples: &[MetricSample]) -> IndexMap<SeriesKey, Vec<Point>> {
+/// sorted by time; conflicting equal-time values refuse the entire observation.
+fn group_samples_by_series(
+    samples: &[MetricSample],
+) -> Result<IndexMap<SeriesKey, Vec<Point>>, PyError> {
     let mut grouped: IndexMap<SeriesKey, Vec<Point>> = IndexMap::new();
     for sample in samples {
         grouped.entry(series_key(sample)).or_default().push(Point {
@@ -306,60 +308,65 @@ fn group_samples_by_series(samples: &[MetricSample]) -> IndexMap<SeriesKey, Vec<
     }
     for series in grouped.values_mut() {
         series.sort_by_key(|point| point.ts);
+        if series
+            .windows(2)
+            .any(|pair| pair[0].ts == pair[1].ts && pair[0].value != pair[1].value)
+        {
+            return Err(PyError::value_error(
+                "Conflicting values for same series and timestamp",
+            ));
+        }
     }
-    grouped
+    Ok(grouped)
 }
 
+#[cfg(test)]
+thread_local! { static DIMENSION_READS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) }; }
+
 fn dimension<'a>(key: &'a SeriesKey, name: &str) -> Option<&'a str> {
+    #[cfg(test)]
+    DIMENSION_READS.with(|count| count.set(count.get() + 1));
     key.binary_search_by(|(candidate, _)| candidate.as_str().cmp(name))
         .ok()
         .map(|index| key[index].1.as_str())
 }
 
-/// `_series_labels`: JSON-quoted names/values of the dimensions that differ;
+/// `_series_label`: JSON-quoted names/values of the dimensions that differ;
 /// with nothing varying (one series) every name but `metric`. Missing values
 /// render as `null`, distinct from the quoted empty string.
-fn series_labels(keys: &[&SeriesKey]) -> Vec<String> {
-    let all_names: BTreeSet<&str> = keys
+fn series_label(keys: &[&SeriesKey], selected: &SeriesKey) -> String {
+    // One visit per present dimension; absence varies whenever its count is
+    // below the series count. Sparse keys never require an N-by-union matrix.
+    let mut dimensions: BTreeMap<&str, (&str, usize, bool)> = BTreeMap::new();
+    for key in keys {
+        for (name, value) in key.iter() {
+            let entry = dimensions.entry(name).or_insert((value, 0, false));
+            entry.1 += 1;
+            entry.2 |= entry.0 != value;
+        }
+    }
+    let varying = dimensions
+        .values()
+        .any(|(_, count, differs)| *count != keys.len() || *differs);
+    dimensions
         .iter()
-        .flat_map(|key| key.iter().map(|(name, _)| name.as_str()))
-        .collect();
-    let varying: Vec<&str> = all_names
-        .iter()
-        .copied()
-        .filter(|name| {
-            keys.iter()
-                .map(|key| dimension(key, name))
-                .collect::<HashSet<_>>()
-                .len()
-                > 1
+        .filter(|(name, (_, count, differs))| {
+            if varying {
+                *count != keys.len() || *differs
+            } else {
+                **name != "metric"
+            }
         })
-        .collect();
-    let names: Vec<&str> = if varying.is_empty() {
-        all_names
-            .iter()
-            .copied()
-            .filter(|name| *name != "metric")
-            .collect()
-    } else {
-        varying
-    };
-    keys.iter()
-        .map(|key| {
-            names
-                .iter()
-                .map(|name| {
-                    format!(
-                        "{}={}",
-                        serde_json::to_string(name).expect("string serialization"),
-                        serde_json::to_string(&dimension(key, name))
-                            .expect("optional string serialization")
-                    )
-                })
-                .collect::<Vec<_>>()
-                .join(", ")
+        .map(|(name, _)| {
+            format!(
+                "{}={}",
+                serde_json::to_string(name).expect("string serialization"),
+                serde_json::to_string(&dimension(selected, name))
+                    .expect("optional string serialization")
+            )
         })
-        .collect()
+        .collect::<Vec<_>>()
+        .join(", ")
 }
 
 /// `_evaluate_series` on one time-ordered, non-empty series.

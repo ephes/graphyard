@@ -1604,3 +1604,18 @@ def test_completion_sync_failure_preserves_published_artifacts(
     assert (shadow / "db.sqlite3").exists()
     assert (shadow / "shadow.json").exists()
     assert "uncertain publication" in capsys.readouterr().err
+
+
+def test_r102_reader_refuses_uncommitted_batch(tmp_path):
+    path = tmp_path / "partial.lp"
+    point = "m,host=synthetic value=1 123\n"
+    path.write_text(
+        f"# write 2026-10-21T08:15:30Z points=1 bytes={len(point)}\n{point}"
+    )
+    with pytest.raises(ValueError, match="incomplete shadow batch"):
+        compare.read_points_file(path)
+    with path.open("a") as stream:
+        stream.write(f"# commit points=1 bytes={len(point)}\n")
+    points, batches = compare.read_points_file(path)
+    assert [item.value for item in points] == [1]
+    assert batches == [compare.rfc3339_ns("2026-10-21T08:15:30Z")]

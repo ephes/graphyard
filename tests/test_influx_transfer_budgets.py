@@ -278,3 +278,36 @@ def test_ingest_budget_failure_is_persistence_failure(client, monkeypatch):
         in PipelineHeartbeat.objects.get(name="metric_ingest").last_error
     )
     assert len(requests) == 1
+
+
+def test_r102_flux_default_expansion_refused(monkeypatch):
+    body = (
+        "#datatype,string,long,string\n#group,false,false,false\n#default,,,"
+        + "x" * 100_000
+        + "\n,result,table,tag\n"
+        + ",,0,\n" * 1000
+    ).encode()
+    install(monkeypatch, Stream([body]))
+    with pytest.raises(influx.InfluxTransferError, match="expanded cell"):
+        call(False)
+
+
+def test_r102_successful_binary_write(monkeypatch):
+    requests = install(monkeypatch, Stream([b"\xff\xfe"]))
+    assert call(True) == 1
+    assert len(requests) == 1
+
+
+@pytest.mark.parametrize("values", ["1,99", "99,1"])
+def test_r102_duplicate_decision_columns_refused(monkeypatch, values, capsys, caplog):
+    body = (
+        "#datatype,string,long,double,double\n#group,false,false,false,false\n"
+        "#default,,,,\n,result,table,_value,_value\n,,0," + values + "\n"
+    ).encode()
+    install(monkeypatch, Stream([body]))
+    with pytest.raises(
+        influx.InfluxConfigurationError, match="duplicate column labels"
+    ):
+        call(False)
+    assert "_value" not in capsys.readouterr().out
+    assert "_value" not in caplog.text

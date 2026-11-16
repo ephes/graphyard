@@ -2,7 +2,7 @@
 
 Pins ``graphyard-core::conditions`` (agent-rs/PLAN.md section 7) against
 ``services.evaluate_condition`` and its helpers (``_series_key``,
-``_group_samples_by_series``, ``_series_labels``, ``_evaluate_series``,
+``_group_samples_by_series``, ``_series_label``, ``_evaluate_series``,
 ``_is_breached_for_duration``, ``ConditionDefinition.stale_limit_seconds``).
 
 Every case runs the real ``evaluate_condition`` on an unsaved
@@ -755,7 +755,7 @@ def _anchor_cases() -> list[dict[str, Any]]:
             [at(60)],
         ),
         _case(
-            "duplicate_timestamps_keep_input_order",
+            "conflicting_duplicate_timestamps_refused",
             _condition(critical_threshold=None),
             [at(0, 50.0), *_fresh(80.0)[:-1], at(0, 81.0)],
         ),

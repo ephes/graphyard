@@ -58,6 +58,7 @@ pub struct HttpContext {
     extra_roots: Vec<CertificateDer<'static>>,
     pub(crate) close_join: Duration,
     pub(crate) max_abandoned: usize,
+    pub(crate) lookup_permits: Arc<tokio::sync::Semaphore>,
 }
 
 impl Default for HttpContext {
@@ -77,6 +78,13 @@ impl HttpContext {
             extra_roots: Vec::new(),
             close_join: CLOSE_JOIN,
             max_abandoned: MAX_ABANDONED,
+            lookup_permits: {
+                static PERMITS: std::sync::OnceLock<Arc<tokio::sync::Semaphore>> =
+                    std::sync::OnceLock::new();
+                Arc::clone(
+                    PERMITS.get_or_init(|| Arc::new(tokio::sync::Semaphore::new(MAX_ABANDONED))),
+                )
+            },
         }
     }
 
@@ -104,6 +112,7 @@ impl HttpContext {
     pub fn with_limits(mut self, close_join: Duration, max_abandoned: usize) -> Self {
         self.close_join = close_join;
         self.max_abandoned = max_abandoned;
+        self.lookup_permits = Arc::new(tokio::sync::Semaphore::new(max_abandoned));
         self
     }
 
@@ -280,7 +289,7 @@ pub struct Response {
     body: Incoming,
     decoder: BodyDecoder,
     headers: HeaderMap,
-    connection: JoinHandle<()>,
+    _connection: AbortConnection,
     pub status: u16,
     pub reason_phrase: String,
     pub http_version: &'static str,
@@ -299,9 +308,11 @@ impl std::fmt::Debug for Response {
     }
 }
 
-impl Drop for Response {
+struct AbortConnection(JoinHandle<()>);
+
+impl Drop for AbortConnection {
     fn drop(&mut self) {
-        self.connection.abort();
+        self.0.abort();
     }
 }
 
@@ -520,16 +531,13 @@ impl HttpClient {
             .handshake(io)
             .await
             .map_err(|err| HttpError::transport(&err, false))?;
-        let connection = tokio::spawn(async move {
+        let connection = AbortConnection(tokio::spawn(async move {
             let _ = connection.await;
-        });
-        let response = match sender.send_request(outgoing).await {
-            Ok(response) => response,
-            Err(err) => {
-                connection.abort();
-                return Err(HttpError::transport(&err, false));
-            }
-        };
+        }));
+        let response = sender
+            .send_request(outgoing)
+            .await
+            .map_err(|err| HttpError::transport(&err, false))?;
         let (parts, body) = response.into_parts();
         self.store_cookies(url, &parts.headers);
         let status = parts.status.as_u16();
@@ -556,7 +564,7 @@ impl HttpClient {
             body,
             decoder: BodyDecoder::new(encodings.split(',')),
             headers: parts.headers,
-            connection,
+            _connection: connection,
             status,
             reason_phrase: reason,
             http_version,
@@ -598,9 +606,16 @@ impl HttpClient {
         let host = url.host();
         let small_port = port.to_u16();
         let service = small_port.is_none().then(|| port.to_string());
-        let addresses = resolve(&self.context.lookup, &self.scope, host, service)
-            .await
-            .map_err(|err| HttpError::new(ErrorKind::ConnectError, err.0))?;
+        let addresses = resolve(
+            &self.context.lookup,
+            &self.scope,
+            host,
+            service,
+            &self.context.lookup_permits,
+            &self.context.abandoned,
+        )
+        .await
+        .map_err(|err| HttpError::new(ErrorKind::ConnectError, err.0))?;
         // A port beyond 65535 that the resolver accepted cannot be
         // connected to (`getsockaddrarg`, an `OverflowError` in Python).
         let port = small_port.ok_or_else(|| {
