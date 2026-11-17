@@ -36,7 +36,8 @@ The agent writes only the six agent tables (`metric_collection_spec`,
 `host_registry`, `service_registry`) and InfluxDB. It never touches the
 ingest tokens, the web ingest path or Vector (PLAN.md 5.7). It verifies TLS
 against the system CA store (D-12), reads only the process environment (no
-`src/django/.env`, D-9) and flushes every stdout line (D-8).
+`src/django/.env`, D-9) and writes stdout/stderr through bounded output
+workers that never block monitoring and drop lines under backpressure (D-8).
 
 ## Schema contract
 
@@ -91,8 +92,11 @@ Every difference between the two implementations has a class (PLAN.md 2.3):
   await point with exit 0 (D-1); a database without the required schema stops
   the agent at startup instead of failing every run (D-2); non-standard JSON
   (`NaN`, UTF-16 bodies) from a collector endpoint is a decode error (D-4);
-  user regexes run on `fancy-regex` (D-5); stdout is unbuffered (D-8); no
-  `.env` file (D-9); log values have `\n`/`\r` escaped (D-10); stored JSON that
+  user regexes run on `fancy-regex` (D-5); stdout/stderr go through bounded,
+  non-blocking output workers that drop lines under backpressure and bound the
+  exit drain (D-8); no `.env` file (D-9); log values have `\n`/`\r` escaped and
+  the final output line escapes C0/DEL/C1 controls and U+2028/U+2029 within an
+  8 KiB record limit (D-10); stored JSON that
   CPython cannot load fails only its spec or condition (D-11); system CA store
   (D-12).
 

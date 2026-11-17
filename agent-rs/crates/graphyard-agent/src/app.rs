@@ -10,7 +10,6 @@
 //! blocking pool. Exit 0 either way.
 
 use std::future::Future;
-use std::io::Write as _;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 use std::sync::Arc;
@@ -47,18 +46,14 @@ pub const INTERRUPTED_LINE: &str = "graphyard-agent interrupted, exiting";
 /// The runtime's grace for blocking work at shutdown (PLAN.md 4.1).
 pub(crate) const SHUTDOWN_GRACE: Duration = Duration::from_millis(500);
 
-/// One stdout line, flushed at once (D-8); a closed stdout is ignored.
-pub fn print_stdout(line: &str) {
-    let mut stdout = std::io::stdout().lock();
-    let _ = writeln!(stdout, "{line}");
-    let _ = stdout.flush();
+/// Submit one stdout report to the bounded worker; closed/full sinks lose it.
+pub fn print_stdout(line: impl std::fmt::Display) {
+    crate::logging::stdout(format_args!("{line}"));
 }
 
-/// One stderr line (the command's `self.stderr.write`).
-pub fn print_stderr(line: &str) {
-    let mut stderr = std::io::stderr().lock();
-    let _ = writeln!(stderr, "{line}");
-    let _ = stderr.flush();
+/// Submit one stderr diagnostic to the bounded worker.
+pub fn print_stderr(line: impl std::fmt::Display) {
+    crate::logging::stderr(format_args!("{line}"));
 }
 
 /// The signal that ended the agent.
@@ -118,7 +113,7 @@ impl<E: SpecExecutors, S: ConditionSamples, C: Clock> Runner for Agent<E, S, C> 
     async fn metrics(&mut self, due_only: bool) -> bool {
         match run_metric_specs(&self.store, &self.executors, &self.clock, due_only).await {
             Ok(run) => {
-                print_stdout(&format!(
+                print_stdout(format_args!(
                     "Metric specs: total={} failed={} warning={} ingested={} skipped={}",
                     run.total, run.failed, run.warning, run.ingested, run.skipped
                 ));
@@ -132,7 +127,7 @@ impl<E: SpecExecutors, S: ConditionSamples, C: Clock> Runner for Agent<E, S, C> 
                     err.python_class(),
                     escape_log_value(&err.to_string())
                 );
-                print_stderr(&format!("Metric collection failed: {err}"));
+                print_stderr(format_args!("Metric collection failed: {err}"));
                 false
             }
         }
@@ -149,7 +144,7 @@ impl<E: SpecExecutors, S: ConditionSamples, C: Clock> Runner for Agent<E, S, C> 
         .await;
         match run {
             Ok(run) => {
-                print_stdout(&format!(
+                print_stdout(format_args!(
                     "Condition eval: evaluated={} failed={}",
                     run.total, run.failed
                 ));
@@ -161,7 +156,7 @@ impl<E: SpecExecutors, S: ConditionSamples, C: Clock> Runner for Agent<E, S, C> 
                     err.python_class(),
                     escape_log_value(&err.to_string())
                 );
-                print_stderr(&format!("Condition eval failed: {err}"));
+                print_stderr(format_args!("Condition eval failed: {err}"));
                 false
             }
         }
@@ -178,7 +173,7 @@ pub struct AgentConfig {
 }
 
 pub(crate) fn database_error(db: &Path, err: impl std::fmt::Display) -> ExitCode {
-    print_stderr(&format!("cannot open database {}: {err}", db.display()));
+    print_stderr(format_args!("cannot open database {}: {err}", db.display()));
     ExitCode::FAILURE
 }
 
@@ -186,11 +181,11 @@ pub(crate) fn database_error(db: &Path, err: impl std::fmt::Display) -> ExitCode
 pub fn check_schema_only(db: &Path, settings: &Settings) -> ExitCode {
     match check_schema(db, settings) {
         Ok(report) if report.is_ok() => {
-            print_stdout(&report.to_string());
+            print_stdout(report);
             ExitCode::SUCCESS
         }
         Ok(report) => {
-            print_stderr(&report.to_string());
+            print_stderr(report);
             ExitCode::FAILURE
         }
         Err(err) => database_error(db, err),
@@ -223,7 +218,7 @@ pub(crate) async fn open_verified(
     match store.verify_schema().await {
         Ok(report) if report.is_ok() => Ok((store, report.to_string())),
         Ok(report) => {
-            print_stderr(&report.to_string());
+            print_stderr(report);
             store.close();
             Err(ExitCode::FAILURE)
         }
@@ -280,7 +275,7 @@ where
     {
         Ok(runtime) => runtime,
         Err(err) => {
-            print_stderr(&format!("cannot start the runtime: {err}"));
+            print_stderr(format_args!("cannot start the runtime: {err}"));
             return ExitCode::FAILURE;
         }
     };
@@ -291,7 +286,7 @@ where
     let mut shutdown = match registered {
         Ok(shutdown) => Box::pin(shutdown),
         Err(err) => {
-            print_stderr(&format!("cannot register the signal handlers: {err}"));
+            print_stderr(format_args!("cannot register the signal handlers: {err}"));
             return ExitCode::FAILURE;
         }
     };
@@ -359,19 +354,36 @@ where
 /// The binary: parse, validate, start (PLAN.md 3.1); or the one-shot
 /// `evaluate-conditions` (PLAN.md 11.4).
 pub fn main_entry() -> ExitCode {
+    run_with_output(command_entry)
+}
+
+/// Install the bounded output, run `command`, and drain the output (at most
+/// 200 ms) before returning or before an uncaught panic leaves `main`.
+pub fn run_with_output(command: impl FnOnce() -> ExitCode + std::panic::UnwindSafe) -> ExitCode {
+    crate::logging::install();
+    // The panic hook only queues the message: drain (bounded) before an
+    // uncaught panic leaves `main`, then let it end the process as before (101).
+    let result = std::panic::catch_unwind(command);
+    crate::logging::shutdown();
+    match result {
+        Ok(code) => code,
+        Err(payload) => std::panic::resume_unwind(payload),
+    }
+}
+
+fn command_entry() -> ExitCode {
     let parsed = Cli::try_parse();
     if let Ok(cli) = &parsed
         && cli.version
     {
-        print_stdout(&format!("graphyard-agent {VERSION}"));
+        print_stdout(format_args!("graphyard-agent {VERSION}"));
         return ExitCode::SUCCESS;
     }
-    crate::logging::install();
     // Python reads the settings while importing them, before argparse.
     let settings = match Settings::from_process_env() {
         Ok(settings) => settings,
         Err(err) => {
-            print_stderr(&err.to_string());
+            print_stderr(err);
             return ExitCode::FAILURE;
         }
     };
@@ -388,11 +400,11 @@ pub fn main_entry() -> ExitCode {
     let loops = match cli.loops(&settings) {
         Ok(loops) => loops,
         Err(message) => {
-            print_stderr(&format!("CommandError: {message}"));
+            print_stderr(format_args!("CommandError: {message}"));
             return ExitCode::FAILURE;
         }
     };
-    print_stdout(&loops.start_line());
+    print_stdout(loops.start_line());
     let writer = match &cli.influx_write_file {
         Some(path) => InfluxWriter::to_file(path).map_err(|err| {
             format!(

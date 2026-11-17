@@ -269,7 +269,9 @@ D-9). `--db` defaults to `db.sqlite3` in the working directory, which must
 exist and pass the schema check (D-2); the agent never creates it.
 
 stdout carries the start line, `Metric specs: ...`, `Condition eval: ...` and
-`graphyard-agent interrupted, exiting`, each flushed at once. stderr carries
+`graphyard-agent interrupted, exiting`, each written promptly by a bounded
+output worker that may drop lines under backpressure (see "Bounded output").
+stderr carries
 the log records as bare messages (INFO and above from the agent's crates,
 warnings from libraries), `CommandError: ...` and the `Metric collection
 failed: ...` / `Condition eval failed: ...` lines. Exit codes: 0 for
@@ -541,6 +543,51 @@ Both one-shot loops run before failure status is returned; disabled loops are
 ignored and warning-only outcomes succeed. Continuous mode still isolates errors
 and keeps scheduling. The parity corpus deliberately includes failed work and
 therefore expects exit 1 for each agent one-shot round.
+
+## Bounded output
+
+The Rust binary submits stdout reports and stderr diagnostics to separate worker
+threads, using nonblocking bounded standard-library channels. Each stream holds
+at most 128 queued records plus one in flight, each at most 8 KiB UTF-8 including
+its newline (overlong records end in `...[truncated]`). The final formatter
+streams `Display` values into that byte envelope and stops formatting on overflow.
+It renders C0, DEL and C1 controls as visible `\xNN` escapes and Unicode line/
+paragraph separators as `\u{2028}`/`\u{2029}`, with exactly one physical newline
+per event. Existing literal backslash escapes remain unchanged. This projection
+also covers direct command diagnostics and stdout reports; stored condition names,
+messages and semantic/parity fixtures remain unchanged. A slow journal or unread
+supervisor pipe therefore cannot stall collection, heartbeats or signal handling.
+FIFO order is preserved within each stream; there is no cross-stream ordering.
+Panic messages (for example a collector panic caught by its run's
+`catch_unwind`) use the same path: `logging::install()` sets a panic hook that
+submits one escaped `thread '<name>' panicked at ...` record instead of std's
+synchronous fd-2 write; it prints no backtrace. An uncaught panic leaving
+`main` first gets the same bounded 200 ms drain, then ends the process with
+exit code 101 as before.
+
+A full queue drops the **new** record. Closed/failed sinks also lose records;
+`logging::dropped_records()` reads cumulative stdout/stderr loss counts without
+I/O. When a sink recovers, its owner writes
+`graphyard-agent output_dropped stream=stdout|stderr total=N` directly, without
+recursive logging. A permanently unread sink cannot display its count.
+Command exit allows both streams together 200 ms to drain, then abandons their
+workers, including on SIGTERM/SIGINT and one-shot/validation failures. Pending
+output can be lost on exit; the exit status still describes the command result.
+No deployment is performed; adoption requires rebuilding and rolling out the agent.
+
+Regressions: `cargo test -p graphyard-agent --test log_pipes --locked` runs the
+actual binary with prefilled unread stdout/stderr pipes, real fast synthetic
+HTTP collection and SQLite heartbeats, and verifies SIGTERM exit. The logging
+unit test blocks a sink, fills the exact queue, checks losses/byte bounds, and
+releases it to verify the recovery notice and bounded shutdown wait. The same
+`log_pipes` test binary also checks that a caught panic is one escaped stderr
+record and does not block on a prefilled unread stderr pipe, and that an
+uncaught panic's message is drained before the process exits.
+`cargo test -p graphyard-agent --test log_records --locked` captures real stderr
+from the installed logger with controls and an incrementally generated huge
+`Display`, and from the actual agent evaluating a synthetic hostile condition name.
+The byte ceiling bounds final formatting/queue memory, not allocations performed
+inside a caller's `Display` implementation or existing semantic message builders.
 
 ## Failure diagnostics
 

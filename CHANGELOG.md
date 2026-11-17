@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- Escape terminal controls and Unicode line separators at the final Rust agent
+  stdout/stderr boundary. Stream formatting within the 8 KiB UTF-8 record limit
+  with explicit truncation and one physical line per event, while preserving
+  stored and semantic/parity message values.
+
+- Keep Rust agent collection, heartbeats and signals live under stdout/stderr
+  backpressure using separate bounded output workers (128 queued 8 KiB records
+  per stream). Drop new records on saturation, count/report losses after sink
+  recovery, and limit the combined exit drain to 200 ms. Panic messages use the
+  same bounded, escaped stderr path instead of a synchronous write; an uncaught
+  panic is drained before the process exits with code 101.
+
 - Apply and prune metric collection specs in one transaction on the resolved
   write-router alias, including authoritative reads and conflict checks; publish
   success output only after that transaction commits. The PostgreSQL contract
