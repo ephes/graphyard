@@ -281,6 +281,20 @@ stay identical. Login admission is a Python web concern, not an agent change.
 - Python counterparts: `tests/test_collector_error_privacy.py` and
   `tests/test_condition_failure_diagnostics.py`; health output and logs are checked.
 
+## Bounded operational output (D-8, D-10)
+
+- `graphyard-agent/tests/log_pipes.rs`: actual binary with prefilled unread
+  stdout/stderr OS pipes; real synthetic HTTP collectors and committed healthy
+  heartbeats continue, and SIGTERM exits promptly without draining the pipes.
+- `graphyard-agent/src/logging.rs` saturation test: one blocked worker plus
+  exactly 128 queued records, finite encoded bytes, drop-new counters, bounded
+  shutdown wait and a direct loss notice after recovery.
+- `graphyard-agent/tests/log_records.rs`: production logger in a fresh child
+  process, raw C0/DEL/C1 and Unicode separators, direct command diagnostics,
+  incremental huge `Display`, bounded valid UTF-8 and explicit truncation.
+  The actual agent also evaluates a hostile synthetic condition name while
+  preserving stored names/messages. Semantic fixtures remain unchanged.
+
 ## Real AgentSink publication failures
 
 `graphyard-agent/tests/collectors.rs` covers the real HTTP JSON executor and

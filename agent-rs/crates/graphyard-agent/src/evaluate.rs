@@ -79,14 +79,14 @@ async fn evaluate(
             print_stdout(&summary);
             match failure {
                 Some(message) => {
-                    print_stderr(&format!("CommandError: {message}"));
+                    print_stderr(format_args!("CommandError: {message}"));
                     ExitCode::FAILURE
                 }
                 None => ExitCode::SUCCESS,
             }
         }
         Err(err) => {
-            print_stderr(&format!(
+            print_stderr(format_args!(
                 "Condition evaluation failed: {}: {}",
                 err.python_class(),
                 escape_log_value(&err.to_string())
@@ -104,7 +104,7 @@ pub fn evaluate_conditions(args: &EvaluateConditionsArgs, settings: &Settings) -
     {
         Ok(runtime) => runtime,
         Err(err) => {
-            print_stderr(&format!("cannot start the runtime: {err}"));
+            print_stderr(format_args!("cannot start the runtime: {err}"));
             return ExitCode::FAILURE;
         }
     };

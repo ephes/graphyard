@@ -258,14 +258,17 @@ that differs is a bug.
   options, clap usage text on bad flags (exit 2 as argparse). Settings that
   only the web reads (secret key, login throttle, ingest windows) are not
   validated, so the agent starts even when they are invalid.
-- **D-8 Unbuffered stdout.** Rust writes and flushes every stdout line;
-  Python's lines are block-buffered (section 1).
+- **D-8 Bounded asynchronous output.** Rust submits stdout/stderr to separate
+  bounded workers (3.6), which flush each record. Saturation drops new records;
+  exit drains for at most 200 ms. Python's stdout is block-buffered (section 1).
 - **D-9 No `.env` file.** Rust reads only the process environment (the unit's
   EnvironmentFile). django-environ's `read_env(src/django/.env)` is not
   ported; on macmini the file adds only unused keys.
-- **D-10 Log injection.** Rust escapes `\n`/`\r` in values it interpolates
-  into log lines (spec names, entity ids, metric names), like the web ingest
-  path already does (`views.py`, `test_metric_log_escapes_newline`).
+- **D-10 Log injection.** Semantic message helpers retain `\n`/`\r`
+  escaping in interpolated values. At the final stdout/stderr boundary Rust
+  additionally escapes C0/DEL/C1 as `\xNN` and U+2028/U+2029 as visible Unicode
+  escapes, under the byte envelope of 3.6. Stored/semantic values are unchanged;
+  only the operational projection diverges for controls/overlong records.
 - **D-11 Stored JSON that CPython cannot load.** Rust parses `config` and
   `tags_filter` with `serde_json` (`arbitrary_precision`), which accepts every
   RFC 8259 document `JSON_VALID` accepts, including numbers beyond `f64`
@@ -555,7 +558,7 @@ No raw exception/query text enters that event or failure message. Heartbeat
 
 ### 3.6 Output and logging
 
-stdout (P1 text, one line each, flushed): the start line, `Metric specs: …`,
+stdout (P1 text, one line each, submitted to the bounded worker): the start line, `Metric specs: …`,
 `Condition eval: …`, `graphyard-agent interrupted, exiting`. stderr (P1
 text): `CommandError: …`, `Metric collection failed: <err>`,
 `Condition eval failed: <err>`.
@@ -585,6 +588,26 @@ Rust adds three INFO lines at startup (version, schema check result with
 journal mode, effective intervals) and nothing per run beyond the above.
 The graphyard crates log at INFO; other crates (reqwest, rustls, hyper) only
 warnings and errors.
+
+Both streams use separate standard-library `sync_channel` workers: 128 queued
+records plus one in flight per stream, at most 8192 UTF-8 bytes per record
+including newline. Formatting is incremental, escapes C0/DEL/C1 to `\xNN`
+and U+2028/U+2029 to `\u{2028}`/`\u{2029}`, stops at that encoded byte budget
+and marks truncation with `...[truncated]`. It never builds a complete arbitrary
+`Display` first. One physical newline terminates each event. Literal backslash
+escapes and semantic/parity message values remain unchanged; this final display
+projection also covers direct command reports. It does not bound allocations
+inside caller-owned `Display` implementations or upstream semantic helpers.
+Submission uses `try_send`, never sink I/O. Full queues drop
+new records; disconnected/stopped workers and write failures count as losses.
+The cumulative `(stdout, stderr)` counters are available through
+`logging::dropped_records()` without logging. After successful sink writes, the
+worker emits a fixed `graphyard-agent output_dropped stream=<stream> total=<n>`
+notice when losses increased. An unread sink cannot show that notice until it
+recovers. There is only per-stream FIFO ordering. At binary exit both workers
+share a 200 ms drain deadline; blocked workers are detached, never joined.
+Accepted records can be lost at exit. Ordinary drained output retains parity;
+loss under backpressure is the explicit D-8 availability tradeoff.
 
 ### 3.7 systemd behaviour
 
@@ -669,7 +692,7 @@ keep every fixture-tested function in `graphyard-core`.
 | fixed regexes | `regex` | Django's `datetime_re` fallback when reading stored datetimes (5.3); `fancy-regex` builds on it |
 | time | `chrono` | Django datetime text, ISO parsing of HA `last_updated`, RFC 3339 of Flux |
 | CLI | `clap` (derive) | |
-| logging | `log` + a 20-line stderr logger printing the bare message | matches the production format; no `tracing` stack needed |
+| logging | `log` + bounded standard-library stdout/stderr workers | matches the production format; no `tracing` stack needed |
 | tests | `tempfile`, `tokio-test`, `rcgen` + `time` (TLS fake servers with a CA and a short-lived server certificate); the collectors' fake servers write raw HTTP/1.1 over tokio sockets to drip headers and bodies byte by byte | |
 
 No OpenSSL, no `hickory-resolver`, no musl.
