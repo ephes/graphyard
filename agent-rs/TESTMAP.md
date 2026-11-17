@@ -288,7 +288,8 @@ stay identical. Login admission is a Python web concern, not an agent change.
   heartbeats continue, and SIGTERM exits promptly without draining the pipes.
   Its `panic_child` cases install the production panic hook in a fresh process:
   a caught panic is one escaped stderr record and does not block on a
-  prefilled unread stderr pipe.
+  prefilled unread stderr pipe. `uncaught_panic_child` checks that an uncaught
+  panic's record is drained before exit while stderr is still blocked.
 - `graphyard-agent/src/logging.rs` saturation test: one blocked worker plus
   exactly 128 queued records, finite encoded bytes, drop-new counters, bounded
   shutdown wait and a direct loss notice after recovery.

@@ -354,10 +354,21 @@ where
 /// The binary: parse, validate, start (PLAN.md 3.1); or the one-shot
 /// `evaluate-conditions` (PLAN.md 11.4).
 pub fn main_entry() -> ExitCode {
+    run_with_output(command_entry)
+}
+
+/// Install the bounded output, run `command`, and drain the output (at most
+/// 200 ms) before returning or before an uncaught panic leaves `main`.
+pub fn run_with_output(command: impl FnOnce() -> ExitCode + std::panic::UnwindSafe) -> ExitCode {
     crate::logging::install();
-    let code = command_entry();
+    // The panic hook only queues the message: drain (bounded) before an
+    // uncaught panic leaves `main`, then let it end the process as before (101).
+    let result = std::panic::catch_unwind(command);
     crate::logging::shutdown();
-    code
+    match result {
+        Ok(code) => code,
+        Err(payload) => std::panic::resume_unwind(payload),
+    }
 }
 
 fn command_entry() -> ExitCode {

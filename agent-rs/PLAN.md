@@ -601,6 +601,8 @@ inside caller-owned `Display` implementations or upstream semantic helpers.
 Submission uses `try_send`, never sink I/O. `logging::install()` also sets a
 panic hook that submits the panic message (no backtrace) as one stderr record,
 so a panic caught by a run's `catch_unwind` never writes synchronously to fd 2.
+`main_entry` catches an uncaught panic, runs the bounded exit drain and then
+resumes it (exit 101), so a fatal panic message is not lost in the queue.
 Full queues drop
 new records; disconnected/stopped workers and write failures count as losses.
 The cumulative `(stdout, stderr)` counters are available through

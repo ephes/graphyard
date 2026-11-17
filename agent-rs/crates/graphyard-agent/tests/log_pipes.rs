@@ -139,6 +139,87 @@ fn panic_child() {
     graphyard_agent::logging::shutdown();
 }
 
+const UNCAUGHT_CHILD: &str = "GRAPHYARD_TEST_UNCAUGHT_PANIC_CHILD";
+
+// The production binary's main thread: an uncaught panic leaves `main_entry`.
+#[test]
+fn uncaught_panic_child() {
+    let Some(ready) = std::env::var_os(UNCAUGHT_CHILD) else {
+        return;
+    };
+    let unwound = std::panic::catch_unwind(|| {
+        graphyard_agent::app::run_with_output(move || {
+            std::fs::write(&ready, b"").unwrap();
+            panic!("synthetic fatal\x1b")
+        })
+    });
+    assert!(unwound.is_err(), "the uncaught panic must keep unwinding");
+    // Exit at once, as the binary does when the panic leaves `main`: only
+    // output drained by `run_with_output` itself reaches the parent.
+    std::process::exit(101);
+}
+
+#[test]
+fn uncaught_panic_message_is_drained_before_exit() {
+    use std::io::Read as _;
+    use std::sync::atomic::AtomicBool;
+
+    // Prefill stderr so the panic record blocks in the worker; release the
+    // pipe only after the child is about to panic. Without the exit drain the
+    // child would leave `main` while its worker is still blocked.
+    let (mut reader, mut writer) = pipe().unwrap();
+    let child_writer = writer.try_clone().unwrap();
+    let stop = Arc::new(AtomicBool::new(false));
+    let written = Arc::new(AtomicUsize::new(0));
+    let (halt, progress) = (stop.clone(), written.clone());
+    let filler = std::thread::spawn(move || {
+        while !halt.load(Ordering::Relaxed) && writer.write_all(&[b'x'; 1024]).is_ok() {
+            progress.fetch_add(1024, Ordering::Relaxed);
+        }
+    });
+    let deadline = Instant::now() + Duration::from_secs(3);
+    loop {
+        let before = written.load(Ordering::Relaxed);
+        std::thread::sleep(Duration::from_millis(100));
+        if before > 0 && before == written.load(Ordering::Relaxed) {
+            break;
+        }
+        assert!(Instant::now() < deadline, "pipe never filled");
+    }
+    let dir = tempfile::tempdir().unwrap();
+    let ready = dir.path().join("ready");
+    let mut child = Command::new(std::env::current_exe().unwrap())
+        .args([
+            "--exact",
+            "uncaught_panic_child",
+            "--nocapture",
+            "--test-threads=1",
+        ])
+        .env(UNCAUGHT_CHILD, &ready)
+        .stdout(Stdio::null())
+        .stderr(Stdio::from(child_writer))
+        .spawn()
+        .unwrap();
+    let deadline = Instant::now() + Duration::from_secs(5);
+    while !ready.exists() {
+        if Instant::now() >= deadline {
+            child.kill().unwrap();
+            break;
+        }
+        std::thread::sleep(Duration::from_millis(1));
+    }
+    stop.store(true, Ordering::Relaxed);
+    let mut captured = Vec::new();
+    reader.read_to_end(&mut captured).unwrap();
+    filler.join().unwrap();
+    let status = child.wait().unwrap();
+    assert_eq!(status.code(), Some(101), "{status:?}");
+    let text = String::from_utf8(captured).unwrap();
+    let panics: Vec<_> = text.lines().filter(|l| l.contains("panicked at")).collect();
+    assert_eq!(panics.len(), 1, "panic message lost at exit");
+    assert!(panics[0].ends_with("synthetic fatal\\x1b"));
+}
+
 fn run_panic_child(stderr: Stdio) -> std::process::Child {
     Command::new(std::env::current_exe().unwrap())
         .args(["--exact", "panic_child", "--nocapture", "--test-threads=1"])

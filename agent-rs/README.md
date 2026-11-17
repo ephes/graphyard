@@ -561,7 +561,9 @@ FIFO order is preserved within each stream; there is no cross-stream ordering.
 Panic messages (for example a collector panic caught by its run's
 `catch_unwind`) use the same path: `logging::install()` sets a panic hook that
 submits one escaped `thread '<name>' panicked at ...` record instead of std's
-synchronous fd-2 write; it prints no backtrace.
+synchronous fd-2 write; it prints no backtrace. An uncaught panic leaving
+`main` first gets the same bounded 200 ms drain, then ends the process with
+exit code 101 as before.
 
 A full queue drops the **new** record. Closed/failed sinks also lose records;
 `logging::dropped_records()` reads cumulative stdout/stderr loss counts without
@@ -579,7 +581,8 @@ HTTP collection and SQLite heartbeats, and verifies SIGTERM exit. The logging
 unit test blocks a sink, fills the exact queue, checks losses/byte bounds, and
 releases it to verify the recovery notice and bounded shutdown wait. The same
 `log_pipes` test binary also checks that a caught panic is one escaped stderr
-record and does not block on a prefilled unread stderr pipe.
+record and does not block on a prefilled unread stderr pipe, and that an
+uncaught panic's message is drained before the process exits.
 `cargo test -p graphyard-agent --test log_records --locked` captures real stderr
 from the installed logger with controls and an incrementally generated huge
 `Display`, and from the actual agent evaluating a synthetic hostile condition name.
