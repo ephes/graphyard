@@ -398,6 +398,13 @@ and identical values) are refused with only the member position. Repeated array
 records still undergo the ordinary duplicate-spec-name check. Integers beyond
 Python's decoder digit limit produce a controlled command error before model access.
 
+Apply resolves the `MetricCollectionSpec` write router once. The initial snapshot,
+all definition reads, creates, conditional updates, locks and pruning use that
+same database alias inside one transaction, even when reads normally route to a
+replica. Default and replica databases are not consulted unless selected as the
+writer. Success lines and summary counters are printed only after that writer
+transaction commits.
+
 Apply compares the captured definition and update timestamp before writing.
 Concurrent edits, duplicate creates or recognized database contention produce a
 retry/conflict command error. Other database failures report a bounded storage

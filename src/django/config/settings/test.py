@@ -35,3 +35,9 @@ DATABASES["secondary"] = {
     **DATABASES["default"],
     "TEST": {"DEPENDENCIES": []},
 }
+
+# Spec reconciliation router oracle: default, read replica and writer stay separate.
+DATABASES["spec_writer"] = {
+    **DATABASES["default"],
+    "TEST": {"DEPENDENCIES": []},
+}

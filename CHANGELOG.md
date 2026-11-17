@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Apply and prune metric collection specs in one transaction on the resolved
+  write-router alias, including authoritative reads and conflict checks; publish
+  success output only after that transaction commits.
+
 - Refuse spec files whose opened generation or observed length changes during
   reading, before JSON admission or apply/prune; retain coherent reads across
   atomic path replacement.
