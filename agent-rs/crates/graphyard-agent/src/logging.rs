@@ -240,6 +240,17 @@ pub fn install() {
     let _ = outputs();
     if log::set_logger(&LOGGER).is_ok() {
         log::set_max_level(LevelFilter::Info);
+        // Std's default hook writes synchronously to fd 2 before a collector's
+        // `catch_unwind` sees the unwind; an unread stderr would block the
+        // runtime thread there. Route panics through the bounded worker, so
+        // they get the same escaping, envelope and drop-new policy.
+        std::panic::set_hook(Box::new(|info| {
+            let thread = std::thread::current();
+            stderr(format_args!(
+                "thread '{}' {info}",
+                thread.name().unwrap_or("<unnamed>")
+            ));
+        }));
     }
 }
 

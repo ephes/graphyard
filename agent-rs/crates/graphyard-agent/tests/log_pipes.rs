@@ -123,3 +123,69 @@ fn unread_stdout_keeps_collection_heartbeat_and_sigterm_live() {
 fn unread_stderr_keeps_collection_heartbeat_and_sigterm_live() {
     unread_pipe_does_not_stop_agent(true);
 }
+
+const PANIC_CHILD: &str = "GRAPHYARD_TEST_PANIC_CHILD";
+
+// Fresh process with the production hook: a caught panic (as a collector's
+// `catch_unwind` sees it) must not write synchronously to stderr.
+#[test]
+fn panic_child() {
+    if std::env::var_os(PANIC_CHILD).is_none() {
+        return;
+    }
+    graphyard_agent::logging::install();
+    let caught = std::panic::catch_unwind(|| panic!("synthetic\x1b[2J\nforged"));
+    assert!(caught.is_err());
+    graphyard_agent::logging::shutdown();
+}
+
+fn run_panic_child(stderr: Stdio) -> std::process::Child {
+    Command::new(std::env::current_exe().unwrap())
+        .args(["--exact", "panic_child", "--nocapture", "--test-threads=1"])
+        .env(PANIC_CHILD, "1")
+        .stdout(Stdio::null())
+        .stderr(stderr)
+        .spawn()
+        .unwrap()
+}
+
+#[test]
+fn caught_panic_is_one_escaped_record() {
+    let output = run_panic_child(Stdio::piped()).wait_with_output().unwrap();
+    assert!(output.status.success(), "{output:?}");
+    let text = String::from_utf8(output.stderr).unwrap();
+    let panics: Vec<_> = text.lines().filter(|l| l.contains("panicked at")).collect();
+    assert_eq!(panics.len(), 1, "{text:?}");
+    assert!(
+        panics[0].contains("synthetic\\x1b[2J\\x0aforged"),
+        "{text:?}"
+    );
+    assert!(
+        !text.contains("\nforged") && !text.contains('\x1b'),
+        "{text:?}"
+    );
+}
+
+#[test]
+fn caught_panic_does_not_block_on_unread_stderr() {
+    let (reader, writer, filler) = full_pipe();
+    let mut child = run_panic_child(Stdio::from(writer));
+    let deadline = Instant::now() + Duration::from_secs(5);
+    let status = loop {
+        if let Some(status) = child.try_wait().unwrap() {
+            break Some(status);
+        }
+        if Instant::now() >= deadline {
+            child.kill().unwrap();
+            child.wait().unwrap();
+            break None;
+        }
+        std::thread::sleep(Duration::from_millis(10));
+    };
+    drop(reader);
+    filler.join().unwrap();
+    assert!(
+        status.is_some_and(|s| s.success()),
+        "panic blocked on stderr: {status:?}"
+    );
+}

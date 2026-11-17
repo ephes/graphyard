@@ -598,7 +598,10 @@ and marks truncation with `...[truncated]`. It never builds a complete arbitrary
 escapes and semantic/parity message values remain unchanged; this final display
 projection also covers direct command reports. It does not bound allocations
 inside caller-owned `Display` implementations or upstream semantic helpers.
-Submission uses `try_send`, never sink I/O. Full queues drop
+Submission uses `try_send`, never sink I/O. `logging::install()` also sets a
+panic hook that submits the panic message (no backtrace) as one stderr record,
+so a panic caught by a run's `catch_unwind` never writes synchronously to fd 2.
+Full queues drop
 new records; disconnected/stopped workers and write failures count as losses.
 The cumulative `(stdout, stderr)` counters are available through
 `logging::dropped_records()` without logging. After successful sink writes, the

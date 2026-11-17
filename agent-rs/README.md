@@ -558,6 +558,10 @@ also covers direct command diagnostics and stdout reports; stored condition name
 messages and semantic/parity fixtures remain unchanged. A slow journal or unread
 supervisor pipe therefore cannot stall collection, heartbeats or signal handling.
 FIFO order is preserved within each stream; there is no cross-stream ordering.
+Panic messages (for example a collector panic caught by its run's
+`catch_unwind`) use the same path: `logging::install()` sets a panic hook that
+submits one escaped `thread '<name>' panicked at ...` record instead of std's
+synchronous fd-2 write; it prints no backtrace.
 
 A full queue drops the **new** record. Closed/failed sinks also lose records;
 `logging::dropped_records()` reads cumulative stdout/stderr loss counts without
@@ -573,7 +577,9 @@ Regressions: `cargo test -p graphyard-agent --test log_pipes --locked` runs the
 actual binary with prefilled unread stdout/stderr pipes, real fast synthetic
 HTTP collection and SQLite heartbeats, and verifies SIGTERM exit. The logging
 unit test blocks a sink, fills the exact queue, checks losses/byte bounds, and
-releases it to verify the recovery notice and bounded shutdown wait.
+releases it to verify the recovery notice and bounded shutdown wait. The same
+`log_pipes` test binary also checks that a caught panic is one escaped stderr
+record and does not block on a prefilled unread stderr pipe.
 `cargo test -p graphyard-agent --test log_records --locked` captures real stderr
 from the installed logger with controls and an incrementally generated huge
 `Display`, and from the actual agent evaluating a synthetic hostile condition name.
