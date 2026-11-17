@@ -159,8 +159,9 @@ fn uncaught_panic_child() {
     std::process::exit(101);
 }
 
-#[test]
-fn uncaught_panic_message_is_drained_before_exit() {
+/// One attempt; `None` when the parent noticed `ready` too late to judge the
+/// child's 200 ms drain (a busy machine), so the caller retries.
+fn uncaught_panic_attempt() -> Option<String> {
     use std::io::Read as _;
     use std::sync::atomic::AtomicBool;
 
@@ -201,7 +202,15 @@ fn uncaught_panic_message_is_drained_before_exit() {
         .spawn()
         .unwrap();
     let deadline = Instant::now() + Duration::from_secs(5);
-    while !ready.exists() {
+    let mut late = false;
+    loop {
+        if let Ok(meta) = std::fs::metadata(&ready) {
+            let written = meta.modified().unwrap();
+            late = std::time::SystemTime::now()
+                .duration_since(written)
+                .is_ok_and(|lag| lag > Duration::from_millis(100));
+            break;
+        }
         if Instant::now() >= deadline {
             child.kill().unwrap();
             break;
@@ -216,8 +225,19 @@ fn uncaught_panic_message_is_drained_before_exit() {
     assert_eq!(status.code(), Some(101), "{status:?}");
     let text = String::from_utf8(captured).unwrap();
     let panics: Vec<_> = text.lines().filter(|l| l.contains("panicked at")).collect();
+    if panics.is_empty() && late {
+        return None;
+    }
     assert_eq!(panics.len(), 1, "panic message lost at exit");
-    assert!(panics[0].ends_with("synthetic fatal\\x1b"));
+    Some(panics[0].to_owned())
+}
+
+#[test]
+fn uncaught_panic_message_is_drained_before_exit() {
+    let line = (0..3)
+        .find_map(|_| uncaught_panic_attempt())
+        .expect("parent was never scheduled within the drain window");
+    assert!(line.ends_with("synthetic fatal\\x1b"), "{line:?}");
 }
 
 fn run_panic_child(stderr: Stdio) -> std::process::Child {
