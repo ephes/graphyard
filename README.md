@@ -404,6 +404,14 @@ same database alias inside one transaction, even when reads normally route to a
 replica. Default and replica databases are not consulted unless selected as the
 writer. Success lines and summary counters are printed only after that writer
 transaction commits.
+The routing oracle also runs on an isolated PostgreSQL test database (separate
+`secondary` and `spec_writer` test databases, never a real service DB):
+
+```bash
+GRAPHYARD_TEST_DATABASE_URL=postgres://graphyard_test@127.0.0.1:5432/graphyard_test \
+  uv run --with 'psycopg[binary]==3.2.10' pytest -q \
+  --ds=config.settings.postgres_contract tests/test_spec_apply_routing.py
+```
 
 Apply compares the captured definition and update timestamp before writing.
 Concurrent edits, duplicate creates or recognized database contention produce a

@@ -4,7 +4,8 @@
 
 - Apply and prune metric collection specs in one transaction on the resolved
   write-router alias, including authoritative reads and conflict checks; publish
-  success output only after that transaction commits.
+  success output only after that transaction commits. The PostgreSQL contract
+  settings and job include a separate `spec_writer` test database for this oracle.
 
 - Refuse spec files whose opened generation or observed length changes during
   reading, before JSON admission or apply/prune; retain coherent reads across

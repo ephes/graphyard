@@ -8,3 +8,8 @@ DATABASES["secondary"] = {
     **DATABASES["default"],
     "TEST": {"NAME": "test_graphyard_secondary", "DEPENDENCIES": []},
 }
+
+DATABASES["spec_writer"] = {
+    **DATABASES["default"],
+    "TEST": {"NAME": "test_graphyard_spec_writer", "DEPENDENCIES": []},
+}
