@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Apply and prune metric collection specs in one transaction on the resolved
+  write-router alias, including authoritative reads and conflict checks; publish
+  success output only after that transaction commits. The PostgreSQL contract
+  settings and job include a separate `spec_writer` test database for this oracle.
+
+- Refuse spec files whose opened generation or observed length changes during
+  reading, before JSON admission or apply/prune; retain coherent reads across
+  atomic path replacement.
+
 - Escape terminal controls and bound displayed names to 128 characters in ingest
   token issuance diagnostics, preserving stored names and exact once-only secrets.
 - Keep ingest token issuance conflicts private with fixed diagnostics and no raw

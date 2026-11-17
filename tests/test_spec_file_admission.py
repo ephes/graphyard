@@ -3,6 +3,7 @@
 import json
 import os
 import stat
+from io import StringIO
 from types import SimpleNamespace
 
 import pytest
@@ -10,6 +11,82 @@ from django.core.management import call_command
 from django.core.management.base import CommandError
 
 from graphyard.management.commands import apply_metric_collection_specs as command
+from graphyard.models import MetricCollectionSpec
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("change", ["rewrite", "grow", "truncate", "replace"])
+def test_spec_file_generation_is_checked_before_apply(
+    tmp_path, monkeypatch, django_assert_num_queries, change
+):
+    def desired(name):
+        return {
+            "name": name,
+            "spec_type": "http_page_probe",
+            "config": {"url": "https://example.test/"},
+        }
+
+    MetricCollectionSpec.objects.create(**desired("keep"))
+    MetricCollectionSpec.objects.create(**desired("old-first"), interval_seconds=300)
+    before = list(MetricCollectionSpec.objects.values())
+    path = tmp_path / "synthetic.json"
+    old = json.dumps([desired("old-first"), desired("old-last")]).encode() + b" "
+    new = old.replace(b"old-", b"new-")
+    assert len(old) == len(new)
+    path.write_bytes(old)
+    initial = path.stat()
+    original_read = os.read
+    reads = []
+
+    def interleaved_read(fd, size):
+        if reads:
+            return original_read(fd, size)
+        # Split between definitions: a rewrite would yield valid mixed JSON.
+        chunk = original_read(fd, min(size, old.index(b"}, {") + 2))
+        reads.append(chunk)
+        if change == "replace":
+            replacement = tmp_path / "replacement.json"
+            replacement.write_bytes(new)
+            replacement.replace(path)
+        else:
+            if change == "rewrite":
+                path.write_bytes(new)
+            elif change == "grow":
+                path.write_bytes(old + b" ")
+            else:
+                # Truncation is also valid JSON: the original ends with whitespace.
+                path.write_bytes(old[:-1])
+            os.utime(
+                path, ns=(initial.st_atime_ns, initial.st_mtime_ns + 1_000_000_000)
+            )
+        return chunk
+
+    monkeypatch.setattr(os, "read", interleaved_read)
+    output = StringIO()
+    if change == "replace":
+        call_command(
+            "apply_metric_collection_specs", file=str(path), prune=True, stdout=output
+        )
+        assert set(MetricCollectionSpec.objects.values_list("name", flat=True)) == {
+            "old-first",
+            "old-last",
+        }
+        assert MetricCollectionSpec.objects.get(name="old-first").interval_seconds == 60
+        assert "created=1 updated=1 unchanged=0 deleted=1" in output.getvalue()
+    else:
+        with (
+            django_assert_num_queries(0),
+            pytest.raises(CommandError, match="changed while reading"),
+        ):
+            call_command(
+                "apply_metric_collection_specs",
+                file=str(path),
+                prune=True,
+                stdout=output,
+            )
+        assert list(MetricCollectionSpec.objects.values()) == before
+        assert output.getvalue() == ""
+    assert len(reads) == 1
 
 
 @pytest.mark.parametrize(

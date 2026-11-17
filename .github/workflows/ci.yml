@@ -203,3 +203,4 @@ jobs:
           uv run --with 'psycopg[binary]==3.2.10' pytest -q
           --ds=config.settings.postgres_contract
           tests/test_inventory_credential_lifecycle.py
+          tests/test_spec_apply_routing.py

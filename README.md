@@ -387,10 +387,31 @@ exact limits are accepted. JSON extensions such as NaN/Infinity are refused.
 Unreadable, nonregular, oversized, invalid UTF-8/JSON or decoder-depth-exhausting
 inputs fail before any database query, with a bounded command error naming the
 path and omitting content.
+Before JSON admission, the reader checks the opened descriptor's identity, size
+and modification time again and requires the observed byte count to match its
+initial size. Detected in-place rewrites, growth or truncation fail before any
+database query; retry with a stable file. Atomic path replacement remains
+supported: a coherent already-opened generation may still be applied. Publish
+spec files by atomic replacement rather than editing them in place.
 Duplicate JSON members at every object level (including escaped-equivalent names
 and identical values) are refused with only the member position. Repeated array
 records still undergo the ordinary duplicate-spec-name check. Integers beyond
 Python's decoder digit limit produce a controlled command error before model access.
+
+Apply resolves the `MetricCollectionSpec` write router once. The initial snapshot,
+all definition reads, creates, conditional updates, locks and pruning use that
+same database alias inside one transaction, even when reads normally route to a
+replica. Default and replica databases are not consulted unless selected as the
+writer. Success lines and summary counters are printed only after that writer
+transaction commits.
+The routing oracle also runs on an isolated PostgreSQL test database (separate
+`secondary` and `spec_writer` test databases, never a real service DB):
+
+```bash
+GRAPHYARD_TEST_DATABASE_URL=postgres://graphyard_test@127.0.0.1:5432/graphyard_test \
+  uv run --with 'psycopg[binary]==3.2.10' pytest -q \
+  --ds=config.settings.postgres_contract tests/test_spec_apply_routing.py
+```
 
 Apply compares the captured definition and update timestamp before writing.
 Concurrent edits, duplicate creates or recognized database contention produce a

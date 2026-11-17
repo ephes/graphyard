@@ -12,7 +12,7 @@ import ijson
 
 from django.core.exceptions import ValidationError
 from django.core.management.base import BaseCommand, CommandError
-from django.db import IntegrityError, OperationalError, transaction
+from django.db import IntegrityError, OperationalError, router, transaction
 from django.utils import timezone
 
 from graphyard.models import MetricCollectionSpec, MetricCollectionSpecType
@@ -57,6 +57,16 @@ def _read_specs_file(path: Path) -> str:
                 descriptor, min(65536, MAX_SPEC_FILE_BYTES + 1 - len(content))
             )
             if not chunk:
+                final_metadata = os.fstat(descriptor)
+                # Inspect the opened inode, not the path: atomic replacement may
+                # unlink it (changing ctime) without changing its coherent bytes.
+                if len(content) != metadata.st_size or any(
+                    getattr(metadata, field) != getattr(final_metadata, field)
+                    for field in ("st_dev", "st_ino", "st_size", "st_mtime_ns")
+                ):
+                    raise CommandError(
+                        f"Spec file changed while reading; retry: {path}"
+                    )
                 return content.decode("utf-8")
             content.extend(chunk)
         raise CommandError(f"Spec file exceeds {MAX_SPEC_FILE_BYTES} bytes: {path}")
@@ -295,10 +305,12 @@ class Command(BaseCommand):
             )
 
         desired_names = {spec["name"] for spec in specs}
+        database = router.db_for_write(MetricCollectionSpec)
+        spec_rows = MetricCollectionSpec.objects.using(database)
 
         try:
-            with transaction.atomic():
-                candidates = MetricCollectionSpec.objects.all()
+            with transaction.atomic(using=database):
+                candidates = spec_rows.all()
                 if not prune:
                     candidates = candidates.filter(name__in=desired_names)
                 # Capture definitions once. Prune only rows present in this snapshot;
@@ -317,7 +329,7 @@ class Command(BaseCommand):
                             config=desired["config"],
                         )
                         _validate_spec(spec, index)
-                        _, inserted = MetricCollectionSpec.objects.get_or_create(
+                        _, inserted = spec_rows.get_or_create(
                             name=spec.name,
                             defaults={
                                 field: getattr(spec, field)
@@ -337,7 +349,7 @@ class Command(BaseCommand):
                         "updated_at": spec.updated_at,
                         **{field: getattr(spec, field) for field in DEFINITION_FIELDS},
                     }
-                    current = MetricCollectionSpec.objects.filter(**expected)
+                    current = spec_rows.filter(**expected)
                     changed_fields: list[str] = []
                     for field_name in DEFINITION_FIELDS:
                         desired_value = desired[field_name]
@@ -371,7 +383,7 @@ class Command(BaseCommand):
                     for stale_name, stale_spec in sorted(existing.items()):
                         if stale_name in desired_names:
                             continue
-                        current = MetricCollectionSpec.objects.filter(
+                        current = spec_rows.filter(
                             pk=stale_spec.pk,
                             name=stale_name,
                             updated_at=stale_spec.updated_at,
