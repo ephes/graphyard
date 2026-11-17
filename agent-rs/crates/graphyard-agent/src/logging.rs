@@ -2,7 +2,7 @@
 //! Submission never waits for a sink; a full queue drops the new record.
 
 use std::fmt::{self, Write as _};
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, OnceLock, mpsc};
 use std::time::{Duration, Instant};
 
@@ -71,9 +71,10 @@ fn format_record(args: fmt::Arguments<'_>) -> String {
 }
 
 struct Sink {
-    sender: mpsc::SyncSender<String>,
+    // `None` once stopping: dropping the only sender lets the worker drain the
+    // queue and see `Disconnected`, so an idle worker blocks without polling.
+    sender: Mutex<Option<mpsc::SyncSender<String>>>,
     dropped: Arc<AtomicU64>,
-    stopping: Arc<AtomicBool>,
     finished: Mutex<mpsc::Receiver<()>>,
 }
 
@@ -82,62 +83,69 @@ impl Sink {
         let (sender, receiver) = mpsc::sync_channel::<String>(QUEUE_RECORDS);
         let (finished, completion) = mpsc::channel();
         let dropped = Arc::new(AtomicU64::new(0));
-        let stopping = Arc::new(AtomicBool::new(false));
-        let (losses, closing) = (dropped.clone(), stopping.clone());
+        let losses = dropped.clone();
         // Failure to start a worker disconnects its channel: submissions are
         // counted as lost instead of falling back to synchronous sink writes.
         let _ = std::thread::Builder::new()
             .name(format!("agent-{name}"))
             .spawn(move || {
                 let mut reported = 0;
-                loop {
-                    match receiver.recv_timeout(Duration::from_millis(10)) {
-                        Ok(line) => {
-                            if writer
-                                .write_all(line.as_bytes())
-                                .and_then(|()| writer.flush())
-                                .is_err()
-                            {
-                                losses.fetch_add(1, Ordering::Relaxed);
-                                continue;
-                            }
-                            let total = losses.load(Ordering::Relaxed);
-                            if total != reported {
-                                // Fixed metadata, written by the sink owner, never
-                                // recursively submitted to the saturated logger.
-                                let notice = format!(
-                                    "graphyard-agent output_dropped stream={name} total={total}\n"
-                                );
-                                if writer
-                                    .write_all(notice.as_bytes())
-                                    .and_then(|()| writer.flush())
-                                    .is_ok()
-                                {
-                                    reported = total;
-                                }
-                            }
+                // Blocks until a record arrives; ends after the sender is
+                // dropped at shutdown and the queued records are written.
+                while let Ok(line) = receiver.recv() {
+                    if writer
+                        .write_all(line.as_bytes())
+                        .and_then(|()| writer.flush())
+                        .is_err()
+                    {
+                        losses.fetch_add(1, Ordering::Relaxed);
+                        continue;
+                    }
+                    let total = losses.load(Ordering::Relaxed);
+                    if total != reported {
+                        // Fixed metadata, written by the sink owner, never
+                        // recursively submitted to the saturated logger.
+                        let notice =
+                            format!("graphyard-agent output_dropped stream={name} total={total}\n");
+                        if writer
+                            .write_all(notice.as_bytes())
+                            .and_then(|()| writer.flush())
+                            .is_ok()
+                        {
+                            reported = total;
                         }
-                        Err(mpsc::RecvTimeoutError::Timeout)
-                            if !closing.load(Ordering::Acquire) => {}
-                        Err(_) => break,
                     }
                 }
                 let _ = finished.send(());
             });
         Self {
-            sender,
+            sender: Mutex::new(Some(sender)),
             dropped,
-            stopping,
             finished: Mutex::new(completion),
         }
     }
 
     fn submit(&self, args: fmt::Arguments<'_>) {
-        if self.stopping.load(Ordering::Acquire)
-            || self.sender.try_send(format_record(args)).is_err()
-        {
+        // Format before taking the lock; the lock only guards a nonblocking
+        // `try_send`, so submission never waits for the sink.
+        let record = format_record(args);
+        let sent = self
+            .sender
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .as_ref()
+            .is_some_and(|sender| sender.try_send(record).is_ok());
+        if !sent {
             self.dropped.fetch_add(1, Ordering::Relaxed);
         }
+    }
+
+    /// Refuse new records and let the worker finish once the queue is empty.
+    fn stop(&self) {
+        self.sender
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .take();
     }
 
     fn wait_until(&self, deadline: Instant) {
@@ -187,8 +195,8 @@ pub fn dropped_records() -> (u64, u64) {
 pub fn shutdown() {
     if let Some(output) = OUTPUTS.get() {
         let deadline = Instant::now() + SHUTDOWN_TIMEOUT;
-        output.stdout.stopping.store(true, Ordering::Release);
-        output.stderr.stopping.store(true, Ordering::Release);
+        output.stdout.stop();
+        output.stderr.stop();
         output.stdout.wait_until(deadline);
         output.stderr.wait_until(deadline);
     }
@@ -273,7 +281,7 @@ mod tests {
             sink.submit(format_args!("{large}"));
         }
         assert_eq!(sink.dropped.load(Ordering::Relaxed), 7);
-        sink.stopping.store(true, Ordering::Release);
+        sink.stop();
         let start = Instant::now();
         sink.wait_until(start + Duration::from_millis(20));
         assert!(start.elapsed() < Duration::from_secs(1));
