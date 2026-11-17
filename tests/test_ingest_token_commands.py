@@ -219,6 +219,8 @@ def test_issuance_conflict_is_private_and_rolls_back(stage, entrypoint, monkeypa
         return real_save(self, *args, **kwargs)
 
     monkeypatch.setattr(IngestToken, "save", conflict)
+    # run_from_argv closes every connection afterwards; keep the test's open.
+    monkeypatch.setattr("django.db.connections.close_all", lambda: None)
     stdout, stderr = io.StringIO(), io.StringIO()
     command = create_ingest_token.Command(stdout=stdout, stderr=stderr, no_color=True)
     with pytest.raises(SystemExit if entrypoint == "cli" else CommandError) as caught:
