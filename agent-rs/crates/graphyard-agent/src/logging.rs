@@ -18,11 +18,15 @@ const TRUNCATED: &str = "...[truncated]";
 
 struct RecordBuffer {
     text: String,
+    // Sticky: a `Display` that ignores one `fmt::Error` and keeps writing must
+    // neither splice later, shorter chunks into the record nor lose the marker.
+    overflowed: bool,
 }
 
 impl RecordBuffer {
     fn push(&mut self, text: &str) -> fmt::Result {
-        if self.text.len() + text.len() >= MAX_RECORD_BYTES {
+        if self.overflowed || self.text.len() + text.len() >= MAX_RECORD_BYTES {
+            self.overflowed = true;
             return Err(fmt::Error);
         }
         self.text.push_str(text);
@@ -54,8 +58,10 @@ impl fmt::Write for RecordBuffer {
 fn format_record(args: fmt::Arguments<'_>) -> String {
     let mut buffer = RecordBuffer {
         text: String::with_capacity(MAX_RECORD_BYTES),
+        overflowed: false,
     };
-    if buffer.write_fmt(args).is_err() {
+    // A `Display` error unrelated to the envelope also ends the record here.
+    if buffer.write_fmt(args).is_err() || buffer.overflowed {
         let mut end = buffer
             .text
             .len()
@@ -294,6 +300,25 @@ mod tests {
         assert_eq!(text.lines().count(), QUEUE_RECORDS + 2);
         assert!(text.lines().all(|line| line.len() < MAX_RECORD_BYTES));
         assert!(captured.len() <= (QUEUE_RECORDS + 1) * MAX_RECORD_BYTES + 100);
+    }
+
+    struct IgnoresErrors;
+    impl fmt::Display for IgnoresErrors {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            let _ = f.write_str(&"a".repeat(MAX_RECORD_BYTES - 3));
+            // Rejected near the limit; the shorter chunk after it must not land.
+            let _ = f.write_str("\x1b");
+            let _ = f.write_str("b");
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn overflow_is_sticky_and_marked_even_when_display_ignores_errors() {
+        let record = format_record(format_args!("{IgnoresErrors}"));
+        assert!(record.ends_with("...[truncated]\n"), "{record:?}");
+        assert!(!record.contains('b'));
+        assert!(record.len() <= MAX_RECORD_BYTES);
     }
 
     #[test]

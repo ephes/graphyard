@@ -269,7 +269,9 @@ D-9). `--db` defaults to `db.sqlite3` in the working directory, which must
 exist and pass the schema check (D-2); the agent never creates it.
 
 stdout carries the start line, `Metric specs: ...`, `Condition eval: ...` and
-`graphyard-agent interrupted, exiting`, each flushed at once. stderr carries
+`graphyard-agent interrupted, exiting`, each written promptly by a bounded
+output worker that may drop lines under backpressure (see "Bounded output").
+stderr carries
 the log records as bare messages (INFO and above from the agent's crates,
 warnings from libraries), `CommandError: ...` and the `Metric collection
 failed: ...` / `Condition eval failed: ...` lines. Exit codes: 0 for
