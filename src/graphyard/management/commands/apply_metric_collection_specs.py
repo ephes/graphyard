@@ -57,6 +57,16 @@ def _read_specs_file(path: Path) -> str:
                 descriptor, min(65536, MAX_SPEC_FILE_BYTES + 1 - len(content))
             )
             if not chunk:
+                final_metadata = os.fstat(descriptor)
+                # Inspect the opened inode, not the path: atomic replacement may
+                # unlink it (changing ctime) without changing its coherent bytes.
+                if len(content) != metadata.st_size or any(
+                    getattr(metadata, field) != getattr(final_metadata, field)
+                    for field in ("st_dev", "st_ino", "st_size", "st_mtime_ns")
+                ):
+                    raise CommandError(
+                        f"Spec file changed while reading; retry: {path}"
+                    )
                 return content.decode("utf-8")
             content.extend(chunk)
         raise CommandError(f"Spec file exceeds {MAX_SPEC_FILE_BYTES} bytes: {path}")

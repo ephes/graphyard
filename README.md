@@ -387,6 +387,12 @@ exact limits are accepted. JSON extensions such as NaN/Infinity are refused.
 Unreadable, nonregular, oversized, invalid UTF-8/JSON or decoder-depth-exhausting
 inputs fail before any database query, with a bounded command error naming the
 path and omitting content.
+Before JSON admission, the reader checks the opened descriptor's identity, size
+and modification time again and requires the observed byte count to match its
+initial size. Detected in-place rewrites, growth or truncation fail before any
+database query; retry with a stable file. Atomic path replacement remains
+supported: a coherent already-opened generation may still be applied. Publish
+spec files by atomic replacement rather than editing them in place.
 Duplicate JSON members at every object level (including escaped-equivalent names
 and identical values) are refused with only the member position. Repeated array
 records still undergo the ordinary duplicate-spec-name check. Integers beyond

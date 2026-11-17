@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Refuse spec files whose opened generation or observed length changes during
+  reading, before JSON admission or apply/prune; retain coherent reads across
+  atomic path replacement.
+
 - Escape terminal controls and bound displayed names to 128 characters in ingest
   token issuance diagnostics, preserving stored names and exact once-only secrets.
 - Keep ingest token issuance conflicts private with fixed diagnostics and no raw
