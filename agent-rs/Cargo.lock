@@ -506,7 +506,7 @@ dependencies = [
 
 [[package]]
 name = "graphyard-agent"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "chrono",
  "clap",
@@ -526,7 +526,7 @@ dependencies = [
 
 [[package]]
 name = "graphyard-collect"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "base64 0.22.1",
  "bytes",
@@ -556,7 +556,7 @@ dependencies = [
 
 [[package]]
 name = "graphyard-core"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "chrono",
  "fancy-regex",
@@ -569,7 +569,7 @@ dependencies = [
 
 [[package]]
 name = "graphyard-influx"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "bytes",
  "chrono",
@@ -598,7 +598,7 @@ dependencies = [
 
 [[package]]
 name = "graphyard-store"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "chrono",
  "graphyard-core",

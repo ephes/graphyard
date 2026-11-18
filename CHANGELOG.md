@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+- Rust agent (`agent-rs/`): version 0.4.1, released as `agent-rs-v0.4.1`, the
+  first agent release built and published locally by
+  `agent-rs/scripts/local_release.py` (entry below). It carries the Rust agent
+  fixes merged since `agent-rs-v0.4.0` (entries below): stdout/stderr records
+  escaped, bounded and written by nonblocking output workers (collection,
+  heartbeats and signals stay live under backpressure; panics drained before
+  exit), bounded collector diagnostics, collector cookie admission (single
+  label and edge-dot domains refused, explicit Cookie headers honoured,
+  retained cookies bounded per execution), encoded response bytes charged
+  before decoding and decoder stacks admitted before allocation, Host
+  refreshed on cross-origin redirects, bounded shadow capture validation,
+  UniFi admission sized for real sites with validated uplink identity and
+  complete traffic rates, and the stricter storage contract check before
+  collectors start. `--check-schema` still needs graphyard migration
+  `0015_alter_conditiondefinition_breach_minutes_and_more`. `agent-rs/deny.toml`
+  ignores RUSTSEC-2026-0543 (chrono unmaintained, no known vulnerability)
+  until its replacement (work item `rust-chrono-replacement`).
+
 - Release the Rust agent locally with `agent-rs/scripts/local_release.py`
   (configuration `agent-rs/local-release.json`, `just rs-release` and
   `just rs-release-publish`, agent-rs/README.md "Releases") instead of GitHub
