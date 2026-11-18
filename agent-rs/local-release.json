@@ -1,0 +1,18 @@
+{
+  "comment": "Local release of the Rust agent (agent-rs/README.md \"Release\", agent-rs/scripts/local_release.py). The checks are the old agent-rs-release.yml workflow's: fixture drift and release check tests on the host, then fmt, clippy and tests.",
+  "github_repository": "ephes/graphyard",
+  "binary": "graphyard-agent",
+  "tag_prefix": "agent-rs-v",
+  "target": "x86_64-unknown-linux-gnu",
+  "mode": "linux-container",
+  "commit_env": "GRAPHYARD_AGENT_GIT_COMMIT",
+  "glibc_floor": "2.35",
+  "host_checks": [
+    ["uv", "run", "--frozen", "pytest", "-q", "tests/test_agent_rs_fixtures.py", "tests/test_agent_rs_release_checks.py", "tests/test_local_release.py"]
+  ],
+  "checks": [
+    "cargo fmt --all --check",
+    "cargo clippy --workspace --all-targets --locked -- -D warnings",
+    "cargo test --workspace --locked"
+  ]
+}

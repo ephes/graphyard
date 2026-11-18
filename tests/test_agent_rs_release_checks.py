@@ -1,6 +1,6 @@
 """Release checks of the Rust agent (agent-rs/PLAN.md section 8.2).
 
-``agent-rs/scripts/release_checks.py`` gates the release workflow: the tag must
+``agent-rs/scripts/release_checks.py`` gates the local release (``local_release.py``): the tag must
 match the crate version, the binary must not need glibc newer than the floor
 or libraries outside glibc/libgcc, ``--version`` must name the version and
 commit, and the archive must be deterministic with exactly two files.
@@ -331,22 +331,35 @@ def test_cli_pack_rejects_odd_names(
     assert not (tmp_path / "dist").exists()
 
 
-def test_release_workflow_runs_every_check() -> None:
-    workflow = (REPO / ".github" / "workflows" / "agent-rs-release.yml").read_text(
-        encoding="utf-8"
+def test_local_release_runs_every_check() -> None:
+    """agent-rs/local-release.json drives agent-rs/scripts/local_release.py (no
+    CI release workflow): the old workflow's checks, floor, tag and commit."""
+    config = json.loads(
+        (REPO / "agent-rs" / "local-release.json").read_text(encoding="utf-8")
     )
-    for needle in (
-        "runs-on: ubuntu-22.04",
-        'GLIBC_FLOOR: "2.35"',
-        "release_checks.py version",
-        "release_checks.py glibc-floor",
-        "release_checks.py smoke",
-        "release_checks.py pack",
+    assert config["github_repository"] == "ephes/graphyard"
+    assert config["binary"] == "graphyard-agent"
+    assert config["tag_prefix"] == "agent-rs-v"
+    assert config["target"] == "x86_64-unknown-linux-gnu"
+    assert config["mode"] == "linux-container"
+    assert config["glibc_floor"] == "2.35"
+    assert config["commit_env"] == "GRAPHYARD_AGENT_GIT_COMMIT"
+    assert config["checks"] == [
+        "cargo fmt --all --check",
+        "cargo clippy --workspace --all-targets --locked -- -D warnings",
         "cargo test --workspace --locked",
-        "tests/test_agent_rs_fixtures.py",
-        "GRAPHYARD_AGENT_GIT_COMMIT: ${{ github.sha }}",
-        "needs: [build, fixtures]",
-        'cargo build --release --locked --target "$TARGET"',
-        "sha256sum --check",
-    ):
-        assert needle in workflow, needle
+    ]
+    # The old workflow's fixtures job, now on the host before the build.
+    assert config["host_checks"] == [
+        [
+            "uv",
+            "run",
+            "--frozen",
+            "pytest",
+            "-q",
+            "tests/test_agent_rs_fixtures.py",
+            "tests/test_agent_rs_release_checks.py",
+            "tests/test_local_release.py",
+        ]
+    ]
+    assert not (REPO / ".github" / "workflows" / "agent-rs-release.yml").exists()

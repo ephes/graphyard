@@ -93,6 +93,16 @@ rs-parity *ARGS:
 rs-build:
     cd agent-rs && cargo build --release --locked
 
+# Local release build of the current version (agent-rs/README.md "Releases"; publishes nothing)
+[positional-arguments]
+rs-release *args:
+    python3 -I agent-rs/scripts/local_release.py build "$@"
+
+# Tag and publish what `just rs-release` built as GitHub release agent-rs-v<version>, then download and compare
+[positional-arguments]
+rs-release-publish *args:
+    python3 -I agent-rs/scripts/local_release.py publish "$@"
+
 # Release build for macmini (x86_64 glibc) in Docker; output in agent-rs/target/docker-linux-amd64
 rs-build-linux:
     docker run --rm --platform linux/amd64 \

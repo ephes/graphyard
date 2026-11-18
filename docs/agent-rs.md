@@ -13,8 +13,9 @@ release `agent-rs-v0.2.0`; PLAN.md 11.3 "As run"). The 7-day soak runs from
 11:41:37 UTC after the rollback drill. The shadow run (S13, 2026-10-22/23)
 missed two lean goals narrowly and showed explained deviations, which the
 owner accepted (PLAN.md 11.2). Release `agent-rs-v0.3.0` (the fixes of scout
-rounds 79 to 85) replaced 0.2.0 on macmini on 2026-11-12 at 15:18:42 UTC;
-0.2.0 stays installed as the rollback target. The deployment selects the Rust binary
+rounds 79 to 85) replaced 0.2.0 on macmini on 2026-11-12 at 15:18:42 UTC,
+and release `agent-rs-v0.4.0` (scout rounds 87 to 99) replaced 0.3.0 on
+2026-11-15; 0.3.0 stays installed as the Rust rollback target. The deployment selects the Rust binary
 through a systemd drop-in that the ops repositories add; the Python agent
 stays installed as the rollback target until its retirement (S15b).
 
@@ -150,9 +151,12 @@ switches to this command with the Python retirement (slice S15b); until then
 ### Deployment, cutover and rollback
 
 Release archives come from `agent-rs-v<version>` tags
-(`.github/workflows/agent-rs-release.yml`, see `agent-rs/README.md`); the
-first is `agent-rs-v0.1.0`, the current one `agent-rs-v0.3.0` (the fixes
-of scout rounds 79 to 85; `agent-rs-v0.2.0` added `evaluate-conditions`);
+(built locally by `agent-rs/scripts/local_release.py`, see `agent-rs/README.md`); the
+first is `agent-rs-v0.1.0`, the one macmini runs `agent-rs-v0.4.0` (the
+fixes of scout rounds 87 to 99; `agent-rs-v0.3.0`, the Rust rollback target
+that stays installed, carried rounds 79 to 85,
+`agent-rs-v0.2.0` added `evaluate-conditions`; `agent-rs-v0.4.1` is the first
+release built locally);
 their sha256 values are listed in `agent-rs/README.md`
 ("Published releases").
 The ops-library role `graphyard_deploy` and the ops-deploy pyinfra service

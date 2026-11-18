@@ -75,7 +75,8 @@ against a loopback fake InfluxDB that replays the responses the fixture
 generator served to the Python code.
 
 Slice S10a adds the release pipeline (PLAN.md 8.2): the workflow
-`.github/workflows/agent-rs-release.yml`, the checks in
+`.github/workflows/agent-rs-release.yml` (replaced on 2026-11-18 by the local
+`scripts/local_release.py`), the checks in
 `scripts/release_checks.py` and the commit stamp of `--version`
 (`crates/graphyard-agent/build.rs`); see [Releases](#releases).
 
@@ -450,41 +451,91 @@ fails when a migration changes them; then run `just rs-fixtures`, update
 
 ## Releases
 
-`.github/workflows/agent-rs-release.yml` builds and publishes the binary
-(PLAN.md 8.1, 8.2). Deploys install only such a release archive, pinned by
-version and sha256; nothing builds on the host.
+Releases are built and published locally by `scripts/local_release.py`,
+driven by `local-release.json` (PLAN.md 8.1, 8.2); there is no release
+workflow and no CI run (the tag-triggered
+`.github/workflows/agent-rs-release.yml` was removed on 2026-11-18). The same
+program releases mailgun-relay, opsgate and the nyxmon agent; ops-deploy's
+`rust/scripts/release.py` follows the same approach. Deploys install only
+such a release archive, pinned by version and sha256; nothing builds on the
+host.
 
-- **Release**: push a tag `agent-rs-v<version>` on a commit of `main`, where
-  `<version>` equals the `graphyard-agent` crate version (the workspace
-  `version` in `Cargo.toml`, semver without build metadata). A version with
-  a pre-release part (`0.2.0-rc.1`) becomes a GitHub pre-release.
-- **Dry build**: run the workflow by hand (`gh workflow run
-  agent-rs-release.yml --ref <branch>`, the workflow file must be on the
-  default branch); it runs every check and uploads the archive as a workflow
-  artifact, without a tag check and without a release.
+Needs Docker with working `linux/amd64` containers (on an Apple silicon Mac:
+colima with `vmType: vz` and `rosetta: true`; the build checks that `docker
+run --platform linux/amd64 ubuntu:22.04 uname -m` prints `x86_64`), `uv`,
+`git`, `cargo` (for `cargo metadata`) and an authenticated `gh` 2.74.0 or newer.
 
-The `build` job runs on `ubuntu-22.04` (glibc 2.35, the floor below
-macmini's 2.39) without a cargo cache: `cargo fmt --check`, clippy, `cargo
-test --locked`, `cargo build --release --locked --target
-x86_64-unknown-linux-gnu`, then `scripts/release_checks.py`:
+- **Release**: bump the workspace `version` in `Cargo.toml` (and
+  `Cargo.lock`), add the CHANGELOG entry, merge to `main` and push, then from
+  a clean checkout of that commit run `just rs-release` (builds and checks,
+  publishes nothing) and `just rs-release-publish` (see below).
+- **Dry build**: `just rs-release --compare-released` builds a version whose
+  tag already exists; `publish` refuses such a build.
+
+`build` refuses a worktree with changes or untracked files, a commit that is
+not on `main` on GitHub, a non-empty output directory and an untagged
+`--compare-released` or a tagged plain build. Then:
+
+1. On the host, the old workflow's `fixtures` job: `uv run --frozen pytest`
+   over `tests/test_agent_rs_fixtures.py`, `tests/test_agent_rs_release_checks.py`
+   and `tests/test_local_release.py`.
+2. Image phase, the only one with network: two `ubuntu:22.04` images (base
+   pinned by the digest pulled at the start), one of the Docker engine's own
+   platform and one `linux/amd64` (glibc 2.35, the floor below macmini's
+   2.39). Each gets `binutils ca-certificates curl gcc git libc6-dev python3`,
+   `ca-certificates` at least at the USN-8944-1 version and a CA bundle without
+   the 2026-10-21 incident roots (checked after the APT installation that
+   brings the CA update, before the rustup, toolchain and dependency
+   downloads), rustup 1.29.2
+   (sha256-checked), the source as `git archive` of the build
+   commit (`agent-rs/` and `LICENSE`), the pinned toolchain and `cargo fetch
+   --locked`.
+3. Checks job on the engine's own platform (under Rosetta, emulation
+   artefacts could fail tests that are about the code, not the target):
+   `cargo fmt --all --check`, clippy with `-D warnings`, `cargo test
+   --workspace --locked`.
+4. Release job on `linux/amd64`: `cargo build --release --locked --target
+   x86_64-unknown-linux-gnu` with `GRAPHYARD_AGENT_GIT_COMMIT` set to the
+   build commit, then `scripts/release_checks.py`:
 
 | Check | Rule |
 | --- | --- |
-| `version` | the crate version from `cargo metadata`; on a tag push the tag must be `agent-rs-v<that version>` |
+| `version` | the crate version from `cargo metadata`; the tag must be `agent-rs-v<that version>` |
 | `glibc-floor` | `objdump -T`/`-p`: no `GLIBC_*` symbol version above 2.35, `NEEDED` only glibc and libgcc (`libc`, `libm`, `libgcc_s`, `ld-linux-x86-64`, ...) |
-| `smoke` | `graphyard-agent --version` prints exactly `graphyard-agent <version> (<workflow commit>)` and exits 0 |
-| `pack` | deterministic `graphyard-agent-<version>-x86_64-unknown-linux-gnu.tar.gz` (`graphyard-agent` 0755 and `LICENSE` 0644 at the root, root:root, commit time as mtime) and its `.sha256` in `sha256sum` format |
+| `smoke` | `graphyard-agent --version` prints exactly `graphyard-agent <version> (<build commit>)` and exits 0 |
+| `pack` | deterministic `graphyard-agent-<version>-x86_64-unknown-linux-gnu.tar.gz` (`graphyard-agent` 0755 and `LICENSE` 0644 at the root, root:root, commit time as mtime) and its `.sha256` in `sha256sum` format, checked with `sha256sum --check` |
 
-The `fixtures` job runs the fixture drift test and the release check tests
-(`tests/test_agent_rs_fixtures.py`, `tests/test_agent_rs_release_checks.py`)
-with the locked Python environment. The `release` job (the only one with
-`contents: write`) needs both, verifies the checksum again and creates the
-GitHub release with the archive and its `.sha256` file; the job summary and
-the release notes name the commit and the sha256 the deployment pins.
+Both jobs run with `--network none`, no mounts, and memory, process and time
+limits. The archive, its `.sha256`, `build.json` (commit, sha256, image digest,
+package and toolchain versions) and `notes.md` (the release notes, naming the
+commit and the sha256 the deployment pins) land in
+`agent-rs/target/local-release/graphyard-agent-<version>/`.
+
+Remote facts (is the commit on `main`, does the tag exist) are read from
+GitHub, and the tag is created there, through `gh api --hostname github.com`
+on `ephes/graphyard`: nothing is pushed with git, so no git remote, URL rewrite
+or `GH_HOST` decides where the tag or the release goes (a gh `api_host`
+override for github.com is refused; `main` is the branch `refs/heads/main`,
+resolved exactly). `publish` checks the archive against `build.json` and that
+`gh` is 2.74.0 or newer (older versions report no asset digests), creates the
+annotated tag `agent-rs-v<version>` on the build commit (only when that commit is
+on `main`; an existing tag must be annotated and point at that commit, it is
+never moved), creates the GitHub release with exactly the archive and its
+`.sha256` (`gh release create --verify-tag`; a semver pre-release such as
+`0.4.0-rc.1` becomes a GitHub pre-release), then downloads both again and
+compares them byte for byte. It succeeds only when afterwards the same
+release (same release and asset ids) is published, with the expected
+prerelease flag, exactly those two assets and GitHub's sha256 of each equal
+to the built one. A draft (left by an interrupted `gh release create`) is
+refused: check it, delete the draft by hand (the tag stays) and run
+`publish` again. It never replaces an asset and can be rerun until that end
+state is reached; fetch the tag afterwards with `git fetch --tags`. The
+output directory is staged privately and moved into place in one rename, so
+a concurrent build never mixes into it.
 
 `--version` names the git commit `build.rs` embeds: the
-`GRAPHYARD_AGENT_GIT_COMMIT` environment variable when set (the workflow sets
-it to its commit, `just rs-build-linux` to the checkout's `HEAD` because the
+`GRAPHYARD_AGENT_GIT_COMMIT` environment variable when set (the local release
+sets it to the build commit, `just rs-build-linux` to the checkout's `HEAD` because the
 container sees no `.git`), else `git rev-parse HEAD`, else `unknown`; a value
 that is not 7 to 40 lowercase hex digits fails the build.
 

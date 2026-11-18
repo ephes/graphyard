@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- Release the Rust agent locally with `agent-rs/scripts/local_release.py`
+  (configuration `agent-rs/local-release.json`, `just rs-release` and
+  `just rs-release-publish`, agent-rs/README.md "Releases") instead of GitHub
+  Actions: fixture drift and release check tests on the host, workspace checks
+  and a `linux/amd64` ubuntu-22.04 release build in local containers without
+  network, the glibc floor, smoke test and deterministic archive of
+  `release_checks.py`, then tag, GitHub release and a byte-for-byte download
+  comparison. The tag-triggered `.github/workflows/agent-rs-release.yml` is
+  removed. Tag names (`agent-rs-v<version>`), archive names and download URLs
+  are unchanged, so ops-control's version and sha256 pins keep working.
+
 - Escape terminal controls and Unicode line separators at the final Rust agent
   stdout/stderr boundary. Stream formatting within the 8 KiB UTF-8 record limit
   with explicit truncation and one physical line per event, while preserving

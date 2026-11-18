@@ -1409,6 +1409,10 @@ glibc/libgcc `NEEDED` entries.
 
 ### 8.2 Release pipeline (graphyard repo)
 
+*Superseded 2026-11-18:* the workflow described here is removed; releases
+are built and published locally by `agent-rs/scripts/local_release.py` with the
+same checks (agent-rs/README.md "Releases"). Kept as history.
+
 `.github/workflows/agent-rs-release.yml`, adapted from nyxmon's: tag
 `agent-rs-v<semver>` (must equal `crates/graphyard-agent/Cargo.toml`), plus
 `workflow_dispatch` for a dry build without release; full Rust tests, the
