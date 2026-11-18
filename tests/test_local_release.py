@@ -521,6 +521,55 @@ def test_macos_build(release: ModuleType, tmp_path: Path, which_rustup: None) ->
     assert github.created == [("rs-v1.2.3-rc.1", True)]
 
 
+def test_pinned_toolchain_reads_rust_toolchain_toml(
+    release: ModuleType, tmp_path: Path
+) -> None:
+    (tmp_path / "rust-toolchain.toml").write_text(
+        '[toolchain]\nchannel = "1.99.0"\ncomponents = [\n    "rustfmt",\n    "clippy",\n]\n'
+    )
+    assert release.pinned_toolchain(tmp_path) == ("1.99.0", ["rustfmt", "clippy"])
+    (tmp_path / "rust-toolchain.toml").write_text('[toolchain]\nchannel = "1.99; rm"\n')
+    with pytest.raises(release.ReleaseError, match="no valid channel"):
+        release.pinned_toolchain(tmp_path)
+    (tmp_path / "rust-toolchain.toml").write_text('[toolchain]\nchannel = "--help"\n')
+    with pytest.raises(release.ReleaseError, match="no valid channel"):
+        release.pinned_toolchain(tmp_path)
+    (tmp_path / "rust-toolchain.toml").write_text(
+        '[toolchain]\nchannel = "1.99.0"\ncomponents = ["--force"]\n'
+    )
+    with pytest.raises(release.ReleaseError, match="invalid components"):
+        release.pinned_toolchain(tmp_path)
+
+
+def test_pinned_cargo_environment_wins_over_ambient_toolchains(
+    release: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    (tmp_path / "rust-toolchain.toml").write_text('[toolchain]\nchannel = "1.99.0"\n')
+    monkeypatch.setenv("RUSTUP_TOOLCHAIN", "1.100.0")
+    monkeypatch.setattr(release.shutil, "which", lambda name: "/fake/bin/rustup")
+    calls: list[list[str]] = []
+    installed = {"yes": True}
+
+    def run(argv: Sequence[str], **kwargs: Any) -> str:
+        calls.append(list(argv))
+        assert kwargs["env"]["RUSTUP_TOOLCHAIN"] == "1.99.0"
+        if argv[1] == "which" and not installed["yes"]:
+            raise release.ReleaseError("toolchain not installed")
+        if argv[1] == "toolchain":
+            installed["yes"] = True
+        return "/fake/toolchains/1.99.0/bin/cargo\n"
+
+    monkeypatch.setattr(release, "run", run)
+    env = release.pinned_cargo_environment(tmp_path)
+    assert env["RUSTUP_TOOLCHAIN"] == "1.99.0"
+    assert env["PATH"].startswith("/fake/toolchains/1.99.0/bin")
+    assert [call[1] for call in calls] == ["which"]  # installed: no network
+    calls.clear()
+    installed["yes"] = False
+    release.pinned_cargo_environment(tmp_path)
+    assert [call[1] for call in calls] == ["which", "toolchain", "which"]
+
+
 def test_macos_build_refuses_an_unpinned_toolchain(
     release: ModuleType, tmp_path: Path, which_rustup: None
 ) -> None:

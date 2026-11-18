@@ -52,6 +52,7 @@ import subprocess
 import sys
 import tarfile
 import tempfile
+import tomllib
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -899,21 +900,33 @@ def host_checks(config: Config, repo: Path, log: Log) -> None:
         run(argv, cwd=repo, timeout=JOB_TIMEOUT, capture=False)
 
 
+def pinned_toolchain(crate: Path) -> tuple[str, list[str]]:
+    """The channel and the components rust-toolchain.toml pins."""
+    try:
+        data = tomllib.loads(
+            (crate / "rust-toolchain.toml").read_text(encoding="utf-8")
+        )
+    except (OSError, tomllib.TOMLDecodeError) as error:
+        raise ReleaseError(
+            f"cannot read {crate}/rust-toolchain.toml: {error}"
+        ) from None
+    toolchain = data.get("toolchain")
+    channel = toolchain.get("channel") if isinstance(toolchain, dict) else None
+    components = toolchain.get("components", []) if isinstance(toolchain, dict) else []
+    if not isinstance(channel, str) or not re.fullmatch(
+        r"[0-9A-Za-z][0-9A-Za-z._-]*", channel
+    ):
+        raise ReleaseError(f"{crate}/rust-toolchain.toml names no valid channel")
+    if not isinstance(components, list) or not all(
+        isinstance(name, str) and re.fullmatch(r"[a-z0-9][a-z0-9-]*", name)
+        for name in components
+    ):
+        raise ReleaseError(f"{crate}/rust-toolchain.toml lists invalid components")
+    return channel, list(components)
+
+
 def pinned_channel(crate: Path) -> str:
-    """The toolchain channel rust-toolchain.toml pins."""
-    match = re.search(
-        r'^channel = "(.*)"$', (crate / "rust-toolchain.toml").read_text(), re.M
-    )
-    if match is None:
-        raise ReleaseError(f"{crate}/rust-toolchain.toml names no channel")
-    return match.group(1)
-
-
-def pinned_components(crate: Path) -> list[str]:
-    """The components rust-toolchain.toml lists (rustfmt, clippy)."""
-    text = (crate / "rust-toolchain.toml").read_text()
-    match = re.search(r"^components = \[(.*)\]$", text, re.M)
-    return re.findall(r'"([a-z0-9-]+)"', match.group(1)) if match else []
+    return pinned_toolchain(crate)[0]
 
 
 def pinned_cargo_environment(crate: Path) -> dict[str, str]:
@@ -1076,7 +1089,7 @@ def build_macos(
     log("== pinned toolchain and locked dependencies (network)")
     channel = pinned_channel(crate)
     env["RUSTUP_TOOLCHAIN"] = channel  # no ambient toolchain override wins
-    components = "".join(f" --component {name}" for name in pinned_components(crate))
+    components = "".join(f" --component {name}" for name in pinned_toolchain(crate)[1])
     host.shell(
         f"rustup toolchain install {channel} --profile minimal{components}"
         f" && rustup target add --toolchain {channel} {config.target}",
