@@ -120,7 +120,10 @@ The flags of `manage.py start_agent` are unchanged (`--metrics-interval`,
 1 failed enabled one-shot work, `CommandError`, invalid environment, database
 or schema failure; 2 usage error. One-shot runs every enabled loop before
 reporting failure; warnings alone succeed. Continuous mode keeps scheduling
-after failures. `--influx-write-file PATH` is the shadow mode: every batch the agent
+after failures. Metrics and conditions run sequentially. The scheduler
+checks the clock again after metrics, so a condition run that became due
+during metrics starts before the next sleep.
+`--influx-write-file PATH` is the shadow mode: every batch the agent
 would write to InfluxDB is appended to `PATH` as a framed batch: a
 `# write <utc> points=<n> bytes=<b>` header, line-protocol body and matching
 commit trailer. Queries still go to InfluxDB.

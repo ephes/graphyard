@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Recheck the Rust scheduler clock after metrics so a newly due condition run
+  starts before the scheduler sleeps.
+
 - Preserve the global condition evaluator heartbeat during Python and Rust
   checks targeting a single condition ID. Targeted checks still publish the
   condition result and report their own counts.

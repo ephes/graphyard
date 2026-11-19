@@ -64,15 +64,14 @@ pub async fn run_forever<R: Runner>(runner: &mut R, loops: &Loops) {
     let mut next_metrics = loops.run_metrics.then_some(start);
     let mut next_conditions = loops.run_conditions.then_some(start);
     loop {
-        let now = Instant::now();
         if let Some(next) = next_metrics
-            && now >= next
+            && Instant::now() >= next
         {
             runner.metrics(true).await;
             next_metrics = reschedule(next, metrics_interval);
         }
         if let Some(next) = next_conditions
-            && now >= next
+            && Instant::now() >= next
         {
             runner.conditions().await;
             next_conditions = reschedule(next, condition_interval);
@@ -194,6 +193,23 @@ mod tests {
                 ("metrics", 4.0),
                 ("conditions", 6.5),
                 ("metrics", 8.0),
+            ]
+        );
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn conditions_due_during_metrics_run_before_the_next_sleep() {
+        // The second metrics run starts at t=4 and ends at t=6.5, crossing
+        // the condition deadline at t=5.
+        let mut recorder = Recorder::new(2500, 0);
+        run_for(&mut recorder, &loops(Some(4), Some(5)), 7500).await;
+        assert_eq!(
+            rounded(&recorder.calls),
+            [
+                ("metrics", 0.0),
+                ("conditions", 2.5),
+                ("metrics", 4.0),
+                ("conditions", 6.5),
             ]
         );
     }

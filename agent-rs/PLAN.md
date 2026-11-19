@@ -422,8 +422,9 @@ on the normal schedule.
 Monotonic clock. `next_metrics = now` if enabled else +∞, likewise
 `next_conditions`. Loop: if metrics enabled and `now >= next_metrics`: run
 metrics (`due_only=True`), `next_metrics += interval`, and if that is already
-in the past, `next_metrics = monotonic() + interval`. Then the same for
-conditions with the `now` taken at the top of the iteration. Then sleep
+in the past, `next_metrics = monotonic() + interval`. The Rust scheduler
+reads the clock again before deciding whether conditions are due. A condition
+run that becomes due during metrics starts before the next sleep. Then sleep
 `max(0.2, min(1.0, min(next_metrics, next_conditions) - monotonic()))`. Both
 runs are sequential in one task; a slow metrics run delays conditions. The
 `--run-once` path calls metrics (`due_only=False`) then conditions. Pinned by
