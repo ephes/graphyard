@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Preserve the global condition evaluator heartbeat during Python and Rust
+  checks targeting a single condition ID. Targeted checks still publish the
+  condition result and report their own counts.
+
 - Read enabled Python condition definitions in bounded batches from the writer
   database, closing each read before querying Influx or publishing results.
   Both evaluators visit conditions in primary key order.

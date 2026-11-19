@@ -630,7 +630,7 @@ fn evaluate_conditions_writes_the_condition_rows_and_the_heartbeat() {
     assert_eq!(db.text("condition_definition", "disk", "message"), "old");
     assert_eq!(
         db.text("pipeline_heartbeat", "condition_evaluator", "details"),
-        r#"{"evaluated": 1, "failed": 0}"#
+        r#"{"evaluated": 2, "failed": 0}"#
     );
 }
 

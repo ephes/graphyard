@@ -481,14 +481,15 @@ def evaluate_conditions_once(
                 },
             )
 
-    heartbeat_status = StatusLevel.OK if failed == 0 else StatusLevel.WARNING
-    record_heartbeat(
-        "condition_evaluator",
-        status=heartbeat_status,
-        last_error="" if failed == 0 else f"{failed} condition(s) failed",
-        details={"evaluated": total, "failed": failed},
-        success=failed == 0,
-    )
+    if condition_id is None:
+        heartbeat_status = StatusLevel.OK if failed == 0 else StatusLevel.WARNING
+        record_heartbeat(
+            "condition_evaluator",
+            status=heartbeat_status,
+            last_error="" if failed == 0 else f"{failed} condition(s) failed",
+            details={"evaluated": total, "failed": failed},
+            success=failed == 0,
+        )
 
     return ConditionEvaluationRun(total=total, failed=failed)
 

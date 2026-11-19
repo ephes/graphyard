@@ -4,8 +4,8 @@
 //!
 //! One run of `evaluate_conditions_once(condition_id=...)` ([`run_conditions`]):
 //! the enabled conditions in primary key order (only the given id with
-//! `--condition-id`), the per-condition writes and the `condition_evaluator`
-//! heartbeat exactly as the agent's conditions run (PLAN.md 3.5). Then the
+//! `--condition-id`), the per-condition writes and, for a full run only, the
+//! `condition_evaluator` heartbeat (PLAN.md 3.5). Then the
 //! command's report: stdout `Condition evaluation completed (<total>).` and
 //! exit 0, or stdout `Condition evaluation completed with failures
 //! (<failed>/<total>).`, stderr `CommandError: <failed> condition

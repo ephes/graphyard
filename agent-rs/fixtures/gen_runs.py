@@ -7,8 +7,8 @@ error list and the ``metric_collectors``/``condition_evaluator`` heartbeats,
 and the run aborts (no matching specs, a row deleted during the run). The
 condition scenarios with a ``condition_id`` (slice S15a) pin
 ``evaluate_conditions_once(condition_id=...)`` of ``manage.py
-evaluate_conditions``: only that enabled condition, the heartbeat also when
-the id selects nothing, and ids beyond the 64-bit primary key range.
+evaluate_conditions``: only that enabled condition, preservation of the global
+heartbeat in all targeted runs, and ids beyond the 64-bit primary key range.
 
 The executors are stubbed: every spec type maps to one function that plays
 the spec's script by name (an outcome tuple, or an exception it raises, and
@@ -349,7 +349,15 @@ def _condition_id_scenarios() -> list[dict[str, Any]]:
             condition_row(3, "c disabled", enabled=0),
             condition_row(4, "d failing"),
         ],
-        HEARTBEAT_TABLE: [heartbeat_row(1, "condition_evaluator")],
+        HEARTBEAT_TABLE: [
+            heartbeat_row(
+                1,
+                "condition_evaluator",
+                status="warning",
+                last_error="2 condition(s) failed",
+                details='{"evaluated": 5, "failed": 2}',
+            )
+        ],
     }
     scripts = {
         "a other": {"samples": _samples(0.95, "08:09:00", "08:14:30")},
@@ -363,13 +371,11 @@ def _condition_id_scenarios() -> list[dict[str, Any]]:
         },
     }
     scenarios = [
-        # Only the selected condition is evaluated; the others keep their
-        # rows. The heartbeat counts the one evaluation.
+        # Only the selected condition is evaluated. The global heartbeat
+        # and other condition rows keep their previous values.
         ("condition_id_selects_one_condition", 2),
-        # A failing selected condition: the heartbeat's warning.
         ("condition_id_of_a_failing_condition", 4),
-        # A disabled or unknown id evaluates nothing, the heartbeat is
-        # written anyway (evaluated 0).
+        # A disabled or unknown id evaluates nothing.
         ("condition_id_of_a_disabled_condition", 3),
         ("condition_id_unknown", -1),
         # Beyond the BigAutoField range: Django's empty result, no query.

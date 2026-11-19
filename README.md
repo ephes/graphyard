@@ -851,6 +851,9 @@ The command evaluates independent conditions even if one fails, then prints the
 summary. It exits with status 1 if any evaluation failed and 0 otherwise, so
 schedulers and operators can detect evaluation errors. A condition reporting
 warning or critical after a successful evaluation is not a command failure.
+Use `--condition-id N` to check one enabled condition. Targeted runs report
+their own outcome and leave the global `condition_evaluator` heartbeat and
+its timestamps untouched. Only full scans update that heartbeat.
 
 Seed (or update) a practical host disk-usage condition:
 

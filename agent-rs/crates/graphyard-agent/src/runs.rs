@@ -359,8 +359,7 @@ async fn evaluate<S: ConditionSamples>(
 
 /// `evaluate_conditions_once(condition_id=...)`: the agent's runs pass
 /// `None`, `graphyard-agent evaluate-conditions --condition-id N` the id.
-/// The heartbeat is written for a single-condition run too, also when the
-/// id selects nothing.
+/// Only a full run writes the global heartbeat.
 ///
 /// # Errors
 /// A failed load or heartbeat fails the run; per-condition publication failures
@@ -415,30 +414,32 @@ pub async fn run_conditions<S: ConditionSamples, C: Clock>(
             );
         }
     }
-    let ok = run.failed == 0;
-    store
-        .record_heartbeat(
-            HeartbeatRecord {
-                name: "condition_evaluator".to_owned(),
-                status: if ok {
-                    StatusLevel::Ok
-                } else {
-                    StatusLevel::Warning
+    if condition_id.is_none() {
+        let ok = run.failed == 0;
+        store
+            .record_heartbeat(
+                HeartbeatRecord {
+                    name: "condition_evaluator".to_owned(),
+                    status: if ok {
+                        StatusLevel::Ok
+                    } else {
+                        StatusLevel::Warning
+                    },
+                    last_error: if ok {
+                        String::new()
+                    } else {
+                        format!("{} condition(s) failed", run.failed)
+                    },
+                    details: vec![
+                        ("evaluated".to_owned(), count(run.total)),
+                        ("failed".to_owned(), count(run.failed)),
+                    ],
+                    success: ok,
                 },
-                last_error: if ok {
-                    String::new()
-                } else {
-                    format!("{} condition(s) failed", run.failed)
-                },
-                details: vec![
-                    ("evaluated".to_owned(), count(run.total)),
-                    ("failed".to_owned(), count(run.failed)),
-                ],
-                success: ok,
-            },
-            clock.now(),
-        )
-        .await?;
+                clock.now(),
+            )
+            .await?;
+    }
     Ok(run)
 }
 

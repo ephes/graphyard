@@ -130,8 +130,10 @@ commit trailer. Queries still go to InfluxDB.
 `graphyard-agent evaluate-conditions [--condition-id N]` (from release
 0.2.0) replaces `manage.py evaluate_conditions` (PLAN.md 11.4): it evaluates
 the enabled conditions (or the one with the given id) once, writes their
-rows and the `condition_evaluator` heartbeat, prints `Condition evaluation
-completed (<total>).` and exits 0, or prints the failures and
+rows, and updates the global `condition_evaluator` heartbeat only on a full
+run. Targeted checks leave the global status, counts and timestamps untouched.
+The command prints `Condition evaluation completed (<total>).` and exits 0,
+or prints the failures and
 `CommandError: <n> condition evaluation(s) failed.` and exits 1. It reads
 only the process environment, so on macmini it runs with the unit's
 environment:

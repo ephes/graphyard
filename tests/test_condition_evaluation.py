@@ -227,7 +227,7 @@ def test_evaluate_conditions_once_updates_condition_and_heartbeat(db, monkeypatc
     )
 
     monkeypatch.setattr("graphyard.services.timezone.now", lambda: now)
-    run = evaluate_conditions_once(condition_id=condition.id)
+    run = evaluate_conditions_once()
 
     assert run.total == 1
     assert run.failed == 0
@@ -241,6 +241,37 @@ def test_evaluate_conditions_once_updates_condition_and_heartbeat(db, monkeypatc
     heartbeat = PipelineHeartbeat.objects.get(name="condition_evaluator")
     assert heartbeat.status == StatusLevel.OK
     assert heartbeat.last_success is not None
+
+
+def test_targeted_evaluation_preserves_global_warning(db, monkeypatch):
+    condition = _condition()
+    condition.save()
+    previous = datetime(2026, 3, 4, 12, tzinfo=UTC)
+    heartbeat = PipelineHeartbeat.objects.create(
+        name="condition_evaluator",
+        status=StatusLevel.WARNING,
+        last_success=previous - timedelta(minutes=1),
+        last_error="2 condition(s) failed",
+        details={"evaluated": 5, "failed": 2},
+    )
+    PipelineHeartbeat.objects.filter(pk=heartbeat.pk).update(updated_at=previous)
+    before = PipelineHeartbeat.objects.values().get(pk=heartbeat.pk)
+
+    now = previous + timedelta(minutes=1)
+    monkeypatch.setattr("graphyard.services.timezone.now", lambda: now)
+    monkeypatch.setattr(
+        influx,
+        "query_condition_window",
+        lambda *a, **k: [_sample(now, minutes_ago=0, value=42.0)],
+    )
+
+    run = evaluate_conditions_once(condition_id=condition.pk)
+
+    assert (run.total, run.failed) == (1, 0)
+    condition.refresh_from_db()
+    assert condition.last_evaluated == now
+    assert condition.last_value == 42.0
+    assert PipelineHeartbeat.objects.values().get(pk=heartbeat.pk) == before
 
 
 def _series_sample(

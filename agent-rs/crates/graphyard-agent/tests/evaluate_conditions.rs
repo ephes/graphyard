@@ -147,11 +147,17 @@ fn failed_conditions_report_a_command_error_and_exit_1() {
 }
 
 /// `evaluate.assert_called_once_with(condition_id=7)`: the id selects the
-/// one enabled condition; the heartbeat is written for it.
+/// one enabled condition and preserves the global warning and timestamps.
 #[test]
 fn condition_id_evaluates_only_that_condition() {
     let server = FakeServer::start();
     let db = conditions();
+    db.execute(
+        "INSERT INTO pipeline_heartbeat (name, status, last_success, last_error, details, updated_at) \
+         VALUES ('condition_evaluator', 'warning', '2026-01-01 00:00:00', \
+                 '2 condition(s) failed', '{\"evaluated\":5,\"failed\":2}', '2026-01-01 00:01:00')",
+    );
+    let before = db.rows("pipeline_heartbeat");
     let env = influx_env(&server);
     let output = evaluate(&db, &["--condition-id", "4"], &pairs(&env));
     assert_eq!(output.status.code(), Some(0), "{output:?}");
@@ -165,10 +171,9 @@ fn condition_id_evaluates_only_that_condition() {
         db.text("condition_definition", "d cpu", "message"),
         "No samples available in condition window"
     );
-    assert_eq!(heartbeat_details(&db), r#"{"evaluated": 1, "failed": 0}"#);
+    assert_eq!(db.rows("pipeline_heartbeat"), before);
 
-    // A disabled, unknown or out-of-range id evaluates nothing; the
-    // heartbeat records the empty run.
+    // A disabled, unknown or out-of-range id also leaves the heartbeat alone.
     for id in ["3", "-7", "99999999999999999999"] {
         let output = evaluate(&db, &["--condition-id", id], &pairs(&env));
         assert_eq!(output.status.code(), Some(0), "{id}: {output:?}");
@@ -176,7 +181,7 @@ fn condition_id_evaluates_only_that_condition() {
             text(&output.stdout),
             "Condition evaluation completed (0).\n"
         );
-        assert_eq!(heartbeat_details(&db), r#"{"evaluated": 0, "failed": 0}"#);
+        assert_eq!(db.rows("pipeline_heartbeat"), before);
     }
     assert_eq!(server.requests().len(), 1);
 }

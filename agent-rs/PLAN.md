@@ -1999,9 +1999,9 @@ evaluate-conditions`, in separate slices.
 **S15a** (graphyard, after S10b, not tied to the 30 days, before S15b):
 `graphyard-agent evaluate-conditions [--condition-id N]` ports
 `evaluate_conditions.py` (`evaluate_conditions_once(condition_id=…)`):
-enabled conditions, optionally only the given id, `ORDER BY id`; the
-per-condition writes and the `condition_evaluator` heartbeat exactly as 3.5
-(Python records the heartbeat for a single-condition run too). stdout
+enabled conditions in primary key order, optionally only the given id, with
+per-condition writes as in 3.5. Only full runs update the
+`condition_evaluator` heartbeat in either runtime. stdout
 `Condition evaluation completed (<total>).`, or `Condition evaluation
 completed with failures (<failed>/<total>).` followed by stderr
 `CommandError: <failed> condition evaluation(s) failed.` and exit 1. A
@@ -2020,8 +2020,8 @@ As implemented in S15a (`graphyard-agent::evaluate`, version 0.2.0, release
 (`runs::run_conditions` with the id), so its writes are the ones `runs.json`
 pins, including new `condition_id` scenarios; an id outside the 64-bit range
 of the `BigAutoField` selects nothing without a query (Django's empty
-result), and the heartbeat records the empty run (`evaluated 0`). The
-database is opened and its schema verified as at the agent's startup (D-2;
+result). Targeted runs return their own counts and leave the global
+heartbeat untouched. The database is opened and its schema verified as at the agent's startup (D-2;
 a missing database exits 1 and is never created); the agent's three INFO
 lines are not printed. The failure line outside a condition is stderr
 `Condition evaluation failed: <class>: <err>`. The settings are read before

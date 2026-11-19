@@ -1771,10 +1771,10 @@
      {
       "id": 1,
       "name": "condition_evaluator",
-      "status": "ok",
+      "status": "warning",
       "last_success": "2026-10-20 07:00:00.250000",
-      "last_error": "",
-      "details": "{\"total\": 1}",
+      "last_error": "2 condition(s) failed",
+      "details": "{\"evaluated\": 5, \"failed\": 2}",
       "updated_at": "2026-10-20 07:00:00.250001"
      }
     ]
@@ -1931,11 +1931,11 @@
      {
       "id": 1,
       "name": "condition_evaluator",
-      "status": "ok",
-      "last_success": "2026-10-21 08:15:30.123456",
-      "last_error": "",
-      "details": "{\"evaluated\": 1, \"failed\": 0}",
-      "updated_at": "2026-10-21 08:15:30.123456"
+      "status": "warning",
+      "last_success": "2026-10-20 07:00:00.250000",
+      "last_error": "2 condition(s) failed",
+      "details": "{\"evaluated\": 5, \"failed\": 2}",
+      "updated_at": "2026-10-20 07:00:00.250001"
      }
     ]
    }
@@ -2047,10 +2047,10 @@
      {
       "id": 1,
       "name": "condition_evaluator",
-      "status": "ok",
+      "status": "warning",
       "last_success": "2026-10-20 07:00:00.250000",
-      "last_error": "",
-      "details": "{\"total\": 1}",
+      "last_error": "2 condition(s) failed",
+      "details": "{\"evaluated\": 5, \"failed\": 2}",
       "updated_at": "2026-10-20 07:00:00.250001"
      }
     ]
@@ -2209,9 +2209,9 @@
       "name": "condition_evaluator",
       "status": "warning",
       "last_success": "2026-10-20 07:00:00.250000",
-      "last_error": "1 condition(s) failed",
-      "details": "{\"evaluated\": 1, \"failed\": 1}",
-      "updated_at": "2026-10-21 08:15:30.123456"
+      "last_error": "2 condition(s) failed",
+      "details": "{\"evaluated\": 5, \"failed\": 2}",
+      "updated_at": "2026-10-20 07:00:00.250001"
      }
     ]
    }
@@ -2323,10 +2323,10 @@
      {
       "id": 1,
       "name": "condition_evaluator",
-      "status": "ok",
+      "status": "warning",
       "last_success": "2026-10-20 07:00:00.250000",
-      "last_error": "",
-      "details": "{\"total\": 1}",
+      "last_error": "2 condition(s) failed",
+      "details": "{\"evaluated\": 5, \"failed\": 2}",
       "updated_at": "2026-10-20 07:00:00.250001"
      }
     ]
@@ -2483,11 +2483,11 @@
      {
       "id": 1,
       "name": "condition_evaluator",
-      "status": "ok",
-      "last_success": "2026-10-21 08:15:30.123456",
-      "last_error": "",
-      "details": "{\"evaluated\": 0, \"failed\": 0}",
-      "updated_at": "2026-10-21 08:15:30.123456"
+      "status": "warning",
+      "last_success": "2026-10-20 07:00:00.250000",
+      "last_error": "2 condition(s) failed",
+      "details": "{\"evaluated\": 5, \"failed\": 2}",
+      "updated_at": "2026-10-20 07:00:00.250001"
      }
     ]
    }
@@ -2599,10 +2599,10 @@
      {
       "id": 1,
       "name": "condition_evaluator",
-      "status": "ok",
+      "status": "warning",
       "last_success": "2026-10-20 07:00:00.250000",
-      "last_error": "",
-      "details": "{\"total\": 1}",
+      "last_error": "2 condition(s) failed",
+      "details": "{\"evaluated\": 5, \"failed\": 2}",
       "updated_at": "2026-10-20 07:00:00.250001"
      }
     ]
@@ -2759,11 +2759,11 @@
      {
       "id": 1,
       "name": "condition_evaluator",
-      "status": "ok",
-      "last_success": "2026-10-21 08:15:30.123456",
-      "last_error": "",
-      "details": "{\"evaluated\": 0, \"failed\": 0}",
-      "updated_at": "2026-10-21 08:15:30.123456"
+      "status": "warning",
+      "last_success": "2026-10-20 07:00:00.250000",
+      "last_error": "2 condition(s) failed",
+      "details": "{\"evaluated\": 5, \"failed\": 2}",
+      "updated_at": "2026-10-20 07:00:00.250001"
      }
     ]
    }
@@ -2875,10 +2875,10 @@
      {
       "id": 1,
       "name": "condition_evaluator",
-      "status": "ok",
+      "status": "warning",
       "last_success": "2026-10-20 07:00:00.250000",
-      "last_error": "",
-      "details": "{\"total\": 1}",
+      "last_error": "2 condition(s) failed",
+      "details": "{\"evaluated\": 5, \"failed\": 2}",
       "updated_at": "2026-10-20 07:00:00.250001"
      }
     ]
@@ -3035,11 +3035,11 @@
      {
       "id": 1,
       "name": "condition_evaluator",
-      "status": "ok",
-      "last_success": "2026-10-21 08:15:30.123456",
-      "last_error": "",
-      "details": "{\"evaluated\": 0, \"failed\": 0}",
-      "updated_at": "2026-10-21 08:15:30.123456"
+      "status": "warning",
+      "last_success": "2026-10-20 07:00:00.250000",
+      "last_error": "2 condition(s) failed",
+      "details": "{\"evaluated\": 5, \"failed\": 2}",
+      "updated_at": "2026-10-20 07:00:00.250001"
      }
     ]
    }
