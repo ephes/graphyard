@@ -512,8 +512,9 @@ same invocation ID as the temporary images. Each Docker create has a 60-second
 deadline. If its result is lost, cleanup checks for the job-specific ownership
 label and exact name, then removes the matching container by full ID if Docker
 already reports it. Each Docker cleanup command has a 15-second deadline.
-Removal commands discard their output, and the ownership lookup accepts up to
-4 KiB. Cleanup failures are reported on stderr alongside the original build
+Removal commands discard their output, and the ownership and image lookups
+accept up to 4 KiB. A temporary image tag that was never built is skipped
+instead of being reported as a failed removal. Cleanup failures are reported on stderr alongside the original build
 error, when present.
 
 The archive, its `.sha256`, `build.json` (commit, sha256, image digest, package

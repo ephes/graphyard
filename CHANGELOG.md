@@ -9,7 +9,8 @@
   invocation-specific names so reused process IDs do not cause collisions.
   After an uncertain create, cleanup verifies ownership before removing the
   container by ID. Docker cleanup has bounded runtime and output and reports
-  secondary failures without replacing the original build error.
+  secondary failures without replacing the original build error. Image tags
+  that were never built are not reported as failed removals.
 
 - Local Rust release publishing stages readable regular release notes before
   creating a GitHub tag. Downloaded assets are compared byte for byte in

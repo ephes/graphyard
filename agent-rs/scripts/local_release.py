@@ -976,6 +976,12 @@ class Docker:
                 cleanup(["docker", "rm", "-f", container])
 
     def remove_image(self, tag: str) -> None:
+        # A build that failed before tagging leaves nothing to remove; skip the
+        # removal then so it is not reported as a cleanup failure. An unreadable
+        # lookup still attempts the removal.
+        found = cleanup(["docker", "image", "ls", "--quiet", tag], read_output=True)
+        if found is not None and not found.strip():
+            return
         cleanup(["docker", "image", "rm", tag])
 
 

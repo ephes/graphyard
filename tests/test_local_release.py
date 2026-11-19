@@ -627,6 +627,26 @@ def test_cleanup_bounds_container_lookup_output(
         assert diagnostics == ""
 
 
+@pytest.mark.parametrize("lookup", ["absent", "present", "failed"])
+def test_remove_image_skips_tags_that_were_never_built(
+    release: ModuleType, monkeypatch: pytest.MonkeyPatch, lookup: str
+) -> None:
+    tag = "example-local-release:key-linux-amd64-commit-4242-abcd1234"
+    calls: list[list[str]] = []
+
+    def cleanup(argv: Sequence[str], *, read_output: bool = False) -> str | None:
+        calls.append(list(argv))
+        if read_output:
+            assert list(argv) == ["docker", "image", "ls", "--quiet", tag]
+            return {"absent": "", "present": "sha256:abc\n", "failed": None}[lookup]
+        return None
+
+    monkeypatch.setattr(release, "cleanup", cleanup)
+    release.Docker().remove_image(tag)
+    removal = ["docker", "image", "rm", tag]
+    assert (removal in calls) == (lookup != "absent")
+
+
 def test_macos_build(release: ModuleType, tmp_path: Path, which_rustup: None) -> None:
     config = release.parse_config(macos_data())
     host = FakeHost()
