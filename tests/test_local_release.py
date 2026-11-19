@@ -706,6 +706,62 @@ def test_publish_completes_and_checks_a_partial_release(
         publish(release, built, github=github)
 
 
+@pytest.mark.parametrize("difference", ["none", "last byte", "length"])
+def test_downloaded_assets_are_compared_in_bounded_reads(
+    release: ModuleType,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    difference: str,
+) -> None:
+    archive = tmp_path / "large.tar.gz"
+
+    def write_sparse(path: Path, size: int, last: bytes) -> None:
+        with path.open("wb") as handle:
+            handle.seek(size - 1)
+            handle.write(last)
+
+    size = 16 * 1024 * 1024 + 1
+    write_sparse(archive, size, b"a")
+    digest = release.sha256_file(archive)
+
+    class SparseGitHub(FakeGitHub):
+        def release(self, tag: str) -> Any:
+            return release.Release(
+                100, {archive.name: digest}, {archive.name: "asset-1"}, False, False
+            )
+
+        def download(self, tag: str, directory: Path) -> None:
+            write_sparse(
+                directory / archive.name,
+                size - (difference == "length"),
+                b"b" if difference == "last byte" else b"a",
+            )
+
+    original_open = Path.open
+
+    def bounded_open(path: Path, mode: str = "r", *args: Any, **kwargs: Any) -> Any:
+        handle = original_open(path, mode, *args, **kwargs)
+        if mode == "rb" and path.name == archive.name:
+            read = handle.read
+
+            def bounded_read(size: int = -1) -> bytes:
+                assert 0 < size <= 1024 * 1024
+                return read(size)
+
+            handle.read = bounded_read
+        return handle
+
+    monkeypatch.setattr(Path, "open", bounded_open)
+    args = (SparseGitHub(), "rs-v1.2.3", "title", tmp_path / "notes.md")
+    if difference == "none":
+        assert release.ensure_release(*args, {archive.name: archive})[-1] == (
+            "verified 1 assets of rs-v1.2.3 byte for byte"
+        )
+    else:
+        with pytest.raises(release.ReleaseError, match="differs from the local file"):
+            release.ensure_release(*args, {archive.name: archive})
+
+
 def test_ensure_release_refuses_a_different_digest(
     release: ModuleType, tmp_path: Path
 ) -> None:

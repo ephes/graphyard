@@ -348,6 +348,16 @@ def sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
+def same_file_bytes(first: Path, second: Path) -> bool:
+    with first.open("rb") as left, second.open("rb") as right:
+        while True:
+            block = left.read(1 << 20)
+            if block != right.read(1 << 20):
+                return False
+            if not block:
+                return True
+
+
 def quietly(argv: Sequence[str]) -> None:
     """Best-effort cleanup: the outcome is ignored."""
     subprocess.run(list(argv), check=False, capture_output=True)  # noqa: S603 - argv lists only
@@ -648,7 +658,7 @@ def ensure_release(
                 f"release {tag} holds {sorted(found)}, expected {sorted(files)}"
             )
         for name, path in sorted(found.items()):
-            if path.read_bytes() != files[name].read_bytes():
+            if not same_file_bytes(path, files[name]):
                 raise ReleaseError(
                     f"release {tag}: downloaded {name} differs from the local file"
                 )

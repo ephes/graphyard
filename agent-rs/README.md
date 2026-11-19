@@ -526,7 +526,7 @@ on `main`; an existing tag must be annotated and point at that commit, it is
 never moved), creates the GitHub release with exactly the archive and its
 `.sha256` (`gh release create --verify-tag`; a semver pre-release such as
 `0.4.0-rc.1` becomes a GitHub pre-release), then downloads both again and
-compares them byte for byte. It succeeds only when afterwards the same
+compares them byte for byte in 1 MiB blocks. It succeeds only when afterwards the same
 release (same release and asset ids) is published, with the expected
 prerelease flag, exactly those two assets and GitHub's sha256 of each equal
 to the built one. A draft (left by an interrupted `gh release create`) is

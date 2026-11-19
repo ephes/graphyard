@@ -3,7 +3,8 @@
 ## Unreleased
 
 - Local Rust release publishing stages readable regular release notes before
-  creating a GitHub tag.
+  creating a GitHub tag. Downloaded assets are compared byte for byte in
+  bounded blocks.
 
 - Rust agent (`agent-rs/`): version 0.4.1, released as `agent-rs-v0.4.1`, the
   first agent release built and published locally by

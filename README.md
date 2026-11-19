@@ -1003,7 +1003,7 @@ the one macmini runs
 rounds 79 to 85 and stays installed for rollback, `agent-rs-v0.2.0` added
 `evaluate-conditions`); `agent-rs-v0.4.1` is the first release built locally. The
 [local release workflow](agent-rs/README.md#releases) validates and stages
-`notes.md` before tagging.
+`notes.md` before tagging and compares downloaded assets in bounded blocks.
 
 ## Nyxmon Integration Contract
 
