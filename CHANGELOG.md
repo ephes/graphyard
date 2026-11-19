@@ -2,8 +2,9 @@
 
 ## Unreleased
 
-- Recheck the Rust scheduler clock after metrics so a newly due condition run
-  starts before the scheduler sleeps.
+- Recheck the scheduler clock after metrics in both the Rust agent and
+  `manage.py start_agent`, so a newly due condition run starts before the
+  scheduler sleeps.
 
 - Preserve the global condition evaluator heartbeat during Python and Rust
   checks targeting a single condition ID. Targeted checks still publish the

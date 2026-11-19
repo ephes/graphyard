@@ -96,7 +96,9 @@ class Command(BaseCommand):
                     if next_metrics_run < time.monotonic():
                         next_metrics_run = time.monotonic() + metrics_interval
 
-                if run_conditions and now >= next_condition_run:
+                # Read the clock again: a condition run that became due during
+                # metrics starts before the next sleep.
+                if run_conditions and time.monotonic() >= next_condition_run:
                     self._run_condition_eval()
                     next_condition_run += condition_interval
                     if next_condition_run < time.monotonic():

@@ -129,6 +129,49 @@ def test_continuous_agent_keeps_scheduling_after_failure(monkeypatch):
     assert metrics.call_count == conditions.call_count == 2
 
 
+def test_conditions_due_during_metrics_run_before_the_next_sleep(monkeypatch):
+    # The second metrics run starts at t=4 and ends at t=6.5, crossing the
+    # condition deadline at t=5 (mirrors the Rust scheduler test).
+    clock = [0.0]
+    calls: list[tuple[str, float]] = []
+
+    def metrics(**kwargs):
+        calls.append(("metrics", clock[0]))
+        clock[0] += 2.5
+        return MetricCollectionSpecRun(
+            total=0, failed=0, warning=0, ingested=0, skipped=0
+        )
+
+    def conditions(**kwargs):
+        calls.append(("conditions", clock[0]))
+        return ConditionEvaluationRun(total=0, failed=0)
+
+    monkeypatch.setattr(
+        "graphyard.management.commands.start_agent.run_metric_collection_specs_once",
+        metrics,
+    )
+    monkeypatch.setattr(
+        "graphyard.management.commands.start_agent.evaluate_conditions_once", conditions
+    )
+    monkeypatch.setattr(
+        "graphyard.management.commands.start_agent.time.monotonic", lambda: clock[0]
+    )
+
+    def sleep(seconds):
+        clock[0] += seconds
+        if clock[0] >= 7.5:
+            raise KeyboardInterrupt
+
+    monkeypatch.setattr("graphyard.management.commands.start_agent.time.sleep", sleep)
+    call_command("start_agent", metrics_interval=4, condition_interval=5)
+    assert calls == [
+        ("metrics", 0.0),
+        ("conditions", 2.5),
+        ("metrics", 4.0),
+        ("conditions", 6.5),
+    ]
+
+
 @pytest.mark.parametrize("disabled", ["--disable-metrics", "--disable-conditions"])
 def test_one_shot_disabled_loop_is_never_run(monkeypatch, disabled):
     from unittest.mock import Mock
