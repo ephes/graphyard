@@ -114,6 +114,8 @@ MEMORY = "8g"
 PIDS = "4096"
 IMAGE_TIMEOUT = 3600
 JOB_TIMEOUT = 5400
+CONTAINER_CREATE_TIMEOUT = 60
+CONTAINER_ID = re.compile(r"[0-9a-f]{64}")
 DIST = "local-release"
 BUILD_JSON = "build.json"
 NOTES = "notes.md"
@@ -852,6 +854,28 @@ class Docker:
         ]
         run([*argv, str(context)], timeout=IMAGE_TIMEOUT, capture=False)
 
+    def find_owned_container(self, name: str, ownership: str) -> str | None:
+        argv = [
+            "docker",
+            "container",
+            "ls",
+            "--all",
+            "--no-trunc",
+            "--filter",
+            f"label={ownership}",
+            "--format",
+            "{{.ID}} {{.Names}}",
+        ]
+        try:
+            result = run(argv, timeout=CONTAINER_CREATE_TIMEOUT).strip()
+        except ReleaseError as error:
+            print(f"release cleanup failed: {error}", file=sys.stderr)
+            return None
+        container, _, found_name = result.partition(" ")
+        if found_name == name and CONTAINER_ID.fullmatch(container):
+            return container
+        return None
+
     def job(
         self,
         image: str,
@@ -863,11 +887,14 @@ class Docker:
     ) -> None:
         """One build-phase job: no network, no mounts, memory, process and time
         limits; /out comes back with `docker cp`."""
+        ownership = f"com.graphyard.local-release.job={secrets.token_hex(16)}"
         argv = [
             "docker",
             "create",
             "--name",
             name,
+            "--label",
+            ownership,
             "--platform",
             platform,
             "--network",
@@ -877,16 +904,27 @@ class Docker:
         for key, value in sorted(env.items()):
             argv += ["-e", f"{key}={value}"]
         argv += [image, "bash", "-euo", "pipefail", "-c", script]
-        run(argv)
+        container = None
         try:
+            result = run(argv, timeout=CONTAINER_CREATE_TIMEOUT).strip()
+            if not CONTAINER_ID.fullmatch(result):
+                raise ReleaseError(f"docker create returned no container ID for {name}")
+            container = result
             try:
-                run(["docker", "start", "-a", name], timeout=JOB_TIMEOUT, capture=False)
+                run(
+                    ["docker", "start", "-a", container],
+                    timeout=JOB_TIMEOUT,
+                    capture=False,
+                )
             except ReleaseError:
-                quietly(["docker", "kill", name])
+                quietly(["docker", "kill", container])
                 raise
-            run(["docker", "cp", f"{name}:/out/.", str(out_dir)])
+            run(["docker", "cp", f"{container}:/out/.", str(out_dir)])
         finally:
-            quietly(["docker", "rm", "-f", name])
+            if container is None:
+                container = self.find_owned_container(name, ownership)
+            if container is not None:
+                quietly(["docker", "rm", "-f", container])
 
     def remove_image(self, tag: str) -> None:
         quietly(["docker", "image", "rm", tag])

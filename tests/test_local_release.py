@@ -522,6 +522,42 @@ def test_linux_build_names_survive_reused_pid(
     assert set(docker.removed) == {tag for tag, _ in docker.images}
 
 
+@pytest.mark.parametrize("foreign", [False, True])
+def test_docker_job_retires_only_owned_container_after_failed_create(
+    release: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, foreign: bool
+) -> None:
+    name = "example-release-build-4242-abcd1234"
+    container_id = "a" * 64
+    containers = {container_id: "foreign"} if foreign else {}
+    observed: list[str] = []
+
+    def run(argv: Sequence[str], **kwargs: Any) -> str:
+        if argv[1] == "create":
+            if not foreign and "--label" in argv:
+                containers[container_id] = argv[argv.index("--label") + 1]
+            raise release.ReleaseError("create result unavailable")
+        if argv[1:3] == ["container", "ls"]:
+            ownership = next(arg for arg in argv if arg.startswith("label="))
+            observed.append(ownership)
+            return "".join(
+                f"{cid} {name}\n"
+                for cid, label in containers.items()
+                if label == ownership.removeprefix("label=")
+            )
+        pytest.fail(f"unexpected Docker command: {argv}")
+
+    def cleanup(argv: Sequence[str]) -> None:
+        assert list(argv[:3]) == ["docker", "rm", "-f"]
+        containers.pop(argv[3])
+
+    monkeypatch.setattr(release, "run", run)
+    monkeypatch.setattr(release, "quietly", cleanup)
+    with pytest.raises(release.ReleaseError, match="create result unavailable"):
+        release.Docker().job("image", name, "script", {}, tmp_path, "linux/amd64")
+    assert len(observed) == 1
+    assert containers == ({container_id: "foreign"} if foreign else {})
+
+
 def test_macos_build(release: ModuleType, tmp_path: Path, which_rustup: None) -> None:
     config = release.parse_config(macos_data())
     host = FakeHost()

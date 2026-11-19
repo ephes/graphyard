@@ -4,6 +4,8 @@
 
 - Local Rust release builds give the checks and build containers
   invocation-specific names so reused process IDs do not cause collisions.
+  After an uncertain create, cleanup verifies ownership before removing the
+  container by ID.
 
 - Local Rust release publishing stages readable regular release notes before
   creating a GitHub tag. Downloaded assets are compared byte for byte in
