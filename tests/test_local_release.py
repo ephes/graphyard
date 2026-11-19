@@ -536,7 +536,11 @@ def test_docker_job_retires_only_owned_container_after_failed_create(
             if not foreign and "--label" in argv:
                 containers[container_id] = argv[argv.index("--label") + 1]
             raise release.ReleaseError("create result unavailable")
-        if argv[1:3] == ["container", "ls"]:
+        pytest.fail(f"unexpected Docker command: {argv}")
+
+    def cleanup(argv: Sequence[str], *, read_output: bool = False) -> str | None:
+        if read_output:
+            assert argv[1:3] == ["container", "ls"]
             ownership = next(arg for arg in argv if arg.startswith("label="))
             observed.append(ownership)
             return "".join(
@@ -544,18 +548,83 @@ def test_docker_job_retires_only_owned_container_after_failed_create(
                 for cid, label in containers.items()
                 if label == ownership.removeprefix("label=")
             )
-        pytest.fail(f"unexpected Docker command: {argv}")
-
-    def cleanup(argv: Sequence[str]) -> None:
         assert list(argv[:3]) == ["docker", "rm", "-f"]
         containers.pop(argv[3])
+        return None
 
     monkeypatch.setattr(release, "run", run)
-    monkeypatch.setattr(release, "quietly", cleanup)
+    monkeypatch.setattr(release, "cleanup", cleanup)
     with pytest.raises(release.ReleaseError, match="create result unavailable"):
         release.Docker().job("image", name, "script", {}, tmp_path, "linux/amd64")
     assert len(observed) == 1
     assert containers == ({container_id: "foreign"} if foreign else {})
+
+
+@pytest.mark.parametrize("failure", ["stall", "missing", "nonzero"])
+def test_docker_cleanup_preserves_the_job_error(
+    release: ModuleType,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    failure: str,
+) -> None:
+    container = "a" * 64
+
+    def run(argv: Sequence[str], **kwargs: Any) -> str:
+        if argv[1] == "create":
+            return container
+        assert list(argv) == ["docker", "start", "-a", container]
+        raise release.ReleaseError("primary build failure")
+
+    monkeypatch.setattr(release, "run", run)
+    monkeypatch.setattr(release, "DOCKER_CLEANUP_TIMEOUT", 0.1, raising=False)
+    monkeypatch.setenv("PATH", str(tmp_path))
+    if failure != "missing":
+        executable = tmp_path / "docker"
+        body = "exec /bin/sleep 1" if failure == "stall" else "echo noise >&2; exit 7"
+        executable.write_text(f"#!/bin/sh\n{body}\n")
+        executable.chmod(0o755)
+
+    with pytest.raises(release.ReleaseError, match="primary build failure"):
+        release.Docker().job("image", "example", "script", {}, tmp_path, "linux/amd64")
+
+    diagnostics = capsys.readouterr().err
+    assert f"release cleanup failed: docker kill {container}" in diagnostics
+    assert f"release cleanup failed: docker rm -f {container}" in diagnostics
+    assert {
+        "stall": "did not finish within 0.1 s",
+        "missing": "could not start",
+        "nonzero": "exited 7",
+    }[failure] in diagnostics
+    assert "noise" not in diagnostics
+
+
+@pytest.mark.parametrize("flood", [False, True])
+def test_cleanup_bounds_container_lookup_output(
+    release: ModuleType,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    flood: bool,
+) -> None:
+    executable = tmp_path / "docker"
+    reply = f"{'a' * 64} example"
+    if flood:
+        executable.write_text("#!/bin/sh\nexec /usr/bin/head -c 2097152 /dev/zero\n")
+    else:
+        executable.write_text(f"#!/bin/sh\nprintf '%s\\n' '{reply}'\n")
+    executable.chmod(0o755)
+    monkeypatch.setenv("PATH", str(tmp_path))
+    monkeypatch.setattr(release, "DOCKER_CLEANUP_TIMEOUT", 0.2 if flood else 5)
+
+    container = release.Docker().find_owned_container("example", "job=owner")
+    assert container == (None if flood else "a" * 64)
+    diagnostics = capsys.readouterr().err
+    if flood:
+        assert "release cleanup failed: docker container ls" in diagnostics
+        assert "\0" not in diagnostics
+    else:
+        assert diagnostics == ""
 
 
 def test_macos_build(release: ModuleType, tmp_path: Path, which_rustup: None) -> None:
@@ -820,7 +889,7 @@ def test_downloaded_assets_are_compared_in_bounded_reads(
                 assert 0 < size <= 1024 * 1024
                 return read(size)
 
-            handle.read = bounded_read
+            monkeypatch.setattr(handle, "read", bounded_read)
         return handle
 
     monkeypatch.setattr(Path, "open", bounded_open)

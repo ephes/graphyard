@@ -115,6 +115,8 @@ PIDS = "4096"
 IMAGE_TIMEOUT = 3600
 JOB_TIMEOUT = 5400
 CONTAINER_CREATE_TIMEOUT = 60
+DOCKER_CLEANUP_TIMEOUT = 15
+DOCKER_CLEANUP_OUTPUT_LIMIT = 4096
 CONTAINER_ID = re.compile(r"[0-9a-f]{64}")
 DIST = "local-release"
 BUILD_JSON = "build.json"
@@ -360,9 +362,47 @@ def same_file_bytes(first: Path, second: Path) -> bool:
                 return True
 
 
-def quietly(argv: Sequence[str]) -> None:
-    """Best-effort cleanup: the outcome is ignored."""
-    subprocess.run(list(argv), check=False, capture_output=True)  # noqa: S603 - argv lists only
+def cleanup(argv: Sequence[str], *, read_output: bool = False) -> str | None:
+    """Report cleanup failures without interrupting the caller's finalizer."""
+    command = shlex.join(argv)
+    try:
+        child = subprocess.Popen(  # noqa: S603 - argv lists only
+            list(argv),
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE if read_output else subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    except OSError as error:
+        print(
+            f"release cleanup failed: {command}: could not start: {error.strerror}",
+            file=sys.stderr,
+        )
+        return None
+    try:
+        with child:
+            try:
+                code = child.wait(timeout=DOCKER_CLEANUP_TIMEOUT)
+            except subprocess.TimeoutExpired:
+                child.kill()
+                raise ReleaseError(
+                    f"did not finish within {DOCKER_CLEANUP_TIMEOUT} s"
+                ) from None
+            if code != 0:
+                raise ReleaseError(f"exited {code}")
+            if child.stdout is not None:
+                # Leave output in the bounded pipe until the command exits.
+                # A flood that fills the pipe is subject to the same timeout.
+                # A descendant with the pipe open must not extend that budget.
+                os.set_blocking(child.stdout.fileno(), False)
+                output = os.read(child.stdout.fileno(), DOCKER_CLEANUP_OUTPUT_LIMIT + 1)
+                if len(output) > DOCKER_CLEANUP_OUTPUT_LIMIT:
+                    raise ReleaseError("output exceeded the cleanup limit")
+                return output.decode("ascii", errors="replace")
+    except OSError as error:
+        print(f"release cleanup failed: {command}: {error.strerror}", file=sys.stderr)
+    except ReleaseError as error:
+        print(f"release cleanup failed: {command}: {error}", file=sys.stderr)
+    return None
 
 
 # --- git -------------------------------------------------------------------------
@@ -879,12 +919,8 @@ class Docker:
             "--format",
             "{{.ID}} {{.Names}}",
         ]
-        try:
-            result = run(argv, timeout=CONTAINER_CREATE_TIMEOUT).strip()
-        except ReleaseError as error:
-            print(f"release cleanup failed: {error}", file=sys.stderr)
-            return None
-        container, _, found_name = result.partition(" ")
+        result = cleanup(argv, read_output=True)
+        container, _, found_name = (result or "").strip().partition(" ")
         if found_name == name and CONTAINER_ID.fullmatch(container):
             return container
         return None
@@ -930,17 +966,17 @@ class Docker:
                     capture=False,
                 )
             except ReleaseError:
-                quietly(["docker", "kill", container])
+                cleanup(["docker", "kill", container])
                 raise
             run(["docker", "cp", f"{container}:/out/.", str(out_dir)])
         finally:
             if container is None:
                 container = self.find_owned_container(name, ownership)
             if container is not None:
-                quietly(["docker", "rm", "-f", container])
+                cleanup(["docker", "rm", "-f", container])
 
     def remove_image(self, tag: str) -> None:
-        quietly(["docker", "image", "rm", tag])
+        cleanup(["docker", "image", "rm", tag])
 
 
 class Host:

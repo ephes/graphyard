@@ -508,11 +508,17 @@ not on `main` on GitHub, a non-empty output directory and an untagged
 
 Both jobs run with `--network none`, no mounts, and memory, process and time
 limits. The checks and build containers have distinct names that include the
-same invocation ID as the temporary images. If Docker loses the result of a
-container create, cleanup checks for the job-specific ownership label and
-exact name, then removes the matching container by full ID. The archive, its `.sha256`, `build.json` (commit, sha256, image digest,
-package and toolchain versions) and `notes.md` (the release notes, naming the
-commit and the sha256 the deployment pins) land in
+same invocation ID as the temporary images. Each Docker create has a 60-second
+deadline. If its result is lost, cleanup checks for the job-specific ownership
+label and exact name, then removes the matching container by full ID if Docker
+already reports it. Each Docker cleanup command has a 15-second deadline.
+Removal commands discard their output, and the ownership lookup accepts up to
+4 KiB. Cleanup failures are reported on stderr alongside the original build
+error, when present.
+
+The archive, its `.sha256`, `build.json` (commit, sha256, image digest, package
+and toolchain versions) and `notes.md` (the release notes, naming the commit
+and the sha256 the deployment pins) land in
 `agent-rs/target/local-release/graphyard-agent-<version>/`.
 
 Remote facts (is the commit on `main`, does the tag exist) are read from
