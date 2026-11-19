@@ -959,15 +959,14 @@ class Docker:
             if not CONTAINER_ID.fullmatch(result):
                 raise ReleaseError(f"docker create returned no container ID for {name}")
             container = result
-            try:
-                run(
-                    ["docker", "start", "-a", container],
-                    timeout=JOB_TIMEOUT,
-                    capture=False,
-                )
-            except ReleaseError:
-                cleanup(["docker", "kill", container])
-                raise
+            # A failed or timed-out job leaves the container to `docker rm -f`
+            # below, which also stops it if it is still running. A separate kill
+            # would report a false failure for the usual stopped container.
+            run(
+                ["docker", "start", "-a", container],
+                timeout=JOB_TIMEOUT,
+                capture=False,
+            )
             run(["docker", "cp", f"{container}:/out/.", str(out_dir)])
         finally:
             if container is None:

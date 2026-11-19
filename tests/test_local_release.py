@@ -589,7 +589,7 @@ def test_docker_cleanup_preserves_the_job_error(
         release.Docker().job("image", "example", "script", {}, tmp_path, "linux/amd64")
 
     diagnostics = capsys.readouterr().err
-    assert f"release cleanup failed: docker kill {container}" in diagnostics
+    assert "docker kill" not in diagnostics
     assert f"release cleanup failed: docker rm -f {container}" in diagnostics
     assert {
         "stall": "did not finish within 0.1 s",
