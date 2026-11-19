@@ -87,7 +87,7 @@ fn raw_condition(row: &rusqlite::Row<'_>) -> rusqlite::Result<RawCondition> {
 }
 
 /// `ConditionDefinition.objects.filter(enabled=True)` (plus
-/// `id=condition_id`) ordered by name, every row converted.
+/// `id=condition_id`) in primary key order, every row converted.
 pub(crate) fn load_conditions(
     connection: &Connection,
     condition_id: Option<i64>,
@@ -95,16 +95,15 @@ pub(crate) fn load_conditions(
     let raw: Vec<RawCondition> = match condition_id {
         None => {
             let mut statement = connection.prepare(&format!(
-                "{SELECT_CONDITIONS} WHERE enabled ORDER BY name ASC"
+                "{SELECT_CONDITIONS} WHERE enabled ORDER BY id ASC"
             ))?;
             statement
                 .query_map([], raw_condition)?
                 .collect::<rusqlite::Result<_>>()?
         }
         Some(id) => {
-            let mut statement = connection.prepare(&format!(
-                "{SELECT_CONDITIONS} WHERE (enabled AND id = ?) ORDER BY name ASC"
-            ))?;
+            let mut statement =
+                connection.prepare(&format!("{SELECT_CONDITIONS} WHERE enabled AND id = ?"))?;
             statement
                 .query_map([id], raw_condition)?
                 .collect::<rusqlite::Result<_>>()?
@@ -181,7 +180,7 @@ fn same_definition(a: &ConditionRow, b: &ConditionRow) -> bool {
 }
 
 impl Store {
-    /// Load the enabled conditions ordered by name; with `condition_id`,
+    /// Load the enabled conditions in primary key order; with `condition_id`,
     /// only that one (`evaluate_conditions_once(condition_id=...)`).
     ///
     /// # Errors

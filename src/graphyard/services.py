@@ -9,13 +9,13 @@ import re
 import socket
 import threading
 import time
-from typing import Callable, TypeVar
+from typing import Callable, Iterator, TypeVar
 
 import httpx
 from django.conf import settings
-from django.db.models import Q, TextField
+from django.db.models import Max, Q, QuerySet, TextField
 from django.db.models.functions import Cast
-from django.db import OperationalError, connection, transaction
+from django.db import OperationalError, connection, router, transaction
 from django.utils import timezone
 
 from . import influx
@@ -397,20 +397,45 @@ def _publish_condition_result(
     )
 
 
+_CONDITION_SCAN_BATCH_SIZE = 100
+
+
+def _scan_condition_definitions(
+    queryset: QuerySet[ConditionDefinition],
+) -> Iterator[ConditionDefinition]:
+    # Use the immutable key as the cursor. Finish each read before evaluation
+    # and publication so SQLite never writes through an open scan cursor.
+    upper_pk = queryset.aggregate(upper_pk=Max("pk"))["upper_pk"]
+    if upper_pk is None:
+        return
+    queryset = queryset.filter(pk__lte=upper_pk).order_by("pk")
+    page = queryset
+    while batch := list(page[:_CONDITION_SCAN_BATCH_SIZE]):
+        yield from batch
+        if len(batch) < _CONDITION_SCAN_BATCH_SIZE:
+            return
+        page = queryset.filter(pk__gt=batch[-1].pk)
+
+
 def evaluate_conditions_once(
     *,
     condition_id: int | None = None,
 ) -> ConditionEvaluationRun:
-    queryset = ConditionDefinition.objects.annotate(
-        tags_filter_text=Cast("tags_filter", TextField())
-    ).filter(enabled=True)
-    if condition_id is not None:
-        queryset = queryset.filter(id=condition_id)
+    queryset = (
+        ConditionDefinition.objects.using(router.db_for_write(ConditionDefinition))
+        .annotate(tags_filter_text=Cast("tags_filter", TextField()))
+        .filter(enabled=True)
+    )
+    conditions = (
+        _scan_condition_definitions(queryset)
+        if condition_id is None
+        else queryset.filter(pk=condition_id)
+    )
 
     total = 0
     failed = 0
 
-    for condition in queryset:
+    for condition in conditions:
         total += 1
         definition = {
             field: getattr(condition, field) for field in _CONDITION_DEFINITION_FIELDS

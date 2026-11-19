@@ -5,6 +5,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 from django.core.exceptions import ValidationError
+from django.db import connection
 
 from graphyard import influx
 from graphyard.models import (
@@ -131,6 +132,73 @@ def test_evaluate_condition_grace_window_prevents_false_breach(monkeypatch):
 
     assert result.status == StatusLevel.OK
     assert result.last_value == 80.0
+
+
+@pytest.mark.django_db(transaction=True)
+def test_condition_scan_evaluates_before_hydrating_all_definitions(monkeypatch):
+    inventory_size = 501
+    ConditionDefinition.objects.bulk_create(
+        ConditionDefinition(name=f"synthetic-{i:03}", metric_name="synthetic.value")
+        for i in range(inventory_size)
+    )
+    ConditionDefinition.objects.create(
+        name="disabled", metric_name="synthetic.value", enabled=False
+    )
+
+    hydrated = 0
+    loads_at_query = []
+    original_from_db = ConditionDefinition.from_db
+
+    def from_db(cls, db, field_names, values):
+        nonlocal hydrated
+        hydrated += 1
+        return original_from_db(db, field_names, values)
+
+    def query(*args, **kwargs):
+        assert not connection.in_atomic_block
+        loads_at_query.append(hydrated)
+        return []
+
+    monkeypatch.setattr(ConditionDefinition, "from_db", classmethod(from_db))
+    monkeypatch.setattr(influx, "query_condition_window", query)
+
+    run = evaluate_conditions_once()
+
+    assert (run.total, run.failed) == (inventory_size, 0)
+    assert len(loads_at_query) == hydrated == inventory_size
+    assert 0 < loads_at_query[0] < inventory_size
+    assert (
+        ConditionDefinition.objects.filter(last_evaluated__isnull=False).count()
+        == inventory_size
+    )
+
+
+@pytest.mark.django_db(databases=["default", "spec_writer"])
+def test_condition_scan_reads_from_publication_database(monkeypatch, settings):
+    class ConditionRouter:
+        def db_for_read(self, model, **hints):
+            return "default"
+
+        def db_for_write(self, model, **hints):
+            if model is ConditionDefinition:
+                return "spec_writer"
+            return None
+
+    settings.DATABASE_ROUTERS = [ConditionRouter()]
+    writer_condition = _condition()
+    writer_condition.save(using="spec_writer")
+    replica_condition = _condition()
+    replica_condition.metric_name = "synthetic.replica_value"
+    replica_condition.save(using="default")
+    monkeypatch.setattr(influx, "query_condition_window", lambda *a, **k: [])
+
+    run = evaluate_conditions_once()
+
+    assert (run.total, run.failed) == (1, 0)
+    writer_condition.refresh_from_db(using="spec_writer")
+    replica_condition.refresh_from_db(using="default")
+    assert writer_condition.last_evaluated is not None
+    assert replica_condition.last_evaluated is None
 
 
 def test_evaluate_conditions_once_updates_condition_and_heartbeat(db, monkeypatch):

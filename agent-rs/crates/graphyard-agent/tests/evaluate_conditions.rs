@@ -95,7 +95,7 @@ fn a_run_without_failures_reports_the_summary_and_exits_0() {
             .to_owned()
             .repeat(3)
     );
-    // One query per enabled condition, ordered by name.
+    // One query per enabled condition.
     assert_eq!(server.requests(), ["POST /api/v2/query?org=o"; 3]);
     for name in ["a cpu", "b cpu", "d cpu"] {
         assert_eq!(
@@ -126,8 +126,8 @@ fn failed_conditions_report_a_command_error_and_exit_1() {
     );
     assert_eq!(
         text(&output.stderr),
-        "Condition failure condition_id=2 stage=evaluation category=InfluxConfigurationError failure_published=true\n\
-         Condition failure condition_id=1 stage=evaluation category=InfluxConfigurationError failure_published=true\n\
+        "Condition failure condition_id=1 stage=evaluation category=InfluxConfigurationError failure_published=true\n\
+         Condition failure condition_id=2 stage=evaluation category=InfluxConfigurationError failure_published=true\n\
          Condition failure condition_id=4 stage=evaluation category=InfluxConfigurationError failure_published=true\n\
          CommandError: 3 condition evaluation(s) failed.\n"
     );

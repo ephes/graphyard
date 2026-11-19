@@ -320,7 +320,7 @@ graphyard-agent evaluate-conditions --condition-id 7 --db db.sqlite3   # only co
 ```
 
 The port of `manage.py evaluate_conditions` (PLAN.md 11.4): one conditions
-run exactly as the agent's (the enabled conditions ordered by name, or only
+run exactly as the agent's (the enabled conditions in primary key order, or only
 the enabled condition with the given id; the per-condition writes and the
 `condition_evaluator` heartbeat, also for a single condition or when the id
 selects nothing). stdout `Condition evaluation completed (<total>).` and

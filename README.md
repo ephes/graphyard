@@ -840,6 +840,13 @@ Run evaluator once:
 just manage evaluate_conditions
 ```
 
+The Python evaluator reads enabled definitions from the writer database in
+batches of 100, ordered by primary key. Each batch read finishes before any
+Influx query or result write. The scan stops at the highest enabled key seen
+at startup. Changes to definitions in later batches can take effect during the
+same run. Publication still checks the captured definition and attempt timestamp.
+The Rust evaluator also processes conditions in primary key order.
+
 The command evaluates independent conditions even if one fails, then prints the
 summary. It exits with status 1 if any evaluation failed and 0 otherwise, so
 schedulers and operators can detect evaluation errors. A condition reporting

@@ -289,7 +289,7 @@ def _update_spec(op: dict[str, Any]) -> None:
 
 
 def _load_conditions(raw: sqlite3.Connection, op: dict[str, Any]) -> dict[str, Any]:
-    queryset = ConditionDefinition.objects.filter(enabled=True)
+    queryset = ConditionDefinition.objects.filter(enabled=True).order_by("pk")
     if op["condition_id"] is not None:
         queryset = queryset.filter(id=op["condition_id"])
     conditions = list(queryset)
@@ -649,7 +649,7 @@ def _condition_cases() -> list[dict[str, Any]]:
     cases = [
         {
             **base,
-            "name": "load enabled conditions ordered by name",
+            "name": "load enabled conditions ordered by primary key",
             "op": {"kind": "load_conditions", "now": NOW_TEXT, "condition_id": None},
         },
         {

@@ -541,7 +541,8 @@ convert to SQLite INTEGER`. A panicking executor is isolated (D-15).
 
 ### 3.5 Conditions run (`services.py:evaluate_conditions_once`, P1)
 
-Select `enabled = 1 ORDER BY name`. Per condition, sequentially:
+Select `enabled = 1 ORDER BY id`. Python reads bounded pages in the same order.
+Per condition, sequentially:
 capture an attempt start time and pass it to `evaluate_condition` (section 7).
 Success updates `status, message, last_value, last_evaluated`; any exception →
 `failed += 1`, update `status='critical'`, `message='evaluation error: <allowlisted type>'`
@@ -1998,7 +1999,7 @@ evaluate-conditions`, in separate slices.
 **S15a** (graphyard, after S10b, not tied to the 30 days, before S15b):
 `graphyard-agent evaluate-conditions [--condition-id N]` ports
 `evaluate_conditions.py` (`evaluate_conditions_once(condition_id=…)`):
-enabled conditions, optionally only the given id, `ORDER BY name`; the
+enabled conditions, optionally only the given id, `ORDER BY id`; the
 per-condition writes and the `condition_evaluator` heartbeat exactly as 3.5
 (Python records the heartbeat for a single-condition run too). stdout
 `Condition evaluation completed (<total>).`, or `Condition evaluation

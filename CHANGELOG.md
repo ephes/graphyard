@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Read enabled Python condition definitions in bounded batches from the writer
+  database, closing each read before querying Influx or publishing results.
+  Both evaluators visit conditions in primary key order.
+
 - Local Rust releases bound GitHub metadata commands to 60 seconds and
   release transfers to 30 minutes per command.
 
