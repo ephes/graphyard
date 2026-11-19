@@ -462,10 +462,12 @@ Integer settings are exact Python integers of any size
 (`graphyard_core::settings::Settings`, `num-bigint`); the slices that use
 them convert where Python converts. A proxy chain longer than 1000 steps (a
 cycle) is the `RecursionError` of the import (Python's exact depth depends on
-its stack, P2). Environment entries that are not UTF-8 are read lossily
-(Python: `surrogateescape`, P2). `Settings::sqlite_pragmas` computes the
-three pragma values and the warnings below; the fixture records the
-statements `_configure_sqlite_connection` executes.
+its stack, P2). The Rust agent decodes only values reached by lookup as UTF-8,
+including proxies. Invalid text exits 1 and reports the outer setting name,
+while Python decodes malformed environment bytes with `surrogateescape`.
+`Settings::sqlite_pragmas` computes the three pragma values and the warnings
+below. The fixture records the statements `_configure_sqlite_connection`
+executes.
 The pragmas are applied on the one connection exactly as
 `apps.py:_configure_sqlite_connection` does on every Django connection
 (busy_timeout, journal_mode, synchronous, in that order; a failing pragma

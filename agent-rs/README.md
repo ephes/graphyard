@@ -267,7 +267,10 @@ The Python flags are unchanged: `--metrics-interval N`,
 `GRAPHYARD_CONDITION_EVAL_INTERVAL_SECONDS`), `--disable-metrics` (alias
 `--disable-ha`), `--disable-conditions`, `--run-once`. The settings come
 from the process environment only (the unit's `EnvironmentFile`; no `.env`,
-D-9). `--db` defaults to `db.sqlite3` in the working directory, which must
+D-9). Values the agent reads must be valid UTF-8, including values reached
+through `$` proxies. Invalid text stops startup and names the original
+setting without printing its value. Unused environment entries are ignored.
+`--db` defaults to `db.sqlite3` in the working directory, which must
 exist and pass the schema check (D-2); the agent never creates it.
 
 stdout carries the start line, `Metric specs: ...`, `Condition eval: ...` and

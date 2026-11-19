@@ -184,7 +184,7 @@ fn api_mode_dispatch() {
 }
 
 #[test]
-fn environment_entries_are_read_lossily() {
+fn valid_environment_entries_are_read() {
     let vars = [
         (OsString::from("INFLUX_BUCKET"), OsString::from("metrics")),
         (
@@ -195,15 +195,4 @@ fn environment_entries_are_read_lossily() {
     let settings = Settings::from_vars(vars).unwrap();
     assert_eq!(settings.influx_bucket, "metrics");
     assert_eq!(settings.influx_timeout_ms, 2500.into());
-}
-
-#[cfg(unix)]
-#[test]
-fn non_utf8_values_are_replaced() {
-    use std::os::unix::ffi::OsStringExt;
-    let vars = [(
-        OsString::from("INFLUX_ORG"),
-        OsString::from_vec(b"org\xff".to_vec()),
-    )];
-    assert_eq!(Settings::from_vars(vars).unwrap().influx_org, "org\u{fffd}");
 }

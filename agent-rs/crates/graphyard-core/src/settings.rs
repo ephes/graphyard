@@ -25,11 +25,11 @@
 //!
 //! Only the variables the agent uses are read: settings that only the web
 //! reads are not validated (D-7), and `src/django/.env` is not read (D-9).
-//! Environment entries that are not valid UTF-8 are read lossily (Python
-//! decodes them with `surrogateescape`; P2).
+//! A value reached by lookup must be valid UTF-8, including proxy values.
+//! Unused environment entries are ignored.
 
 use std::collections::HashMap;
-use std::ffi::OsString;
+use std::ffi::{OsStr, OsString};
 use std::fmt;
 
 use num_bigint::BigInt;
@@ -77,13 +77,12 @@ pub struct Settings {
     pub condition_data_stale_warning_seconds: BigInt,
 }
 
-/// An environment variable whose value Python rejects while importing the
-/// settings (the agent exits 1).
+/// An invalid environment setting (the agent exits 1).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SettingsError {
     /// The variable being read (the outer one for a proxied value).
     pub variable: &'static str,
-    /// The Python exception.
+    /// The Python-compatible error.
     pub error: PyError,
 }
 
@@ -112,13 +111,13 @@ enum Raw {
     Text(String),
 }
 
-impl<F: Fn(&str) -> Option<String>> Env<F> {
+impl<F: Fn(&str) -> Result<Option<String>, PyError>> Env<F> {
     /// `get_value` up to the cast: the default for a missing variable, the
     /// proxy chain resolved.
     fn raw(&self, var: &str) -> Result<Raw, PyError> {
         let mut name = var.to_owned();
         for _ in 0..MAX_PROXY_DEPTH {
-            let Some(value) = (self.lookup)(&name) else {
+            let Some(value) = (self.lookup)(&name)? else {
                 return Ok(Raw::Default);
             };
             match value.strip_prefix('$') {
@@ -161,9 +160,16 @@ impl Settings {
     /// Read the settings through `lookup` (variable name to value).
     ///
     /// # Errors
-    /// The first variable, in `base.py` order, whose value Python rejects.
+    /// The first invalid variable in `base.py` order.
     pub fn from_lookup(lookup: impl Fn(&str) -> Option<String>) -> Result<Self, SettingsError> {
-        let env = Env { lookup };
+        Self::read_settings(Env {
+            lookup: |name: &str| Ok(lookup(name)),
+        })
+    }
+
+    fn read_settings(
+        env: Env<impl Fn(&str) -> Result<Option<String>, PyError>>,
+    ) -> Result<Self, SettingsError> {
         let sqlite_timeout_seconds = env.int("GRAPHYARD_SQLITE_TIMEOUT_SECONDS", 30.into())?;
         let sqlite_busy_timeout_ms = env.int("GRAPHYARD_SQLITE_BUSY_TIMEOUT_MS", 30000.into())?;
         let sqlite_journal_mode =
@@ -214,29 +220,33 @@ impl Settings {
     /// `os.environ`, taken once).
     ///
     /// # Errors
-    /// See [`Settings::from_lookup`].
+    /// See [`Settings::from_vars`].
     pub fn from_process_env() -> Result<Self, SettingsError> {
         Self::from_vars(std::env::vars_os())
     }
 
-    /// Read the settings from environment entries (`std::env::vars_os`);
-    /// names and values that are not UTF-8 are converted lossily.
+    /// Read the settings from environment entries (`std::env::vars_os`).
     ///
     /// # Errors
-    /// See [`Settings::from_lookup`].
+    /// The first invalid setting in `base.py` order, including values
+    /// that are not UTF-8.
     pub fn from_vars(
         vars: impl IntoIterator<Item = (OsString, OsString)>,
     ) -> Result<Self, SettingsError> {
-        let snapshot: HashMap<String, String> = vars
-            .into_iter()
-            .map(|(key, value)| {
-                (
-                    key.to_string_lossy().into_owned(),
-                    value.to_string_lossy().into_owned(),
-                )
-            })
-            .collect();
-        Self::from_lookup(|name| snapshot.get(name).cloned())
+        let snapshot: HashMap<OsString, OsString> = vars.into_iter().collect();
+        Self::read_settings(Env {
+            lookup: |name: &str| {
+                snapshot
+                    .get(OsStr::new(name))
+                    .map(|value| {
+                        value
+                            .to_str()
+                            .map(str::to_owned)
+                            .ok_or_else(|| PyError::value_error("expected UTF-8 text"))
+                    })
+                    .transpose()
+            },
+        })
     }
 
     /// The query/write mode of `influx.py`.

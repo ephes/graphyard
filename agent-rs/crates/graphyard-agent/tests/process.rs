@@ -96,6 +96,36 @@ fn an_invalid_environment_exits_1_before_the_flags_are_checked() {
     }
 }
 
+#[cfg(unix)]
+#[test]
+fn malformed_utf8_blocks_startup_only_when_the_setting_is_read() {
+    use std::ffi::OsStr;
+    use std::os::unix::ffi::OsStrExt;
+
+    let malformed = OsStr::from_bytes(b"synthetic-value\xff");
+    let unused = command(&["--help"], &[])
+        .env("UNUSED_SETTING", malformed)
+        .output()
+        .unwrap();
+    assert!(unused.status.success(), "{unused:?}");
+
+    for (name, env) in [
+        ("INFLUX_TOKEN", &[][..]),
+        ("SHARED_TOKEN", &[("INFLUX_TOKEN", "$SHARED_TOKEN")][..]),
+    ] {
+        let used = command(&["--help"], env)
+            .env(name, malformed)
+            .output()
+            .unwrap();
+        assert_eq!(used.status.code(), Some(1), "{used:?}");
+        assert!(used.stdout.is_empty());
+        assert_eq!(
+            text(&used.stderr),
+            "invalid environment variable INFLUX_TOKEN: ValueError: expected UTF-8 text\n"
+        );
+    }
+}
+
 #[test]
 fn check_schema_reports_in_one_line() {
     let db = TestDb::new();

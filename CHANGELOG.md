@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Reject malformed UTF-8 in Rust agent settings, including values read via
+  proxies. Startup diagnostics name the setting without exposing its value.
+  Unused environment entries are ignored.
+
 - Reject invalid `INFLUX_API_MODE` settings at Django and Rust agent
   startup. The diagnostic names the setting without exposing its value.
 
