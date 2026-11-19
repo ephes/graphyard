@@ -48,6 +48,7 @@ import re
 import secrets
 import shlex
 import shutil
+import stat
 import subprocess
 import sys
 import tarfile
@@ -1285,6 +1286,22 @@ def release_notes(config: Config, record: Mapping[str, Any], checks_log: str) ->
 # --- publish -------------------------------------------------------------------------
 
 
+def stage_notes(source: Path, destination: Path) -> None:
+    try:
+        # Nonblocking open lets us reject a FIFO even if the path changes.
+        fd = os.open(source, os.O_RDONLY | os.O_NONBLOCK | os.O_NOFOLLOW)
+        with os.fdopen(fd, "rb") as notes:
+            if not stat.S_ISREG(os.fstat(notes.fileno()).st_mode):
+                raise OSError("not a regular file")
+            with destination.open("wb") as staged:
+                shutil.copyfileobj(notes, staged)
+    except OSError as error:
+        raise ReleaseError(
+            f"cannot stage release notes {source}: {error}; "
+            "publish requires a readable regular notes file"
+        ) from None
+
+
 def publish(
     out_dir: Path | None = None,
     *,
@@ -1331,12 +1348,15 @@ def publish(
         raise ReleaseError(
             f"{out} holds files that are not part of the release: {', '.join(extra)}"
         )
-    log(ensure_tag(github, tag, commit, f"{config.binary} {version}"))
-    title = f"{config.binary} {version}"
-    for step in ensure_release(
-        github, tag, title, out / NOTES, files, prerelease="-" in version
-    ):
-        log(step)
+    with tempfile.TemporaryDirectory(prefix="release-notes-") as directory:
+        notes = Path(directory) / NOTES
+        stage_notes(out / NOTES, notes)
+        log(ensure_tag(github, tag, commit, f"{config.binary} {version}"))
+        title = f"{config.binary} {version}"
+        for step in ensure_release(
+            github, tag, title, notes, files, prerelease="-" in version
+        ):
+            log(step)
 
 
 # --- command line --------------------------------------------------------------------

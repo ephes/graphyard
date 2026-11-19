@@ -517,8 +517,10 @@ GitHub, and the tag is created there, through `gh api --hostname github.com`
 on `ephes/graphyard`: nothing is pushed with git, so no git remote, URL rewrite
 or `GH_HOST` decides where the tag or the release goes (a gh `api_host`
 override for github.com is refused; `main` is the branch `refs/heads/main`,
-resolved exactly). `publish` checks the archive against `build.json` and that
-`gh` is 2.74.0 or newer (older versions report no asset digests), creates the
+resolved exactly). Before creating a tag, `publish` checks the archive against
+`build.json`, stages a private copy of the readable regular `notes.md`
+and checks that `gh` is 2.74.0 or newer (older versions report no asset digests).
+It then creates the
 annotated tag `agent-rs-v<version>` on the build commit (only when that commit is
 on `main`; an existing tag must be annotated and point at that commit, it is
 never moved), creates the GitHub release with exactly the archive and its

@@ -12,6 +12,7 @@ import hashlib
 import importlib.util
 import io
 import json
+import os
 import subprocess
 import sys
 import tarfile
@@ -643,6 +644,39 @@ def test_publish_refuses_a_dry_run_and_changed_builds(
     archive.write_bytes(archive.read_bytes() + b"\0")
     with pytest.raises(release.ReleaseError, match="does not name sha256"):
         publish(release, built)
+
+
+@pytest.mark.parametrize("kind", ["missing", "directory", "fifo"])
+def test_publish_refuses_invalid_notes_before_tagging(
+    release: ModuleType, built: Path, kind: str
+) -> None:
+    class RequirePreflight(FakeGitHub):
+        def create_tag(self, tag: str, commit: str, message: str) -> None:
+            pytest.fail("publish attempted to create a tag before checking notes")
+
+    github = RequirePreflight()
+    notes = built / "notes.md"
+    notes.unlink()
+    if kind == "directory":
+        notes.mkdir()
+    elif kind == "fifo":
+        os.mkfifo(notes)
+    with pytest.raises(release.ReleaseError, match=r"notes\.md.*regular"):
+        publish(release, built, github)
+    assert github.tagged == github.created == []
+
+
+def test_publish_uses_notes_staged_before_tagging(
+    release: ModuleType, built: Path
+) -> None:
+    class ChangeNotesOnTag(FakeGitHub):
+        def create_tag(self, tag: str, commit: str, message: str) -> None:
+            super().create_tag(tag, commit, message)
+            (built / "notes.md").unlink()
+
+    github = ChangeNotesOnTag()
+    publish(release, built, github)
+    assert github.created == [("rs-v1.2.3", False)]
 
 
 def test_publish_never_moves_a_tag(release: ModuleType, built: Path) -> None:

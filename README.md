@@ -1001,7 +1001,9 @@ the one macmini runs
 [`agent-rs-v0.4.0`](https://github.com/ephes/graphyard/releases/tag/agent-rs-v0.4.0)
 (the agent fixes of scout rounds 87 to 99; `agent-rs-v0.3.0` carried those of
 rounds 79 to 85 and stays installed for rollback, `agent-rs-v0.2.0` added
-`evaluate-conditions`); `agent-rs-v0.4.1` is the first release built locally.
+`evaluate-conditions`); `agent-rs-v0.4.1` is the first release built locally. The
+[local release workflow](agent-rs/README.md#releases) validates and stages
+`notes.md` before tagging.
 
 ## Nyxmon Integration Contract
 

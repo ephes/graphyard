@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Local Rust release publishing stages readable regular release notes before
+  creating a GitHub tag.
+
 - Rust agent (`agent-rs/`): version 0.4.1, released as `agent-rs-v0.4.1`, the
   first agent release built and published locally by
   `agent-rs/scripts/local_release.py` (entry below). It carries the Rust agent
