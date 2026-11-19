@@ -1241,11 +1241,6 @@ REQUEST_CASES: list[dict[str, Any]] = [
         "responses": [_ok("")],
         "url": "http://{server}/influx",
     },
-    {
-        "name": "mode_other_is_v2",
-        "responses": [_ok("")],
-        "settings": {"INFLUX_API_MODE": "whatever"},
-    },
 ]
 
 V2_ERROR_CASES: list[dict[str, Any]] = [

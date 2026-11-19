@@ -451,7 +451,7 @@ Read once at startup:
 | `INFLUX_BUCKET` | `graphyard` | |
 | `INFLUX_MEASUREMENT` | `graphyard_metrics` | |
 | `INFLUX_TIMEOUT_MS` | 10000 | per-request timeout |
-| `INFLUX_API_MODE` | `auto` | lower-cased; `v3`, `auto`, anything else = v2 |
+| `INFLUX_API_MODE` | `auto` | lower-cased; only `v2`, `v3` and `auto` accepted at startup |
 
 Parsing rules (fixtures `settings.json`): `env.int` is Python `int()` on the
 raw string (surrounding whitespace and `_` between digits accepted, sign

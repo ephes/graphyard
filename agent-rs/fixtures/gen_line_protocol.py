@@ -503,7 +503,6 @@ WRITES: list[tuple[str, dict[str, str], list[dict[str, Any]], dict[str, Any]]] =
     ("url without scheme", {**V2, "INFLUX_URL": "{server_noscheme}"}, [_p()], {}),
     ("token kept verbatim", {**V2, "INFLUX_TOKEN": "a b=="}, [_p()], {}),
     ("mode v2 explicit", {**V2, "INFLUX_API_MODE": "v2"}, [_p()], {}),
-    ("unknown mode is v2", {**V2, "INFLUX_API_MODE": "v9"}, [_p()], {}),
     (
         "v3 defaults token, writes the empty org",
         {"INFLUX_URL": "{server}", "INFLUX_API_MODE": "v3"},

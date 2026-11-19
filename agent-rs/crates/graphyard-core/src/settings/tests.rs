@@ -177,8 +177,6 @@ fn api_mode_dispatch() {
     assert_eq!(mode("V3"), InfluxApiMode::V3);
     assert_eq!(mode("auto"), InfluxApiMode::Auto);
     assert_eq!(mode("v2"), InfluxApiMode::V2);
-    assert_eq!(mode(" v3 "), InfluxApiMode::V2);
-    assert_eq!(mode(""), InfluxApiMode::V2);
     assert_eq!(
         read(&env(&[])).unwrap().influx_api_mode(),
         InfluxApiMode::Auto

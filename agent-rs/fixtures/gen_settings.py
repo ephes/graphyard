@@ -188,7 +188,6 @@ CASES: list[dict[str, Any]] = [
             "INFLUX_URL": "",
             "INFLUX_BUCKET": "",
             "INFLUX_MEASUREMENT": "",
-            "INFLUX_API_MODE": "",
         },
     },
     {
@@ -196,6 +195,8 @@ CASES: list[dict[str, Any]] = [
         "env": {"INFLUX_API_MODE": "V3"},
     },
     {"name": "API mode auto in capitals", "env": {"INFLUX_API_MODE": "AUTO"}},
+    {"name": "API mode misspelling", "env": {"INFLUX_API_MODE": "v33-secret-fixture"}},
+    {"name": "API mode is empty", "env": {"INFLUX_API_MODE": ""}},
     {
         "name": "API mode with spaces is not stripped",
         "env": {"INFLUX_API_MODE": " v3 "},

@@ -459,8 +459,7 @@
    "env": {
     "INFLUX_URL": "",
     "INFLUX_BUCKET": "",
-    "INFLUX_MEASUREMENT": "",
-    "INFLUX_API_MODE": ""
+    "INFLUX_MEASUREMENT": ""
    },
    "settings": {
     "sqlite_timeout_seconds": "30",
@@ -473,7 +472,7 @@
     "influx_bucket": "",
     "influx_measurement": "",
     "influx_timeout_ms": "10000",
-    "influx_api_mode": "",
+    "influx_api_mode": "auto",
     "metric_collection_interval_seconds": "60",
     "condition_eval_interval_seconds": "60",
     "condition_data_stale_warning_seconds": "600"
@@ -548,33 +547,33 @@
    }
   },
   {
+   "name": "API mode misspelling",
+   "env": {
+    "INFLUX_API_MODE": "v33-secret-fixture"
+   },
+   "error": {
+    "class": "ValueError",
+    "message": "INFLUX_API_MODE must be one of v2, v3, auto"
+   }
+  },
+  {
+   "name": "API mode is empty",
+   "env": {
+    "INFLUX_API_MODE": ""
+   },
+   "error": {
+    "class": "ValueError",
+    "message": "INFLUX_API_MODE must be one of v2, v3, auto"
+   }
+  },
+  {
    "name": "API mode with spaces is not stripped",
    "env": {
     "INFLUX_API_MODE": " v3 "
    },
-   "settings": {
-    "sqlite_timeout_seconds": "30",
-    "sqlite_busy_timeout_ms": "30000",
-    "sqlite_journal_mode": "WAL",
-    "sqlite_synchronous": "NORMAL",
-    "influx_url": "",
-    "influx_token": "",
-    "influx_org": "",
-    "influx_bucket": "graphyard",
-    "influx_measurement": "graphyard_metrics",
-    "influx_timeout_ms": "10000",
-    "influx_api_mode": " v3 ",
-    "metric_collection_interval_seconds": "60",
-    "condition_eval_interval_seconds": "60",
-    "condition_data_stale_warning_seconds": "600"
-   },
-   "pragmas": {
-    "statements": [
-     "PRAGMA busy_timeout = 30000",
-     "PRAGMA journal_mode = WAL",
-     "PRAGMA synchronous = NORMAL"
-    ],
-    "warnings": []
+   "error": {
+    "class": "ValueError",
+    "message": "INFLUX_API_MODE must be one of v2, v3, auto"
    }
   },
   {

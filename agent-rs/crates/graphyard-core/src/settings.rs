@@ -43,7 +43,6 @@ const MAX_PROXY_DEPTH: usize = 1000;
 /// `INFLUX_API_MODE` as `influx.py` dispatches on it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum InfluxApiMode {
-    /// Any value other than `v3` and `auto`.
     V2,
     V3,
     Auto,
@@ -65,7 +64,7 @@ pub struct Settings {
     pub influx_bucket: String,
     pub influx_measurement: String,
     pub influx_timeout_ms: BigInt,
-    /// `INFLUX_API_MODE`, lower-cased.
+    /// `INFLUX_API_MODE`, validated and lower-cased at startup.
     pub influx_api_mode: String,
     /// `GRAPHYARD_METRIC_COLLECTION_INTERVAL_SECONDS` (default of
     /// `--metrics-interval`).
@@ -178,6 +177,12 @@ impl Settings {
         let influx_measurement = env.str("INFLUX_MEASUREMENT", "graphyard_metrics")?;
         let influx_timeout_ms = env.int("INFLUX_TIMEOUT_MS", 10000.into())?;
         let influx_api_mode = env.str("INFLUX_API_MODE", "auto")?.to_lowercase();
+        if !matches!(influx_api_mode.as_str(), "v2" | "v3" | "auto") {
+            return Err(SettingsError {
+                variable: "INFLUX_API_MODE",
+                error: PyError::value_error("INFLUX_API_MODE must be one of v2, v3, auto"),
+            });
+        }
         let ha_poll_interval_seconds = env.int("GRAPHYARD_HA_POLL_INTERVAL_SECONDS", 60.into())?;
         let metric_collection_interval_seconds = env.int(
             "GRAPHYARD_METRIC_COLLECTION_INTERVAL_SECONDS",
@@ -234,7 +239,7 @@ impl Settings {
         Self::from_lookup(|name| snapshot.get(name).cloned())
     }
 
-    /// The query/write mode of `influx.py` (`== "v3"`, `== "auto"`, else v2).
+    /// The query/write mode of `influx.py`.
     pub fn influx_api_mode(&self) -> InfluxApiMode {
         match self.influx_api_mode.as_str() {
             "v3" => InfluxApiMode::V3,

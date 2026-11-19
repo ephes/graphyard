@@ -125,6 +125,9 @@ On a fresh local InfluxDB 2 setup, complete one-time setup and copy the created 
 With local `influxdb3` started by Procfile (`--without-auth`), the defaults in `.env.example` are sufficient for development.
 `INFLUX_API_MODE=auto` (default) lets Graphyard query with Flux for InfluxDB 2 and automatically switch to SQL for InfluxDB 3 when needed in development.
 For production, prefer `INFLUX_API_MODE=v2` to keep query behavior pinned to the current InfluxDB v2 baseline.
+Django and the Rust agent accept `v2`, `v3` and `auto` case-insensitively.
+An empty, whitespace-padded or unknown mode stops startup and names
+`INFLUX_API_MODE` without displaying its value.
 
 For Grafana in the Procfile stack:
 

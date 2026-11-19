@@ -138,6 +138,8 @@ INFLUX_BUCKET = env("INFLUX_BUCKET", default="graphyard")
 INFLUX_MEASUREMENT = env("INFLUX_MEASUREMENT", default="graphyard_metrics")
 INFLUX_TIMEOUT_MS = env.int("INFLUX_TIMEOUT_MS", default=10000)
 INFLUX_API_MODE = env("INFLUX_API_MODE", default="auto").lower()
+if INFLUX_API_MODE not in {"v2", "v3", "auto"}:
+    raise ValueError("INFLUX_API_MODE must be one of v2, v3, auto")
 
 HEARTBEAT_WARNING_SECONDS = env.int("GRAPHYARD_HEARTBEAT_WARNING_SECONDS", default=900)
 HEARTBEAT_CRITICAL_SECONDS = env.int(

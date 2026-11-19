@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Reject invalid `INFLUX_API_MODE` settings at Django and Rust agent
+  startup. The diagnostic names the setting without exposing its value.
+
 - Recheck the scheduler clock after metrics in both the Rust agent and
   `manage.py start_agent`, so a newly due condition run starts before the
   scheduler sleeps.

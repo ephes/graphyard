@@ -4385,66 +4385,6 @@
     ]
    ],
    "samples": []
-  },
-  {
-   "name": "mode_other_is_v2",
-   "responses": [
-    {
-     "status": 200,
-     "reason": "OK",
-     "headers": [
-      [
-       "Content-Type",
-       "text/csv; charset=utf-8"
-      ]
-     ],
-     "body": ""
-    }
-   ],
-   "settings": {
-    "INFLUX_TOKEN": "test-token",
-    "INFLUX_ORG": "graphyard",
-    "INFLUX_BUCKET": "graphyard",
-    "INFLUX_MEASUREMENT": "graphyard_metrics",
-    "INFLUX_TIMEOUT_MS": 10000,
-    "INFLUX_API_MODE": "whatever"
-   },
-   "requests": [
-    {
-     "method": "POST",
-     "target": "/api/v2/query?org=graphyard",
-     "headers": [
-      [
-       "accept-encoding",
-       "identity"
-      ],
-      [
-       "accept",
-       "application/json"
-      ],
-      [
-       "content-type",
-       "application/json"
-      ],
-      [
-       "authorization",
-       "Token test-token"
-      ],
-      [
-       "user-agent",
-       "influxdb-client-python/1.50.0"
-      ]
-     ],
-     "body": "{\"extern\": {\"imports\": [], \"body\": []}, \"query\": \"from(bucket: \\\"graphyard\\\")\\n  |> range(start: 2026-10-21T11:00:00Z, stop: 2026-10-21T12:00:00.500000Z)\\n  |> filter(fn: (r) => r._measurement == \\\"graphyard_metrics\\\" and r._field == \\\"value\\\" and r[\\\"metric\\\"] == \\\"host.disk_usage\\\")\\n  |> sort(columns: [\\\"_time\\\"], desc: false)\", \"dialect\": {\"header\": true, \"delimiter\": \",\", \"annotations\": [\"datatype\", \"group\", \"default\"], \"commentPrefix\": \"#\", \"dateTimeFormat\": \"RFC3339\"}}"
-    }
-   ],
-   "logs": [
-    [
-     "INFO",
-     "HTTP Request: POST http://{server}/api/v2/query?org=graphyard \"HTTP/1.1 200 OK\""
-    ]
-   ],
-   "samples": []
   }
  ],
  "errors": [
