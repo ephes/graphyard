@@ -535,7 +535,11 @@ prerelease flag, exactly those two assets and GitHub's sha256 of each equal
 to the built one. A draft (left by an interrupted `gh release create`) is
 refused: check it, delete the draft by hand (the tag stays) and run
 `publish` again. It never replaces an asset and can be rerun until that end
-state is reached; fetch the tag afterwards with `git fetch --tags`. The
+state is reached. Each GitHub metadata command has a 60-second deadline,
+and each release create, upload or download command has a 30-minute deadline.
+After a timeout, rerun `publish` to read back the tag and release and resume
+under the same checks, including the draft rule above. Fetch the tag afterwards
+with `git fetch --tags`. The
 output directory is staged privately and moved into place in one rename, so
 a concurrent build never mixes into it.
 

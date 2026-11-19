@@ -405,6 +405,8 @@ class Release:
 
 
 GH_MINIMUM = (2, 74, 0)
+GH_METADATA_TIMEOUT = 60
+GH_TRANSFER_TIMEOUT = 1800
 
 
 class GitHub:
@@ -422,7 +424,7 @@ class GitHub:
         fields = "databaseId,assets,isDraft,isPrerelease"
         argv = ["gh", "release", "view", tag, "-R", self.qualified, "--json", fields]
         try:
-            data = json.loads(run(argv))
+            data = json.loads(run(argv, timeout=GH_METADATA_TIMEOUT))
         except ReleaseError as error:
             if "release not found" in str(error):
                 return None
@@ -442,7 +444,10 @@ class GitHub:
     def api(self, *args: str) -> Any:
         """`gh api` on github.com (never `GH_HOST`); None for HTTP 404."""
         try:
-            text = run(["gh", "api", "--hostname", "github.com", *args])
+            text = run(
+                ["gh", "api", "--hostname", "github.com", *args],
+                timeout=GH_METADATA_TIMEOUT,
+            )
         except ReleaseError as error:
             if "HTTP 404" in str(error):
                 return None
@@ -523,7 +528,11 @@ class GitHub:
         argv = ["gh", "config", "get", "--host", "github.com", "api_host"]
         try:
             result = subprocess.run(  # noqa: S603 - argv list only
-                argv, check=False, capture_output=True, text=True, timeout=600
+                argv,
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=GH_METADATA_TIMEOUT,
             )
         except (OSError, subprocess.TimeoutExpired) as error:
             raise ReleaseError(f"cannot run gh: {error}") from None
@@ -537,7 +546,7 @@ class GitHub:
             raise ReleaseError(
                 "gh has an api_host override for github.com; refusing to publish"
             )
-        text = run(["gh", "--version"])
+        text = run(["gh", "--version"], timeout=GH_METADATA_TIMEOUT)
         match = re.match(r"gh version ([0-9]+)\.([0-9]+)\.([0-9]+)", text)
         if match is None or tuple(map(int, match.groups())) < GH_MINIMUM:
             raise ReleaseError(
@@ -551,11 +560,14 @@ class GitHub:
         argv += ["--verify-tag", "--title", title, "--notes-file", str(notes)]
         if prerelease:
             argv.append("--prerelease")
-        run(argv)
+        run(argv, timeout=GH_TRANSFER_TIMEOUT)
 
     def upload(self, tag: str, files: list[Path]) -> None:
         # Never --clobber: an existing asset is never replaced.
-        run(["gh", "release", "upload", tag, *map(str, files), "-R", self.qualified])
+        run(
+            ["gh", "release", "upload", tag, *map(str, files), "-R", self.qualified],
+            timeout=GH_TRANSFER_TIMEOUT,
+        )
 
     def download(self, tag: str, directory: Path) -> None:
         run(
@@ -568,7 +580,8 @@ class GitHub:
                 self.qualified,
                 "-D",
                 str(directory),
-            ]
+            ],
+            timeout=GH_TRANSFER_TIMEOUT,
         )
 
 

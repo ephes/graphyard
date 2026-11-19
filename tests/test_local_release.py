@@ -1075,6 +1075,69 @@ def test_ensure_tag_creates_checks_and_never_moves(release: ModuleType) -> None:
     assert github.tagged == [("v1", COMMIT)]
 
 
+@pytest.mark.parametrize(
+    ("command", "budget"),
+    [("api", 60), ("view", 60), ("create", 1800), ("upload", 1800), ("download", 1800)],
+)
+def test_github_network_commands_report_timeout(
+    release: ModuleType,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    command: str,
+    budget: int,
+) -> None:
+    def stall(argv: Sequence[str], *, timeout: float | None, **kwargs: Any) -> Any:
+        assert timeout == budget
+        assert argv[0] == "gh" and command in argv
+        raise subprocess.TimeoutExpired(argv, timeout)
+
+    github = release.GitHub("ephes/example")
+    tag = "rs-v1.2.3"
+    monkeypatch.setattr(release.subprocess, "run", stall)
+    with pytest.raises(release.ReleaseError, match=f"did not finish within {budget} s"):
+        if command == "api":
+            github.api(REPO_API)
+        elif command == "view":
+            github.release(tag)
+        elif command == "create":
+            github.create(tag, "title", tmp_path / "notes.md", [], False)
+        elif command == "upload":
+            github.upload(tag, [tmp_path / "archive"])
+        else:
+            github.download(tag, tmp_path)
+
+
+def test_publish_reconciles_upload_committed_before_timeout(
+    release: ModuleType, built: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    record = json.loads((built / "build.json").read_text())
+    archive = record["archive"]
+    tag = record["tag"]
+    client = release.GitHub("ephes/example")
+
+    class PartialGitHub(FakeGitHub):
+        def upload(self, tag: str, files: list[Path]) -> None:
+            super().upload(tag, files)
+            client.upload(tag, files)
+
+    def lose_upload_response(
+        argv: Sequence[str], *, timeout: float, **kwargs: Any
+    ) -> Any:
+        assert list(argv[:3]) == ["gh", "release", "upload"]
+        assert timeout == 1800
+        raise subprocess.TimeoutExpired(argv, timeout)
+
+    github = PartialGitHub()
+    github.releases[tag] = {archive: (built / archive).read_bytes()}
+    monkeypatch.setattr(release.subprocess, "run", lose_upload_response)
+    with pytest.raises(release.ReleaseError, match="did not finish within 1800 s"):
+        publish(release, built, github)
+    publish(release, built, github)
+    assert github.tagged == [(tag, COMMIT)]
+    assert github.created == []
+    assert github.uploaded == [f"{archive}.sha256"]
+
+
 def test_gh_version_and_api_host_are_checked(
     release: ModuleType, monkeypatch: pytest.MonkeyPatch
 ) -> None:

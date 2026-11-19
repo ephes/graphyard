@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Local Rust releases bound GitHub metadata commands to 60 seconds and
+  release transfers to 30 minutes per command.
+
 - Local Rust release builds give the checks and build containers
   invocation-specific names so reused process IDs do not cause collisions.
   After an uncertain create, cleanup verifies ownership before removing the
