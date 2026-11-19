@@ -507,7 +507,8 @@ not on `main` on GitHub, a non-empty output directory and an untagged
 | `pack` | deterministic `graphyard-agent-<version>-x86_64-unknown-linux-gnu.tar.gz` (`graphyard-agent` 0755 and `LICENSE` 0644 at the root, root:root, commit time as mtime) and its `.sha256` in `sha256sum` format, checked with `sha256sum --check` |
 
 Both jobs run with `--network none`, no mounts, and memory, process and time
-limits. The archive, its `.sha256`, `build.json` (commit, sha256, image digest,
+limits. The checks and build containers have distinct names that include the
+same invocation ID as the temporary images. The archive, its `.sha256`, `build.json` (commit, sha256, image digest,
 package and toolchain versions) and `notes.md` (the release notes, naming the
 commit and the sha256 the deployment pins) land in
 `agent-rs/target/local-release/graphyard-agent-<version>/`.

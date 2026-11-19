@@ -1030,7 +1030,7 @@ def build_linux(
         check_out.mkdir()
         docker.job(
             built[native],
-            f"{config.binary}-release-checks-{os.getpid()}",
+            f"{config.binary}-release-checks-{run_id}",
             versions_script(packages) + check_script(config),
             {**env, **config.check_env},
             check_out,
@@ -1041,7 +1041,7 @@ def build_linux(
         build_out.mkdir()
         docker.job(
             built[AMD64],
-            f"{config.binary}-release-build-{os.getpid()}",
+            f"{config.binary}-release-build-{run_id}",
             versions_script(packages) + release_script(config),
             env,
             build_out,

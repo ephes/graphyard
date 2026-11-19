@@ -486,6 +486,42 @@ def test_linux_build_and_publish(release: ModuleType, tmp_path: Path) -> None:
     assert len(github.tagged) == 1 and len(github.created) == 1
 
 
+def test_linux_build_names_survive_reused_pid(
+    release: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    retained = set()
+
+    class RetainingDocker(FakeDocker):
+        def job(self, image: str, name: str, *args: Any) -> None:
+            assert name not in retained
+            retained.add(name)
+            super().job(image, name, *args)
+
+    docker = RetainingDocker()
+    invocation_ids = iter(["abcd1234", "abcd5678"])
+    monkeypatch.setattr(release.os, "getpid", lambda: 4242)
+    monkeypatch.setattr(release.secrets, "token_hex", lambda size: next(invocation_ids))
+    config = release.parse_config(linux_data())
+    for invocation in ("first", "second"):
+        release.build(
+            False,
+            tmp_path / invocation,
+            config=config,
+            git=FakeGit(REPO),
+            github=FakeGitHub(),
+            docker=docker,
+            version="1.2.3",
+            run_host_checks=no_host_checks,
+            log=lambda line: None,
+        )
+    assert retained == {
+        f"example-release-{phase}-4242-{suffix}"
+        for phase in ("checks", "build")
+        for suffix in ("abcd1234", "abcd5678")
+    }
+    assert set(docker.removed) == {tag for tag, _ in docker.images}
+
+
 def test_macos_build(release: ModuleType, tmp_path: Path, which_rustup: None) -> None:
     config = release.parse_config(macos_data())
     host = FakeHost()
