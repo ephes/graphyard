@@ -162,11 +162,11 @@ def fetch(client, definition, *, deadline=None):
             raise ValueError("Non-stable GitHub release")
         return stable(data.get("tag_name"))
     if kind == "pypi":
-        info = data.get("info", {})
-        if (
-            not isinstance(info, dict)
-            or normalize(str(info.get("name", ""))) != definition["project"]
-        ):
+        info = data.get("info")
+        if not isinstance(info, dict):
+            raise ValueError("PyPI project mismatch")
+        name = info.get("name")
+        if not isinstance(name, str) or normalize(name) != definition["project"]:
             raise ValueError("PyPI project mismatch")
         files = data.get("urls")
         if (

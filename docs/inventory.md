@@ -483,8 +483,10 @@ make the command incomplete with a nonzero exit status. Rerun normally to resume
 rechecks fresh sources and remains subject to the same budget.
 HTTP redirects, proxy environment settings, prereleases/dev/local versions, yanked
 PyPI releases, disabled formulae and oversized responses are refused. No GitHub
-credential is used; rate limits appear as failed checks. PyPI's latest project
-release must have at least one non-yanked artifact; no compatibility resolver is run.
+credential is used; rate limits appear as failed checks. A PyPI response must
+provide a project name as a string that matches the registered project after
+normalization. The latest release must have at least one non-yanked artifact.
+The lookup does not run a compatibility resolver.
 Release response JSON rejects duplicate object members at every depth, including
 escaped-equivalent names, identical values and ignored metadata. Repeated array
 entries remain supported. Such ambiguity is a private, fixed-text lookup failure:

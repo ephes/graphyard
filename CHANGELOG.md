@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Require a string project name in PyPI release responses before normalizing
+  and matching it to the registered project.
+
 - Check declared release response lengths as ASCII decimal text before reading
   the body. Leading zeroes are accepted without integer conversion.
 

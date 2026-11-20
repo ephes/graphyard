@@ -104,6 +104,21 @@ def test_fetch_reads_only_constructed_public_source(kind, project, payload, expe
     assert str(seen[0].url) == releases.url(item)
 
 
+def test_pypi_requires_textual_name_for_numeric_project():
+    item = releases.definitions([definition(project="123")])["pypi:123"]
+    payload = {
+        "info": {"name": "123", "version": "6.0", "yanked": False},
+        "urls": [{"yanked": False}],
+    }
+    with httpx.Client(
+        transport=httpx.MockTransport(lambda request: httpx.Response(200, json=payload))
+    ) as client:
+        assert releases.fetch(client, item) == "6.0"
+        payload["info"]["name"] = 123
+        with pytest.raises(ValueError, match="PyPI project mismatch"):
+            releases.fetch(client, item)
+
+
 @pytest.mark.parametrize(
     "change",
     [
