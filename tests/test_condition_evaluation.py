@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
+from random import Random
 
 import pytest
 from django.core.exceptions import ValidationError
@@ -407,6 +408,67 @@ def test_healthy_multi_series_reports_newest_value(monkeypatch):
     assert result.status == StatusLevel.OK
     assert result.last_value == 0.20
     assert result.message == "Condition is within thresholds (2 series)"
+
+
+def test_evaluate_condition_selects_oldest_latest_sample_at_equal_severity(
+    monkeypatch, settings
+):
+    settings.CONDITION_DATA_STALE_WARNING_SECONDS = 60
+    now = datetime(2026, 3, 4, 12, 0, tzinfo=UTC)
+    samples = [
+        _series_sample(now, minutes_ago=2, value=0.25, mountpoint="/a"),
+        _series_sample(now, minutes_ago=3, value=0.50, mountpoint="/z"),
+        _series_sample(now, minutes_ago=0, value=0.75, mountpoint="/fresh"),
+    ]
+    _patch_window(monkeypatch, samples)
+
+    assert evaluate_condition(_disk_condition(), now=now) == ConditionEvaluation(
+        status=StatusLevel.WARNING,
+        message='Latest sample is stale (180s old) [series: "mountpoint"="/z"]'
+        " (2 of 3 series not OK)",
+        last_value=0.50,
+        evaluated_at=now,
+    )
+
+
+def test_evaluate_condition_compares_series_keys_at_most_once_per_series(monkeypatch):
+    from graphyard import services
+
+    comparisons = 0
+
+    class CountedKey(tuple):
+        def __lt__(self, other):
+            nonlocal comparisons
+            comparisons += 1
+            return super().__lt__(other)
+
+        def __gt__(self, other):
+            nonlocal comparisons
+            comparisons += 1
+            return super().__gt__(other)
+
+    series_key = services._series_key
+    monkeypatch.setattr(
+        services, "_series_key", lambda sample: CountedKey(series_key(sample))
+    )
+    now = datetime(2026, 3, 4, 12, 0, tzinfo=UTC)
+    total = 2048
+    samples = [
+        replace(
+            _sample(now, minutes_ago=0, value=i / total), tags={"series": f"{i:04d}"}
+        )
+        for i in range(total)
+    ]
+    Random(0).shuffle(samples)
+    _patch_window(monkeypatch, samples)
+
+    assert evaluate_condition(_condition(), now=now) == ConditionEvaluation(
+        status=StatusLevel.OK,
+        message=f"Condition is within thresholds ({total} series)",
+        last_value=(total - 1) / total,
+        evaluated_at=now,
+    )
+    assert comparisons <= total - 1
 
 
 def test_series_split_by_collector_dimension(monkeypatch):

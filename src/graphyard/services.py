@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Collection
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 import json
@@ -205,7 +206,7 @@ def _group_samples_by_series(
     return grouped
 
 
-def _series_label(keys: list[SeriesKey], selected: SeriesKey) -> str:
+def _series_label(keys: Collection[SeriesKey], selected: SeriesKey) -> str:
     """Visit present dimensions once and format only the selected series."""
     dimensions: dict[str, tuple[str, int, bool]] = {}
     for key in keys:
@@ -321,36 +322,36 @@ def evaluate_condition(
         )
 
     grouped = _group_samples_by_series(samples)
-    results = [
-        (key, series[-1].ts, *_evaluate_series(condition, series, now_utc))
-        for key, series in grouped.items()
-    ]
+    total = len(grouped)
+    not_ok = 0
+    worst: tuple[tuple[int, datetime, SeriesKey], str, str, float] | None = None
+    newest_healthy: tuple[tuple[datetime, SeriesKey], str, float] | None = None
+    for key, series in grouped.items():
+        latest = series[-1].ts
+        status, message, last_value = _evaluate_series(condition, series, now_utc)
+        if status == StatusLevel.OK:
+            healthy_rank = (latest, key)
+            if newest_healthy is None or healthy_rank > newest_healthy[0]:
+                newest_healthy = (healthy_rank, message, last_value)
+        else:
+            not_ok += 1
+            # Prefer higher severity, then the oldest latest sample, then the
+            # smallest structural series key.
+            alert_rank = (-_STATUS_SEVERITY[status], latest, key)
+            if worst is None or alert_rank < worst[0]:
+                worst = (alert_rank, status, message, last_value)
 
-    if len(results) == 1:
-        _, _, status, message, last_value = results[0]
-        return ConditionEvaluation(
-            status=status,
-            message=message,
-            last_value=last_value,
-            evaluated_at=now_utc,
-        )
-
-    # Worst status wins; among equals prefer stale (oldest latest sample),
-    # then the structural series key for a deterministic choice.
-    results.sort(key=lambda item: (-_STATUS_SEVERITY[item[2]], item[1], item[0]))
-    total = len(results)
-    not_ok = sum(1 for item in results if item[2] != StatusLevel.OK)
-    key, _, status, message, last_value = results[0]
-
-    if status == StatusLevel.OK:
-        # Report the most recent value across all healthy series.
-        key, _, status, message, last_value = max(
-            results, key=lambda item: (item[1], item[0])
-        )
-        message = f"{message} ({total} series)"
+    if worst is None:
+        assert newest_healthy is not None  # Nonempty input produced a healthy series.
+        _, message, last_value = newest_healthy
+        status = StatusLevel.OK
+        if total > 1:
+            message = f"{message} ({total} series)"
     else:
-        message = f"{message} [series: {_series_label(list(grouped), key)}]"
-        message += f" ({not_ok} of {total} series not OK)"
+        (_, _, key), status, message, last_value = worst
+        if total > 1:
+            message = f"{message} [series: {_series_label(grouped.keys(), key)}]"
+            message += f" ({not_ok} of {total} series not OK)"
 
     return ConditionEvaluation(
         status=status,
