@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Check declared release response lengths as ASCII decimal text before reading
+  the body. Leading zeroes are accepted without integer conversion.
+
 - Flag incomplete inventory coverage when a category has no latest attempt,
   even when all category rows exist.
 

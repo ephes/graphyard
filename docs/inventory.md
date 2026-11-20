@@ -460,8 +460,9 @@ with equal wall-clock timestamps. Network I/O stays outside database transaction
 
 Release requests ask for `Accept-Encoding: identity`; a compressed reply, or one
 declaring a `Content-Length` above 16 MiB (or an invalid one), is refused before its
-body is read. Each body is bounded to 16 MiB, and a chunk that would cross the limit
-is refused before buffering. JSON nested too deeply to decode counts as that
+body is read. A declared length uses ASCII decimal digits, with leading zeroes
+allowed. With or without this header, each body is bounded to 16 MiB. A chunk
+that would cross the limit is refused before buffering. JSON nested too deeply to decode counts as that
 source's lookup failure; later sources are still checked while time remains.
 Each source has a 60-second monotonic elapsed budget. The whole refresh has a
 300-second monotonic budget from entry, including registry replacement. The

@@ -133,10 +133,15 @@ def fetch(client, definition, *, deadline=None):
         if encoding not in ("", "identity"):
             raise ValueError("Unsupported release response encoding")
         declared = response.headers.get("Content-Length")
-        if declared is not None and (
-            not declared.strip().isdigit() or int(declared) > MAX_BODY
-        ):
-            raise ValueError("Release response too large")
+        if declared is not None:
+            declared = declared.strip(" \t")
+            if not (declared.isascii() and declared.isdecimal()):
+                raise ValueError("Release response too large")
+            digits = declared.lstrip("0") or "0"
+            limit = str(MAX_BODY)
+            # Compare decimal magnitudes without converting an untrusted header.
+            if (len(digits), digits) > (len(limit), limit):
+                raise ValueError("Release response too large")
         raw = bytearray()
         for chunk in response.iter_bytes():
             check_deadline()

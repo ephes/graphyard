@@ -702,14 +702,19 @@ def test_compressed_release_response_is_refused_before_body_read(encoding):
     assert seen[0].headers["Accept-Encoding"] == "identity"
 
 
-@pytest.mark.parametrize("declared", ["9", "abc", "-1"])
+@pytest.mark.parametrize(
+    "declared", ["9", pytest.param("9" * 5_000, id="long"), "abc", "-1", "１"]
+)
 def test_over_declared_release_body_is_refused_before_body_read(monkeypatch, declared):
     monkeypatch.setattr(releases, "MAX_BODY", 8)
     stream = RecordingStream(b"{}")
     result, _ = fetch_with(
-        lambda: httpx.Response(200, stream=stream, headers={"Content-Length": declared})
+        lambda: httpx.Response(
+            200, stream=stream, headers=[(b"Content-Length", declared.encode())]
+        )
     )
     assert isinstance(result, ValueError)
+    assert str(result) == "Release response too large"
     assert stream.read == []
 
 
@@ -734,7 +739,9 @@ def test_release_chunk_beyond_budget_is_refused_before_buffering(monkeypatch):
     assert fetch_with(lambda: httpx.Response(200, stream=stream))[0] == "6.1"
 
 
-def test_identity_release_response_is_accepted():
+@pytest.mark.parametrize("padding", ["", "0" * 5_000], ids=["plain", "padded"])
+def test_identity_release_response_is_accepted(monkeypatch, padding):
+    monkeypatch.setattr(releases, "MAX_BODY", len(VALID_PYPI))
     stream = RecordingStream(VALID_PYPI)
     result, _ = fetch_with(
         lambda: httpx.Response(
@@ -742,7 +749,7 @@ def test_identity_release_response_is_accepted():
             stream=stream,
             headers={
                 "Content-Encoding": "identity",
-                "Content-Length": str(len(VALID_PYPI)),
+                "Content-Length": padding + str(len(VALID_PYPI)),
             },
         )
     )
