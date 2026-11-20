@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Flag incomplete inventory coverage when a category has no latest attempt,
+  even when all category rows exist.
+
 - Use the same cached release evidence rules in source health and version
   comparisons. An empty cached version is reported as missing evidence.
 

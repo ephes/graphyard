@@ -374,7 +374,7 @@ def host_summary(host, now, state=None):
     age = max(0, (now - latest.observed_at).total_seconds()) if latest else None
     stale = age is None or age > host.warning_after_seconds
     incomplete = len(categories) != len(CATEGORIES) or any(
-        value["status"] == "error" for value in categories.values()
+        value["status"] in ("error", "missing") for value in categories.values()
     )
     delivery_alert = latest is None or (stale and host.alert_when_stale)
     return {

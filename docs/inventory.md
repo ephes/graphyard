@@ -147,7 +147,8 @@ newer category pointers. Keep the database in the existing backup procedure.
 The status response enumerates enrolled, enabled hosts, including those with no
 reports. A server observation older than the enrollment threshold (default 48 h)
 is stale. Intermittent hosts still show age but suppress freshness alerts once
-reports exist. Category errors still need attention. `summary.total` and
+reports exist. Category errors and categories without an attempt require coverage
+attention. An explicitly unsupported category counts as an attempt. `summary.total` and
 `summary.attention` can be consumed by an existing Nyxmon JSON-Metrics check.
 The endpoint exposes separate `summary.delivery_attention` and
 `summary.coverage_attention` counts while preserving the combined `attention`.

@@ -1345,6 +1345,33 @@ def test_operational_status_separates_partial_coverage_from_lost_delivery(
     assert state["hosts"]["studio"]["observed_at"] == before["observed_at"].isoformat()
 
 
+def test_operational_status_requires_attempt_evidence_for_every_category(
+    client, enrolled, settings
+):
+    settings.GRAPHYARD_INVENTORY_MONITOR_TOKEN = "synthetic-monitor"
+    payload = report()
+    payload["categories"]["containers"]["status"] = "unsupported"
+    assert send(client, enrolled, payload).status_code == 200
+    url = reverse("graphyard:inventory_status")
+    headers = {"HTTP_AUTHORIZATION": "Bearer synthetic-monitor"}
+    before = client.get(url, **headers).json()
+    assert before["summary"]["coverage_attention"] == 0
+
+    InventoryCategory.objects.filter(host=enrolled[0], name="packages").update(
+        latest_attempt=None
+    )
+    state = client.get(url, **headers).json()
+    host = state["hosts"]["studio"]
+    assert set(host["categories"]) == set(CATEGORIES)
+    assert host["categories"]["packages"]["status"] == "missing"
+    assert host["categories"]["packages"]["last_success_at"] == host["observed_at"]
+    assert host["coverage_alert"] is True
+    assert host["delivery_alert"] is False
+    assert state["summary"]["coverage_attention"] == 1
+    assert state["summary"]["delivery_attention"] == 0
+    assert state["summary"]["attention"] == 1
+
+
 @pytest.mark.parametrize("scheme", ["Bearer", "Basic", "bAsIc", "bEaReR"])
 @pytest.mark.parametrize("separator", [" ", "   "])
 def test_monitor_auth_forms_read_status_but_cannot_write(
