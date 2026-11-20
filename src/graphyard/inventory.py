@@ -630,11 +630,12 @@ def version_list(request):
             if not selected_host or host.host.host_id == selected_host
         ]
         states = _host_states(selected)
+    project_release = inventory_releases.release_projector(now)
     rows = []
     coverage = []
     for host in selected:
         host_rows, notes = inventory_releases.rows_for_host(
-            host, sources, now, states[host.pk][1]
+            host, sources, now, states[host.pk][1], project_release=project_release
         )
         coverage.extend({"host": host.host.host_id, "message": note} for note in notes)
         for row in host_rows:

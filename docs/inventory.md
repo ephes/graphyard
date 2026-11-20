@@ -442,6 +442,9 @@ a concurrent ingest or pruning cannot mix report generations or drop a host's
 evidence mid-render; rendering holds no transaction. Pointers and reports are
 batched with a constant number of queries regardless of fleet size, each referenced
 report is decoded once, and a host filter reads only that host's evidence.
+Within the page request, rows that use the same release source share its URL,
+cache status and parsed upstream version. Installed versions and observation
+ages are evaluated for each row.
 
 `refresh_inventory_releases --file /etc/graphyard/inventory-releases.json` refreshes
 a separate database cache. The registry is an array of `{kind, project, targets}`;
@@ -452,7 +455,10 @@ cannot register sources, select destinations, or send private package names outw
 Cached success belongs to the complete source definition (`kind`, `project` and
 `targets`). Changing it atomically clears the version, success/attempt timestamps
 and error before looking up the replacement, even inside the freshness window.
-An unchanged definition retains last-good evidence on lookup failure. Results
+Registry synchronization leaves enabled rows with unchanged definitions untouched.
+Removing a source disables it. Re-enabling the same definition retains its prior
+evidence, and an unchanged definition retains last-good evidence on lookup failure.
+Results
 publish only while their registry generation and enabled definition still match,
 with the attempt-time fence retained. A newer refresh fences older in-flight
 successes and failures, including removal/re-enable and A → B → A edits, even

@@ -14,7 +14,7 @@ use chrono::{DateTime, Utc};
 use graphyard_core::model::{MetricPoint, Tags};
 use graphyard_core::pycompat::py_float;
 use graphyard_core::settings::Settings;
-use graphyard_influx::InfluxWriter;
+use graphyard_influx::{InfluxWriter, WriteError};
 use http_body_util::{BodyExt, Full};
 use hyper::body::Incoming;
 use hyper::server::conn::http1;
@@ -411,7 +411,7 @@ async fn run_case(writer: &InfluxWriter, case: &Value) {
         assert_eq!(actual_headers, expected_headers, "{name}");
     }
 
-    let expected_records: Vec<(String, String)> = case["logs"]
+    let mut expected_records: Vec<(String, String)> = case["logs"]
         .as_array()
         .expect("logs")
         .iter()
@@ -433,6 +433,26 @@ async fn run_case(writer: &InfluxWriter, case: &Value) {
             (s(record, "level").to_owned(), message)
         })
         .collect();
+    // Rust reports the normalization result before the HTTP exchange.
+    if let Some(index) = expected_records.windows(2).position(|pair| {
+        pair[0].1.starts_with("Influx HTTP response: ")
+            && pair[1]
+                .1
+                .starts_with("metrics_write_rejected category=normalization ")
+    }) {
+        expected_records.swap(index, index + 1);
+    } else if matches!(
+        name,
+        "status 400 raises, rejected count not logged" | "truncated 2xx body fails the write"
+    ) {
+        expected_records.insert(
+            1,
+            (
+                "WARNING".to_owned(),
+                "metrics_write_rejected category=normalization rejected_points=1 written_points=1 total_points=2".to_owned(),
+            ),
+        );
+    }
     let records: Vec<(String, String)> = records
         .into_iter()
         .filter(|(_, message)| !message.starts_with("SyntaxWarning: "))
@@ -765,6 +785,48 @@ async fn auto_writer_timestamp_admission() {
         writer.write_points(&settings, &[candidate]).await.unwrap(),
         1
     );
+}
+
+#[tokio::test]
+async fn mixed_batch_reports_rejection_before_the_write_response() {
+    let valid = point_of(&fixture()["writes"][1]["points"][0]);
+    let mut invalid = valid.clone();
+    invalid.metric.clear();
+    let points = [invalid, valid];
+    let writer = InfluxWriter::new().unwrap();
+    for status in [400, 204] {
+        let recorder = recorder(Respond {
+            status,
+            ..Respond::default()
+        })
+        .await;
+        let settings = v2_settings(&format!("http://{}", recorder.addr), "1000");
+
+        take_records();
+        let result = writer.write_points(&settings, &points).await;
+        match status {
+            400 => assert!(matches!(result, Err(WriteError::Api { status: 400, .. }))),
+            _ => assert_eq!(result.unwrap(), 1),
+        }
+        let receipts: Vec<_> = take_records()
+            .into_iter()
+            .map(|(_, message)| message)
+            .filter(|message| {
+                message.starts_with("metrics_write_rejected ")
+                    || message.starts_with("Influx HTTP response: ")
+            })
+            .collect();
+        assert_eq!(
+            receipts,
+            [
+                "metrics_write_rejected category=normalization rejected_points=1 written_points=1 total_points=2".to_owned(),
+                format!("Influx HTTP response: method=POST status={status}"),
+            ],
+        );
+        let requests = recorder.requests.lock().unwrap();
+        assert_eq!(requests.len(), 1);
+        assert_eq!(requests[0].body.lines().count(), 1);
+    }
 }
 
 #[tokio::test]
