@@ -1271,10 +1271,10 @@ handshake and connect-timeout failures retain NameResolutionError, ApiException
 failures use InfluxTransferError, distinct from configuration errors.
 HTTP request log lines now include v2 transfers.
 
-Order of effects: validation and reserved-key log lines, then (only when a valid
-point exists) the configuration check, the request, and the
-`metrics_write_rejected` warning only after a successful write or instead of it
-when every point was rejected. A measurement starting with `#` logs the client's
+Order of effects in Rust: validation and reserved-key log lines, then configuration
+checks when valid points remain. The `metrics_write_rejected` normalization receipt
+counts admitted points before HTTP or shadow-file transport, including when
+transport later fails. A measurement starting with `#` logs the client's
 `SyntaxWarning` once per process (P2).
 
 ### 6.5 InfluxDB queries (`influx.py:query_range`, `query_condition_window`, P1)

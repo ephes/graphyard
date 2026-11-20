@@ -210,9 +210,8 @@ impl PreparedWrite {
         self.lines.join("\n")
     }
 
-    /// The `metrics_write_rejected` warning `write_points` logs when points
-    /// were rejected: after a successful write, or instead of the write when
-    /// every point was rejected (`written_points=0`).
+    /// The normalization rejection warning, emitted before transport.
+    /// Its `written_points` field counts admitted lines in the prepared batch.
     pub fn rejected_event(&self) -> Option<LogEvent> {
         (self.rejected > 0).then(|| {
             LogEvent::warning(format!(

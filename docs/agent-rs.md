@@ -334,6 +334,11 @@ runtimes. Query-bearing page-probe URLs require an explicit nonsecret
 `source_entity_id` before transport, so removing query values cannot silently
 merge distinct endpoints. Paths remain part of the default identity.
 
+When normalization rejects points, Rust emits one summary before the HTTP
+request or shadow-file append, including on writes that later fail. The
+summary's `written_points` field counts admitted points in the prepared batch.
+The write result reports the transport outcome.
+
 The Rust writer renders response headers for HTTP error diagnostics. Successful
 responses still pass the bounded body read before any points are counted.
 

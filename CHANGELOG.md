@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Report Rust point normalization rejections before transport, including failed writes.
+
 - Skip rendering diagnostic Influx response headers for successful Rust writes.
 
 - Reuse the validated Rust request timeout when checking a metric spec's total

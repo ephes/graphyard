@@ -16,11 +16,9 @@
 //! have uncertain acceptance and are never replayed. Error diagnostics are
 //! limited to 1 KiB. Ordinary 2xx responses succeed after the bounded read.
 //!
-//! The order of effects is Python's: validation and reserved-key log
-//! records first, then the configuration check (only when something is to
-//! be written), then the timeout and URL checks of the request, then the
-//! request; the `metrics_write_rejected` warning only after a successful
-//! write (or instead of it when every point was rejected).
+//! Validation and reserved-key log records come first. If any points remain,
+//! configuration is checked before the normalization rejection summary. The
+//! summary precedes the HTTP request or shadow-file append.
 
 use std::fmt;
 use std::fs::{File, OpenOptions};
@@ -311,12 +309,12 @@ impl InfluxWriter {
         }
         let config = InfluxClientConfig::from_settings(settings)?;
         warn_hash_measurement(&settings.influx_measurement);
+        if let Some(event) = prepared.rejected_event() {
+            emit(&event);
+        }
         match &self.file {
             Some(file) => append_batch(file, &config, settings, &prepared).await?,
             None => self.post(&config, settings, &prepared).await?,
-        }
-        if let Some(event) = prepared.rejected_event() {
-            emit(&event);
         }
         Ok(prepared.written() as u64)
     }
