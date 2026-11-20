@@ -260,6 +260,49 @@ async fn a_panicking_executor_is_isolated() {
 }
 
 #[tokio::test]
+async fn metric_heartbeat_samples_first_errors_and_counts_all_outcomes() {
+    let db = TestDb::new();
+    let now = "2026-10-21T08:15:30Z".parse().unwrap();
+    let mut scripts = serde_json::Map::new();
+    for id in 0..256 {
+        let name = format!("spec-{id:03}");
+        common::insert_spec(&db, &name, "http_json_metric", &serde_json::json!({}));
+        let (status, message) = match id {
+            0 => ("warning", ""),
+            1 => ("critical", ""),
+            _ if id % 2 == 0 => ("critical", "failed"),
+            _ => ("warning", "partial"),
+        };
+        scripts.insert(
+            name,
+            serde_json::json!({"outcome": [status, 1, 2, message]}),
+        );
+    }
+    let store = Store::open(db.path(), &settings(&[])).unwrap();
+    let executor = Scripted {
+        scripts: Value::Object(scripts),
+        db: db.path.clone(),
+        now,
+    };
+    let run = run_metric_specs(&store, &executor, &FixedClock(now), true)
+        .await
+        .unwrap();
+    store.close();
+
+    assert_eq!((run.total, run.failed, run.warning), (256, 128, 128));
+    let heartbeat = |column| db.text("pipeline_heartbeat", "metric_collectors", column);
+    assert_eq!(heartbeat("status"), "warning");
+    assert_eq!(
+        heartbeat("last_error"),
+        "spec-001: ; spec-002: failed; spec-003: partial; spec-004: failed; spec-005: partial"
+    );
+    assert_eq!(
+        serde_json::from_str::<Value>(&heartbeat("details")).unwrap(),
+        serde_json::json!({"total": 256, "failed": 128, "warning": 128, "ingested": 256, "skipped": 512})
+    );
+}
+
+#[tokio::test]
 async fn stored_json_python_cannot_load_fails_only_its_spec_or_condition() {
     // D-11: Python fails the whole load on a 4300-digit integer; Rust marks
     // only the affected row. A lone surrogate is `not valid JSON` in Rust.

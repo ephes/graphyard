@@ -165,6 +165,17 @@ fn count(value: u64) -> i64 {
     i64::try_from(value).unwrap_or(i64::MAX)
 }
 
+const MAX_HEARTBEAT_ERRORS: usize = 5;
+
+fn retain_heartbeat_error(errors: &mut Vec<String>, name: &str, outcome: &SpecOutcome) {
+    if errors.len() < MAX_HEARTBEAT_ERRORS
+        && (outcome.status == StatusLevel::Critical
+            || (outcome.status == StatusLevel::Warning && !outcome.message.is_empty()))
+    {
+        errors.push(format!("{name}: {}", outcome.message));
+    }
+}
+
 /// `run_metric_collection_specs_once(due_only=...)`.
 ///
 /// # Errors
@@ -261,18 +272,11 @@ pub async fn run_metric_specs<E: SpecExecutors, C: Clock>(
         run.ingested += outcome.ingested;
         run.skipped += outcome.skipped;
         match outcome.status {
-            StatusLevel::Critical => {
-                run.failed += 1;
-                errors.push(format!("{}: {}", spec.name, outcome.message));
-            }
-            StatusLevel::Warning => {
-                run.warning += 1;
-                if !outcome.message.is_empty() {
-                    errors.push(format!("{}: {}", spec.name, outcome.message));
-                }
-            }
+            StatusLevel::Critical => run.failed += 1,
+            StatusLevel::Warning => run.warning += 1,
             StatusLevel::Ok => {}
         }
+        retain_heartbeat_error(&mut errors, &spec.name, &outcome);
     }
 
     if run.total == 0 {
@@ -297,12 +301,7 @@ pub async fn run_metric_specs<E: SpecExecutors, C: Clock>(
             HeartbeatRecord {
                 name: "metric_collectors".to_owned(),
                 status,
-                last_error: errors
-                    .iter()
-                    .take(5)
-                    .map(String::as_str)
-                    .collect::<Vec<_>>()
-                    .join("; "),
+                last_error: errors.join("; "),
                 details: details
                     .iter()
                     .map(|(key, value)| ((*key).to_owned(), count(*value)))
@@ -472,6 +471,17 @@ mod tests {
                 .unwrap_err()
                 .starts_with("config is not valid JSON: ")
         );
+    }
+
+    #[test]
+    fn heartbeat_error_accumulation_stops_at_five() {
+        let mut errors = Vec::new();
+        for id in 0..256 {
+            retain_heartbeat_error(&mut errors, &format!("spec-{id}"), &critical("failed"));
+        }
+        assert_eq!(errors.len(), 5);
+        assert_eq!(errors[0], "spec-0: failed");
+        assert_eq!(errors[4], "spec-4: failed");
     }
 
     #[test]

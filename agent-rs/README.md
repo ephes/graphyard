@@ -310,7 +310,9 @@ schedulers together for the same specs.
 Explicit non-due/manual runs still execute every enabled spec regardless of due
 time, with completion fenced by the captured definition and original schedule.
 Superseded completions contribute no run counts, errors or heartbeat evidence;
-when none are accepted, the heartbeat is untouched. A fixed
+when none are accepted, the heartbeat is untouched. The Rust agent counts every
+accepted critical or warning outcome and retains only the first five eligible
+messages in spec order (critical outcomes and warnings with a message). A fixed
 `Collection superseded spec_id=<id>` event retains execution diagnostics. Metrics
 already emitted during collection cannot be recalled. Python and Rust share
 claim/recovery/completion fixtures and run only synthetic collectors in tests.

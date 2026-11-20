@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Retain only the first five metric collector heartbeat error samples in the
+  Rust agent while keeping the full outcome counts.
+
 - Leave stdout empty if either ingest-token audit exceeds its spool or
   per-token limit. Successful empty audits still print their heading.
 
