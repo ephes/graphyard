@@ -120,28 +120,25 @@ pub(crate) fn load_conditions(
         .collect()
 }
 
-/// Publish a success only if its attempt is newer than the stored watermark.
-pub(crate) fn update_condition_success(
+fn update_condition_success(
     connection: &Connection,
     id: i64,
     evaluation: &ConditionEvaluation,
 ) -> Result<bool, StoreError> {
     Ok(connection.execute(
         "UPDATE condition_definition SET status = ?, message = ?, last_value = ?, \
-         last_evaluated = ? WHERE id = ? AND (last_evaluated IS NULL OR last_evaluated < ?)",
+         last_evaluated = ? WHERE id = ?",
         params![
             evaluation.status.as_str(),
             evaluation.message,
             evaluation.last_value,
             now_text(evaluation.evaluated_at)?,
             id,
-            now_text(evaluation.evaluated_at)?,
         ],
     )? == 1)
 }
 
-/// Publish a failure with the same attempt watermark, preserving last_value.
-pub(crate) fn update_condition_failure(
+fn update_condition_failure(
     connection: &Connection,
     id: i64,
     status: StatusLevel,
@@ -150,14 +147,8 @@ pub(crate) fn update_condition_failure(
 ) -> Result<bool, StoreError> {
     Ok(connection.execute(
         "UPDATE condition_definition SET status = ?, message = ?, last_evaluated = ? \
-         WHERE id = ? AND (last_evaluated IS NULL OR last_evaluated < ?)",
-        params![
-            status.as_str(),
-            message,
-            now_text(attempted_at)?,
-            id,
-            now_text(attempted_at)?
-        ],
+         WHERE id = ?",
+        params![status.as_str(), message, now_text(attempted_at)?, id,],
     )? == 1)
 }
 
@@ -177,6 +168,18 @@ fn same_definition(a: &ConditionRow, b: &ConditionRow) -> bool {
         && a.breach_minutes == b.breach_minutes
         && a.stale_after_seconds == b.stale_after_seconds
         && a.alert_when_stale == b.alert_when_stale
+}
+
+// Compare the current watermark under the same writer reservation as publication.
+fn can_publish(
+    current: &ConditionRow,
+    definition: &ConditionRow,
+    attempted_at: DateTime<Utc>,
+) -> bool {
+    same_definition(current, definition)
+        && current
+            .last_evaluated
+            .is_none_or(|watermark| watermark < DbDateTime::from_utc(attempted_at))
 }
 
 impl Store {
@@ -208,7 +211,7 @@ impl Store {
                 connection.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
             let published = if load_conditions(&tx, Some(definition.id))?
                 .first()
-                .is_some_and(|current| same_definition(current, &definition))
+                .is_some_and(|current| can_publish(current, &definition, evaluation.evaluated_at))
             {
                 update_condition_success(&tx, definition.id, &evaluation)?
             } else {
@@ -236,7 +239,7 @@ impl Store {
                 connection.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
             let published = if load_conditions(&tx, Some(definition.id))?
                 .first()
-                .is_some_and(|current| same_definition(current, &definition))
+                .is_some_and(|current| can_publish(current, &definition, attempted_at))
             {
                 update_condition_failure(&tx, definition.id, status, &message, attempted_at)?
             } else {

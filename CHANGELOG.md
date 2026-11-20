@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Compare Rust condition evaluation watermarks as UTC instants so older and
+  equal-time attempts preserve observations stored with legacy datetime text.
+
 - Sleep until the next Rust scheduler deadline instead of polling every
   idle second. Signal-driven shutdown remains immediate.
 

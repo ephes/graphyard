@@ -560,8 +560,10 @@ capture an attempt start time and pass it to `evaluate_condition` (section 7).
 Success updates `status, message, last_value, last_evaluated`; any exception →
 `failed += 1`, update `status='critical'`, `message='evaluation error: <allowlisted type>'`
 and `last_evaluated` to the attempt start time, retaining `last_value`.
-Both writes require `last_evaluated IS NULL OR last_evaluated < attempt_start`;
-stale/tied attempts and deleted rows are no-ops. Even if the fallback failure
+Both writes require an absent watermark or a strictly newer attempt. Rust
+compares the current watermark and the attempt as UTC instants at microsecond
+precision inside the same immediate transaction that checks the definition and
+writes the result. Stale/tied attempts and deleted rows are no-ops. Even if the fallback failure
 write fails, following conditions run. One ERROR event records condition ID,
 stage (`evaluation` or `publication`), allowlisted category and `failure_published`.
 No raw exception/query text enters that event or failure message. Heartbeat
