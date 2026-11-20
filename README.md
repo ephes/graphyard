@@ -323,13 +323,18 @@ Usage is recorded at ingest from this release onwards (table
 so let it collect for a while before scoping existing tokens.
 
 The binding and host-scope reports project token metadata in batches of 100 and
-read usage once per batch, without credential hashes or model hydration. One
-short snapshot covers the **entire** report: SQLite reserves the writer with its
+read usage once per batch, without credential hashes or model hydration. Both
+projections use the database alias selected for the token query. One short
+snapshot covers the **entire** report on that alias: SQLite reserves the writer with its
 configured `BEGIN IMMEDIATE`; PostgreSQL uses an outer repeatable-read/read-only
 transaction. Do not wrap report commands in an application transaction on
 PostgreSQL. Concurrent rotation, binding/scope edits and usage writes therefore
 cannot mix report generations. The snapshot is released before token lines or
 suggestions are printed.
+
+Run the token audit alias and concurrent-write check against a disposable
+PostgreSQL database using the [contract settings](#validation-commands) and
+`tests/test_token_report_batches.py`.
 
 A private temporary file holds only these projections (no credentials), is
 removed automatically on completion/failure, and admits at most 64 MiB encoded
@@ -1109,6 +1114,16 @@ The audit covers uv-managed pre-commit and its dependencies; Ruff's separately
 resolved hook environment is outside this graph. Rust advisories remain covered
 by `cargo deny`. The PostgreSQL contract job's separately injected `psycopg`
 package is also outside the locked graph.
+
+To check the token audit snapshot with two databases and a concurrent writer,
+point the contract settings at a disposable PostgreSQL instance. The role
+must be able to create test databases.
+
+```bash
+GRAPHYARD_TEST_DATABASE_URL=postgres://graphyard_test@127.0.0.1:5432/graphyard_test \
+  uv run --with 'psycopg[binary]==3.2.10' pytest -q \
+  --ds=config.settings.postgres_contract tests/test_token_report_batches.py
+```
 
 ```bash
 just test

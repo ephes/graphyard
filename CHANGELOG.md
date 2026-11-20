@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Read token metadata and host usage from one snapshot on the database
+  selected for the token query in both ingest-token audits.
+
 - Reject malformed UTF-8 in Rust agent settings, including values read via
   proxies. Startup diagnostics name the setting without exposing its value.
   Unused environment entries are ignored.

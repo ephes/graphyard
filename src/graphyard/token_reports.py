@@ -18,14 +18,13 @@ MAX_REPORT_BYTES = 64 * 1024 * 1024
 MAX_USAGE_PER_TOKEN = 500
 
 
-def _token_usage_rows(tokens, cutoff):
+def _token_usage_rows(tokens, cutoff, using):
     rows = tokens.iterator(chunk_size=REPORT_BATCH_SIZE)
     while batch := list(islice(rows, REPORT_BATCH_SIZE)):
         usages = {token["id"]: [] for token in batch}
         for usage in (
-            IngestTokenHostUsage.objects.filter(
-                token_id__in=usages, last_seen_at__gte=cutoff
-            )
+            IngestTokenHostUsage.objects.using(using)
+            .filter(token_id__in=usages, last_seen_at__gte=cutoff)
             .order_by("token_id", "host_id")
             .values("token_id", "host_id", "first_seen_at", "last_seen_at")
             .iterator(chunk_size=REPORT_BATCH_SIZE)
@@ -47,9 +46,10 @@ def token_usage_batches(tokens, cutoff):
     100-token/500-usage projections, and total encoded output is capped at 64 MiB.
     Only the caller's credential-free values projection enters this file.
     """
+    using = tokens.db
     with TemporaryFile() as spool:
-        with read_snapshot():
-            for token, usages in _token_usage_rows(tokens, cutoff):
+        with read_snapshot(using=using):
+            for token, usages in _token_usage_rows(tokens.using(using), cutoff, using):
                 record = (
                     json.dumps(
                         (token, usages), default=lambda value: value.isoformat()
