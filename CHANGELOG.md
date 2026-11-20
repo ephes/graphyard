@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- Require a string project name in PyPI release responses before normalizing
+  and matching it to the registered project.
+
+- Check declared release response lengths as ASCII decimal text before reading
+  the body. Leading zeroes are accepted without integer conversion.
+
+- Flag incomplete inventory coverage when a category has no latest attempt,
+  even when all category rows exist.
+
+- Use the same cached release evidence rules in source health and version
+  comparisons. An empty cached version is reported as missing evidence.
+
 - Stop polling the Rust scheduler when neither loop has a next deadline.
   Signal-driven shutdown still works while idle.
 

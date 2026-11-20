@@ -104,6 +104,21 @@ def test_fetch_reads_only_constructed_public_source(kind, project, payload, expe
     assert str(seen[0].url) == releases.url(item)
 
 
+def test_pypi_requires_textual_name_for_numeric_project():
+    item = releases.definitions([definition(project="123")])["pypi:123"]
+    payload = {
+        "info": {"name": "123", "version": "6.0", "yanked": False},
+        "urls": [{"yanked": False}],
+    }
+    with httpx.Client(
+        transport=httpx.MockTransport(lambda request: httpx.Response(200, json=payload))
+    ) as client:
+        assert releases.fetch(client, item) == "6.0"
+        payload["info"]["name"] = 123
+        with pytest.raises(ValueError, match="PyPI project mismatch"):
+            releases.fetch(client, item)
+
+
 @pytest.mark.parametrize(
     "change",
     [
@@ -489,7 +504,7 @@ def test_monitor_status_reports_cached_release_failures_without_fetch(
     client, settings, monkeypatch, kind
 ):
     settings.GRAPHYARD_INVENTORY_MONITOR_TOKEN = "synthetic-monitor"
-    row = cache()
+    row = cache(attempted_at=timezone.now())
     if kind == "failed":
         row.error = "private diagnostic must not be echoed"
     elif kind == "missing":
@@ -516,6 +531,25 @@ def test_monitor_status_reports_cached_release_failures_without_fetch(
     status = response.json()
     expected = {"empty_version": "missing", "future": "stale"}.get(kind, kind)
     assert status["releases"]["sources"][0]["status"] == expected
+    now = timezone.now()
+    comparison = releases.compare("5.2", row, now, now)
+    assert comparison["status"] == ("update" if kind == "ok" else "unknown")
+    assert (
+        comparison["reason"]
+        == {
+            "ok": "Newer upstream release",
+            "failed": "Latest release lookup failed; previous result retained",
+            "missing": "Release information missing",
+            "stale": "Release information stale",
+            "invalid": "Cached release version is invalid",
+        }[expected]
+    )
+    for field in ("checked_at", "attempted_at"):
+        timestamp = comparison[field]
+        assert timestamp == getattr(row, field)
+        assert status["releases"]["sources"][0][field] == (
+            timestamp.isoformat() if timestamp else None
+        )
     assert status["releases"]["total"] == 1
     assert status["summary"]["release_attention"] == int(kind != "ok")
     assert "private diagnostic" not in response.content.decode()
@@ -683,14 +717,19 @@ def test_compressed_release_response_is_refused_before_body_read(encoding):
     assert seen[0].headers["Accept-Encoding"] == "identity"
 
 
-@pytest.mark.parametrize("declared", ["9", "abc", "-1"])
+@pytest.mark.parametrize(
+    "declared", ["9", pytest.param("9" * 5_000, id="long"), "abc", "-1", "１"]
+)
 def test_over_declared_release_body_is_refused_before_body_read(monkeypatch, declared):
     monkeypatch.setattr(releases, "MAX_BODY", 8)
     stream = RecordingStream(b"{}")
     result, _ = fetch_with(
-        lambda: httpx.Response(200, stream=stream, headers={"Content-Length": declared})
+        lambda: httpx.Response(
+            200, stream=stream, headers=[(b"Content-Length", declared.encode())]
+        )
     )
     assert isinstance(result, ValueError)
+    assert str(result) == "Release response too large"
     assert stream.read == []
 
 
@@ -715,7 +754,9 @@ def test_release_chunk_beyond_budget_is_refused_before_buffering(monkeypatch):
     assert fetch_with(lambda: httpx.Response(200, stream=stream))[0] == "6.1"
 
 
-def test_identity_release_response_is_accepted():
+@pytest.mark.parametrize("padding", ["", "0" * 5_000], ids=["plain", "padded"])
+def test_identity_release_response_is_accepted(monkeypatch, padding):
+    monkeypatch.setattr(releases, "MAX_BODY", len(VALID_PYPI))
     stream = RecordingStream(VALID_PYPI)
     result, _ = fetch_with(
         lambda: httpx.Response(
@@ -723,7 +764,7 @@ def test_identity_release_response_is_accepted():
             stream=stream,
             headers={
                 "Content-Encoding": "identity",
-                "Content-Length": str(len(VALID_PYPI)),
+                "Content-Length": padding + str(len(VALID_PYPI)),
             },
         )
     )

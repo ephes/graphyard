@@ -147,7 +147,8 @@ newer category pointers. Keep the database in the existing backup procedure.
 The status response enumerates enrolled, enabled hosts, including those with no
 reports. A server observation older than the enrollment threshold (default 48 h)
 is stale. Intermittent hosts still show age but suppress freshness alerts once
-reports exist. Category errors still need attention. `summary.total` and
+reports exist. Category errors and categories without an attempt require coverage
+attention. An explicitly unsupported category counts as an attempt. `summary.total` and
 `summary.attention` can be consumed by an existing Nyxmon JSON-Metrics check.
 The endpoint exposes separate `summary.delivery_attention` and
 `summary.coverage_attention` counts while preserving the combined `attention`.
@@ -459,8 +460,9 @@ with equal wall-clock timestamps. Network I/O stays outside database transaction
 
 Release requests ask for `Accept-Encoding: identity`; a compressed reply, or one
 declaring a `Content-Length` above 16 MiB (or an invalid one), is refused before its
-body is read. Each body is bounded to 16 MiB, and a chunk that would cross the limit
-is refused before buffering. JSON nested too deeply to decode counts as that
+body is read. A declared length uses ASCII decimal digits, with leading zeroes
+allowed. With or without this header, each body is bounded to 16 MiB. A chunk
+that would cross the limit is refused before buffering. JSON nested too deeply to decode counts as that
 source's lookup failure; later sources are still checked while time remains.
 Each source has a 60-second monotonic elapsed budget. The whole refresh has a
 300-second monotonic budget from entry, including registry replacement. The
@@ -481,8 +483,10 @@ make the command incomplete with a nonzero exit status. Rerun normally to resume
 rechecks fresh sources and remains subject to the same budget.
 HTTP redirects, proxy environment settings, prereleases/dev/local versions, yanked
 PyPI releases, disabled formulae and oversized responses are refused. No GitHub
-credential is used; rate limits appear as failed checks. PyPI's latest project
-release must have at least one non-yanked artifact; no compatibility resolver is run.
+credential is used; rate limits appear as failed checks. A PyPI response must
+provide a project name as a string that matches the registered project after
+normalization. The latest release must have at least one non-yanked artifact.
+The lookup does not run a compatibility resolver.
 Release response JSON rejects duplicate object members at every depth, including
 escaped-equivalent names, identical values and ignored metadata. Repeated array
 entries remain supported. Such ambiguity is a private, fixed-text lookup failure:
@@ -495,7 +499,10 @@ mapped to public packages unless that identity is intended by the operator.
 The weekly job refreshes sources at least six days old, leaving margin for
 request duration and timer jitter; a failed lookup retains the prior version
 and successful timestamp but forces unknown status. Both source and installation
-must be no more than eight days old and not future-dated to compare. Historical
+must be no more than eight days old and not future-dated to compare. Source health
+and version comparison use the same cache rules. An empty cached version or absent
+success timestamp is missing evidence. Failed, stale and invalid evidence each
+have their own explanation, and the views retain the source timestamps. Historical
 fallback reports remain unknown. Valid Python subprobes within partial application
 reports may be compared, with explicit partial-basis markers and host coverage notes. Exact version matches mean only a match to that
 checked stable release; an installed version ahead of the source is distinct.
