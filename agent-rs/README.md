@@ -293,6 +293,10 @@ publications (including failures) are ignored. A failure advances
 gap and the final carry against `CONDITION_DATA_STALE_WARNING_SECONDS`, matching
 Python and the shared condition/store fixtures.
 
+The Rust agent checks that each spec’s next run time fits in SQLite before
+claiming or executing it, even in manual mode. An overflow fails the run
+without collecting that spec or updating the heartbeat.
+
 Due-only metric runs claim the observed `next_run_time` before invoking a
 collector. Claims use a 3–300 second lease (the clamped interval), renewed every one third
 of that duration until the complete collector/sink/registry future returns.

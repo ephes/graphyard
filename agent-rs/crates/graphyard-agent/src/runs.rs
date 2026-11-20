@@ -204,6 +204,9 @@ pub async fn run_metric_specs<E: SpecExecutors, C: Clock>(
     for spec in &specs {
         let run_at = if due_only { clock.now() } else { now };
         let run_ts = run_at.timestamp();
+        let next_run_time = run_ts
+            .checked_add(spec.interval_seconds.max(1))
+            .ok_or(RunError::NextRunTimeOverflow)?;
         let lease_seconds = spec.interval_seconds.clamp(3, 300);
         let mut claim_until = if due_only {
             let until = run_ts
@@ -247,9 +250,6 @@ pub async fn run_metric_specs<E: SpecExecutors, C: Clock>(
             log::info!("Collection superseded spec_id={}", spec.id);
             continue;
         };
-        let next_run_time = run_ts
-            .checked_add(spec.interval_seconds.max(1))
-            .ok_or(RunError::NextRunTimeOverflow)?;
         let update = SpecRunUpdate {
             id: spec.id,
             last_run_at: run_at,

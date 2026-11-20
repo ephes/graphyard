@@ -4,6 +4,7 @@
 
 mod common;
 
+use std::cell::Cell;
 use std::path::PathBuf;
 
 use chrono::{DateTime, Utc};
@@ -300,6 +301,47 @@ async fn metric_heartbeat_samples_first_errors_and_counts_all_outcomes() {
         serde_json::from_str::<Value>(&heartbeat("details")).unwrap(),
         serde_json::json!({"total": 256, "failed": 128, "warning": 128, "ingested": 256, "skipped": 512})
     );
+}
+
+#[derive(Default)]
+struct RecordingCollector(Cell<u32>);
+
+impl SpecExecutors for RecordingCollector {
+    async fn execute(
+        &self,
+        _spec_type: SpecType,
+        _name: &str,
+        _config: &Value,
+        _run: &mut RunState,
+    ) -> ExecutorResult {
+        self.0.set(self.0.get() + 1);
+        Ok(SpecOutcome::new(StatusLevel::Ok, 1, 0, ""))
+    }
+}
+
+#[tokio::test]
+async fn overflowing_next_run_time_never_claims_or_collects() {
+    for due_only in [true, false] {
+        let db = TestDb::new();
+        let table = "metric_collection_spec";
+        common::insert_spec(&db, "synthetic", "http_json_metric", &serde_json::json!({}));
+        db.execute(&format!(
+            "UPDATE {table} SET interval_seconds = {}",
+            i64::MAX
+        ));
+        let before = db.rows(table);
+        let store = Store::open(db.path(), &settings(&[])).unwrap();
+        let executor = RecordingCollector::default();
+        let clock = FixedClock("2026-10-21T08:15:30Z".parse().unwrap());
+
+        let result = run_metric_specs(&store, &executor, &clock, due_only).await;
+        assert!(matches!(result, Err(RunError::NextRunTimeOverflow)));
+        store.close();
+
+        assert_eq!(executor.0.get(), 0, "collector calls (due_only={due_only})");
+        assert_eq!(db.rows(table), before, "spec rows (due_only={due_only})");
+        assert_eq!(db.count("pipeline_heartbeat"), 0);
+    }
 }
 
 #[tokio::test]

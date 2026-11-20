@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Reject overflowing metric schedules before the Rust agent claims a spec or
+  runs its collector.
+
 - Retain only the first five metric collector heartbeat error samples in the
   Rust agent while keeping the full outcome counts.
 
