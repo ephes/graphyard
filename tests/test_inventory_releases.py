@@ -7,6 +7,8 @@ import httpx
 import pytest
 from django.core.management import call_command
 from django.core.management.base import CommandError
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from django.utils import timezone
 
@@ -190,6 +192,56 @@ def test_registry_removal_disables_prior_source():
     releases.refresh([])
     row.refresh_from_db()
     assert not row.enabled and releases.registry() == {}
+
+
+def test_refresh_only_updates_changed_or_reenabled_source_rows(monkeypatch):
+    django = cache(attempted_at=timezone.now())
+    flask = InventoryRelease.objects.create(
+        source_id="pypi:flask",
+        definition=definition(project="flask"),
+        version="3.1",
+        checked_at=django.checked_at,
+    )
+    disabled = InventoryRelease.objects.create(
+        source_id="pypi:wheel",
+        definition=definition(project="wheel"),
+        enabled=False,
+        version="0.45",
+        checked_at=django.checked_at,
+    )
+    fetch = Mock(side_effect=ValueError("offline"))
+    monkeypatch.setattr(releases, "fetch", fetch)
+
+    with CaptureQueriesContext(connection) as queries:
+        assert releases.refresh([django.definition, flask.definition]).complete
+    source_table = connection.ops.quote_name(InventoryRelease._meta.db_table)
+    assert not [
+        query["sql"]
+        for query in queries
+        if query["sql"].startswith(f"UPDATE {source_table} ")
+    ]
+    fetch.assert_not_called()
+
+    replacement = {**django.definition, "targets": [{"kind": "python", "name": "test"}]}
+    added = definition(project="example")
+    assert releases.refresh([replacement, disabled.definition, added]).failures == 2
+    django.refresh_from_db()
+    flask.refresh_from_db()
+    disabled.refresh_from_db()
+    assert django.definition == replacement
+    assert (django.version, django.checked_at, django.error) == (
+        "",
+        None,
+        "Release lookup failed",
+    )
+    assert not flask.enabled and flask.version == "3.1"
+    assert (disabled.enabled, disabled.version, disabled.checked_at) == (
+        True,
+        "0.45",
+        flask.checked_at,
+    )
+    created = InventoryRelease.objects.get(pk="pypi:example")
+    assert created.enabled and created.definition == added
 
 
 @pytest.mark.parametrize(

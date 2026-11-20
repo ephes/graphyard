@@ -211,16 +211,29 @@ def refresh(data, force=False):
             pk=1, generation=generation
         ).update(generation=F("generation")):
             return RefreshResult(skipped=len(registry), superseded=True)
-        InventoryRelease.objects.exclude(source_id__in=registry).update(enabled=False)
+        removed = InventoryRelease.objects.filter(enabled=True).exclude(
+            source_id__in=registry
+        )
+        if removed.exists():
+            removed.update(enabled=False)
         for key, definition in registry.items():
-            row, _ = InventoryRelease.objects.get_or_create(
-                source_id=key, defaults={"definition": definition}
-            )
-            values = {"definition": definition, "enabled": True}
+            row, created = InventoryRelease.objects.only(
+                "definition", "enabled"
+            ).get_or_create(source_id=key, defaults={"definition": definition})
+            if created:
+                continue
             if row.definition != definition:
                 # Cached evidence belongs to the entire definition, including targets.
-                values.update(version="", checked_at=None, attempted_at=None, error="")
-            InventoryRelease.objects.filter(pk=key).update(**values)
+                InventoryRelease.objects.filter(pk=key).update(
+                    definition=definition,
+                    enabled=True,
+                    version="",
+                    checked_at=None,
+                    attempted_at=None,
+                    error="",
+                )
+            elif not row.enabled:
+                InventoryRelease.objects.filter(pk=key).update(enabled=True)
     failures = skipped = 0
     superseded = False
     with httpx.Client(

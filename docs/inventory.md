@@ -452,7 +452,10 @@ cannot register sources, select destinations, or send private package names outw
 Cached success belongs to the complete source definition (`kind`, `project` and
 `targets`). Changing it atomically clears the version, success/attempt timestamps
 and error before looking up the replacement, even inside the freshness window.
-An unchanged definition retains last-good evidence on lookup failure. Results
+Registry synchronization leaves enabled rows with unchanged definitions untouched.
+Removing a source disables it. Re-enabling the same definition retains its prior
+evidence, and an unchanged definition retains last-good evidence on lookup failure.
+Results
 publish only while their registry generation and enabled definition still match,
 with the attempt-time fence retained. A newer refresh fences older in-flight
 successes and failures, including removal/re-enable and A → B → A edits, even

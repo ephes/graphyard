@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Avoid updating unchanged source rows when refreshing the inventory release registry.
+
 - Report Rust point normalization rejections before transport, including failed writes.
 
 - Skip rendering diagnostic Influx response headers for successful Rust writes.
