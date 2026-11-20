@@ -1,14 +1,17 @@
 """Report query and projection budgets over synthetic tokens."""
 
+from concurrent.futures import ThreadPoolExecutor
 from io import StringIO
 
 import pytest
 from django.core.management import call_command
-from django.db import connection
+from django.db import connection, connections
 from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 
+from graphyard import token_scope
 from graphyard.models import IngestToken, IngestTokenHostUsage
+from graphyard.token_reports import open_token_usage_batches
 
 
 def seed(count, enabled=True, identifiers=1):
@@ -57,6 +60,54 @@ def reads(queries):
         if sql.startswith("SELECT")
         or (sql.startswith("DECLARE ") and " FOR SELECT " in sql)
     ]
+
+
+@pytest.mark.django_db(databases=["default", "secondary"], transaction=True)
+def test_spool_keeps_token_and_usage_reads_on_the_selected_snapshot():
+    alias = "secondary"
+    reader = connections[alias]
+    now = timezone.now()
+    for database, host in [("default", "other_database"), (alias, "original")]:
+        token = IngestToken.objects.using(database).create(
+            pk=123, name=host, token_hash="synthetic"
+        )
+        IngestTokenHostUsage.objects.using(database).create(
+            token=token, host_id=host, first_seen_at=now, last_seen_at=now
+        )
+
+    def change_usage():
+        try:
+            return (
+                IngestTokenHostUsage.objects.using(alias)
+                .filter(token_id=123)
+                .update(host_id="committed_later")
+            )
+        finally:
+            connections[alias].close()
+
+    def before_usage_read(execute, sql, params, many, context):
+        if 'FROM "ingest_token_host_usage"' in sql:
+            assert reader.in_atomic_block
+            # PostgreSQL lets the writer commit between the two reads.
+            # SQLite's BEGIN IMMEDIATE reserves the writer instead.
+            if reader.vendor == "postgresql":
+                with ThreadPoolExecutor(max_workers=1) as executor:
+                    assert executor.submit(change_usage).result(timeout=10) == 1
+        return execute(sql, params, many, context)
+
+    tokens = IngestToken.objects.using(alias).values("id", "name")
+    with (
+        reader.execute_wrapper(before_usage_read),
+        open_token_usage_batches(tokens, now) as batches,
+    ):
+        assert not reader.in_atomic_block
+        [(token, usages)] = batches
+    assert token == {"id": 123, "name": "original"}
+    assert [usage["host_id"] for usage in usages] == ["original"]
+    if reader.vendor == "postgresql":
+        assert (
+            IngestTokenHostUsage.objects.using(alias).get().host_id == "committed_later"
+        )
 
 
 @pytest.mark.django_db
@@ -114,7 +165,42 @@ def test_host_report_selected_usage_projection_and_batch_budget(
 
 
 @pytest.mark.django_db
-def test_spool_limit_refuses_before_any_token_presentation(monkeypatch):
+def test_host_report_admits_scope_once_per_token(monkeypatch):
+    scoped, damaged = seed(2, identifiers=300)
+    IngestToken.objects.filter(pk=scoped.pk).update(host_scope=["host-0-*"])
+    IngestToken.objects.filter(pk=damaged.pk).update(host_scope=["INVALID"])
+    IngestTokenHostUsage.objects.filter(token=scoped, host_id="host_0_0").update(
+        host_id="host_0"
+    )
+    checks = []
+    validate = token_scope.validate_host_scope
+
+    def count_validation(scope):
+        checks.append(scope)
+        return validate(scope)
+
+    monkeypatch.setattr(token_scope, "validate_host_scope", count_validation)
+    output, _ = report("report_ingest_token_hosts")
+    lines = output.splitlines()
+    assert "host_scope=host-0-*" in output
+    assert "host_scope=invalid (allows nothing)" in output
+    assert all(
+        "outside current scope" not in line
+        for line in lines
+        if line.startswith("  host_0_")
+    )
+    rejected = [
+        line.split()[0] for line in lines if line.endswith("outside current scope")
+    ]
+    assert set(rejected) == {"host_0", *(f"host_1_{i}" for i in range(300))}
+    assert checks == [["host-0-*"], ["INVALID"]]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "command", ["report_ingest_token_hosts", "report_ingest_token_bindings"]
+)
+def test_spool_limit_refuses_before_any_report_output(command, monkeypatch):
     from graphyard import token_reports
     from django.core.management.base import CommandError
 
@@ -122,16 +208,36 @@ def test_spool_limit_refuses_before_any_token_presentation(monkeypatch):
     monkeypatch.setattr(token_reports, "MAX_REPORT_BYTES", 1)
     output = StringIO()
     with pytest.raises(CommandError, match="64 MiB"):
-        call_command("report_ingest_token_hosts", stdout=output)
-    assert "token id=" not in output.getvalue()
+        call_command(command, stdout=output)
+    assert output.getvalue() == ""
 
 
 @pytest.mark.django_db
-def test_usage_projection_limit_refuses_restored_oversize_history():
+@pytest.mark.parametrize(
+    "command", ["report_ingest_token_hosts", "report_ingest_token_bindings"]
+)
+def test_usage_projection_limit_refuses_restored_oversize_history(command):
     from django.core.management.base import CommandError
 
     seed(1, identifiers=501)
     output = StringIO()
     with pytest.raises(CommandError, match="500 identifiers"):
-        call_command("report_ingest_token_bindings", stdout=output)
-    assert "name=synthetic" not in output.getvalue()
+        call_command(command, stdout=output)
+    assert output.getvalue() == ""
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("command", "heading"),
+    [
+        ("report_ingest_token_hosts", "Hosts written per ingest token"),
+        (
+            "report_ingest_token_bindings",
+            "Source: ingest_token_host_usage.last_seen_at",
+        ),
+    ],
+)
+def test_empty_audit_prints_heading(command, heading):
+    output, _ = report(command)
+    assert output.startswith(heading)
+    assert len(output.splitlines()) == 1

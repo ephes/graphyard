@@ -312,30 +312,40 @@ To choose scopes, see what each token really writes:
 just manage report_ingest_token_hosts --days 30
 ```
 
-The report is read-only. `--days` supports 1–36500 days (default 30); values
-outside that range or the datetime domain fail before database reads.
+The report is read-only. Both the host-scope and binding audits accept
+`--days` from 1 through 36500 (default 30) and report a command error before
+database reads if that range is exceeded or the cutoff falls outside the
+supported datetime range.
 Per enabled token (`--include-disabled` adds revoked ones) it lists the
 host identifiers written in the period, marks those outside the token's current scope, and prints a
 matching `--host-scope` value. For a token with more than 64 identifiers it prints no suggestion,
 because a scope holds at most 64 entries: choose prefixes (for example `web-*`) or split the token.
+The report validates and canonicalizes the current scope once per token and
+reuses that matcher for each identifier. A damaged stored scope is labeled
+invalid and every identifier is marked outside it.
 Usage is recorded at ingest from this release onwards (table
 `ingest_token_host_usage`, `last_seen` updated at most hourly, at most 500 identifiers per token),
 so let it collect for a while before scoping existing tokens.
 
 The binding and host-scope reports project token metadata in batches of 100 and
-read usage once per batch, without credential hashes or model hydration. One
-short snapshot covers the **entire** report: SQLite reserves the writer with its
-configured `BEGIN IMMEDIATE`; PostgreSQL uses an outer repeatable-read/read-only
+read usage once per batch, without credential hashes or model hydration. Both
+projections use the database alias selected for the token query. One short
+snapshot covers the **entire** report on that alias. SQLite reserves the writer
+with its configured `BEGIN IMMEDIATE`. PostgreSQL uses an outer repeatable-read/read-only
 transaction. Do not wrap report commands in an application transaction on
 PostgreSQL. Concurrent rotation, binding/scope edits and usage writes therefore
-cannot mix report generations. The snapshot is released before token lines or
-suggestions are printed.
+cannot mix report generations. The snapshot is released before the report
+heading is printed, even when no tokens match.
+
+Run the token audit alias and concurrent-write check against a disposable
+PostgreSQL database using the [contract settings](#validation-commands) and
+`tests/test_token_report_batches.py`.
 
 A private temporary file holds only these projections (no credentials), is
 removed automatically on completion/failure, and admits at most 64 MiB encoded
 JSON. At most 500 usage identifiers per token are admitted, matching ingest's
-retention cap. Oversized restored history or reports fail before any token lines
-or proposals; narrow `--days` and retry. Memory remains bounded by one batch.
+retention cap. Oversized restored history or reports fail with empty stdout.
+Narrow `--days` and retry. Memory remains bounded by one batch.
 The default host-scope report reads enabled tokens only; `--include-disabled`
 uses the same limits. Disabled/retired attribution retains its semantics.
 
@@ -1109,6 +1119,16 @@ The audit covers uv-managed pre-commit and its dependencies; Ruff's separately
 resolved hook environment is outside this graph. Rust advisories remain covered
 by `cargo deny`. The PostgreSQL contract job's separately injected `psycopg`
 package is also outside the locked graph.
+
+To check the token audit snapshot with two databases and a concurrent writer,
+point the contract settings at a disposable PostgreSQL instance. The role
+must be able to create test databases.
+
+```bash
+GRAPHYARD_TEST_DATABASE_URL=postgres://graphyard_test@127.0.0.1:5432/graphyard_test \
+  uv run --with 'psycopg[binary]==3.2.10' pytest -q \
+  --ds=config.settings.postgres_contract tests/test_token_report_batches.py
+```
 
 ```bash
 just test

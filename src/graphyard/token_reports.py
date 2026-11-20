@@ -1,12 +1,14 @@
 """Bounded, read-only token metadata/usage projections (no credential columns)."""
 
-from datetime import datetime
+from contextlib import contextmanager
+from datetime import datetime, timedelta
 from itertools import islice
 import json
 import shlex
 from tempfile import TemporaryFile
 
 from django.core.management.base import CommandError
+from django.utils import timezone
 
 from graphyard.database import read_snapshot
 
@@ -16,16 +18,25 @@ from graphyard.models import IngestTokenHostUsage
 REPORT_BATCH_SIZE = 100
 MAX_REPORT_BYTES = 64 * 1024 * 1024
 MAX_USAGE_PER_TOKEN = 500
+MAX_LOOKBACK_DAYS = 36500
 
 
-def _token_usage_rows(tokens, cutoff):
+def report_cutoff(days: int) -> datetime:
+    if not 1 <= days <= MAX_LOOKBACK_DAYS:
+        raise CommandError(f"--days must be between 1 and {MAX_LOOKBACK_DAYS}")
+    try:
+        return timezone.now() - timedelta(days=days)
+    except (OverflowError, ValueError) as err:
+        raise CommandError("--days exceeds the supported datetime range") from err
+
+
+def _token_usage_rows(tokens, cutoff, using):
     rows = tokens.iterator(chunk_size=REPORT_BATCH_SIZE)
     while batch := list(islice(rows, REPORT_BATCH_SIZE)):
         usages = {token["id"]: [] for token in batch}
         for usage in (
-            IngestTokenHostUsage.objects.filter(
-                token_id__in=usages, last_seen_at__gte=cutoff
-            )
+            IngestTokenHostUsage.objects.using(using)
+            .filter(token_id__in=usages, last_seen_at__gte=cutoff)
             .order_by("token_id", "host_id")
             .values("token_id", "host_id", "first_seen_at", "last_seen_at")
             .iterator(chunk_size=REPORT_BATCH_SIZE)
@@ -40,16 +51,27 @@ def _token_usage_rows(tokens, cutoff):
             yield token, usages[token["id"]]
 
 
-def token_usage_batches(tokens, cutoff):
-    """Read one generation, then yield outside the DB transaction.
+def _read_spool(spool):
+    for record in spool:
+        token, usages = json.loads(record)
+        for usage in usages:
+            for field in ("first_seen_at", "last_seen_at"):
+                usage[field] = datetime.fromisoformat(usage[field])
+        yield token, usages
+
+
+@contextmanager
+def open_token_usage_batches(tokens, cutoff):
+    """Admit the entire report before yielding an iterator outside the snapshot.
 
     Private, automatically removed disk spool: RAM stays bounded by the original
     100-token/500-usage projections, and total encoded output is capped at 64 MiB.
     Only the caller's credential-free values projection enters this file.
     """
+    using = tokens.db
     with TemporaryFile() as spool:
-        with read_snapshot():
-            for token, usages in _token_usage_rows(tokens, cutoff):
+        with read_snapshot(using=using):
+            for token, usages in _token_usage_rows(tokens.using(using), cutoff, using):
                 record = (
                     json.dumps(
                         (token, usages), default=lambda value: value.isoformat()
@@ -60,12 +82,7 @@ def token_usage_batches(tokens, cutoff):
                     raise CommandError("Token audit exceeds 64 MiB; narrow --days")
                 spool.write(record)
         spool.seek(0)
-        for record in spool:
-            token, usages = json.loads(record)
-            for usage in usages:
-                for field in ("first_seen_at", "last_seen_at"):
-                    usage[field] = datetime.fromisoformat(usage[field])
-            yield token, usages
+        yield _read_spool(spool)
 
 
 def terminal_text(value):

@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- Leave stdout empty if either ingest-token audit exceeds its spool or
+  per-token limit. Successful empty audits still print their heading.
+
+- Report an out-of-range datetime cutoff as a command error in both
+  ingest-token audits before reading the database.
+
+- Reuse one validated scope matcher per token in the host-usage audit.
+  Damaged scopes still mark every identifier outside the current scope.
+
+- Read token metadata and host usage from one snapshot on the database
+  selected for the token query in both ingest-token audits.
+
 - Reject malformed UTF-8 in Rust agent settings, including values read via
   proxies. Startup diagnostics name the setting without exposing its value.
   Unused environment entries are ignored.
