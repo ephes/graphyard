@@ -2,6 +2,7 @@ import fcntl
 import json
 from datetime import timedelta
 from unittest.mock import Mock
+from uuid import uuid4
 
 import httpx
 import pytest
@@ -376,6 +377,95 @@ def test_view_uses_snapshot_metadata_without_network_and_exposes_unknown(
     assert snapshot.report["categories"] == data
     row.refresh_from_db()
     assert not row.error
+
+
+def test_version_page_projects_release_evidence_once_per_source(
+    client, django_user_model, monkeypatch
+):
+    now = timezone.now()
+    current = cache("6.0.0")
+    current.definition["targets"].append({"kind": "application", "name": "example"})
+    current.save(update_fields=["definition"])
+    for name, version, checked_at in [
+        ("stale", "3.0", now - timedelta(days=9)),
+        ("invalid", "not-a-version", now),
+    ]:
+        InventoryRelease.objects.create(
+            source_id=f"pypi:{name}",
+            definition=definition(project=name),
+            version=version,
+            checked_at=checked_at,
+        )
+    for host_id, observed_at in [
+        ("fresh-host", now),
+        ("stale-host", now - timedelta(days=9)),
+    ]:
+        host = InventoryHost.objects.create(
+            host=HostRegistry.objects.create(host_id=host_id)
+        )
+        snapshot = InventorySnapshot.objects.create(
+            host=host,
+            snapshot_id=uuid4(),
+            observed_at=observed_at,
+            digest="a" * 64,
+            report={
+                "categories": {
+                    "applications": {
+                        "status": "ok",
+                        "items": [
+                            {
+                                "id": "example",
+                                "status": "ok",
+                                "items": {
+                                    "installed_version": "6.0",
+                                    "python": {
+                                        "status": "ok",
+                                        "items": [
+                                            {"name": name, "version": "5.2"}
+                                            for name in ("django", "stale", "invalid")
+                                        ],
+                                    },
+                                },
+                            }
+                        ],
+                    }
+                }
+            },
+        )
+        InventoryCategory.objects.create(
+            host=host,
+            name="applications",
+            latest_attempt=snapshot,
+            latest_success=snapshot,
+        )
+    stable_version = Mock(wraps=releases._stable_version)
+    source_url = Mock(wraps=releases.url)
+    monkeypatch.setattr(releases, "_stable_version", stable_version)
+    monkeypatch.setattr(releases, "url", source_url)
+    client.force_login(django_user_model.objects.create_user(username="release-reader"))
+
+    response = client.get(reverse("graphyard:inventory_versions"))
+    assert response.status_code == 200
+    rows = {(row["host"], row["component"]): row for row in response.context["page"]}
+    assert rows["fresh-host", "example"]["status"] == "equal"
+    assert rows["fresh-host", "django"]["status"] == "update"
+    for component in ("example", "django"):
+        row = rows["stale-host", component]
+        assert row["status"] == "unknown"
+        assert row["reason"] == "Installed-version observation missing or stale"
+    for host_id in ("fresh-host", "stale-host"):
+        for component, reason in [
+            ("stale", "Release information stale"),
+            ("invalid", "Cached release version is invalid"),
+        ]:
+            row = rows[host_id, component]
+            assert (row["status"], row["reason"]) == ("unknown", reason)
+
+    parsed_versions = [call.args[0] for call in stable_version.call_args_list]
+    assert parsed_versions.count("6.0.0") == 1
+    assert parsed_versions.count("not-a-version") == 1
+    assert "3.0" not in parsed_versions
+    assert source_url.call_count == 3
 
 
 def test_command_check_is_read_only_and_lock_prevents_parallel_refresh(

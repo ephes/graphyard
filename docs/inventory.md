@@ -442,6 +442,9 @@ a concurrent ingest or pruning cannot mix report generations or drop a host's
 evidence mid-render; rendering holds no transaction. Pointers and reports are
 batched with a constant number of queries regardless of fleet size, each referenced
 report is decoded once, and a host filter reads only that host's evidence.
+Within the page request, rows that use the same release source share its URL,
+cache status and parsed upstream version. Installed versions and observation
+ages are evaluated for each row.
 
 `refresh_inventory_releases --file /etc/graphyard/inventory-releases.json` refreshes
 a separate database cache. The registry is an array of `{kind, project, targets}`;

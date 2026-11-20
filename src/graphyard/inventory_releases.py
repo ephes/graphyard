@@ -3,7 +3,8 @@
 import json
 import re
 from dataclasses import dataclass
-from datetime import timedelta
+from datetime import datetime, timedelta
+from functools import cache, partial
 from time import monotonic
 
 import httpx
@@ -352,11 +353,47 @@ def registry():
     return result
 
 
+@dataclass(frozen=True)
+class _ReleaseEvidence:
+    version: str
+    source_url: str
+    checked_at: datetime | None
+    attempted_at: datetime | None
+    state: str
+    latest: Version | None
+
+
+def _project_release(release, now):
+    if release is None:
+        return None
+    source_url = url(release.definition)
+    state, latest = _cached_release_state(release, now)
+    return _ReleaseEvidence(
+        release.version,
+        source_url,
+        release.checked_at,
+        release.attempted_at,
+        state,
+        latest,
+    )
+
+
+def release_projector(now):
+    """Reuse evidence for registered sources from a single read snapshot."""
+    return cache(partial(_project_release, now=now))
+
+
 def compare(installed, release, observed_at, now, historical=False):
+    return _compare(
+        installed, _project_release(release, now), observed_at, now, historical
+    )
+
+
+def _compare(installed, release, observed_at, now, historical):
     result = {
         "installed": installed if isinstance(installed, str) else "Unknown",
         "available": release.version if release and release.version else "Unknown",
-        "source_url": url(release.definition) if release else "",
+        "source_url": release.source_url if release else "",
         "checked_at": release.checked_at if release else None,
         "attempted_at": release.attempted_at if release else None,
         "observed_at": observed_at,
@@ -365,14 +402,14 @@ def compare(installed, release, observed_at, now, historical=False):
     }
     if release is None:
         return result
-    state, latest = _cached_release_state(release, now)
+    latest = release.latest
     if latest is None:
         result["reason"] = {
             "failed": "Latest release lookup failed; previous result retained",
             "missing": "Release information missing",
             "stale": "Release information stale",
             "invalid": "Cached release version is invalid",
-        }[state]
+        }[release.state]
         return result
     if (
         historical
@@ -397,15 +434,18 @@ def compare(installed, release, observed_at, now, historical=False):
     return result
 
 
-def rows_for_host(host, sources, now, observations=None):
+def rows_for_host(host, sources, now, observations=None, *, project_release=None):
     """Keep individual package observations traceable to their exact snapshot.
 
     ``observations`` are the host's categories with pointers already resolved,
     for example from one batched read snapshot; otherwise they are loaded here.
+    Pass a projector to share release evidence across hosts in that snapshot.
     """
     from .inventory_applications import applications, source
     from .inventory_sbom import packages, Unavailable
 
+    if project_release is None:
+        project_release = partial(_project_release, now=now)
     if observations is None:
         observations = host.inventorycategory_set.select_related(
             "latest_attempt", "latest_success"
@@ -424,7 +464,7 @@ def rows_for_host(host, sources, now, observations=None):
             evidence = app.get("items")
             if not isinstance(evidence, dict):
                 continue
-            target = sources.get(("application", name))
+            target = project_release(sources.get(("application", name)))
             rows.append(
                 {
                     "application": name,
@@ -432,7 +472,7 @@ def rows_for_host(host, sources, now, observations=None):
                     "kind": "application",
                     "snapshot": snapshot,
                     "basis": basis,
-                    **compare(
+                    **_compare(
                         evidence.get("installed_version"),
                         target,
                         snapshot.observed_at,
@@ -453,9 +493,11 @@ def rows_for_host(host, sources, now, observations=None):
                         "kind": "python",
                         "snapshot": snapshot,
                         "basis": basis,
-                        **compare(
+                        **_compare(
                             package["version"],
-                            sources.get(("python", normalize(package["name"]))),
+                            project_release(
+                                sources.get(("python", normalize(package["name"])))
+                            ),
                             snapshot.observed_at,
                             now,
                             basis == "historical",
@@ -522,9 +564,9 @@ def rows_for_host(host, sources, now, observations=None):
                 version = package.get("version")
                 if isinstance(version, str):
                     version = re.sub(r"_\d+$", "", version)
-                row = compare(
+                row = _compare(
                     version,
-                    sources.get(("brew", name)),
+                    project_release(sources.get(("brew", name))),
                     package_snapshot.observed_at,
                     now,
                     package_basis == "historical",
