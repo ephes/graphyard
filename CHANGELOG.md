@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Reuse one validated scope matcher per token in the host-usage audit.
+  Damaged scopes still mark every identifier outside the current scope.
+
 - Read token metadata and host usage from one snapshot on the database
   selected for the token query in both ingest-token audits.
 

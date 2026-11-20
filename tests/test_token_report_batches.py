@@ -9,6 +9,7 @@ from django.db import connection, connections
 from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 
+from graphyard import token_scope
 from graphyard.models import IngestToken, IngestTokenHostUsage
 from graphyard.token_reports import token_usage_batches
 
@@ -156,6 +157,38 @@ def test_host_report_selected_usage_projection_and_batch_budget(
     assert "outside current scope" in output
     assert "suggested --host-scope host_0" in output
     assert (disabled[0].name in output) == include_disabled
+
+
+@pytest.mark.django_db
+def test_host_report_admits_scope_once_per_token(monkeypatch):
+    scoped, damaged = seed(2, identifiers=300)
+    IngestToken.objects.filter(pk=scoped.pk).update(host_scope=["host-0-*"])
+    IngestToken.objects.filter(pk=damaged.pk).update(host_scope=["INVALID"])
+    IngestTokenHostUsage.objects.filter(token=scoped, host_id="host_0_0").update(
+        host_id="host_0"
+    )
+    checks = []
+    validate = token_scope.validate_host_scope
+
+    def count_validation(scope):
+        checks.append(scope)
+        return validate(scope)
+
+    monkeypatch.setattr(token_scope, "validate_host_scope", count_validation)
+    output, _ = report("report_ingest_token_hosts")
+    lines = output.splitlines()
+    assert "host_scope=host-0-*" in output
+    assert "host_scope=invalid (allows nothing)" in output
+    assert all(
+        "outside current scope" not in line
+        for line in lines
+        if line.startswith("  host_0_")
+    )
+    rejected = [
+        line.split()[0] for line in lines if line.endswith("outside current scope")
+    ]
+    assert set(rejected) == {"host_0", *(f"host_1_{i}" for i in range(300))}
+    assert checks == [["host-0-*"], ["INVALID"]]
 
 
 @pytest.mark.django_db

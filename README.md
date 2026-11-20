@@ -318,6 +318,9 @@ Per enabled token (`--include-disabled` adds revoked ones) it lists the
 host identifiers written in the period, marks those outside the token's current scope, and prints a
 matching `--host-scope` value. For a token with more than 64 identifiers it prints no suggestion,
 because a scope holds at most 64 entries: choose prefixes (for example `web-*`) or split the token.
+The report validates and canonicalizes the current scope once per token and
+reuses that matcher for each identifier. A damaged stored scope is labeled
+invalid and every identifier is marked outside it.
 Usage is recorded at ingest from this release onwards (table
 `ingest_token_host_usage`, `last_seen` updated at most hourly, at most 500 identifiers per token),
 so let it collect for a while before scoping existing tokens.

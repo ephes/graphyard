@@ -96,6 +96,7 @@ class AdmittedHostScope:
     unrestricted: bool = False
     exact: frozenset[str] = frozenset()
     prefixes: tuple[str, ...] = ()
+    valid: bool = True
 
     def allows(self, identifier: str) -> bool:
         if self.unrestricted:
@@ -109,7 +110,7 @@ class AdmittedHostScope:
 def admit_host_scope(scope: object) -> AdmittedHostScope:
     """Validate once, canonicalize once; damaged stored scopes allow nothing."""
     if not is_valid_stored_scope(scope):
-        return AdmittedHostScope()
+        return AdmittedHostScope(valid=False)
     assert isinstance(scope, list)
     return AdmittedHostScope(
         unrestricted=not scope,

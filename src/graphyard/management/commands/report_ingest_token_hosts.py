@@ -7,12 +7,7 @@ from django.utils import timezone
 
 from graphyard.models import IngestToken
 from graphyard.token_reports import shell_operand, terminal_text, token_usage_batches
-from graphyard.token_scope import (
-    MAX_HOST_SCOPE_ENTRIES,
-    host_in_scope,
-    is_scoped,
-    is_valid_stored_scope,
-)
+from graphyard.token_scope import MAX_HOST_SCOPE_ENTRIES, admit_host_scope
 
 
 MAX_LOOKBACK_DAYS = 36500
@@ -56,10 +51,11 @@ class Command(BaseCommand):
         )
         for token, usages in token_usage_batches(tokens, cutoff):
             scope = token["host_scope"]
-            if not is_scoped(scope):
+            matcher = admit_host_scope(scope)
+            if matcher.unrestricted:
                 scope_text = "unrestricted"
-            elif is_valid_stored_scope(scope):
-                scope_text = ",".join(str(entry) for entry in scope)
+            elif matcher.valid:
+                scope_text = ",".join(scope)
             else:
                 scope_text = "invalid (allows nothing)"
             state = "enabled" if token["enabled"] else "disabled"
@@ -72,7 +68,7 @@ class Command(BaseCommand):
                 continue
             for usage in usages:
                 note = ""
-                if is_scoped(scope) and not host_in_scope(scope, usage["host_id"]):
+                if not matcher.allows(usage["host_id"]):
                     note = "  outside current scope"
                 self.stdout.write(
                     f"  {terminal_text(usage['host_id'])}  last_seen={usage['last_seen_at'].isoformat(timespec='seconds')}"
