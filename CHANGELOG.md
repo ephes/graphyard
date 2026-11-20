@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- Stop polling the Rust scheduler when neither loop has a next deadline.
+  Signal-driven shutdown still works while idle.
+
+- Decode Rust metric specs directly from SQLite rows in name order, returning
+  the first decode error without a partial result.
+
+- Reject overflowing metric schedules before the Rust agent claims a spec or
+  runs its collector.
+
+- Retain only the first five metric collector heartbeat error samples in the
+  Rust agent while keeping the full outcome counts.
+
 - Leave stdout empty if either ingest-token audit exceeds its spool or
   per-token limit. Successful empty audits still print their heading.
 

@@ -6,7 +6,7 @@
 //! about 2^63 seconds) means "never again", as Python's float arithmetic
 //! does in effect.
 
-use std::future::Future;
+use std::future::{Future, pending};
 use std::time::Duration;
 
 use num_bigint::BigInt;
@@ -80,12 +80,14 @@ pub async fn run_forever<R: Runner>(runner: &mut R, loops: &Loops) {
             (Some(a), Some(b)) => Some(a.min(b)),
             (a, b) => a.or(b),
         };
+        let Some(until) = until else {
+            // No future work. The supervisor drops this future on shutdown.
+            return pending().await;
+        };
         // `max(0.2, min(1.0, until - monotonic()))`.
-        let sleep = until.map_or(MAX_SLEEP, |until| {
-            until
-                .saturating_duration_since(Instant::now())
-                .clamp(MIN_SLEEP, MAX_SLEEP)
-        });
+        let sleep = until
+            .saturating_duration_since(Instant::now())
+            .clamp(MIN_SLEEP, MAX_SLEEP);
         tokio::time::sleep(sleep).await;
     }
 }
@@ -245,6 +247,34 @@ mod tests {
         huge.condition_interval = BigInt::from(10).pow(30);
         run_for(&mut recorder, &huge, 5000).await;
         assert_eq!(rounded(&recorder.calls), [("conditions", 0.0)]);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn dormant_scheduler_waits_for_cancellation_without_timer_wakes() {
+        for run_conditions in [false, true] {
+            let mut recorder = Recorder::new(0, 10);
+            let mut dormant = loops(None, run_conditions.then_some(1));
+            dormant.condition_interval = BigInt::from(10).pow(30);
+            let mut polls = 0;
+            {
+                let run = run_forever(&mut recorder, &dormant);
+                tokio::pin!(run);
+                let monitored = std::future::poll_fn(|cx| {
+                    polls += 1;
+                    run.as_mut().poll(cx)
+                });
+                // Model the supervisor selecting shutdown before scheduler work.
+                tokio::select! {
+                    biased;
+                    () = tokio::time::sleep(Duration::from_secs(8)) => {}
+                    () = monitored => panic!("scheduler returned before cancellation"),
+                }
+            }
+            // Initial poll, plus the wake that completes the condition run
+            // if that loop was enabled before its interval overflowed.
+            assert_eq!(polls, 1 + usize::from(run_conditions));
+            assert_eq!(recorder.calls.len(), usize::from(run_conditions));
+        }
     }
 
     #[tokio::test(start_paused = true)]

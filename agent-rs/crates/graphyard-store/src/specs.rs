@@ -42,20 +42,22 @@ pub struct SpecRunUpdate {
     pub next_run_time: i64,
 }
 
-type RawSpec = (
-    i64,
-    String,
-    bool,
-    String,
-    i64,
-    i64,
-    String,
-    Option<String>,
-    String,
-    String,
-    Option<String>,
-    Option<String>,
-);
+fn decode_spec(row: &rusqlite::Row<'_>) -> Result<SpecRow, StoreError> {
+    Ok(SpecRow {
+        id: row.get(0)?,
+        name: row.get(1)?,
+        enabled: bool_column(row, 2)?,
+        spec_type: row.get(3)?,
+        interval_seconds: row.get(4)?,
+        next_run_time: row.get(5)?,
+        config: row.get(6)?,
+        last_run_at: datetime_column(row.get::<_, Option<String>>(7)?.as_deref())?,
+        last_status: row.get(8)?,
+        last_error: row.get(9)?,
+        created_at: datetime_column(row.get::<_, Option<String>>(10)?.as_deref())?,
+        updated_at: datetime_column(row.get::<_, Option<String>>(11)?.as_deref())?,
+    })
+}
 
 const SELECT_SPECS: &str = "SELECT id, name, CAST(enabled AS TEXT), spec_type, interval_seconds, \
      next_run_time, config, CAST(last_run_at AS TEXT), last_status, last_error, \
@@ -67,72 +69,19 @@ pub(crate) fn load_specs(
     connection: &Connection,
     due_before: Option<i64>,
 ) -> Result<Vec<SpecRow>, StoreError> {
-    let map = |row: &rusqlite::Row<'_>| -> rusqlite::Result<RawSpec> {
-        Ok((
-            row.get(0)?,
-            row.get(1)?,
-            bool_column(row, 2)?,
-            row.get(3)?,
-            row.get(4)?,
-            row.get(5)?,
-            row.get(6)?,
-            row.get(7)?,
-            row.get(8)?,
-            row.get(9)?,
-            row.get(10)?,
-            row.get(11)?,
-        ))
-    };
-    let raw: Vec<RawSpec> = match due_before {
+    match due_before {
         None => {
             let mut statement =
                 connection.prepare(&format!("{SELECT_SPECS} WHERE enabled ORDER BY name ASC"))?;
-            statement
-                .query_map([], map)?
-                .collect::<rusqlite::Result<_>>()?
+            statement.query_and_then([], decode_spec)?.collect()
         }
         Some(now_ts) => {
             let mut statement = connection.prepare(&format!(
                 "{SELECT_SPECS} WHERE (enabled AND next_run_time <= ?) ORDER BY name ASC"
             ))?;
-            statement
-                .query_map([now_ts], map)?
-                .collect::<rusqlite::Result<_>>()?
+            statement.query_and_then([now_ts], decode_spec)?.collect()
         }
-    };
-    raw.into_iter()
-        .map(
-            |(
-                id,
-                name,
-                enabled,
-                spec_type,
-                interval_seconds,
-                next_run_time,
-                config,
-                last_run_at,
-                last_status,
-                last_error,
-                created_at,
-                updated_at,
-            )| {
-                Ok(SpecRow {
-                    id,
-                    name,
-                    enabled,
-                    spec_type,
-                    interval_seconds,
-                    next_run_time,
-                    config,
-                    last_run_at: datetime_column(last_run_at.as_deref())?,
-                    last_status,
-                    last_error,
-                    created_at: datetime_column(created_at.as_deref())?,
-                    updated_at: datetime_column(updated_at.as_deref())?,
-                })
-            },
-        )
-        .collect()
+    }
 }
 
 /// `spec.save(update_fields=["last_run_at", "last_status", "last_error",

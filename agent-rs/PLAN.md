@@ -426,8 +426,10 @@ in the past, `next_metrics = monotonic() + interval`. Both schedulers
 (Rust and `start_agent.py`) read the clock again before deciding whether
 conditions are due. A condition
 run that becomes due during metrics starts before the next sleep. Then sleep
-`max(0.2, min(1.0, min(next_metrics, next_conditions) - monotonic()))`. Both
-runs are sequential in one task; a slow metrics run delays conditions. The
+`max(0.2, min(1.0, min(next_metrics, next_conditions) - monotonic()))`. When
+neither loop has a representable deadline, the Rust scheduler waits for
+supervisor cancellation without setting a timer. Both runs are sequential in
+one task; a slow metrics run delays conditions. The
 `--run-once` path calls metrics (`due_only=False`) then conditions. Pinned by
 Rust tests with an injected clock. Runner methods return success booleans;
 one-shot aggregates both, while continuous scheduling ignores the status.
@@ -485,6 +487,8 @@ InfluxDB configuration errors surface lazily, per write or query, as in
    once for the whole run.
 3. Select `enabled = 1` (and `next_run_time <= now_ts` when `due_only`),
    `ORDER BY name` (model `Meta.ordering`). Rows are loaded once at the start.
+   The Rust store decodes each SQLite row as it reads it and returns the first
+   error in query order, with no partial result.
 4. Empty: with `due_only` return all-zero counters without a heartbeat; else
    raise `No matching enabled metric collection specs` (stderr
    `Metric collection failed: …`, no heartbeat).
@@ -503,6 +507,8 @@ InfluxDB configuration errors surface lazily, per write or query, as in
    `warning`, success true; else `ok`, success true. `last_error` =
    `"; ".join(errors[:5])`, details
    `{"total": …, "failed": …, "warning": …, "ingested": …, "skipped": …}`.
+   The Rust agent retains the first five eligible messages while counting every
+   accepted outcome.
 7. stdout `Metric specs: total=<t> failed=<f> warning=<w> ingested=<i> skipped=<s>`.
 
 Due-only runs now atomically claim each observed scheduling timestamp before
@@ -539,9 +545,11 @@ executors receive the stored `config` decoded with
 `pycompat::json_loads` after the spec type is known; D-11 documents become
 the spec's `critical` message (the CPython digit-limit text, or `config is
 not valid JSON: <err>`), and a condition's `tags_filter` likewise its
-`evaluation error: ...`. A `next_run_time` beyond SQLite's INTEGER range
-aborts the run with sqlite3's `OverflowError` text `Python int too large to
-convert to SQLite INTEGER`. A panicking executor is isolated (D-15).
+`evaluation error: ...`. The Rust agent computes `next_run_time` from the same
+clock reading it uses for `last_run_at`, before claiming or executing the spec.
+A result beyond SQLite's INTEGER range aborts the run with sqlite3's
+`OverflowError` text `Python int too large to convert to SQLite INTEGER`.
+A panicking executor is isolated (D-15).
 
 ### 3.5 Conditions run (`services.py:evaluate_conditions_once`, P1)
 

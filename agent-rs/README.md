@@ -272,6 +272,8 @@ through `$` proxies. Invalid text stops startup and names the original
 setting without printing its value. Unused environment entries are ignored.
 `--db` defaults to `db.sqlite3` in the working directory, which must
 exist and pass the schema check (D-2); the agent never creates it.
+If neither loop has a representable next deadline, the scheduler stays idle
+until SIGINT or SIGTERM.
 
 stdout carries the start line, `Metric specs: ...`, `Condition eval: ...` and
 `graphyard-agent interrupted, exiting`, each written promptly by a bounded
@@ -293,6 +295,14 @@ publications (including failures) are ignored. A failure advances
 gap and the final carry against `CONDITION_DATA_STALE_WARNING_SECONDS`, matching
 Python and the shared condition/store fixtures.
 
+The Rust store decodes enabled metric specs directly from SQLite in name order.
+If a row cannot be decoded, the store returns the first error and discards the
+partial result.
+
+The Rust agent checks that each spec’s next run time fits in SQLite before
+claiming or executing it, even in manual mode. An overflow fails the run
+without collecting that spec or updating the heartbeat.
+
 Due-only metric runs claim the observed `next_run_time` before invoking a
 collector. Claims use a 3–300 second lease (the clamped interval), renewed every one third
 of that duration until the complete collector/sink/registry future returns.
@@ -310,7 +320,9 @@ schedulers together for the same specs.
 Explicit non-due/manual runs still execute every enabled spec regardless of due
 time, with completion fenced by the captured definition and original schedule.
 Superseded completions contribute no run counts, errors or heartbeat evidence;
-when none are accepted, the heartbeat is untouched. A fixed
+when none are accepted, the heartbeat is untouched. The Rust agent counts every
+accepted critical or warning outcome and retains only the first five eligible
+messages in spec order (critical outcomes and warnings with a message). A fixed
 `Collection superseded spec_id=<id>` event retains execution diagnostics. Metrics
 already emitted during collection cannot be recalled. Python and Rust share
 claim/recovery/completion fixtures and run only synthetic collectors in tests.
