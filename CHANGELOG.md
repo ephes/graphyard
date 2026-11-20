@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Decode Rust metric specs directly from SQLite rows in name order, returning
+  the first decode error without a partial result.
+
 - Reject overflowing metric schedules before the Rust agent claims a spec or
   runs its collector.
 

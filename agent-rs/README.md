@@ -293,6 +293,10 @@ publications (including failures) are ignored. A failure advances
 gap and the final carry against `CONDITION_DATA_STALE_WARNING_SECONDS`, matching
 Python and the shared condition/store fixtures.
 
+The Rust store decodes enabled metric specs directly from SQLite in name order.
+If a row cannot be decoded, the store returns the first error and discards the
+partial result.
+
 The Rust agent checks that each spec’s next run time fits in SQLite before
 claiming or executing it, even in manual mode. An overflow fails the run
 without collecting that spec or updating the heartbeat.

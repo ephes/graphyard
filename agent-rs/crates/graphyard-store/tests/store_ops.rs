@@ -58,6 +58,69 @@ fn captured_spec(id: i64, definition: &Value) -> SpecRow {
     }
 }
 
+#[tokio::test]
+async fn metric_spec_load_preserves_projection_and_reports_first_bad_row() {
+    let db = TestDb::new();
+    let config = json!({"synthetic": "x".repeat(4096)}).to_string();
+    let mut expected = Vec::new();
+    let mut due = Vec::new();
+    let mut connection = db.raw();
+    let tx = connection.transaction().unwrap();
+    for id in (1..=512).rev() {
+        let name = format!("spec-{id:03}");
+        let enabled = id % 3;
+        let next_run_time = id % 2;
+        tx.execute(
+            "INSERT INTO metric_collection_spec
+             (id, name, enabled, spec_type, interval_seconds, next_run_time, config,
+              last_run_at, last_status, last_error, created_at, updated_at)
+             VALUES (?, ?, ?, 'http_json_metric', 60, ?, ?, NULL, 'warning', 'synthetic',
+                     '2026-01-01 00:00:00', '2026-01-02 00:00:00')",
+            rusqlite::params![id, name, enabled, next_run_time, config],
+        )
+        .unwrap();
+        if enabled != 0 {
+            let row = json!({
+                "id": id, "name": name, "enabled": enabled == 1, "spec_type": "http_json_metric",
+                "interval_seconds": 60, "next_run_time": next_run_time, "config": config,
+                "last_run_at": null, "last_status": "warning", "last_error": "synthetic",
+                "created_at": "2026-01-01 00:00:00", "updated_at": "2026-01-02 00:00:00",
+            });
+            if next_run_time == 0 {
+                due.push(row.clone());
+            }
+            expected.push(row);
+        }
+    }
+    tx.commit().unwrap();
+    let store = db.store();
+    for (due_before, expected) in [(None, expected), (Some(0), due)] {
+        let actual = store.load_specs(due_before).await.unwrap();
+        assert!(
+            actual
+                .iter()
+                .map(spec_values)
+                .eq(expected.into_iter().rev())
+        );
+    }
+
+    // Both malformed rows are enabled and due. The first has a bad datetime,
+    // the second a bad SQLite storage type for last_error.
+    connection
+        .execute_batch(
+            "UPDATE metric_collection_spec SET updated_at = '2026-02-30 00:00:00' WHERE id = 502;
+             UPDATE metric_collection_spec SET last_error = x'FF' WHERE id = 506;",
+        )
+        .unwrap();
+    for due_before in [None, Some(0)] {
+        assert!(matches!(
+            store.load_specs(due_before).await,
+            Err(StoreError::DateTime(_))
+        ));
+    }
+    store.close();
+}
+
 fn condition_values(condition: &ConditionRow) -> Value {
     json!({
         "id": condition.id,
