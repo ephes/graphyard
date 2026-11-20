@@ -693,6 +693,11 @@ inside a caller's `Display` implementation or existing semantic message builders
 
 ## Failure diagnostics
 
+For deadline-enabled metric specs, Rust config validation checks the request
+timeout once and uses the admitted value to derive the default total timeout.
+If the request timeout is invalid, validation reports that error first and
+checks the total using the standard request timeout as the fallback.
+
 Collector persistence follows README's bounded error contract: safe allowlisted
 class or numeric HTTP status, never transport exception text, response bodies or
 URL queries/userinfo. The low-level HTTP errors still retain their library text

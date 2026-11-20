@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Reuse the validated Rust request timeout when checking a metric spec's total
+  deadline, preserving diagnostic order.
+
 - Detect cycles in Rust environment setting proxies before repeating a lookup.
 
 - Redact the Influx URL and token in Rust client configuration debug output.
