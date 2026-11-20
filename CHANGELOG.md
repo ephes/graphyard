@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Redact the Influx URL and token in Rust client configuration debug output.
+
 - Compare Rust condition evaluation watermarks as UTC instants so older and
   equal-time attempts preserve observations stored with legacy datetime text.
 
