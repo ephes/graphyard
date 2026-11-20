@@ -24,7 +24,6 @@ pub trait Runner {
 }
 
 const MIN_SLEEP: Duration = Duration::from_millis(200);
-const MAX_SLEEP: Duration = Duration::from_secs(1);
 
 /// An interval in seconds as a duration (`None`: beyond `Duration`).
 fn interval(seconds: &BigInt) -> Option<Duration> {
@@ -84,11 +83,8 @@ pub async fn run_forever<R: Runner>(runner: &mut R, loops: &Loops) {
             // No future work. The supervisor drops this future on shutdown.
             return pending().await;
         };
-        // `max(0.2, min(1.0, until - monotonic()))`.
-        let sleep = until
-            .saturating_duration_since(Instant::now())
-            .clamp(MIN_SLEEP, MAX_SLEEP);
-        tokio::time::sleep(sleep).await;
+        let earliest_wake = Instant::now() + MIN_SLEEP;
+        tokio::time::sleep_until(until.max(earliest_wake)).await;
     }
 }
 
@@ -165,8 +161,6 @@ mod tests {
     async fn both_loops_start_at_once_and_repeat_on_their_interval() {
         let mut recorder = Recorder::new(0, 0);
         run_for(&mut recorder, &loops(Some(5), Some(3)), 9500).await;
-        // Sleeps are capped at 1 s, so a run starts within a second of its
-        // due time; with instant runs the 1 s ticks land exactly on it.
         assert_eq!(
             rounded(&recorder.calls),
             [
@@ -229,7 +223,7 @@ mod tests {
     }
 
     #[tokio::test(start_paused = true)]
-    async fn the_sleep_is_at_least_200_ms_and_at_most_one_second() {
+    async fn the_sleep_is_at_least_200_ms() {
         // An interval of 1 s with runs of 0.9 s: the next run is due 0.1 s
         // after the run ends, but the loop sleeps at least 0.2 s.
         let mut recorder = Recorder::new(900, 0);
@@ -247,6 +241,32 @@ mod tests {
         huge.condition_interval = BigInt::from(10).pow(30);
         run_for(&mut recorder, &huge, 5000).await;
         assert_eq!(rounded(&recorder.calls), [("conditions", 0.0)]);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn idle_scheduler_sleeps_until_the_deadline_and_can_be_cancelled() {
+        let mut recorder = Recorder::new(0, 10);
+        let settings = loops(None, Some(600));
+        let mut polls = 0;
+        {
+            let run = run_forever(&mut recorder, &settings);
+            tokio::pin!(run);
+            let monitored = std::future::poll_fn(|cx| {
+                polls += 1;
+                run.as_mut().poll(cx)
+            });
+            tokio::select! {
+                biased;
+                () = tokio::time::sleep(Duration::from_secs(610)) => {}
+                () = monitored => panic!("scheduler returned before cancellation"),
+            }
+        }
+        assert_eq!(
+            rounded(&recorder.calls),
+            [("conditions", 0.0), ("conditions", 600.0)]
+        );
+        // One poll starts each pass and one completes its 10 ms work.
+        assert_eq!(polls, 4);
     }
 
     #[tokio::test(start_paused = true)]

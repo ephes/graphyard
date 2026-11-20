@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Sleep until the next Rust scheduler deadline instead of polling every
+  idle second. Signal-driven shutdown remains immediate.
+
 - Share one captured Rust metric spec identity across lease updates, without
   copying historical diagnostics on renewal.
 

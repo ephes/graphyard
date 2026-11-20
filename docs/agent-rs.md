@@ -122,7 +122,9 @@ or schema failure; 2 usage error. One-shot runs every enabled loop before
 reporting failure; warnings alone succeed. Continuous mode keeps scheduling
 after failures. Metrics and conditions run sequentially. The scheduler
 checks the clock again after metrics, so a condition run that became due
-during metrics starts before the next sleep.
+during metrics starts before the next sleep. Between passes, the agent sleeps
+until the earliest enabled-loop deadline, with a minimum 200 ms backoff.
+SIGINT and SIGTERM still cancel the wait immediately.
 `--influx-write-file PATH` is the shadow mode: every batch the agent
 would write to InfluxDB is appended to `PATH` as a framed batch: a
 `# write <utc> points=<n> bytes=<b>` header, line-protocol body and matching
