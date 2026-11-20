@@ -208,12 +208,13 @@ pub async fn run_metric_specs<E: SpecExecutors, C: Clock>(
             .checked_add(spec.interval_seconds.max(1))
             .ok_or(RunError::NextRunTimeOverflow)?;
         let lease_seconds = spec.interval_seconds.clamp(3, 300);
+        let claim = spec.claim_identity();
         let mut claim_until = if due_only {
             let until = run_ts
                 .checked_add(lease_seconds)
                 .ok_or(RunError::NextRunTimeOverflow)?;
             if !store
-                .claim_due_spec(spec.clone(), spec.next_run_time, run_ts, until)
+                .claim_due_spec(claim.clone(), spec.next_run_time, run_ts, until)
                 .await?
             {
                 continue;
@@ -236,7 +237,7 @@ pub async fn run_metric_specs<E: SpecExecutors, C: Clock>(
                             .checked_add(lease_seconds)
                             .ok_or(RunError::NextRunTimeOverflow)?
                             .max(until.checked_add(1).ok_or(RunError::NextRunTimeOverflow)?);
-                        if !store.renew_spec_claim(spec.clone(), *until, renewed).await? {
+                        if !store.renew_spec_claim(claim.clone(), *until, renewed).await? {
                             break None;
                         }
                         *until = renewed;
@@ -258,11 +259,7 @@ pub async fn run_metric_specs<E: SpecExecutors, C: Clock>(
             next_run_time,
         };
         if !store
-            .finish_claimed_spec(
-                spec.clone(),
-                update,
-                claim_until.unwrap_or(spec.next_run_time),
-            )
+            .finish_claimed_spec(claim, update, claim_until.unwrap_or(spec.next_run_time))
             .await?
         {
             log::info!("Collection superseded spec_id={}", spec.id);

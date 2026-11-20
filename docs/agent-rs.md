@@ -287,8 +287,10 @@ Those process journeys cover the initial persisted claim. Live renewal and
 replacement fencing are checked separately by `tests/lease.rs`; renewed-lease
 process-death coverage is not claimed. The initial claim also binds the loaded
 definition, so an edit between load and claim never reaches external I/O
-(`tests/lease.rs::claim_refuses_a_definition_edited_after_load`). The retained
-Python agent follows the same lease and renewal contract
+(`tests/lease.rs::claim_refuses_a_definition_edited_after_load`).
+Rust lease operations share one captured definition per spec. Renewal
+reuses that identity regardless of the size of the previous diagnostics. The
+retained Python agent follows the same due-lease and renewal contract
 (`tests/test_due_collection_claim.py`).
 
 ## Condition duration admission

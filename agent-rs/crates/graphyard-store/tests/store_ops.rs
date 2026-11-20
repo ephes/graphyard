@@ -224,7 +224,7 @@ async fn run_case(case: &Value) {
             .map(|()| None),
         "claim_spec" => store
             .claim_due_spec(
-                captured_spec(op["id"].as_i64().unwrap(), &op["definition"]),
+                captured_spec(op["id"].as_i64().unwrap(), &op["definition"]).claim_identity(),
                 op["expected_due"].as_i64().unwrap(),
                 op["now_ts"].as_i64().unwrap(),
                 op["claim_until"].as_i64().unwrap(),
@@ -239,7 +239,8 @@ async fn run_case(case: &Value) {
                     .unwrap()
                     .into_iter()
                     .find(|s| s.id == op["id"].as_i64().unwrap())
-                    .unwrap(),
+                    .unwrap()
+                    .claim_identity(),
                 SpecRunUpdate {
                     id: op["id"].as_i64().unwrap(),
                     last_run_at: at,
@@ -405,7 +406,7 @@ async fn independent_stores_race_for_one_due_slot() {
     db.seed("metric_collection_spec", row["before"].as_array().unwrap());
     let first = db.store();
     let second = db.store();
-    let spec = captured_spec(1, &row["op"]["definition"]);
+    let spec = captured_spec(1, &row["op"]["definition"]).claim_identity();
     let (a, b) = tokio::join!(
         first.claim_due_spec(spec.clone(), 100, 100, 400),
         second.claim_due_spec(spec.clone(), 100, 100, 400),

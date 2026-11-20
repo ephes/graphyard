@@ -1,6 +1,8 @@
 //! `metric_collection_spec`: the metrics run's load and per-spec update
 //! (`services.py:run_metric_collection_specs_once`; PLAN.md 3.4, 5.4).
 
+use std::sync::Arc;
+
 use chrono::{DateTime, Utc};
 use graphyard_core::StatusLevel;
 use rusqlite::{Connection, params};
@@ -11,7 +13,7 @@ use crate::error::StoreError;
 use crate::rows::{bool_column, datetime_column, now_text};
 
 /// A spec row as Django loads it.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Debug, PartialEq)]
 pub struct SpecRow {
     pub id: i64,
     pub name: String,
@@ -28,6 +30,28 @@ pub struct SpecRow {
     pub last_error: String,
     pub created_at: Option<DbDateTime>,
     pub updated_at: Option<DbDateTime>,
+}
+
+/// The spec identity shared by the claim, renewal and completion CAS.
+pub struct SpecClaimIdentity {
+    id: i64,
+    name: String,
+    spec_type: String,
+    interval_seconds: i64,
+    config: String,
+}
+
+impl SpecRow {
+    /// Capture the fields used by the lease CAS, without the previous result.
+    pub fn claim_identity(&self) -> Arc<SpecClaimIdentity> {
+        Arc::new(SpecClaimIdentity {
+            id: self.id,
+            name: self.name.clone(),
+            spec_type: self.spec_type.clone(),
+            interval_seconds: self.interval_seconds,
+            config: self.config.clone(),
+        })
+    }
 }
 
 /// The run result written per spec (`spec.save(update_fields=[...])`).
@@ -109,7 +133,7 @@ pub(crate) fn update_spec_run(
 
 fn claim_due_spec(
     connection: &Connection,
-    definition: &SpecRow,
+    definition: &SpecClaimIdentity,
     expected_due: i64,
     now: i64,
     until: i64,
@@ -141,7 +165,7 @@ impl Store {
     /// SQLite errors.
     pub async fn claim_due_spec(
         &self,
-        definition: SpecRow,
+        definition: Arc<SpecClaimIdentity>,
         expected_due: i64,
         now: i64,
         until: i64,
@@ -159,7 +183,7 @@ impl Store {
     /// SQLite errors. Superseded/deleted rows return false.
     pub async fn renew_spec_claim(
         &self,
-        definition: SpecRow,
+        definition: Arc<SpecClaimIdentity>,
         expected_schedule: i64,
         until: i64,
     ) -> Result<bool, StoreError> {
@@ -189,10 +213,13 @@ impl Store {
     /// SQLite errors. Superseded or deleted rows return false.
     pub async fn finish_claimed_spec(
         &self,
-        definition: SpecRow,
+        definition: Arc<SpecClaimIdentity>,
         update: SpecRunUpdate,
         expected_schedule: i64,
     ) -> Result<bool, StoreError> {
+        if definition.id != update.id {
+            return Ok(false);
+        }
         self.call(move |connection| {
             Ok(connection.execute(
                 "UPDATE metric_collection_spec SET last_run_at = ?, last_status = ?, last_error = ?, \

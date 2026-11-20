@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Share one captured Rust metric spec identity across lease updates, without
+  copying historical diagnostics on renewal.
+
 - Require a string project name in PyPI release responses before normalizing
   and matching it to the registered project.
 
