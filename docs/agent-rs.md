@@ -122,7 +122,9 @@ or schema failure; 2 usage error. One-shot runs every enabled loop before
 reporting failure; warnings alone succeed. Continuous mode keeps scheduling
 after failures. Metrics and conditions run sequentially. The scheduler
 checks the clock again after metrics, so a condition run that became due
-during metrics starts before the next sleep.
+during metrics starts before the next sleep. Between passes, the agent sleeps
+until the earliest enabled-loop deadline, with a minimum 200 ms backoff.
+SIGINT and SIGTERM still cancel the wait immediately.
 `--influx-write-file PATH` is the shadow mode: every batch the agent
 would write to InfluxDB is appended to `PATH` as a framed batch: a
 `# write <utc> points=<n> bytes=<b>` header, line-protocol body and matching
@@ -135,6 +137,10 @@ commit trailer. Queries still go to InfluxDB.
 the enabled conditions (or the one with the given id) once, writes their
 rows, and updates the global `condition_evaluator` heartbeat only on a full
 run. Targeted checks leave the global status, counts and timestamps untouched.
+A result can replace an observation only if its attempt started after the
+stored timestamp and the evaluated definition still matches. The agent
+compares timestamps as UTC instants at microsecond precision, including
+older SQLite datetime formats.
 The command prints `Condition evaluation completed (<total>).` and exits 0,
 or prints the failures and
 `CommandError: <n> condition evaluation(s) failed.` and exits 1. It reads
@@ -287,8 +293,10 @@ Those process journeys cover the initial persisted claim. Live renewal and
 replacement fencing are checked separately by `tests/lease.rs`; renewed-lease
 process-death coverage is not claimed. The initial claim also binds the loaded
 definition, so an edit between load and claim never reaches external I/O
-(`tests/lease.rs::claim_refuses_a_definition_edited_after_load`). The retained
-Python agent follows the same lease and renewal contract
+(`tests/lease.rs::claim_refuses_a_definition_edited_after_load`).
+Rust lease operations share one captured definition per spec. Renewal
+reuses that identity regardless of the size of the previous diagnostics. The
+retained Python agent follows the same due-lease and renewal contract
 (`tests/test_due_collection_claim.py`).
 
 ## Condition duration admission

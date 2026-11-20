@@ -132,16 +132,28 @@ async fn renewal_and_completion_cannot_extend_or_publish_a_replacement_claim() {
     let db = TestDb::new();
     short_spec(&db);
     let store = Store::open(db.path(), &settings(&[])).unwrap();
+    db.execute("UPDATE metric_collection_spec SET last_error = printf('%.*c', 1048576, 'x')");
     let spec = store.load_specs(None).await.unwrap().remove(0);
+    assert_eq!(spec.last_error.len(), 1_048_576);
+    let claim = spec.claim_identity();
+    let id = spec.id;
+    drop(spec);
     assert!(
         store
-            .claim_due_spec(spec.clone(), 0, 100, 103)
+            .claim_due_spec(claim.clone(), 0, 100, 103)
             .await
             .unwrap()
     );
     assert!(
         store
-            .renew_spec_claim(spec.clone(), 103, 104)
+            .renew_spec_claim(claim.clone(), 103, 104)
+            .await
+            .unwrap()
+    );
+    db.execute("UPDATE metric_collection_spec SET last_status = 'warning', last_error = ''");
+    assert!(
+        store
+            .renew_spec_claim(claim.clone(), 104, 105)
             .await
             .unwrap()
     );
@@ -149,35 +161,35 @@ async fn renewal_and_completion_cannot_extend_or_publish_a_replacement_claim() {
     let other = Store::open(db.path(), &settings(&[])).unwrap();
     assert!(
         other
-            .claim_due_spec(spec.clone(), 104, 104, 107)
+            .claim_due_spec(claim.clone(), 105, 105, 108)
             .await
             .unwrap()
     );
     assert!(
         !store
-            .renew_spec_claim(spec.clone(), 104, 108)
+            .renew_spec_claim(claim.clone(), 105, 109)
             .await
             .unwrap()
     );
     assert!(
         !store
             .finish_claimed_spec(
-                spec.clone(),
+                claim.clone(),
                 graphyard_store::SpecRunUpdate {
-                    id: spec.id,
+                    id,
                     last_run_at: DateTime::from_timestamp(100, 0).unwrap(),
                     last_status: StatusLevel::Ok,
                     last_error: String::new(),
                     next_run_time: 101,
                 },
-                104
+                105
             )
             .await
             .unwrap()
     );
-    assert_eq!(schedule(&db), 107);
+    assert_eq!(schedule(&db), 108);
     db.execute("UPDATE metric_collection_spec SET enabled=0");
-    assert!(!other.renew_spec_claim(spec, 107, 110).await.unwrap());
+    assert!(!other.renew_spec_claim(claim, 108, 111).await.unwrap());
     store.close();
     other.close();
 }

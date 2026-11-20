@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Compare Rust condition evaluation watermarks as UTC instants so older and
+  equal-time attempts preserve observations stored with legacy datetime text.
+
+- Sleep until the next Rust scheduler deadline instead of polling every
+  idle second. Signal-driven shutdown remains immediate.
+
+- Share one captured Rust metric spec identity across lease updates, without
+  copying historical diagnostics on renewal.
+
 - Require a string project name in PyPI release responses before normalizing
   and matching it to the registered project.
 

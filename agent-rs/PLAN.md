@@ -425,10 +425,11 @@ metrics (`due_only=True`), `next_metrics += interval`, and if that is already
 in the past, `next_metrics = monotonic() + interval`. Both schedulers
 (Rust and `start_agent.py`) read the clock again before deciding whether
 conditions are due. A condition
-run that becomes due during metrics starts before the next sleep. Then sleep
-`max(0.2, min(1.0, min(next_metrics, next_conditions) - monotonic()))`. When
-neither loop has a representable deadline, the Rust scheduler waits for
-supervisor cancellation without setting a timer. Both runs are sequential in
+run that becomes due during metrics starts before the next sleep. Rust waits
+until the earliest representable deadline with a 200 ms minimum backoff.
+The supervisor can cancel that wait on shutdown. When neither loop has a
+representable deadline, Rust waits for cancellation without setting a timer.
+Python caps the wait at one second and keeps the same minimum backoff. Both runs are sequential in
 one task; a slow metrics run delays conditions. The
 `--run-once` path calls metrics (`due_only=False`) then conditions. Pinned by
 Rust tests with an injected clock. Runner methods return success booleans;
@@ -559,8 +560,10 @@ capture an attempt start time and pass it to `evaluate_condition` (section 7).
 Success updates `status, message, last_value, last_evaluated`; any exception →
 `failed += 1`, update `status='critical'`, `message='evaluation error: <allowlisted type>'`
 and `last_evaluated` to the attempt start time, retaining `last_value`.
-Both writes require `last_evaluated IS NULL OR last_evaluated < attempt_start`;
-stale/tied attempts and deleted rows are no-ops. Even if the fallback failure
+Both writes require an absent watermark or a strictly newer attempt. Rust
+compares the current watermark and the attempt as UTC instants at microsecond
+precision inside the same immediate transaction that checks the definition and
+writes the result. Stale/tied attempts and deleted rows are no-ops. Even if the fallback failure
 write fails, following conditions run. One ERROR event records condition ID,
 stage (`evaluation` or `publication`), allowlisted category and `failure_published`.
 No raw exception/query text enters that event or failure message. Heartbeat

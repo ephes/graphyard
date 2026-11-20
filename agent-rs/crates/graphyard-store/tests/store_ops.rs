@@ -224,7 +224,7 @@ async fn run_case(case: &Value) {
             .map(|()| None),
         "claim_spec" => store
             .claim_due_spec(
-                captured_spec(op["id"].as_i64().unwrap(), &op["definition"]),
+                captured_spec(op["id"].as_i64().unwrap(), &op["definition"]).claim_identity(),
                 op["expected_due"].as_i64().unwrap(),
                 op["now_ts"].as_i64().unwrap(),
                 op["claim_until"].as_i64().unwrap(),
@@ -239,7 +239,8 @@ async fn run_case(case: &Value) {
                     .unwrap()
                     .into_iter()
                     .find(|s| s.id == op["id"].as_i64().unwrap())
-                    .unwrap(),
+                    .unwrap()
+                    .claim_identity(),
                 SpecRunUpdate {
                     id: op["id"].as_i64().unwrap(),
                     last_run_at: at,
@@ -405,7 +406,7 @@ async fn independent_stores_race_for_one_due_slot() {
     db.seed("metric_collection_spec", row["before"].as_array().unwrap());
     let first = db.store();
     let second = db.store();
-    let spec = captured_spec(1, &row["op"]["definition"]);
+    let spec = captured_spec(1, &row["op"]["definition"]).claim_identity();
     let (a, b) = tokio::join!(
         first.claim_due_spec(spec.clone(), 100, 100, 400),
         second.claim_due_spec(spec.clone(), 100, 100, 400),
@@ -422,10 +423,9 @@ async fn independent_stores_race_for_one_due_slot() {
     second.close();
 }
 
-#[tokio::test]
-async fn condition_definition_edits_fence_successes_and_failures() {
+fn enabled_condition_fixture() -> Value {
     let fixtures = load(STORE_OPS_JSON);
-    let row = fixtures["cases"]
+    fixtures["cases"]
         .as_array()
         .unwrap()
         .iter()
@@ -433,7 +433,12 @@ async fn condition_definition_edits_fence_successes_and_failures() {
         .flat_map(|case| case["before"].as_array().unwrap())
         .find(|row| row["enabled"] == 1)
         .unwrap()
-        .clone();
+        .clone()
+}
+
+#[tokio::test]
+async fn condition_definition_edits_fence_successes_and_failures() {
+    let row = enabled_condition_fixture();
     for edit in [
         "warning_threshold = 12345",
         "tags_filter = '{\"synthetic\": \"changed\"}'",
@@ -484,6 +489,92 @@ async fn condition_definition_edits_fence_successes_and_failures() {
             assert_eq!(current.1, row["message"].as_str().unwrap());
             assert_eq!(current.2, row["last_value"].as_f64());
             assert_eq!(current.3.as_deref(), row["last_evaluated"].as_str());
+        }
+    }
+}
+
+#[tokio::test]
+async fn condition_watermark_orders_legacy_text_by_utc_at_microsecond_precision() {
+    let at = now("2026-10-21 08:15:30.123456");
+    let microsecond = chrono::TimeDelta::microseconds(1);
+    for legacy in [
+        "2026-10-21 07:15:30.123456-01:00",
+        "2026-10-21T08:15:30.123456Z",
+    ] {
+        for failure in [false, true] {
+            let db = TestDb::new();
+            let mut row = enabled_condition_fixture();
+            row["last_evaluated"] = Value::Null;
+            row["last_value"] = json!(42.0);
+            row["status"] = json!("ok");
+            row["message"] = json!("current");
+            db.seed("condition_definition", &[row]);
+            let store = db.store();
+            let definition = store.load_conditions(None).await.unwrap().remove(0);
+            let connection = db.raw();
+            // A different writer publishes after this evaluator loads the definition.
+            connection
+                .execute(
+                    "UPDATE condition_definition SET last_evaluated = ?",
+                    [legacy],
+                )
+                .unwrap();
+            let current = || {
+                connection.query_row(
+                    "SELECT status, message, last_value, last_evaluated FROM condition_definition",
+                    [],
+                    |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
+                ).unwrap()
+            };
+
+            for (attempted_at, accepted) in [
+                (at - microsecond, false),
+                (at, false),
+                (at + microsecond, true),
+            ] {
+                let published = if failure {
+                    store
+                        .update_condition_failure(
+                            definition.clone(),
+                            StatusLevel::Critical,
+                            "attempt".into(),
+                            attempted_at,
+                        )
+                        .await
+                        .unwrap()
+                } else {
+                    store
+                        .update_condition_success(
+                            definition.clone(),
+                            ConditionEvaluation {
+                                status: StatusLevel::Critical,
+                                message: "attempt".into(),
+                                last_value: Some(99.),
+                                evaluated_at: attempted_at,
+                            },
+                        )
+                        .await
+                        .unwrap()
+                };
+                assert_eq!(published, accepted, "{legacy}, {failure}, {attempted_at}");
+                let expected = if accepted {
+                    (
+                        "critical".to_owned(),
+                        "attempt".to_owned(),
+                        if failure { 42. } else { 99. },
+                        "2026-10-21 08:15:30.123457".to_owned(),
+                    )
+                } else {
+                    (
+                        "ok".to_owned(),
+                        "current".to_owned(),
+                        42.,
+                        legacy.to_owned(),
+                    )
+                };
+                assert_eq!(current(), expected);
+            }
+            store.close();
         }
     }
 }
