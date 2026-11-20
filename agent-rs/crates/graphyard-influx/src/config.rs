@@ -29,7 +29,9 @@ impl fmt::Display for InfluxConfigurationError {
 impl std::error::Error for InfluxConfigurationError {}
 
 /// The values `_build_client` passes to `InfluxDBClient`.
-#[derive(Clone, Debug, PartialEq, Eq)]
+///
+/// Debug output redacts the URL and token.
+#[derive(Clone, PartialEq, Eq)]
 pub struct InfluxClientConfig {
     /// `INFLUX_URL` with one trailing `/` removed (the client's
     /// `conf.host`); request paths are appended to it as text.
@@ -41,6 +43,16 @@ pub struct InfluxClientConfig {
     pub org: String,
     /// `INFLUX_TIMEOUT_MS`.
     pub timeout_ms: BigInt,
+}
+
+impl fmt::Debug for InfluxClientConfig {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("InfluxClientConfig")
+            .field("host", &"<redacted>")
+            .field("token", &"<redacted>")
+            .field("timeout_ms", &self.timeout_ms)
+            .finish_non_exhaustive()
+    }
 }
 
 impl InfluxClientConfig {
@@ -159,6 +171,56 @@ mod tests {
                 .map(|(_, value)| (*value).to_owned())
         })
         .expect("valid settings")
+    }
+
+    #[test]
+    fn client_config_debug_redacts_url_and_token() {
+        let config = InfluxClientConfig::from_settings(&settings(&[
+            (
+                "INFLUX_URL",
+                "https://synthetic-user:synthetic-password@example.invalid/",
+            ),
+            ("INFLUX_TOKEN", "synthetic-client-token"),
+            ("INFLUX_ORG", "metrics"),
+            ("INFLUX_TIMEOUT_MS", "2500"),
+        ]))
+        .unwrap();
+
+        for debug in [format!("{config:?}"), format!("{config:#?}")] {
+            assert!(!debug.contains("synthetic-client-token"));
+            assert!(!debug.contains("synthetic-user"));
+            assert!(!debug.contains("synthetic-password"));
+            assert!(!debug.contains("example.invalid"));
+            assert!(debug.contains("InfluxClientConfig"));
+            assert!(debug.contains("timeout_ms: 2500"));
+        }
+    }
+
+    #[test]
+    fn settings_debug_hides_credentials_used_to_build_client() {
+        let url = "https://settings.example.invalid";
+        let token = "synthetic-settings-token";
+        let settings = settings(&[
+            ("INFLUX_URL", url),
+            ("INFLUX_TOKEN", token),
+            ("INFLUX_ORG", "synthetic-settings-org"),
+            ("INFLUX_API_MODE", "v2"),
+            ("INFLUX_TIMEOUT_MS", "2500"),
+        ]);
+
+        for debug in [format!("{settings:?}"), format!("{settings:#?}")] {
+            assert!(!debug.contains(token));
+            assert!(!debug.contains(url));
+            assert!(!debug.contains("synthetic-settings-org"));
+            assert!(debug.contains("Settings"));
+            assert!(debug.contains("influx_api_mode: V2"));
+            assert!(debug.contains("influx_timeout_ms: 2500"));
+        }
+
+        let config = InfluxClientConfig::from_settings(&settings).unwrap();
+        assert_eq!(config.host, url);
+        assert_eq!(config.token, token);
+        assert_eq!(config.org, "synthetic-settings-org");
     }
 
     #[test]

@@ -1,6 +1,7 @@
 //! `settings` against `fixtures/settings.json` (built by
 //! `fixtures/gen_settings.py`).
 
+use std::cell::Cell;
 use std::collections::HashMap;
 use std::ffi::OsString;
 
@@ -161,8 +162,68 @@ fn errors_name_the_variable_being_read() {
 }
 
 #[test]
-fn proxy_cycles_are_recursion_errors() {
-    let error = read(&env(&[("INFLUX_ORG", "$INFLUX_ORG")])).unwrap_err();
+fn proxy_cycles_stop_before_repeating_a_lookup() {
+    for (pairs, expected_lookups) in [
+        (&[("INFLUX_ORG", "$INFLUX_ORG")][..], 1),
+        (
+            &[
+                ("INFLUX_ORG", "$FIRST"),
+                ("FIRST", "$SECOND"),
+                ("SECOND", "$FIRST"),
+            ][..],
+            3,
+        ),
+    ] {
+        let env = env(pairs);
+        let lookups = Cell::new(0);
+        let error = Settings::from_lookup(|name| {
+            let value = env.get(name).cloned();
+            if value.is_some() {
+                lookups.set(lookups.get() + 1);
+            }
+            value
+        })
+        .unwrap_err();
+        assert_eq!(error.variable, "INFLUX_ORG");
+        assert_eq!(error.error.kind, PyErrorKind::RecursionError);
+        assert_eq!(error.error.message, "maximum recursion depth exceeded");
+        assert_eq!(lookups.get(), expected_lookups);
+    }
+}
+
+#[test]
+fn acyclic_proxies_preserve_values_defaults_and_depth_limit() {
+    let settings = read(&env(&[
+        ("INFLUX_ORG", "$$FIRST"),
+        ("INFLUX_BUCKET", "$FIRST"),
+        ("FIRST", "$SECOND"),
+        ("SECOND", "metrics"),
+        ("INFLUX_TIMEOUT_MS", "$MISSING"),
+    ]))
+    .unwrap();
+    assert_eq!(settings.influx_org, "metrics");
+    assert_eq!(settings.influx_bucket, "metrics");
+    assert_eq!(settings.influx_timeout_ms, 10000.into());
+
+    let read_chain = |last_index| {
+        Settings::from_lookup(|name| {
+            let index = if name == "INFLUX_ORG" {
+                0
+            } else {
+                name.strip_prefix("ALIAS")?.parse::<usize>().ok()?
+            };
+            Some(if index == last_index {
+                "metrics".to_owned()
+            } else {
+                format!("$ALIAS{}", index + 1)
+            })
+        })
+    };
+    assert_eq!(
+        read_chain(MAX_PROXY_DEPTH - 1).unwrap().influx_org,
+        "metrics"
+    );
+    let error = read_chain(MAX_PROXY_DEPTH).unwrap_err();
     assert_eq!(error.variable, "INFLUX_ORG");
     assert_eq!(error.error.kind, PyErrorKind::RecursionError);
 }

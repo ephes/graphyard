@@ -28,7 +28,7 @@
 //! A value reached by lookup must be valid UTF-8, including proxy values.
 //! Unused environment entries are ignored.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::ffi::{OsStr, OsString};
 use std::fmt;
 
@@ -50,7 +50,9 @@ pub enum InfluxApiMode {
 
 /// The settings the agent reads, with Python's values. Integers are Python
 /// `int`s of any size; callers convert them where they are used.
-#[derive(Clone, Debug, PartialEq, Eq)]
+///
+/// Debug output includes only numeric settings and the effective Influx mode.
+#[derive(Clone, PartialEq, Eq)]
 pub struct Settings {
     pub sqlite_timeout_seconds: BigInt,
     pub sqlite_busy_timeout_ms: BigInt,
@@ -75,6 +77,29 @@ pub struct Settings {
     /// `GRAPHYARD_CONDITION_DATA_STALE_WARNING_SECONDS`
     /// (`settings.CONDITION_DATA_STALE_WARNING_SECONDS`).
     pub condition_data_stale_warning_seconds: BigInt,
+}
+
+impl fmt::Debug for Settings {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Settings")
+            .field("sqlite_timeout_seconds", &self.sqlite_timeout_seconds)
+            .field("sqlite_busy_timeout_ms", &self.sqlite_busy_timeout_ms)
+            .field("influx_timeout_ms", &self.influx_timeout_ms)
+            .field("influx_api_mode", &self.influx_api_mode())
+            .field(
+                "metric_collection_interval_seconds",
+                &self.metric_collection_interval_seconds,
+            )
+            .field(
+                "condition_eval_interval_seconds",
+                &self.condition_eval_interval_seconds,
+            )
+            .field(
+                "condition_data_stale_warning_seconds",
+                &self.condition_data_stale_warning_seconds,
+            )
+            .finish_non_exhaustive()
+    }
 }
 
 /// An invalid environment setting (the agent exits 1).
@@ -116,14 +141,20 @@ impl<F: Fn(&str) -> Result<Option<String>, PyError>> Env<F> {
     /// proxy chain resolved.
     fn raw(&self, var: &str) -> Result<Raw, PyError> {
         let mut name = var.to_owned();
+        let mut visited = HashSet::new();
         for _ in 0..MAX_PROXY_DEPTH {
             let Some(value) = (self.lookup)(&name)? else {
                 return Ok(Raw::Default);
             };
-            match value.strip_prefix('$') {
-                Some(_) => name = value.trim_start_matches('$').to_owned(),
-                None => return Ok(Raw::Text(value)),
+            if !value.starts_with('$') {
+                return Ok(Raw::Text(value));
             }
+            visited.insert(name);
+            let target = value.trim_start_matches('$');
+            if visited.contains(target) {
+                break;
+            }
+            name = target.to_owned();
         }
         Err(PyError::new(
             PyErrorKind::RecursionError,

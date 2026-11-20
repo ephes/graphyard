@@ -168,6 +168,9 @@ fn supported_timeout(key: &str, value: f64) -> Result<f64, SpecConfigError> {
 /// # Errors
 /// The messages of [`positive_float_config`] and `_supported_timeout`.
 pub fn request_timeout_config(config: &Config) -> Result<f64, SpecConfigError> {
+    #[cfg(test)]
+    tests::REQUEST_TIMEOUT_CHECKS.with(|checks| checks.set(checks.get() + 1));
+
     let value = positive_float_config(
         config,
         "request_timeout_seconds",
@@ -198,22 +201,27 @@ pub fn page_probe_total_timeout_config(
 /// order (request timeout, total timeout, `verify_tls`, `follow_redirects`,
 /// `max_body_bytes`), empty when valid; a non-object config is the single
 /// problem `config must be an object`.
+/// Deadline-enabled specs reuse the validated request timeout to derive the
+/// total timeout default, falling back to the standard request timeout on error.
 pub fn validate_spec_config(spec_type: &str, config: &Value) -> Vec<String> {
     let Value::Object(config) = config else {
         return vec!["config must be an object".to_owned()];
     };
-    let total_timeout_check = || {
-        if !DEADLINE_SPEC_TYPES.contains(&spec_type) {
-            return positive_float_config(config, "total_timeout_seconds", 1.0);
-        }
-        // Report the request error once, while still checking an explicit total.
-        let request_timeout =
-            request_timeout_config(config).unwrap_or(DEFAULT_REQUEST_TIMEOUT_SECONDS);
-        page_probe_total_timeout_config(config, request_timeout)
+    let request_timeout = request_timeout_config(config);
+    let total_timeout = if DEADLINE_SPEC_TYPES.contains(&spec_type) {
+        page_probe_total_timeout_config(
+            config,
+            request_timeout
+                .as_ref()
+                .copied()
+                .unwrap_or(DEFAULT_REQUEST_TIMEOUT_SECONDS),
+        )
+    } else {
+        positive_float_config(config, "total_timeout_seconds", 1.0)
     };
     [
-        request_timeout_config(config).err(),
-        total_timeout_check().err(),
+        request_timeout.err(),
+        total_timeout.err(),
         bool_config(config, "verify_tls", true).err(),
         bool_config(config, "follow_redirects", true).err(),
         positive_int_config(config, "max_body_bytes", DEFAULT_PAGE_PROBE_MAX_BODY_BYTES).err(),

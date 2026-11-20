@@ -270,6 +270,12 @@ from the process environment only (the unit's `EnvironmentFile`; no `.env`,
 D-9). Values the agent reads must be valid UTF-8, including values reached
 through `$` proxies. Invalid text stops startup and names the original
 setting without printing its value. Unused environment entries are ignored.
+Proxy cycles report a recursion error for the original setting before looking
+up a name twice. Acyclic proxy chains allow up to 1,000 lookups per setting.
+The Rust Influx client configuration's debug output redacts the URL and token
+and includes the configured request timeout.
+The agent's settings debug output shows numeric settings and the effective
+Influx mode. Client construction still uses the configured credentials.
 `--db` defaults to `db.sqlite3` in the working directory, which must
 exist and pass the schema check (D-2); the agent never creates it.
 If neither loop has a representable next deadline, the scheduler stays idle
@@ -686,6 +692,11 @@ The byte ceiling bounds final formatting/queue memory, not allocations performed
 inside a caller's `Display` implementation or existing semantic message builders.
 
 ## Failure diagnostics
+
+For deadline-enabled metric specs, Rust config validation checks the request
+timeout once and uses the admitted value to derive the default total timeout.
+If the request timeout is invalid, validation reports that error first and
+checks the total using the standard request timeout as the fallback.
 
 Collector persistence follows README's bounded error contract: safe allowlisted
 class or numeric HTTP status, never transport exception text, response bodies or

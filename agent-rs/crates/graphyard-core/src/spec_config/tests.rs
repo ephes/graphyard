@@ -1,11 +1,17 @@
 //! `spec_config` against `fixtures/spec_config.json` (built by
 //! `fixtures/gen_spec_config.py`).
 
+use std::cell::Cell;
+
 use serde_json::Value;
 
 use super::*;
 use crate::fixture::{Field, load, strings};
 use crate::pycompat::{json_loads, py_float};
+
+thread_local! {
+    pub(super) static REQUEST_TIMEOUT_CHECKS: Cell<usize> = const { Cell::new(0) };
+}
 
 fn fixture() -> Value {
     load(include_str!("../../../../fixtures/spec_config.json"))
@@ -177,15 +183,21 @@ fn every_python_test_config_of_the_slice_is_in_the_corpus() {
              {'$serde_json::private::Number': '5'}"
         ]
     );
-    let report_once = validate_spec_config(
+}
+
+#[test]
+fn deadline_validation_checks_request_timeout_once() {
+    REQUEST_TIMEOUT_CHECKS.with(|checks| checks.set(0));
+    let errors = validate_spec_config(
         "http_json_metric",
         &serde_json::json!({"request_timeout_seconds": "5s", "total_timeout_seconds": "abc"}),
     );
     assert_eq!(
-        report_once,
+        errors,
         [
             "config.request_timeout_seconds must be a number greater than 0, got '5s'",
             "config.total_timeout_seconds must be a number greater than 0, got 'abc'",
         ]
     );
+    assert_eq!(REQUEST_TIMEOUT_CHECKS.with(Cell::get), 1);
 }

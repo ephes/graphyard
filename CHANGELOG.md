@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- Reuse the validated Rust request timeout when checking a metric spec's total
+  deadline, preserving diagnostic order.
+
+- Detect cycles in Rust environment setting proxies before repeating a lookup.
+
+- Redact the Influx URL and token in Rust client configuration debug output.
+
+- Limit Rust agent settings debug output to numeric settings and the effective
+  Influx mode.
+
 - Compare Rust condition evaluation watermarks as UTC instants so older and
   equal-time attempts preserve observations stored with legacy datetime text.
 
