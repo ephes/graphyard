@@ -489,7 +489,7 @@ def test_monitor_status_reports_cached_release_failures_without_fetch(
     client, settings, monkeypatch, kind
 ):
     settings.GRAPHYARD_INVENTORY_MONITOR_TOKEN = "synthetic-monitor"
-    row = cache()
+    row = cache(attempted_at=timezone.now())
     if kind == "failed":
         row.error = "private diagnostic must not be echoed"
     elif kind == "missing":
@@ -516,6 +516,25 @@ def test_monitor_status_reports_cached_release_failures_without_fetch(
     status = response.json()
     expected = {"empty_version": "missing", "future": "stale"}.get(kind, kind)
     assert status["releases"]["sources"][0]["status"] == expected
+    now = timezone.now()
+    comparison = releases.compare("5.2", row, now, now)
+    assert comparison["status"] == ("update" if kind == "ok" else "unknown")
+    assert (
+        comparison["reason"]
+        == {
+            "ok": "Newer upstream release",
+            "failed": "Latest release lookup failed; previous result retained",
+            "missing": "Release information missing",
+            "stale": "Release information stale",
+            "invalid": "Cached release version is invalid",
+        }[expected]
+    )
+    for field in ("checked_at", "attempted_at"):
+        timestamp = comparison[field]
+        assert timestamp == getattr(row, field)
+        assert status["releases"]["sources"][0][field] == (
+            timestamp.isoformat() if timestamp else None
+        )
     assert status["releases"]["total"] == 1
     assert status["summary"]["release_attention"] == int(kind != "ok")
     assert "private diagnostic" not in response.content.decode()

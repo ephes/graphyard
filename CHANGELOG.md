@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Use the same cached release evidence rules in source health and version
+  comparisons. An empty cached version is reported as missing evidence.
+
 - Stop polling the Rust scheduler when neither loop has a next deadline.
   Signal-driven shutdown still works while idle.
 

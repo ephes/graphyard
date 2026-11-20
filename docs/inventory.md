@@ -495,7 +495,10 @@ mapped to public packages unless that identity is intended by the operator.
 The weekly job refreshes sources at least six days old, leaving margin for
 request duration and timer jitter; a failed lookup retains the prior version
 and successful timestamp but forces unknown status. Both source and installation
-must be no more than eight days old and not future-dated to compare. Historical
+must be no more than eight days old and not future-dated to compare. Source health
+and version comparison use the same cache rules. An empty cached version or absent
+success timestamp is missing evidence. Failed, stale and invalid evidence each
+have their own explanation, and the views retain the source timestamps. Historical
 fallback reports remain unknown. Valid Python subprobes within partial application
 reports may be compared, with explicit partial-basis markers and host coverage notes. Exact version matches mean only a match to that
 checked stable release; an installed version ahead of the source is distinct.

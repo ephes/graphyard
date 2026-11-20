@@ -10,7 +10,7 @@ import httpx
 from django.db import transaction
 from django.db.models import F
 from django.utils import timezone
-from packaging.version import InvalidVersion, Version
+from packaging.version import Version
 
 from .models import InventoryRelease, InventoryReleaseRegistry
 
@@ -83,12 +83,17 @@ def url(definition):
     }[kind]
 
 
-def stable(value):
+def _stable_version(value):
     if not isinstance(value, str) or not value or len(value) > 160:
         raise ValueError("Invalid release version")
     parsed = Version(value)
     if parsed.is_prerelease or parsed.is_devrelease or parsed.local is not None:
         raise ValueError("Unsupported release channel")
+    return parsed
+
+
+def stable(value):
+    _stable_version(value)
     return value
 
 
@@ -281,23 +286,24 @@ def refresh(data, force=False):
     return RefreshResult(failures=failures, skipped=skipped, superseded=superseded)
 
 
+def _cached_release_state(release, now):
+    if release.error:
+        return "failed", None
+    if not release.checked_at or not release.version:
+        return "missing", None
+    if not timedelta(0) <= now - release.checked_at <= MAX_AGE:
+        return "stale", None
+    try:
+        return "ok", _stable_version(release.version)
+    except ValueError:
+        return "invalid", None
+
+
 def source_health(now):
     """Report cached public-source freshness without fetching or trusting host names."""
     rows = []
     for release in InventoryRelease.objects.filter(enabled=True).order_by("source_id"):
-        if release.error:
-            state = "failed"
-        elif not release.checked_at or not release.version:
-            state = "missing"
-        elif not timedelta(0) <= now - release.checked_at <= MAX_AGE:
-            state = "stale"
-        else:
-            try:
-                Version(stable(release.version))
-            except (InvalidVersion, ValueError, TypeError):
-                state = "invalid"
-            else:
-                state = "ok"
+        state, _ = _cached_release_state(release, now)
         rows.append(
             {
                 "source": release.source_id,
@@ -341,14 +347,14 @@ def compare(installed, release, observed_at, now, historical=False):
     }
     if release is None:
         return result
-    if release.error:
-        result["reason"] = "Latest release lookup failed; previous result retained"
-        return result
-    if (
-        not release.checked_at
-        or not timedelta(0) <= now - release.checked_at <= MAX_AGE
-    ):
-        result["reason"] = "Release information missing or stale"
+    state, latest = _cached_release_state(release, now)
+    if latest is None:
+        result["reason"] = {
+            "failed": "Latest release lookup failed; previous result retained",
+            "missing": "Release information missing",
+            "stale": "Release information stale",
+            "invalid": "Cached release version is invalid",
+        }[state]
         return result
     if (
         historical
@@ -358,8 +364,8 @@ def compare(installed, release, observed_at, now, historical=False):
         result["reason"] = "Installed-version observation missing or stale"
         return result
     try:
-        current, latest = Version(stable(installed)), Version(stable(release.version))
-    except (InvalidVersion, ValueError, TypeError):
+        current = _stable_version(installed)
+    except ValueError:
         result["reason"] = "Installed and release versions are not comparable"
         return result
     result["status"] = (
