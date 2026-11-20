@@ -37,7 +37,7 @@ use graphyard_core::pycompat::{PyError, py_float_repr, py_str_repr};
 use graphyard_core::settings::{InfluxApiMode, Settings};
 use percent_encoding::{AsciiSet, NON_ALPHANUMERIC, utf8_percent_encode};
 use reqwest::header::{
-    ACCEPT, ACCEPT_ENCODING, AUTHORIZATION, CONTENT_TYPE, HeaderValue, USER_AGENT,
+    ACCEPT, ACCEPT_ENCODING, AUTHORIZATION, CONTENT_TYPE, HeaderMap, HeaderValue, USER_AGENT,
 };
 use reqwest::{StatusCode, Url};
 
@@ -373,17 +373,7 @@ impl InfluxWriter {
             "Influx HTTP response: method=POST status={}",
             status.as_u16()
         );
-        let headers: Vec<String> = response
-            .headers()
-            .iter()
-            .map(|(name, value)| {
-                format!(
-                    "{}: {}",
-                    py_str_repr(name.as_str()),
-                    py_str_repr(&String::from_utf8_lossy(value.as_bytes()))
-                )
-            })
-            .collect();
+        let headers = diagnostic_headers(status, response.headers());
         // Complete the bounded transfer before crediting a successful status.
         let body = bounded_body(response, self.max_body_bytes, "write", &target, timeout).await?;
         if status.is_success() {
@@ -399,6 +389,22 @@ impl InfluxWriter {
             ),
         })
     }
+}
+
+fn diagnostic_headers(status: StatusCode, headers: &HeaderMap) -> Vec<String> {
+    if status.is_success() {
+        return Vec::new();
+    }
+    headers
+        .iter()
+        .map(|(name, value)| {
+            format!(
+                "{}: {}",
+                py_str_repr(name.as_str()),
+                py_str_repr(&String::from_utf8_lossy(value.as_bytes()))
+            )
+        })
+        .collect()
 }
 
 fn uncertain_write(mut error: WriteError) -> WriteError {
@@ -804,6 +810,24 @@ mod tests {
                 .unwrap_err()
                 .python_class(),
             "LocationParseError"
+        );
+    }
+
+    #[test]
+    fn only_failed_responses_render_diagnostic_headers() {
+        let mut headers = HeaderMap::new();
+        let value = "a".repeat(1024);
+        for _ in 0..32 {
+            headers.append(
+                "x-influx-diagnostic",
+                HeaderValue::from_str(&value).unwrap(),
+            );
+        }
+
+        assert!(diagnostic_headers(StatusCode::NO_CONTENT, &headers).is_empty());
+        assert_eq!(
+            diagnostic_headers(StatusCode::BAD_REQUEST, &headers),
+            vec![format!("'x-influx-diagnostic': '{value}'"); 32]
         );
     }
 

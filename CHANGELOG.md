@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Skip rendering diagnostic Influx response headers for successful Rust writes.
+
 - Reuse the validated Rust request timeout when checking a metric spec's total
   deadline, preserving diagnostic order.
 
