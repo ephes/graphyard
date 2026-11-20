@@ -270,6 +270,8 @@ from the process environment only (the unit's `EnvironmentFile`; no `.env`,
 D-9). Values the agent reads must be valid UTF-8, including values reached
 through `$` proxies. Invalid text stops startup and names the original
 setting without printing its value. Unused environment entries are ignored.
+Proxy cycles report a recursion error for the original setting before looking
+up a name twice. Acyclic proxy chains allow up to 1,000 lookups per setting.
 The Rust Influx client configuration's debug output redacts the URL and token
 and includes the configured request timeout.
 The agent's settings debug output shows numeric settings and the effective
