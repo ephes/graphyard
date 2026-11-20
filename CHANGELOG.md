@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Stop polling the Rust scheduler when neither loop has a next deadline.
+  Signal-driven shutdown still works while idle.
+
 - Decode Rust metric specs directly from SQLite rows in name order, returning
   the first decode error without a partial result.
 

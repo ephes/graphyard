@@ -272,6 +272,8 @@ through `$` proxies. Invalid text stops startup and names the original
 setting without printing its value. Unused environment entries are ignored.
 `--db` defaults to `db.sqlite3` in the working directory, which must
 exist and pass the schema check (D-2); the agent never creates it.
+If neither loop has a representable next deadline, the scheduler stays idle
+until SIGINT or SIGTERM.
 
 stdout carries the start line, `Metric specs: ...`, `Condition eval: ...` and
 `graphyard-agent interrupted, exiting`, each written promptly by a bounded
