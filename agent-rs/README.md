@@ -272,6 +272,8 @@ through `$` proxies. Invalid text stops startup and names the original
 setting without printing its value. Unused environment entries are ignored.
 The Rust Influx client configuration's debug output redacts the URL and token
 and includes the configured request timeout.
+The agent's settings debug output shows numeric settings and the effective
+Influx mode. Client construction still uses the configured credentials.
 `--db` defaults to `db.sqlite3` in the working directory, which must
 exist and pass the schema check (D-2); the agent never creates it.
 If neither loop has a representable next deadline, the scheduler stays idle

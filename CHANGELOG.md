@@ -4,6 +4,9 @@
 
 - Redact the Influx URL and token in Rust client configuration debug output.
 
+- Limit Rust agent settings debug output to numeric settings and the effective
+  Influx mode.
+
 - Compare Rust condition evaluation watermarks as UTC instants so older and
   equal-time attempts preserve observations stored with legacy datetime text.
 
