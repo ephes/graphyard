@@ -1,5 +1,6 @@
 """Bounded, read-only token metadata/usage projections (no credential columns)."""
 
+from contextlib import contextmanager
 from datetime import datetime, timedelta
 from itertools import islice
 import json
@@ -50,8 +51,18 @@ def _token_usage_rows(tokens, cutoff, using):
             yield token, usages[token["id"]]
 
 
-def token_usage_batches(tokens, cutoff):
-    """Read one generation, then yield outside the DB transaction.
+def _read_spool(spool):
+    for record in spool:
+        token, usages = json.loads(record)
+        for usage in usages:
+            for field in ("first_seen_at", "last_seen_at"):
+                usage[field] = datetime.fromisoformat(usage[field])
+        yield token, usages
+
+
+@contextmanager
+def open_token_usage_batches(tokens, cutoff):
+    """Admit the entire report before yielding an iterator outside the snapshot.
 
     Private, automatically removed disk spool: RAM stays bounded by the original
     100-token/500-usage projections, and total encoded output is capped at 64 MiB.
@@ -71,12 +82,7 @@ def token_usage_batches(tokens, cutoff):
                     raise CommandError("Token audit exceeds 64 MiB; narrow --days")
                 spool.write(record)
         spool.seek(0)
-        for record in spool:
-            token, usages = json.loads(record)
-            for usage in usages:
-                for field in ("first_seen_at", "last_seen_at"):
-                    usage[field] = datetime.fromisoformat(usage[field])
-            yield token, usages
+        yield _read_spool(spool)
 
 
 def terminal_text(value):

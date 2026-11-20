@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Leave stdout empty if either ingest-token audit exceeds its spool or
+  per-token limit. Successful empty audits still print their heading.
+
 - Report an out-of-range datetime cutoff as a command error in both
   ingest-token audits before reading the database.
 

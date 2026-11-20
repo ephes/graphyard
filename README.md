@@ -330,12 +330,12 @@ so let it collect for a while before scoping existing tokens.
 The binding and host-scope reports project token metadata in batches of 100 and
 read usage once per batch, without credential hashes or model hydration. Both
 projections use the database alias selected for the token query. One short
-snapshot covers the **entire** report on that alias: SQLite reserves the writer with its
-configured `BEGIN IMMEDIATE`; PostgreSQL uses an outer repeatable-read/read-only
+snapshot covers the **entire** report on that alias. SQLite reserves the writer
+with its configured `BEGIN IMMEDIATE`. PostgreSQL uses an outer repeatable-read/read-only
 transaction. Do not wrap report commands in an application transaction on
 PostgreSQL. Concurrent rotation, binding/scope edits and usage writes therefore
-cannot mix report generations. The snapshot is released before token lines or
-suggestions are printed.
+cannot mix report generations. The snapshot is released before the report
+heading is printed, even when no tokens match.
 
 Run the token audit alias and concurrent-write check against a disposable
 PostgreSQL database using the [contract settings](#validation-commands) and
@@ -344,8 +344,8 @@ PostgreSQL database using the [contract settings](#validation-commands) and
 A private temporary file holds only these projections (no credentials), is
 removed automatically on completion/failure, and admits at most 64 MiB encoded
 JSON. At most 500 usage identifiers per token are admitted, matching ingest's
-retention cap. Oversized restored history or reports fail before any token lines
-or proposals; narrow `--days` and retry. Memory remains bounded by one batch.
+retention cap. Oversized restored history or reports fail with empty stdout.
+Narrow `--days` and retry. Memory remains bounded by one batch.
 The default host-scope report reads enabled tokens only; `--include-disabled`
 uses the same limits. Disabled/retired attribution retains its semantics.
 

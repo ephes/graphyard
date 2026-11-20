@@ -4,10 +4,10 @@ from django.core.management.base import BaseCommand
 
 from graphyard.models import IngestToken
 from graphyard.token_reports import (
+    open_token_usage_batches,
     report_cutoff,
     shell_operand,
     terminal_text,
-    token_usage_batches,
 )
 from graphyard.token_scope import MAX_HOST_SCOPE_ENTRIES, admit_host_scope
 
@@ -38,45 +38,50 @@ class Command(BaseCommand):
 
         tokens = tokens.values("id", "name", "enabled", "host_scope")
 
-        self.stdout.write(
-            f"Hosts written per ingest token in the last {days} day(s). "
-            "Usage is recorded from the release that added host scopes onwards; "
-            "last_seen is updated at most once per hour."
-        )
-        for token, usages in token_usage_batches(tokens, cutoff):
-            scope = token["host_scope"]
-            matcher = admit_host_scope(scope)
-            if matcher.unrestricted:
-                scope_text = "unrestricted"
-            elif matcher.valid:
-                scope_text = ",".join(scope)
-            else:
-                scope_text = "invalid (allows nothing)"
-            state = "enabled" if token["enabled"] else "disabled"
-            self.stdout.write("")
+        with open_token_usage_batches(tokens, cutoff) as batches:
             self.stdout.write(
-                f"token id={token['id']} name={terminal_text(token['name'])} {state} host_scope={terminal_text(scope_text)}"
+                f"Hosts written per ingest token in the last {days} day(s). "
+                "Usage is recorded from the release that added host scopes onwards; "
+                "last_seen is updated at most once per hour."
             )
-            if not usages:
-                self.stdout.write("  (no recorded writes in this period)")
-                continue
-            for usage in usages:
-                note = ""
-                if not matcher.allows(usage["host_id"]):
-                    note = "  outside current scope"
-                self.stdout.write(
-                    f"  {terminal_text(usage['host_id'])}  last_seen={usage['last_seen_at'].isoformat(timespec='seconds')}"
-                    f"  first_seen={usage['first_seen_at'].isoformat(timespec='seconds')}{note}"
-                )
-            if len(usages) > MAX_HOST_SCOPE_ENTRIES:
-                self.stdout.write(
-                    f"  {len(usages)} identifiers; a scope holds at most "
-                    f"{MAX_HOST_SCOPE_ENTRIES} entries, so choose prefixes "
-                    "(for example 'web-*') or split the token"
-                )
-            else:
-                operand = shell_operand(",".join(usage["host_id"] for usage in usages))
-                if operand is None:
-                    self.stdout.write("  no suggestion: NUL cannot be a shell argument")
+            for token, usages in batches:
+                scope = token["host_scope"]
+                matcher = admit_host_scope(scope)
+                if matcher.unrestricted:
+                    scope_text = "unrestricted"
+                elif matcher.valid:
+                    scope_text = ",".join(scope)
                 else:
-                    self.stdout.write("  suggested --host-scope " + operand)
+                    scope_text = "invalid (allows nothing)"
+                state = "enabled" if token["enabled"] else "disabled"
+                self.stdout.write("")
+                self.stdout.write(
+                    f"token id={token['id']} name={terminal_text(token['name'])} {state} host_scope={terminal_text(scope_text)}"
+                )
+                if not usages:
+                    self.stdout.write("  (no recorded writes in this period)")
+                    continue
+                for usage in usages:
+                    note = ""
+                    if not matcher.allows(usage["host_id"]):
+                        note = "  outside current scope"
+                    self.stdout.write(
+                        f"  {terminal_text(usage['host_id'])}  last_seen={usage['last_seen_at'].isoformat(timespec='seconds')}"
+                        f"  first_seen={usage['first_seen_at'].isoformat(timespec='seconds')}{note}"
+                    )
+                if len(usages) > MAX_HOST_SCOPE_ENTRIES:
+                    self.stdout.write(
+                        f"  {len(usages)} identifiers; a scope holds at most "
+                        f"{MAX_HOST_SCOPE_ENTRIES} entries, so choose prefixes "
+                        "(for example 'web-*') or split the token"
+                    )
+                else:
+                    operand = shell_operand(
+                        ",".join(usage["host_id"] for usage in usages)
+                    )
+                    if operand is None:
+                        self.stdout.write(
+                            "  no suggestion: NUL cannot be a shell argument"
+                        )
+                    else:
+                        self.stdout.write("  suggested --host-scope " + operand)
