@@ -1,10 +1,7 @@
-from datetime import timedelta
-
-from django.core.management.base import BaseCommand, CommandError
-from django.utils import timezone
+from django.core.management.base import BaseCommand
 
 from graphyard.models import IngestToken
-from graphyard.token_reports import terminal_text, token_usage_batches
+from graphyard.token_reports import report_cutoff, terminal_text, token_usage_batches
 
 
 class Command(BaseCommand):
@@ -15,9 +12,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         days = options["days"]
-        if not 1 <= days <= 36500:
-            raise CommandError("--days must be between 1 and 36500")
-        cutoff = timezone.now() - timedelta(days=days)
+        cutoff = report_cutoff(days)
         self.stdout.write(
             f"Source: ingest_token_host_usage.last_seen_at in the last {days} days; "
             "records normalized subject_id AND collector_host from accepted ingests. "

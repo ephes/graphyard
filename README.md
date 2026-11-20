@@ -312,8 +312,10 @@ To choose scopes, see what each token really writes:
 just manage report_ingest_token_hosts --days 30
 ```
 
-The report is read-only. `--days` supports 1–36500 days (default 30); values
-outside that range or the datetime domain fail before database reads.
+The report is read-only. Both the host-scope and binding audits accept
+`--days` from 1 through 36500 (default 30) and report a command error before
+database reads if that range is exceeded or the cutoff falls outside the
+supported datetime range.
 Per enabled token (`--include-disabled` adds revoked ones) it lists the
 host identifiers written in the period, marks those outside the token's current scope, and prints a
 matching `--host-scope` value. For a token with more than 64 identifiers it prints no suggestion,

@@ -1,16 +1,15 @@
 from __future__ import annotations
 
-from datetime import timedelta
-
-from django.core.management.base import BaseCommand, CommandError
-from django.utils import timezone
+from django.core.management.base import BaseCommand
 
 from graphyard.models import IngestToken
-from graphyard.token_reports import shell_operand, terminal_text, token_usage_batches
+from graphyard.token_reports import (
+    report_cutoff,
+    shell_operand,
+    terminal_text,
+    token_usage_batches,
+)
 from graphyard.token_scope import MAX_HOST_SCOPE_ENTRIES, admit_host_scope
-
-
-MAX_LOOKBACK_DAYS = 36500
 
 
 class Command(BaseCommand):
@@ -31,12 +30,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options) -> None:
         days: int = options["days"]
-        if not 1 <= days <= MAX_LOOKBACK_DAYS:
-            raise CommandError("--days must be between 1 and 36500")
-        try:
-            cutoff = timezone.now() - timedelta(days=days)
-        except (OverflowError, ValueError) as err:
-            raise CommandError("--days exceeds the supported datetime range") from err
+        cutoff = report_cutoff(days)
 
         tokens = IngestToken.objects.order_by("name")
         if not options["include_disabled"]:

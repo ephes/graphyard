@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Report an out-of-range datetime cutoff as a command error in both
+  ingest-token audits before reading the database.
+
 - Reuse one validated scope matcher per token in the host-usage audit.
   Damaged scopes still mark every identifier outside the current scope.
 

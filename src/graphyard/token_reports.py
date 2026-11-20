@@ -1,12 +1,13 @@
 """Bounded, read-only token metadata/usage projections (no credential columns)."""
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from itertools import islice
 import json
 import shlex
 from tempfile import TemporaryFile
 
 from django.core.management.base import CommandError
+from django.utils import timezone
 
 from graphyard.database import read_snapshot
 
@@ -16,6 +17,16 @@ from graphyard.models import IngestTokenHostUsage
 REPORT_BATCH_SIZE = 100
 MAX_REPORT_BYTES = 64 * 1024 * 1024
 MAX_USAGE_PER_TOKEN = 500
+MAX_LOOKBACK_DAYS = 36500
+
+
+def report_cutoff(days: int) -> datetime:
+    if not 1 <= days <= MAX_LOOKBACK_DAYS:
+        raise CommandError(f"--days must be between 1 and {MAX_LOOKBACK_DAYS}")
+    try:
+        return timezone.now() - timedelta(days=days)
+    except (OverflowError, ValueError) as err:
+        raise CommandError("--days exceeds the supported datetime range") from err
 
 
 def _token_usage_rows(tokens, cutoff, using):
