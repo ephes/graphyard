@@ -1,8 +1,11 @@
+import json
+import sqlite3
 from datetime import timedelta
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
-from django.db import DatabaseError, transaction
+from django.db import DatabaseError, OperationalError, connection, transaction
 from django.utils import timezone
 
 from graphyard import services
@@ -247,3 +250,80 @@ def test_invalid_success_preserves_recorded_failure(offset):
     assert "recorded failure" in result["message"]
     if offset is not None:
         assert "Success timestamp is in the future" in result["message"]
+
+
+_RETRY_CODES = (
+    Path(__file__).resolve().parents[1] / "agent-rs/fixtures/heartbeat/retry_codes.json"
+)
+
+
+@pytest.mark.django_db(transaction=True)
+@pytest.mark.parametrize(
+    "case",
+    [
+        *json.loads(_RETRY_CODES.read_text(encoding="utf-8")),
+        {"code": None, "message": "database is locked", "retryable": True},
+        {"code": None, "message": "not: database is locked", "retryable": False},
+    ],
+)
+def test_heartbeat_retry_uses_sqlite_result_code(case):
+    if connection.vendor != "sqlite":
+        pytest.skip("heartbeat busy retries are SQLite-only")
+
+    driver_error = sqlite3.OperationalError(case["message"])
+    if case["code"] is not None:
+        driver_error.sqlite_errorcode = case["code"]
+    error = OperationalError(case["message"])
+    error.__cause__ = driver_error
+    heartbeat = PipelineHeartbeat(name="synthetic")
+
+    with (
+        patch.object(
+            PipelineHeartbeat.objects,
+            "update_or_create",
+            side_effect=[error, (heartbeat, False)],
+        ) as write,
+        patch.object(services.time, "sleep") as sleep,
+    ):
+        if case["retryable"]:
+            assert services.record_heartbeat("synthetic", status="ok") is heartbeat
+            assert write.call_count == 2
+            sleep.assert_called_once_with(0.05)
+        else:
+            with pytest.raises(OperationalError) as raised:
+                services.record_heartbeat("synthetic", status="ok")
+            assert raised.value is error
+            assert write.call_count == 1
+            sleep.assert_not_called()
+
+
+@pytest.mark.django_db(transaction=True, databases=["default", "secondary"])
+@pytest.mark.parametrize("alias", ["default", "secondary"])
+def test_heartbeat_leaves_busy_snapshot_retry_to_caller(alias):
+    driver_error = sqlite3.OperationalError("stale snapshot")
+    driver_error.sqlite_errorcode = sqlite3.SQLITE_BUSY_SNAPSHOT
+    error = OperationalError("stale snapshot")
+    error.__cause__ = driver_error
+
+    with (
+        patch.object(services.router, "db_for_write", return_value=alias),
+        patch.object(
+            PipelineHeartbeat.objects, "update_or_create", side_effect=error
+        ) as write,
+        patch.object(services.time, "sleep") as sleep,
+    ):
+        with pytest.raises(OperationalError) as raised, transaction.atomic(using=alias):
+            PipelineHeartbeat.objects.using(alias).create(name="caller-write")
+            if alias == "default":
+                services._write_heartbeat(
+                    "synthetic", status="ok", last_error="", details=None, success=True
+                )
+            else:
+                services.record_heartbeat("synthetic", status="ok")
+
+    assert raised.value is error
+    write.assert_called_once()
+    sleep.assert_not_called()
+    assert (
+        not PipelineHeartbeat.objects.using(alias).filter(name="caller-write").exists()
+    )

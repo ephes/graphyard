@@ -678,6 +678,13 @@ Example `config` JSON for an HTTP JSON metric spec:
 }
 ```
 
+HTTP JSON metric paths accept Unicode decimal digits for array indices,
+including leading zeroes. Both agents use the Unicode 15.0 database of
+Python 3.12; the fixture drift check fails when another interpreter's
+database adds digit runs. Other digit glyphs such as `²`, and indices
+outside the array, produce the usual missing-path result. Object keys
+match the segment literally.
+
 For HTTP JSON metrics, Python and Rust reserve the `spec_name` tag for the
 collection spec's name. A configured `spec_name` is ignored, and other
 configured tags are still included as strings.
@@ -1068,6 +1075,11 @@ Python heartbeat throttling suppresses only repeats of the last committed
 state per name; transitions and retries after failed/rolled-back writes publish.
 The retained Python agent uses this writer too; Rust writes every heartbeat and
 needs no throttle correction.
+
+Standalone SQLite heartbeat writes retry BUSY up to twice, after 50 and
+100 milliseconds. A Python heartbeat inside a caller-owned Django
+transaction propagates contention on the first attempt so the caller can
+roll back the transaction and decide whether to retry.
 
 Health resolves the lazy session login first, outside the snapshot (Django may write
 the session while resolving it, which a read-only PostgreSQL transaction refuses), and

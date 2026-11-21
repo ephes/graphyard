@@ -20,10 +20,8 @@ fn json_paths_match_python() {
         let path = case.str_field("path");
         let payload = json_loads(case.str_field("payload")).expect("payload JSON");
         let context = format!("path {path:?}");
-        // A deliberate divergence states the Rust result separately.
-        let expected = case.get("rust").unwrap_or(case);
         let actual = resolve_json_path(&payload, path);
-        match expected.get("error") {
+        match case.get("error") {
             Some(error) => {
                 let err = actual.expect_err(&context);
                 assert_eq!(err.python_class(), error.str_field("class"), "{context}");
@@ -31,26 +29,20 @@ fn json_paths_match_python() {
             }
             None => {
                 let found = actual.expect(&context).map(py_repr);
-                assert_eq!(
-                    found.as_deref(),
-                    expected.field("found").as_str(),
-                    "{context}"
-                );
+                assert_eq!(found.as_deref(), case.field("found").as_str(), "{context}");
             }
         }
     }
 }
 
 #[test]
-fn divergent_cases_name_their_plan_entry() {
+fn decimal_zeroes_match_the_python_unicode_database() {
     let fixture = fixture();
-    let divergent: Vec<&Value> = fixture
-        .list_field("cases")
+    let python: Vec<u64> = fixture
+        .list_field("decimal_zeroes")
         .iter()
-        .filter(|case| case.get("divergence").is_some())
+        .map(|code| code.as_u64().expect("code point"))
         .collect();
-    assert_eq!(divergent.len(), 2);
-    for case in divergent {
-        assert_eq!(case.str_field("divergence"), "D-6");
-    }
+    let rust: Vec<u64> = DECIMAL_ZEROES.iter().map(|&code| u64::from(code)).collect();
+    assert_eq!(rust, python, "regenerate DECIMAL_ZEROES from the fixture");
 }

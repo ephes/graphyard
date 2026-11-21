@@ -90,16 +90,13 @@ impl StoreError {
         }
     }
 
-    /// `record_heartbeat`'s retry test: an SQLite error (Python's
-    /// `OperationalError`) whose text contains `database is locked`, ignoring
-    /// case. SQLite reports a busy timeout with exactly that text.
+    /// Whether the SQLite primary result code is BUSY, including extended
+    /// BUSY codes. Other store errors do not qualify for a heartbeat retry.
     pub fn is_database_locked(&self) -> bool {
-        match self {
-            StoreError::Sqlite(err @ rusqlite::Error::SqliteFailure(..)) => err
-                .to_string()
-                .to_lowercase()
-                .contains("database is locked"),
-            _ => false,
-        }
+        matches!(
+            self,
+            StoreError::Sqlite(err)
+                if err.sqlite_error_code() == Some(rusqlite::ErrorCode::DatabaseBusy)
+        )
     }
 }

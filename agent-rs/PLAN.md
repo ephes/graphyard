@@ -241,16 +241,14 @@ that differs is a bug.
   its non-object HA row, keeping the shared-semantics comparison exact without
   masking aggregate skipped counts. Malformed-row coverage stays in the above
   fixture and the real-socket Rust tests.
-- **D-6 Unicode digits and spaces.** Python `str.isdigit()` in
-  `_resolve_json_path`, `float()` on Unicode digit strings, and `str.strip()`
-  of non-`White_Space` separators (`\x1c`–`\x1f`) accept more than ASCII.
-  Rust accepts ASCII digits only and strips Unicode `White_Space` plus
-  `\x1c`–`\x1f` (matching `str.isspace`). A Unicode-digit path segment is
-  "metric_path not found" in Rust (Python: indexes the list for a decimal
-  digit such as `٣`, and `int()` raises → `critical` for other digits such
-  as `²`; both pinned by `json_path.json`).
-  The same holds for Django's `datetime_re` fallback when reading a stored
-  datetime (5.3): its `\d` matches Unicode digits, Rust's ASCII only, so
+- **D-6 Unicode digits and spaces.** Python `float()` accepts Unicode
+  decimal digits; the Rust compatibility helper accepts ASCII digits.
+  Rust strips Unicode `White_Space` plus `\x1c`–`\x1f` (matching
+  `str.isspace`). HTTP JSON path indices use decimal digits from the
+  Python 3.12 Unicode database in both runtimes (see `json_path.json`;
+  its `decimal_zeroes` table pins Rust's `DECIMAL_ZEROES`).
+  Django's `datetime_re` fallback for stored datetimes (5.3) matches
+  Unicode digits with `\d`. The Rust fallback matches ASCII digits, so
   such text loads as NULL in Rust (`fromisoformat` is ASCII-only in both).
   Since round 90 the UniFi selector `port_idx:<n>` (S7b) takes ASCII
   digits only in both runtimes; it is no longer a Unicode-digit divergence.
@@ -882,9 +880,12 @@ statement or transaction short) and closes the connection.
   offset form is rewritten in UTC); missing row → insert with `last_success`
   NULL unless success. Python reads the clock separately for `last_success`
   and `updated_at`; Rust writes one `now` (P2). Up to 3 attempts, retrying
-  only on `database is locked` with sleeps of 50 ms and 100 ms (await points
-  in Rust, so a shutdown never waits for them). The exact column set per path
-  is pinned by the `store_ops.json` fixture, not by this paragraph.
+  on SQLite's primary `SQLITE_BUSY` code (including extended BUSY codes)
+  with sleeps of 50 ms and 100 ms (await points in Rust). For a Python
+  SQLite driver error without a code, the exact legacy `database is locked`
+  message also qualifies. Python retries only standalone writes. Inside an
+  existing Django transaction the caller owns rollback and any retry.
+  The `store_ops.json` fixture pins the exact column set per path.
 - **Registry** (`touch_registry_from_points(points)`, `bound_subject_id=None`)
   — section 5.5.
 
@@ -1657,7 +1658,7 @@ a string produces a text file written verbatim (`schema/schema.sql`).
 | `spec_config.json` | `spec_config.py` (all helpers, `validate_spec_config`) | config corpus → value or message |
 | `normalize.json` | `normalize_subject_id`, `_normalize_dimension_value`, `parse_finite_float`, `normalize_metric_point` | point corpus → normalised point or message |
 | `line_protocol.json` | `write_points` with a capturing client, `Point.to_line_protocol` | points → lines, logs, counts (escape and float corner cases) |
-| `json_path.json` | `_resolve_json_path` (incl. the 24 production metric paths) | payload × path → `repr` of the value, not found, or the `int()` error; D-6 cases with the Rust result |
+| `json_path.json` | `_resolve_json_path` (incl. the 24 production metric paths) | payload × path → `repr` of the value, not found, or the `int()` error |
 | `ha_mapping.json` | `_resolve_subject_mapping`, `_resolve_home_assistant_metric_mapping`, `_normalize_home_assistant_sensor_state` (incl. the production spec config of section 1) | per case a sequence of calls on one spec sharing the warn-once set → point, subject or metric mapping, `None` or the escaping exception, the warning records, the warn-once keys |
 | `ha_json_executors.json` (S7a) | `_execute_home_assistant_sensor_spec`, `_execute_home_assistant_env_scan_spec`, `_execute_http_json_metric_spec` on a scripted `MockTransport` with recording (optionally failing) `write_points`/`touch_registry_from_points` | spec + replies → outcome or escaping `SpecConfigError`, requests (target, `Authorization`, `Accept`), points written and touched, log lines |
 | `unifi.json` (S7b, `gen_page_probe_unifi.py`) | `_find_unifi_device`, `_resolve_unifi_interface_stats`, `_unifi_response_summary`, `_unifi_response_error`, `_unifi_login_response_ok`, `_execute_unifi_device_traffic_spec` on `httpx.MockTransport` with a recording sink | device/selector/response corpus; executor scenarios: config × scripted replies → requests (method, target, selected headers, body), sink calls with their points, outcome or raised exception, `HTTP Request:` lines |

@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- Propagate Python heartbeat contention immediately inside a caller-owned
+  transaction.
+
+- Classify Python and Rust heartbeat retries by SQLite BUSY result codes.
+
+- Bound Rust invalid-integer formatting to the 200-character diagnostic prefix.
+
+- Align Unicode decimal array indices and literal object keys in Python and
+  Rust HTTP JSON metric paths.
+
 - Report Python UniFi streaming decode failures without constructing an
   unadmitted response object graph.
 

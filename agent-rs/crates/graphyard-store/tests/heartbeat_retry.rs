@@ -1,5 +1,5 @@
 //! `record_heartbeat`'s lock retry (PLAN.md 5.4): up to three attempts,
-//! retrying only on `database is locked`, after 50 ms and 100 ms.
+//! retrying on SQLite `SQLITE_BUSY` after 50 ms and 100 ms.
 
 mod common;
 
@@ -8,7 +8,7 @@ use std::time::{Duration, Instant};
 use chrono::{DateTime, Utc};
 use common::{TestDb, settings};
 use graphyard_core::StatusLevel;
-use graphyard_store::{HeartbeatRecord, Store};
+use graphyard_store::{HeartbeatRecord, Store, StoreError};
 
 fn at() -> DateTime<Utc> {
     DateTime::from_timestamp(1_792_829_730, 123_456_000).unwrap()
@@ -106,4 +106,20 @@ async fn other_errors_are_not_retried() {
     assert_eq!(err.to_string(), "day is out of range for month");
     assert!(started.elapsed() < Duration::from_millis(50));
     store.close();
+}
+
+#[test]
+fn heartbeat_retry_uses_sqlite_result_code() {
+    let cases: serde_json::Value =
+        serde_json::from_str(include_str!("../../../fixtures/heartbeat/retry_codes.json")).unwrap();
+    for case in cases.as_array().unwrap() {
+        let code = i32::try_from(case["code"].as_i64().unwrap()).unwrap();
+        let message = case["message"].as_str().unwrap().to_owned();
+        let retryable = case["retryable"].as_bool().unwrap();
+        let err = StoreError::from(rusqlite::Error::SqliteFailure(
+            rusqlite::ffi::Error::new(code),
+            Some(message),
+        ));
+        assert_eq!(err.is_database_locked(), retryable, "SQLite code {code}");
+    }
 }

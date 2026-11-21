@@ -487,6 +487,13 @@ until it actually finishes, even after caller cancellation. Abandoned lookup
 diagnostics remain available; IP literals bypass resolution. This limits
 resolver jobs, not the number of application futures waiting for admission.
 
+### Rust integer diagnostics
+
+Invalid Rust integer literals include at most the first 200 characters of
+the Python-compatible representation, including quotes and escape characters.
+The formatter allocates only for that prefix and considers the full literal
+when choosing the quote.
+
 ### Collector TLS trust-store readiness
 
 The Rust agent loads system roots when it creates its HTTP context. If no
@@ -504,6 +511,7 @@ expanded cell storage (UTF-8 value/default and label bytes plus 64 bytes per map
 cell). These limits supplement the 10 MiB wire cap. Exceeding a limit refuses the
 entire query as `InfluxTransferError`, preserving the distinction from empty
 results. Duplicate-column warnings contain only a fixed category and count.
+
 Condition diagnostics visit present dimensions once and format only the selected
 structural series; quoted labels, missing versus empty dimensions and tie order
 remain shared with Python.

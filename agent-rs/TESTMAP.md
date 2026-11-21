@@ -111,7 +111,7 @@ extracted binary.
 | `run_metric_collection_specs_once` spec load (`enabled`, `due_only`, ordering, conversions) and non-due `spec.save(update_fields=...)` incl. the 0-row `NotUpdated`; due claim/recovery and guarded completion | `graphyard-store/tests/store_ops.rs` against `fixtures/store_ops.json` | done |
 | `evaluate_conditions_once` condition load (incl. `condition_id`) and conditional success/failure publication incl. stale/tied attempts and deleted rows; the condition side of `test_condition_evaluation.py::test_evaluate_conditions_once_updates_condition_and_heartbeat` | `store_ops.rs` | done |
 | `record_heartbeat` (`update_or_create`: insert, update, `last_success` written back, conversions, details JSON); an ignored late-success `last_success` update returns `NotUpdated` and rolls back | `store_ops.rs` (incl. `::ignored_late_heartbeat_success_fails_and_can_be_retried`); `src/heartbeat.rs` unit test for `json.dumps` | done |
-| `record_heartbeat` retry on `database is locked` (3 attempts, 50/100 ms), no retry otherwise | `graphyard-store/tests/heartbeat_retry.rs` | done |
+| `record_heartbeat` retry on SQLite `SQLITE_BUSY` (3 attempts, 50/100 ms), no retry otherwise | `graphyard-store/tests/heartbeat_retry.rs` | done |
 | PLAN.md 5.7: no agent SQL names the ingest token tables | `graphyard-store/tests/no_ingest_token.rs` | done |
 
 ## S3b — registry touch
@@ -150,7 +150,7 @@ independent-store heartbeat projection tests in `src/heartbeat.rs`.
 
 | Python behaviour / test | Rust counterpart | Status |
 | --- | --- | --- |
-| `_resolve_json_path` (`$`, empty segments, dict keys, ASCII list indexes, `null` as not found, `int()` digit limit; the 24 production paths) | `graphyard-core/src/json_path/tests.rs` against `fixtures/json_path.json` (`gen_json_path.py`); Unicode digits per D-6 | done |
+| `_resolve_json_path` (`$`, empty segments, literal dict keys, Unicode decimal (Nd) list indexes, `null` as not found, `int()` digit limit; the 24 production paths) | `graphyard-core/src/json_path/tests.rs` against `fixtures/json_path.json` (`gen_json_path.py`, incl. the interpreter's decimal-zero table pinned against `DECIMAL_ZEROES`) | done |
 | `_resolve_subject_mapping`, `_resolve_home_assistant_metric_mapping`, `_normalize_home_assistant_sensor_state`, `_entity_name_slug`, `_warn_subject_mapping_once` (rules, defaults, warn-once keys, multipliers incl. `OverflowError`, tags order, timestamps incl. the `OverflowError` of `astimezone`, host compatibility, collector fallbacks; the production env scan config) | `graphyard-core/src/home_assistant/tests.rs` against `fixtures/ha_mapping.json` (`gen_ha_mapping.py`) | done |
 | `test_metric_dimensions.py::test_home_assistant_env_scan_applies_subject_mapping_rule`, `::…_missing_mapping_uses_default_and_logs_warning`, `::…_invalid_rule_subject_type_falls_back_to_default`, `::…_metric_mapping_rewrites_metric_and_value`, `::…_skips_overflowing_mapped_value` | `ha_mapping.json` cases of the same names + `ha_json_executors.json` scenarios | done |
 | `test_metric_dimensions.py::test_home_assistant_env_scan_warning_cache_resets_between_runs` | `executors/tests/ha_json_budget.rs::mapping_warnings_are_once_per_run` | done |

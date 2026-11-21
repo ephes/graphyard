@@ -1,0 +1,6 @@
+[
+  {"code": 5, "message": "synthetic contention", "retryable": true},
+  {"code": 517, "message": "stale snapshot", "retryable": true},
+  {"code": 6, "message": "database is locked", "retryable": false},
+  {"code": 10, "message": "database is locked", "retryable": false}
+]

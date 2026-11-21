@@ -9,6 +9,7 @@ import logging
 import math
 import re
 import socket
+import sqlite3
 import threading
 import time
 from typing import Callable, Iterator, TypeVar
@@ -17,7 +18,7 @@ import httpx
 from django.conf import settings
 from django.db.models import Max, Q, QuerySet, TextField
 from django.db.models.functions import Cast
-from django.db import OperationalError, connection, router, transaction
+from django.db import OperationalError, connection, connections, router, transaction
 from django.utils import timezone
 
 from . import influx
@@ -854,7 +855,7 @@ def _resolve_json_path(payload: object, path: str) -> object | None:
             current = current[part]
             continue
 
-        if isinstance(current, list) and part.isdigit():
+        if isinstance(current, list) and part.isdecimal():
             index = int(part)
             if index < 0 or index >= len(current):
                 return None
@@ -2514,7 +2515,8 @@ def record_heartbeat(
     min_update_interval_seconds: int = 0,
 ) -> PipelineHeartbeat:
     state = (status, last_error, success)
-    outer_transaction = connection.in_atomic_block
+    alias = router.db_for_write(PipelineHeartbeat)
+    outer_transaction = connections[alias].in_atomic_block
     marker = object()
     with _heartbeat_write_lock:
         previous = _heartbeat_write_cache.get(name)
@@ -2541,7 +2543,9 @@ def record_heartbeat(
         published = True
         if outer_transaction:
             # A delayed outer commit must not install stale cached state.
-            transaction.on_commit(lambda: _heartbeat_write_cache.pop(name, None))
+            transaction.on_commit(
+                lambda: _heartbeat_write_cache.pop(name, None), using=alias
+            )
         return heartbeat
     finally:
         with _heartbeat_write_lock:
@@ -2556,6 +2560,13 @@ def record_heartbeat(
                 _heartbeat_inflight[name] = (pending - 1, latest)
 
 
+def _is_heartbeat_sqlite_busy(error: OperationalError) -> bool:
+    code = getattr(error.__cause__, "sqlite_errorcode", None)
+    if isinstance(code, int):
+        return (code & 0xFF) == sqlite3.SQLITE_BUSY
+    return str(error).lower() == "database is locked"
+
+
 def _write_heartbeat(
     name: str,
     *,
@@ -2564,6 +2575,12 @@ def _write_heartbeat(
     details: dict | None,
     success: bool,
 ) -> PipelineHeartbeat:
+    write_connection = connections[router.db_for_write(PipelineHeartbeat)]
+    retry_on_busy = (
+        write_connection.vendor == "sqlite"
+        and not write_connection.in_atomic_block
+        and (write_connection.connection is None or write_connection.get_autocommit())
+    )
     defaults = {
         "status": status,
         "last_error": last_error,
@@ -2579,7 +2596,8 @@ def _write_heartbeat(
             )
             return heartbeat
         except OperationalError as err:
-            if "database is locked" not in str(err).lower() or attempt == 3:
+            # Only a standalone write can discard its failed snapshot.
+            if not retry_on_busy or attempt == 3 or not _is_heartbeat_sqlite_busy(err):
                 raise
             # Small bounded backoff to ride through short write locks.
             time.sleep(0.05 * attempt)
