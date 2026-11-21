@@ -308,7 +308,9 @@ that differs is a bug.
   a restart instead of a new agent release. `graphyard-agent.service` is
   added to macmini's `restart_units` in ops-control
   `playbooks/ca-trust-consumers.yml` (S11c), so the `ca_trust_consumers`
-  rollout restarts the agent after a CA update.
+  rollout restarts the agent after a CA update. Verifying collector TLS
+  setup requires at least one usable root before network I/O (see
+  [trust-store readiness](../docs/agent-rs.md#collector-tls-trust-store-readiness)).
 - **D-13 Stored values of another SQLite storage class.** Rust reads the
   `integer` columns of the agent tables (ids, `interval_seconds`,
   `next_run_time`, `window_minutes`, `breach_minutes`,

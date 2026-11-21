@@ -13,6 +13,8 @@ use std::error::Error as StdError;
 use std::fmt;
 use std::io;
 
+pub(crate) const EMPTY_TLS_TRUST_STORE: &str = "collector TLS trust store has no usable roots";
+
 /// The Python exception class of an [`HttpError`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ErrorKind {
@@ -139,7 +141,8 @@ impl HttpError {
         if self.kind == ErrorKind::ValueError
             && matches!(
                 self.message.as_str(),
-                "UniFi redirect outside controller origin refused"
+                EMPTY_TLS_TRUST_STORE
+                    | "UniFi redirect outside controller origin refused"
                     | "UniFi compressed response refused"
                     | "UniFi controller URL must be absolute HTTP or HTTPS"
             )

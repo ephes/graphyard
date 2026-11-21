@@ -21,7 +21,7 @@ use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 use tokio::net::TcpStream;
 use tokio::time::Sleep;
 
-use super::error::{ErrorKind, HttpError, os_error_text};
+use super::error::{EMPTY_TLS_TRUST_STORE, ErrorKind, HttpError, os_error_text};
 
 /// A socket whose every read and write is bounded by the timeout, like
 /// httpcore's per-operation `read`/`write` timeouts.
@@ -209,13 +209,13 @@ pub(crate) async fn start_tls(
 /// store, and `verify_tls: false` (no certificate or host name checks, the
 /// handshake signature still checked).
 pub(crate) struct TlsConfigs {
-    pub(crate) verify: Arc<ClientConfig>,
+    pub(crate) verify: Result<Arc<ClientConfig>, HttpError>,
     pub(crate) no_verify: Arc<ClientConfig>,
 }
 
 impl TlsConfigs {
     /// Configurations trusting `roots`; ALPN `http/1.1` as httpx without
-    /// HTTP/2.
+    /// HTTP/2. An empty effective store leaves only the non-verifying config.
     pub(crate) fn new(roots: RootCertStore) -> Self {
         let provider = Arc::new(rustls::crypto::ring::default_provider());
         let builder = || {
@@ -223,10 +223,15 @@ impl TlsConfigs {
                 .with_safe_default_protocol_versions()
                 .expect("ring supports the default protocol versions")
         };
-        let mut verify = builder()
-            .with_root_certificates(roots)
-            .with_no_client_auth();
-        verify.alpn_protocols = vec![b"http/1.1".to_vec()];
+        let verify = if roots.is_empty() {
+            Err(HttpError::new(ErrorKind::ValueError, EMPTY_TLS_TRUST_STORE))
+        } else {
+            let mut config = builder()
+                .with_root_certificates(roots)
+                .with_no_client_auth();
+            config.alpn_protocols = vec![b"http/1.1".to_vec()];
+            Ok(Arc::new(config))
+        };
         let mut no_verify = builder()
             .dangerous()
             .with_custom_certificate_verifier(Arc::new(NoVerifier(
@@ -235,7 +240,7 @@ impl TlsConfigs {
             .with_no_client_auth();
         no_verify.alpn_protocols = vec![b"http/1.1".to_vec()];
         Self {
-            verify: Arc::new(verify),
+            verify,
             no_verify: Arc::new(no_verify),
         }
     }
@@ -244,9 +249,14 @@ impl TlsConfigs {
 /// The system trust store (Ubuntu `ca-certificates` on macmini, PLAN.md
 /// D-12), loaded once per context; unreadable entries are skipped.
 pub(crate) fn system_roots() -> RootCertStore {
+    roots_from_native(rustls_native_certs::load_native_certs())
+}
+
+pub(crate) fn roots_from_native(loaded: rustls_native_certs::CertificateResult) -> RootCertStore {
     let mut roots = RootCertStore::empty();
-    let loaded = rustls_native_certs::load_native_certs();
-    let (_added, _ignored) = roots.add_parsable_certificates(loaded.certs);
+    // Native loading can report errors alongside usable certificates. The
+    // effective store determines readiness, and setup reports a fixed error.
+    roots.add_parsable_certificates(loaded.certs);
     roots
 }
 
