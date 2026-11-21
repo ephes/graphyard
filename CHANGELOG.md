@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+- Rust agent (`agent-rs/`): version 0.4.2, released as `agent-rs-v0.4.2`
+  (built and published locally by `agent-rs/scripts/local_release.py`). It
+  carries the Rust agent fixes merged since `agent-rs-v0.4.1` (entries below),
+  among them: a due condition check runs right after the metrics and the
+  scheduler sleeps until its next deadline (idle without deadlines), targeted
+  condition checks keep the global heartbeat, condition watermarks are ordered
+  by parsed UTC instants, metric specs are decoded in database order and
+  their schedule is validated before a collection is claimed, heartbeat retries
+  are classified by SQLite BUSY result codes and ignored late heartbeat
+  successes are reported, stricter schema readiness checks (ordinary tables,
+  the service-to-host foreign key, required registry columns), Unicode decimal
+  JSON path indices aligned with the Python agent, bounded integer and JSON
+  array admission, an empty TLS trust store reported before connecting, and
+  redacted debug output of the settings and the Influx client.
+  `--check-schema` still needs graphyard migration
+  `0015_alter_conditiondefinition_breach_minutes_and_more`.
+
 - Propagate Python heartbeat contention immediately inside a caller-owned
   transaction.
 
