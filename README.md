@@ -1057,15 +1057,17 @@ needs no throttle correction.
 
 Health resolves the lazy session login first, outside the snapshot (Django may write
 the session while resolving it, which a read-only PostgreSQL transaction refuses), and
-then materializes heartbeats and condition counts in one short database snapshot;
-one query fetches the three named heartbeats, and one aggregate query fetches all
-condition counts. A failing session lookup counts as
-failed database evidence like the snapshot reads. SQLite's
+then materializes heartbeats and condition counts in one short database snapshot.
+One query fetches the three named heartbeats, and one aggregate query fetches all
+condition counts. Session lookup failures and snapshot read failures both count as
+failed database evidence. SQLite's
 configured `BEGIN IMMEDIATE` briefly reserves the writer (WAL/deferred readers use
 their read snapshot); PostgreSQL uses an outer repeatable-read, read-only
 transaction. Health opts out of per-request transactions and releases its snapshot
 before querying remote InfluxDB or rendering the response. Application callers must
-not wrap the snapshot in a PostgreSQL transaction.
+not wrap the snapshot in a PostgreSQL transaction. If InfluxDB client cleanup
+fails, the server logs a separate warning with the exception type and keeps the
+probe result or its original error.
 Every `/v1/health` response, including anonymous, expired-session, unavailable and
 method-error responses, carries `Cache-Control: private, no-store` and `Vary: Cookie`
 while preserving other Vary fields. Detailed diagnostics must never be cached or
@@ -1095,8 +1097,8 @@ Set environment file based on `deploy/systemd/graphyard.env.example`.
 For the SQLite-backed deployment profile, keep web concurrency conservative (`--workers 1`) and
 use WAL + busy-timeout settings from `graphyard.env.example`. If SQLite selects a
 different journal mode, the connection log includes the alias, requested mode
-and effective mode. In-memory databases log the mismatch at info level;
-file-backed databases log it at warning level.
+and effective mode. In-memory databases log the mismatch at info level.
+File-backed databases log it at warning level.
 
 ## Validation Commands
 
