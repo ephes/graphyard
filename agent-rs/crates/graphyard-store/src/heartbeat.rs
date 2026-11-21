@@ -8,8 +8,8 @@
 //! field whose class overrides `pre_save`: `updated_at` (auto_now, set to
 //! `now`) and `last_success` (a `DateTimeField`), so after a failure the
 //! loaded `last_success` is written back in Django's text form (an
-//! unparseable stored value becomes NULL). Three attempts, retrying only on
-//! `database is locked` after 50 ms and 100 ms.
+//! unparseable stored value becomes NULL). Three attempts, retrying on
+//! SQLite `SQLITE_BUSY` after 50 ms and 100 ms.
 //! Rust additionally fences status/details by observation time under the writer
 //! lock (first commit wins ties), while retaining the maximum successful time.
 
@@ -160,8 +160,7 @@ impl Store {
     /// them.
     ///
     /// # Errors
-    /// The last attempt's error; errors other than `database is locked` are
-    /// not retried.
+    /// The last attempt's error. Only SQLite `SQLITE_BUSY` is retryable.
     pub async fn record_heartbeat(
         &self,
         record: HeartbeatRecord,

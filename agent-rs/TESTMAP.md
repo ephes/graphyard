@@ -111,7 +111,7 @@ extracted binary.
 | `run_metric_collection_specs_once` spec load (`enabled`, `due_only`, ordering, conversions) and non-due `spec.save(update_fields=...)` incl. the 0-row `NotUpdated`; due claim/recovery and guarded completion | `graphyard-store/tests/store_ops.rs` against `fixtures/store_ops.json` | done |
 | `evaluate_conditions_once` condition load (incl. `condition_id`) and conditional success/failure publication incl. stale/tied attempts and deleted rows; the condition side of `test_condition_evaluation.py::test_evaluate_conditions_once_updates_condition_and_heartbeat` | `store_ops.rs` | done |
 | `record_heartbeat` (`update_or_create`: insert, update, `last_success` written back, conversions, details JSON); an ignored late-success `last_success` update returns `NotUpdated` and rolls back | `store_ops.rs` (incl. `::ignored_late_heartbeat_success_fails_and_can_be_retried`); `src/heartbeat.rs` unit test for `json.dumps` | done |
-| `record_heartbeat` retry on `database is locked` (3 attempts, 50/100 ms), no retry otherwise | `graphyard-store/tests/heartbeat_retry.rs` | done |
+| `record_heartbeat` retry on SQLite `SQLITE_BUSY` (3 attempts, 50/100 ms), no retry otherwise | `graphyard-store/tests/heartbeat_retry.rs` | done |
 | PLAN.md 5.7: no agent SQL names the ingest token tables | `graphyard-store/tests/no_ingest_token.rs` | done |
 
 ## S3b — registry touch

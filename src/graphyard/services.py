@@ -9,6 +9,7 @@ import logging
 import math
 import re
 import socket
+import sqlite3
 import threading
 import time
 from typing import Callable, Iterator, TypeVar
@@ -17,7 +18,7 @@ import httpx
 from django.conf import settings
 from django.db.models import Max, Q, QuerySet, TextField
 from django.db.models.functions import Cast
-from django.db import OperationalError, connection, router, transaction
+from django.db import OperationalError, connection, connections, router, transaction
 from django.utils import timezone
 
 from . import influx
@@ -2556,6 +2557,16 @@ def record_heartbeat(
                 _heartbeat_inflight[name] = (pending - 1, latest)
 
 
+def _is_heartbeat_sqlite_busy(error: OperationalError) -> bool:
+    alias = router.db_for_write(PipelineHeartbeat)
+    if connections[alias].vendor != "sqlite":
+        return False
+    code = getattr(error.__cause__, "sqlite_errorcode", None)
+    if isinstance(code, int):
+        return (code & 0xFF) == sqlite3.SQLITE_BUSY
+    return str(error).lower() == "database is locked"
+
+
 def _write_heartbeat(
     name: str,
     *,
@@ -2579,7 +2590,7 @@ def _write_heartbeat(
             )
             return heartbeat
         except OperationalError as err:
-            if "database is locked" not in str(err).lower() or attempt == 3:
+            if attempt == 3 or not _is_heartbeat_sqlite_busy(err):
                 raise
             # Small bounded backoff to ride through short write locks.
             time.sleep(0.05 * attempt)

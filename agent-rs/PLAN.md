@@ -879,8 +879,10 @@ statement or transaction short) and closes the connection.
   offset form is rewritten in UTC); missing row → insert with `last_success`
   NULL unless success. Python reads the clock separately for `last_success`
   and `updated_at`; Rust writes one `now` (P2). Up to 3 attempts, retrying
-  only on `database is locked` with sleeps of 50 ms and 100 ms (await points
-  in Rust, so a shutdown never waits for them). The exact column set per path
+  on SQLite's primary `SQLITE_BUSY` code (including extended BUSY codes)
+  with sleeps of 50 ms and 100 ms (await points in Rust). For a Python
+  SQLite driver error without a code, the exact legacy `database is locked`
+  message also qualifies. The exact column set per path
   is pinned by the `store_ops.json` fixture, not by this paragraph.
 - **Registry** (`touch_registry_from_points(points)`, `bound_subject_id=None`)
   — section 5.5.
