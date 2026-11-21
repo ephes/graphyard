@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import math
+from sqlite3 import SQLITE_CONSTRAINT_UNIQUE
 
 from django.core.exceptions import ValidationError
 from django.core.management.base import BaseCommand, CommandError
-from django.db import DatabaseError, router, transaction
+from django.db import DatabaseError, IntegrityError, router, transaction
 
 from graphyard.models import ComparisonOperator, ConditionDefinition, SubjectType
 
@@ -14,6 +15,63 @@ def _validate_threshold(name: str, value: float) -> None:
         raise CommandError(f"{name} must be finite")
     if value < 0 or value > 1:
         raise CommandError(f"{name} must be between 0 and 1 for ratio metrics")
+
+
+def _is_condition_name_collision(error: IntegrityError) -> bool:
+    cause = error.__cause__
+    if getattr(cause, "sqlite_errorcode", None) == SQLITE_CONSTRAINT_UNIQUE:
+        return str(cause) == "UNIQUE constraint failed: condition_definition.name"
+
+    # PostgreSQL names the inline unique constraint from the initial migration.
+    diagnostics = getattr(cause, "diag", None)
+    return (
+        getattr(diagnostics, "sqlstate", None) == "23505"
+        and getattr(diagnostics, "table_name", None) == "condition_definition"
+        and getattr(diagnostics, "constraint_name", None)
+        == "condition_definition_name_key"
+    )
+
+
+def _apply_definition(
+    condition: ConditionDefinition, defaults: dict[str, object]
+) -> None:
+    for field_name, field_value in defaults.items():
+        setattr(condition, field_name, field_value)
+    # The locked lookup and the writer's unique name constraint replace
+    # Django's router-driven database validation.
+    condition.full_clean(validate_unique=False, validate_constraints=False)
+
+
+def _seed_condition(
+    name: str, defaults: dict[str, object], using: str
+) -> tuple[ConditionDefinition, bool]:
+    with transaction.atomic(using=using):
+        locked = (
+            ConditionDefinition.objects.using(using)
+            .select_for_update()
+            .filter(name=name)
+        )
+        condition = locked.first()
+        if condition is None:
+            condition = ConditionDefinition(name=name)
+            _apply_definition(condition, defaults)
+            try:
+                # Roll back just the failed insert so the outer transaction
+                # can lock and validate the winning row.
+                with transaction.atomic(using=using):
+                    condition.save(using=using, force_insert=True)
+            except IntegrityError as err:
+                if not _is_condition_name_collision(err):
+                    raise
+                condition = locked.first()
+                if condition is None:
+                    raise
+            else:
+                return condition, True
+
+        _apply_definition(condition, defaults)
+        condition.save(using=using)
+        return condition, False
 
 
 class Command(BaseCommand):
@@ -158,22 +216,7 @@ class Command(BaseCommand):
 
         try:
             using = router.db_for_write(ConditionDefinition)
-            with transaction.atomic(using=using):
-                condition = (
-                    ConditionDefinition.objects.using(using)
-                    .select_for_update()
-                    .filter(name=condition_name)
-                    .first()
-                )
-                created = condition is None
-                if condition is None:
-                    condition = ConditionDefinition(name=condition_name)
-                for field_name, field_value in defaults.items():
-                    setattr(condition, field_name, field_value)
-                # The locked lookup and the writer's unique name constraint
-                # replace Django's router-driven database validation.
-                condition.full_clean(validate_unique=False, validate_constraints=False)
-                condition.save(using=using)
+            condition, created = _seed_condition(condition_name, defaults, using)
         except (ValidationError, DatabaseError) as err:
             raise CommandError(str(err)) from err
 

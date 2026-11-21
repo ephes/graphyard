@@ -166,7 +166,7 @@ jobs:
         run: uv run python agent-rs/parity/run_parity.py --rust-binary agent-rs/target/debug/graphyard-agent
 
   postgres-contract:
-    name: Inventory credential contracts (PostgreSQL)
+    name: Database contracts (PostgreSQL)
     runs-on: ubuntu-latest
     timeout-minutes: 10
     services:
@@ -204,3 +204,4 @@ jobs:
           --ds=config.settings.postgres_contract
           tests/test_inventory_credential_lifecycle.py
           tests/test_spec_apply_routing.py
+          tests/test_seed_disk_usage_condition_command.py
