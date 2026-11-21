@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Load the three pipeline heartbeats for the health endpoint in one query.
+
 - Log the database alias and effective SQLite journal mode when it differs
   from the requested mode.
 

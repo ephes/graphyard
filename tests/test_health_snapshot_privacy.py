@@ -268,3 +268,69 @@ def _probe(db_path, mode):
 
 if __name__ == "__main__":
     _probe(*sys.argv[1:])
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("authenticated", [False, True])
+def test_health_loads_named_heartbeats_in_one_query(
+    client, django_user_model, monkeypatch, settings, authenticated
+):
+    from datetime import timedelta
+
+    from django.db import connection
+    from django.test.utils import CaptureQueriesContext
+    from django.utils import timezone
+
+    from graphyard.models import PipelineHeartbeat
+
+    now = timezone.now()
+    settings.HEARTBEAT_CRITICAL_SECONDS = 300
+    PipelineHeartbeat.objects.create(
+        name="metric_ingest",
+        status="ok",
+        last_success=now - timedelta(seconds=300),
+        last_error="synthetic stale heartbeat",
+        details={"count": 1},
+    )
+    PipelineHeartbeat.objects.create(
+        name="condition_evaluator",
+        status="ok",
+        last_success=now + timedelta(seconds=61),
+    )
+    PipelineHeartbeat.objects.create(name="unrelated", last_success=now)
+    monkeypatch.setattr("graphyard.views.timezone.now", lambda: now)
+    monkeypatch.setattr("graphyard.views.influx_health", lambda: {"status": "pass"})
+    if authenticated:
+        client.force_login(django_user_model.objects.create_user(username="synthetic"))
+
+    with CaptureQueriesContext(connection) as queries:
+        response = client.get("/v1/health")
+    assert response.status_code == 200
+    assert sum('"pipeline_heartbeat"' in query["sql"] for query in queries) == 1
+    pipelines = response.json()["components"]["pipelines"]
+    assert set(pipelines) == {
+        "metric_ingest",
+        "metric_collectors",
+        "condition_evaluator",
+    }
+    assert pipelines["metric_ingest"]["status"] == "critical"
+    assert pipelines["metric_ingest"]["age_seconds"] == 300
+    assert pipelines["metric_collectors"]["status"] == "warning"
+    assert pipelines["metric_collectors"]["last_success"] is None
+    assert pipelines["metric_collectors"]["age_seconds"] is None
+    assert pipelines["condition_evaluator"]["status"] == "warning"
+    assert (
+        pipelines["condition_evaluator"]["last_success"]
+        == (now + timedelta(seconds=61)).isoformat()
+    )
+    assert pipelines["condition_evaluator"]["age_seconds"] is None
+    if authenticated:
+        assert pipelines["metric_ingest"]["details"] == {"count": 1}
+        assert pipelines["metric_ingest"]["message"] == "synthetic stale heartbeat"
+        assert pipelines["metric_collectors"]["message"] == "No heartbeat yet"
+        assert pipelines["condition_evaluator"]["message"] == (
+            "Success timestamp is in the future"
+        )
+    else:
+        for component in pipelines.values():
+            assert set(component) == {"status", "last_success", "age_seconds"}

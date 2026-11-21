@@ -1058,7 +1058,8 @@ needs no throttle correction.
 Health resolves the lazy session login first, outside the snapshot (Django may write
 the session while resolving it, which a read-only PostgreSQL transaction refuses), and
 then materializes heartbeats and condition counts in one short database snapshot;
-all condition counts use one aggregate query. A failing session lookup counts as
+one query fetches the three named heartbeats, and one aggregate query fetches all
+condition counts. A failing session lookup counts as
 failed database evidence like the snapshot reads. SQLite's
 configured `BEGIN IMMEDIATE` briefly reserves the writer (WAL/deferred readers use
 their read snapshot); PostgreSQL uses an outer repeatable-read, read-only

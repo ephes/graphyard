@@ -801,8 +801,9 @@ def _component_status_rank(status: str) -> int:
     return 1
 
 
-def _heartbeat_component(name: str, now: datetime) -> dict[str, object]:
-    heartbeat = PipelineHeartbeat.objects.filter(name=name).first()
+def _heartbeat_component(
+    heartbeat: PipelineHeartbeat | None, now: datetime
+) -> dict[str, object]:
     if heartbeat is None:
         return {
             "status": StatusLevel.WARNING,
@@ -897,8 +898,15 @@ def health(request: HttpRequest) -> JsonResponse:
             with connection.cursor() as cursor:
                 cursor.execute("SELECT 1")
                 cursor.fetchone()
+            heartbeats = {
+                heartbeat.name: heartbeat
+                for heartbeat in PipelineHeartbeat.objects.filter(
+                    name__in=pipeline_names
+                )
+            }
             pipelines = {
-                name: _heartbeat_component(name, now) for name in pipeline_names
+                name: _heartbeat_component(heartbeats.get(name), now)
+                for name in pipeline_names
             }
             conditions = ConditionDefinition.objects.filter(enabled=True).aggregate(
                 total=Count("pk"),

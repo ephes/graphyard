@@ -10,7 +10,6 @@ from graphyard.models import PipelineHeartbeat, StatusLevel
 from graphyard.views import _heartbeat_component
 
 
-@pytest.mark.django_db
 @pytest.mark.parametrize("stored", ["ok", "warning", "critical"])
 @pytest.mark.parametrize(
     "age,aged", [(99, "ok"), (100, "warning"), (299, "warning"), (300, "critical")]
@@ -19,14 +18,14 @@ def test_projection_never_reduces_severity(settings, stored, age, aged):
     settings.HEARTBEAT_WARNING_SECONDS = 100
     settings.HEARTBEAT_CRITICAL_SECONDS = 300
     now = timezone.now()
-    PipelineHeartbeat.objects.create(
+    heartbeat = PipelineHeartbeat(
         name="synthetic",
         status=stored,
         last_success=now - timedelta(seconds=age),
         last_error="fixed failure",
         details={"count": 1},
     )
-    result = _heartbeat_component("synthetic", now)
+    result = _heartbeat_component(heartbeat, now)
     ranks = ["ok", "warning", "critical"]
     assert result["status"] == max((stored, aged), key=ranks.index)
     assert result["message"] == "fixed failure"
@@ -202,17 +201,16 @@ def test_commit_order_may_differ_from_completion_order(monkeypatch):
     assert "synthetic" not in services._heartbeat_write_cache
 
 
-@pytest.mark.django_db
 @pytest.mark.parametrize("stored", ["ok", "warning", "critical"])
 @pytest.mark.parametrize("offset", [None, 61, 86400])
 def test_invalid_success_cannot_establish_health(stored, offset):
     now = timezone.now()
-    PipelineHeartbeat.objects.create(
+    heartbeat = PipelineHeartbeat(
         name="synthetic",
         status=stored,
         last_success=None if offset is None else now + timedelta(seconds=offset),
     )
-    result = _heartbeat_component("synthetic", now)
+    result = _heartbeat_component(heartbeat, now)
     assert result["status"] == ("critical" if stored == "critical" else "warning")
     assert result["age_seconds"] is None
     assert result["message"] == (
@@ -222,31 +220,29 @@ def test_invalid_success_cannot_establish_health(stored, offset):
     )
 
 
-@pytest.mark.django_db
 @pytest.mark.parametrize("offset", [0, 1, 60])
 def test_small_future_skew_is_tolerated_without_negative_age(offset):
     now = timezone.now()
-    PipelineHeartbeat.objects.create(
+    heartbeat = PipelineHeartbeat(
         name="synthetic",
         status="ok",
         last_success=now + timedelta(seconds=offset),
     )
-    result = _heartbeat_component("synthetic", now)
+    result = _heartbeat_component(heartbeat, now)
     assert result["status"] == "ok"
     assert result["age_seconds"] == 0
 
 
-@pytest.mark.django_db
 @pytest.mark.parametrize("offset", [None, 61])
 def test_invalid_success_preserves_recorded_failure(offset):
     now = timezone.now()
-    PipelineHeartbeat.objects.create(
+    heartbeat = PipelineHeartbeat(
         name="synthetic",
         status="critical",
         last_error="recorded failure",
         last_success=None if offset is None else now + timedelta(seconds=offset),
     )
-    result = _heartbeat_component("synthetic", now)
+    result = _heartbeat_component(heartbeat, now)
     assert result["status"] == "critical"
     assert "recorded failure" in result["message"]
     if offset is not None:
