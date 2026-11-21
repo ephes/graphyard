@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Report a missing or mismatched service-to-host foreign key during Rust agent
+  schema readiness checks.
+
 - Reject excess items in bounded Rust JSON arrays before rescanning their values.
 
 - Check the Rust Python-compatible integer digit limit before allocating

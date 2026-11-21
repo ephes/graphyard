@@ -344,6 +344,30 @@ fn verify_storage(
     Ok(())
 }
 
+fn verify_service_host_foreign_key(
+    connection: &Connection,
+    problems: &mut Vec<String>,
+) -> Result<(), StoreError> {
+    // A composite constraint is not a reference on host_id alone. A NULL
+    // parent column denotes the primary key, verified separately as id.
+    let present: bool = connection.query_row(
+        r#"SELECT EXISTS (
+            SELECT 1 FROM pragma_foreign_key_list('service_registry', 'main')
+            GROUP BY id
+            HAVING count(*) = 1
+                AND max("from" = 'host_id' COLLATE NOCASE
+                    AND "table" = 'host_registry' COLLATE NOCASE
+                    AND ("to" IS NULL OR "to" = 'id' COLLATE NOCASE))
+        )"#,
+        [],
+        |row| row.get(0),
+    )?;
+    if !present {
+        problems.push("service_registry.host_id (expected foreign key to host_registry.id)".into());
+    }
+    Ok(())
+}
+
 /// Verify the contract on `connection` (read-only: no DDL, no pragma writes).
 pub(crate) fn verify_schema(connection: &Connection) -> Result<SchemaReport, StoreError> {
     verify_schema_with_hook(connection, |_| {})
@@ -393,6 +417,9 @@ fn inspect_schema(
             verify_storage(connection, contract, &mut incompatible_storage)?;
             after_table(contract.table);
         }
+    }
+    if tables.contains(&"service_registry") {
+        verify_service_host_foreign_key(connection, &mut incompatible_storage)?;
     }
     let migrations_kind = table_kind(connection, "django_migrations")?;
     let missing_migrations_table = migrations_kind.is_none();

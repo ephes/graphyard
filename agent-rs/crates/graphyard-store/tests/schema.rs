@@ -326,3 +326,31 @@ fn equivalent_named_binary_identity_index_is_allowed() {
             .is_ok()
     );
 }
+
+#[test]
+fn readiness_requires_the_service_host_foreign_key() {
+    let reference = r#" REFERENCES "host_registry" ("id") DEFERRABLE INITIALLY DEFERRED"#;
+    let cases = [
+        ("", false),
+        (" REFERENCES subject_registry(id)", false),
+        (" REFERENCES host_registry(host_id)", false),
+        (
+            ", FOREIGN KEY (host_id, enabled) REFERENCES host_registry(id, enabled)",
+            false,
+        ),
+        (" REFERENCES HOST_REGISTRY", true),
+        (reference, true),
+    ];
+    for (replacement, accepted) in cases {
+        let schema = change_table("service_registry", reference, replacement);
+        let db = TestDb::with_schema(&schema);
+        let report = check_schema(db.path(), &default_settings()).unwrap();
+        assert_eq!(report.is_ok(), accepted, "{replacement:?}: {report}");
+        if !accepted {
+            assert_eq!(
+                report.incompatible_storage,
+                ["service_registry.host_id (expected foreign key to host_registry.id)"]
+            );
+        }
+    }
+}
