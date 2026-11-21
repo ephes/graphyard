@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Break token name sort ties by token ID in both ingest-token audit reports.
+
 - Escape control characters in the token name shown by the revocation receipt.
 
 - Disable removed release sources with one filtered update under the registry

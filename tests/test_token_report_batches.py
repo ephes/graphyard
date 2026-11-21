@@ -6,10 +6,11 @@ from io import StringIO
 import pytest
 from django.core.management import call_command
 from django.db import connection, connections
+from django.db.models.functions import Collate
 from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 
-from graphyard import token_scope
+from graphyard import token_reports, token_scope
 from graphyard.models import IngestToken, IngestTokenHostUsage
 from graphyard.token_reports import open_token_usage_batches
 
@@ -131,6 +132,44 @@ def test_binding_report_batch_budget_and_independent_oracle(count, monkeypatch):
 
 
 @pytest.mark.django_db
+@pytest.mark.parametrize(
+    "command", ["report_ingest_token_hosts", "report_ingest_token_bindings"]
+)
+def test_report_orders_collation_ties_by_id_across_batches(command, monkeypatch):
+    if connection.vendor != "sqlite":
+        pytest.skip("uses SQLite's built-in NOCASE collation")
+
+    names = ["synthetic", "Synthetic"]
+    IngestToken.objects.bulk_create(
+        [IngestToken(name=name, token_hash="synthetic-hash") for name in names]
+    )
+    # Keep the existing name constraint and make a name-only scan return
+    # ties in descending ID order.
+    with connection.cursor() as cursor:
+        cursor.execute(
+            "CREATE INDEX token_report_nocase ON ingest_token (name COLLATE NOCASE, id DESC)"
+        )
+    order_by = IngestToken.objects.order_by
+
+    def order_with_nocase(name, *tiebreakers):
+        return order_by(Collate(name, "nocase"), *tiebreakers)
+
+    monkeypatch.setattr(IngestToken.objects, "order_by", order_with_nocase)
+    monkeypatch.setattr(token_reports, "REPORT_BATCH_SIZE", 1)
+
+    for _ in range(2):
+        output, queries = report(command)
+        assert [
+            line.split("name=", 1)[1].split()[0]
+            for line in output.splitlines()
+            if line.startswith(("name=", "token id="))
+        ] == names
+        assert (
+            sum('FROM "ingest_token_host_usage"' in sql for sql in reads(queries)) == 2
+        )
+
+
+@pytest.mark.django_db
 @pytest.mark.parametrize("include_disabled", [False, True])
 def test_host_report_selected_usage_projection_and_batch_budget(
     include_disabled, monkeypatch
@@ -201,7 +240,6 @@ def test_host_report_admits_scope_once_per_token(monkeypatch):
     "command", ["report_ingest_token_hosts", "report_ingest_token_bindings"]
 )
 def test_spool_limit_refuses_before_any_report_output(command, monkeypatch):
-    from graphyard import token_reports
     from django.core.management.base import CommandError
 
     seed(2)

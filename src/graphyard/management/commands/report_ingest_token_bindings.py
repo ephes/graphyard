@@ -17,7 +17,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         days = options["days"]
         cutoff = report_cutoff(days)
-        tokens = IngestToken.objects.order_by("name").values(
+        tokens = IngestToken.objects.order_by("name", "id").values(
             "id", "name", "enabled", "bound_subject_id"
         )
 

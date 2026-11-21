@@ -330,6 +330,9 @@ Usage is recorded at ingest from this release onwards (table
 `ingest_token_host_usage`, `last_seen` updated at most hourly, at most 500 identifiers per token),
 so let it collect for a while before scoping existing tokens.
 
+Both reports sort by stored token name, using ascending token ID when names
+compare equal under the database collation.
+
 The binding and host-scope reports project token metadata in batches of 100 and
 read usage once per batch, without credential hashes or model hydration. Both
 projections use the database alias selected for the token query. One short

@@ -32,7 +32,7 @@ class Command(BaseCommand):
         days: int = options["days"]
         cutoff = report_cutoff(days)
 
-        tokens = IngestToken.objects.order_by("name")
+        tokens = IngestToken.objects.order_by("name", "id")
         if not options["include_disabled"]:
             tokens = tokens.filter(enabled=True)
 
