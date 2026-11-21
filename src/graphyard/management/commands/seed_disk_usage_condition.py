@@ -4,7 +4,7 @@ import math
 
 from django.core.exceptions import ValidationError
 from django.core.management.base import BaseCommand, CommandError
-from django.db import DatabaseError, transaction
+from django.db import DatabaseError, router, transaction
 
 from graphyard.models import ComparisonOperator, ConditionDefinition, SubjectType
 
@@ -157,9 +157,11 @@ class Command(BaseCommand):
         }
 
         try:
-            with transaction.atomic():
+            using = router.db_for_write(ConditionDefinition)
+            with transaction.atomic(using=using):
                 condition = (
-                    ConditionDefinition.objects.select_for_update()
+                    ConditionDefinition.objects.using(using)
+                    .select_for_update()
                     .filter(name=condition_name)
                     .first()
                 )
@@ -168,8 +170,10 @@ class Command(BaseCommand):
                     condition = ConditionDefinition(name=condition_name)
                 for field_name, field_value in defaults.items():
                     setattr(condition, field_name, field_value)
-                condition.full_clean()
-                condition.save()
+                # The locked lookup and the writer's unique name constraint
+                # replace Django's router-driven database validation.
+                condition.full_clean(validate_unique=False, validate_constraints=False)
+                condition.save(using=using)
         except (ValidationError, DatabaseError) as err:
             raise CommandError(str(err)) from err
 

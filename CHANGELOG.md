@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Seed disk-usage conditions in a transaction on the condition write database,
+  including the name lookup and save.
+
 - Preserve the InfluxDB health result or original probe error when closing
   the client fails, and log the cleanup failure separately.
 

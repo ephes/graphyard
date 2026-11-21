@@ -1,10 +1,58 @@
 from __future__ import annotations
 
+from contextlib import ExitStack
+from io import StringIO
+
 import pytest
 from django.core.management import call_command
 from django.core.management.base import CommandError
+from django.db import connections, router
+from django.test.utils import CaptureQueriesContext
 
 from graphyard.models import ComparisonOperator, ConditionDefinition, SubjectType
+
+
+@pytest.mark.django_db(
+    transaction=True, databases=["default", "secondary", "spec_writer"]
+)
+@pytest.mark.parametrize("existing", [False, True])
+def test_seed_uses_only_the_routed_writer(monkeypatch, existing):
+    class SplitRouter:
+        def db_for_read(self, model, **hints):
+            return "secondary" if model is ConditionDefinition else None
+
+        def db_for_write(self, model, **hints):
+            return "spec_writer" if model is ConditionDefinition else None
+
+    for alias in ("default", "secondary"):
+        ConditionDefinition.objects.using(alias).create(
+            name="fixture", metric_name=f"{alias}.metric"
+        )
+    writer = ConditionDefinition.objects.using("spec_writer")
+    if existing:
+        writer.create(name="fixture", metric_name="writer.metric", message="keep")
+    monkeypatch.setattr(router, "routers", [SplitRouter()])
+
+    output = StringIO()
+    with ExitStack() as stack:
+        untouched = [
+            stack.enter_context(CaptureQueriesContext(connections[alias]))
+            for alias in ("default", "secondary")
+        ]
+        writer_queries = stack.enter_context(
+            CaptureQueriesContext(connections["spec_writer"])
+        )
+        call_command(
+            "seed_disk_usage_condition", host="fixture", name="fixture", stdout=output
+        )
+
+    assert all(len(queries) == 0 for queries in untouched)
+    assert writer_queries[0]["sql"].startswith("BEGIN")
+    assert writer_queries[-1]["sql"] == "COMMIT"
+    condition = writer.get(name="fixture")
+    assert condition.metric_name == "host.filesystem_used_ratio"
+    assert condition.message == ("keep" if existing else "")
+    assert output.getvalue().startswith("Updated" if existing else "Created")
 
 
 @pytest.mark.django_db
