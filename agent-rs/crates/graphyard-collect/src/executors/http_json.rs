@@ -78,7 +78,9 @@ pub async fn execute_http_json_metric<S: MetricSink>(
     tags.insert("spec_name".to_owned(), name.to_owned());
     if let Some(Value::Object(configured)) = config.get("tags") {
         for (key, value) in configured {
-            tags.insert(key.clone(), py_str(value));
+            if key != "spec_name" {
+                tags.insert(key.clone(), py_str(value));
+            }
         }
     }
 

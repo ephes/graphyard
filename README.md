@@ -678,6 +678,10 @@ Example `config` JSON for an HTTP JSON metric spec:
 }
 ```
 
+For HTTP JSON metrics, Python and Rust reserve the `spec_name` tag for the
+collection spec's name. A configured `spec_name` is ignored, and other
+configured tags are still included as strings.
+
 HTTP JSON collectors stream decoded response bytes with `max_body_bytes` (default
 `10485760`) and a monotonic `total_timeout_seconds` deadline (default: three
 request timeouts), including connection setup and JSON parsing. Authentication and

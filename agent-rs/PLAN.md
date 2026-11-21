@@ -1125,7 +1125,8 @@ in the order the Python code checks them.
   field with its Python default chain (`subject_id` defaults to `service_id
   or host_id or "external"`, `collector_service` to `service_id or
   "graphyard-agent"`, …); required `url`, `metric_path`, `metric_name`; tags
-  `spec_name` + configured `tags` (`str()` of keys and values); optional
+  `spec_name` from the collection spec + configured `tags` (`str()` of keys
+  and values, ignoring a configured `spec_name`); optional
   Bearer token; Basic auth only when both username and password are
   non-empty; `_resolve_json_path` (`$`, `$.a.0.b`, list index by digits);
   missing → `warning, 0, 1, "metric_path not found: <path>"`; non-finite →

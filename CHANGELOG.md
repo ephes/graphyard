@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Preserve the collection spec name on HTTP JSON metrics in Python and Rust
+  when a configured tag also uses `spec_name`.
+
 - Report a storage error when SQLite ignores an update that would advance the
   Rust agent heartbeat's last successful observation.
 

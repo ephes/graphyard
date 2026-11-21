@@ -182,6 +182,7 @@ def test_http_json_metric_spec_ingests_value(db, monkeypatch):
             "metric_name": "service.queue_depth",
             "host_id": "macmini",
             "service_id": "mail",
+            "tags": {"spec_name": "other spec", "source": "mail-health", "priority": 3},
         },
     )
 
@@ -189,9 +190,13 @@ def test_http_json_metric_spec_ingests_value(db, monkeypatch):
         "graphyard.services.httpx.Client",
         lambda **kwargs: _FakeClient({"queue": {"depth": 12}}),
     )
-    monkeypatch.setattr(
-        "graphyard.services.influx.write_points", lambda points: len(points)
-    )
+    written = []
+
+    def write_points(points):
+        written.extend(points)
+        return len(points)
+
+    monkeypatch.setattr("graphyard.services.influx.write_points", write_points)
 
     result = run_metric_collection_specs_once()
 
@@ -199,6 +204,11 @@ def test_http_json_metric_spec_ingests_value(db, monkeypatch):
     assert result.failed == 0
     assert result.warning == 0
     assert result.ingested == 1
+    assert written[0].tags == {
+        "spec_name": "mail queue depth",
+        "source": "mail-health",
+        "priority": "3",
+    }
 
     spec.refresh_from_db()
     assert spec.last_status == StatusLevel.OK
