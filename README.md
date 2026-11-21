@@ -201,6 +201,9 @@ just manage revoke_ingest_token --id 1
 just manage revoke_ingest_token --name macmini
 ```
 
+The revocation receipt shows the numeric token ID and escapes C0/DEL/C1 controls
+in the stored name as visible `\xNN` text, just like the audit reports.
+
 ### Single subject/host binding and rollout
 
 Each ingest token now has an optional `bound_subject_id` (one canonical subject/host

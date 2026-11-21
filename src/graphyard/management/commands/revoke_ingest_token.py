@@ -3,6 +3,7 @@ from __future__ import annotations
 from django.core.management.base import BaseCommand, CommandError
 
 from graphyard.models import IngestToken
+from graphyard.token_reports import terminal_text
 
 
 class Command(BaseCommand):
@@ -31,6 +32,7 @@ class Command(BaseCommand):
 
         for token in tokens:
             token.revoke()
+            name_label = terminal_text(token.name)
             self.stdout.write(
-                self.style.SUCCESS(f"Revoked token id={token.id} name={token.name}")
+                self.style.SUCCESS(f"Revoked token id={token.id} name={name_label}")
             )

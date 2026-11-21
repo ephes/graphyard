@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Escape control characters in the token name shown by the revocation receipt.
+
 - Disable removed release sources with one filtered update under the registry
   generation lock.
 
