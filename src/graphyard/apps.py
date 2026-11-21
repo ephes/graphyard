@@ -38,7 +38,23 @@ def _configure_sqlite_connection(sender, connection, **kwargs) -> None:  # noqa:
         with connection.cursor() as cursor:
             cursor.execute(f"PRAGMA busy_timeout = {busy_timeout_ms}")
             cursor.execute(f"PRAGMA journal_mode = {journal_mode}")
+            result = cursor.fetchone()
             cursor.execute(f"PRAGMA synchronous = {synchronous_mode}")
+            if result:
+                effective_mode = result[0].upper()
+                if effective_mode != journal_mode:
+                    level = (
+                        logging.INFO
+                        if connection.is_in_memory_db()
+                        else logging.WARNING
+                    )
+                    logger.log(
+                        level,
+                        "SQLite journal mode differs for alias %s (requested %s, effective %s)",
+                        connection.alias,
+                        journal_mode,
+                        effective_mode,
+                    )
     except Exception:  # noqa: BLE001
         logger.exception("Failed to apply SQLite pragmas on new DB connection")
 

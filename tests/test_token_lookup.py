@@ -87,3 +87,21 @@ def test_legacy_check_tolerates_unmigrated_database(monkeypatch, error_name):
 
     monkeypatch.setattr(QuerySet, "exists", unavailable)
     assert legacy_ingest_tokens(None, databases=["default"]) == []
+
+
+def test_legacy_check_reads_explicit_default_despite_router(settings):
+    from graphyard.checks import legacy_ingest_tokens
+
+    class ReplicaRouter:
+        def db_for_read(self, model, **hints):
+            return "replica"
+
+    IngestToken.objects.using("default").create(
+        name="legacy", token_hash=make_password("old")
+    )
+    settings.DATABASE_ROUTERS = [ReplicaRouter()]
+    # No replica is configured or allowed by this test.
+    assert legacy_ingest_tokens(None, databases=["replica"]) == []
+    assert [
+        warning.id for warning in legacy_ingest_tokens(None, databases=["default"])
+    ] == ["graphyard.W001"]

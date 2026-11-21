@@ -1140,11 +1140,18 @@ def query_condition_window(
 
 
 def check_health() -> dict[str, Any]:
-    with _build_client() as client:
+    client = _build_client()
+    try:
         health = client.health()
-
-    return {
-        "status": str(health.status).lower(),
-        "message": health.message,
-        "name": health.name,
-    }
+        return {
+            "status": str(health.status).lower(),
+            "message": health.message,
+            "name": health.name,
+        }
+    finally:
+        try:
+            client.close()
+        except Exception as err:  # noqa: BLE001
+            logger.warning(
+                "InfluxDB health client cleanup failed (%s)", type(err).__name__
+            )

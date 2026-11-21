@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- Preserve the InfluxDB health result or original probe error when closing
+  the client fails, and log the cleanup failure separately.
+
+- Load the three pipeline heartbeats for the health endpoint in one query.
+
+- Log the database alias and effective SQLite journal mode when it differs
+  from the requested mode.
+
+- Read the default database directly when checking for enabled legacy ingest tokens.
+
 - Check Python condition series for conflicting duplicates without copying the
   sorted sample list.
 
