@@ -243,6 +243,13 @@ class _RecordingCursor:
     def execute(self, sql: str) -> None:
         self._statements.append(sql)
 
+    def fetchone(self) -> tuple[str]:
+        # Model a file-backed connection accepting the requested journal mode.
+        statement = self._statements[-1]
+        prefix = "PRAGMA journal_mode = "
+        assert statement.startswith(prefix)
+        return (statement.removeprefix(prefix).lower(),)
+
 
 class _RecordingConnection:
     vendor = "sqlite"

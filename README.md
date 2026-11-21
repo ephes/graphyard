@@ -1092,7 +1092,10 @@ Use units in `deploy/systemd/`:
 
 Set environment file based on `deploy/systemd/graphyard.env.example`.
 For the SQLite-backed deployment profile, keep web concurrency conservative (`--workers 1`) and
-use WAL + busy-timeout settings from `graphyard.env.example`.
+use WAL + busy-timeout settings from `graphyard.env.example`. If SQLite selects a
+different journal mode, the connection log includes the alias, requested mode
+and effective mode. In-memory databases log the mismatch at info level;
+file-backed databases log it at warning level.
 
 ## Validation Commands
 

@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Log the database alias and effective SQLite journal mode when it differs
+  from the requested mode.
+
 - Read the default database directly when checking for enabled legacy ingest tokens.
 
 - Check Python condition series for conflicting duplicates without copying the
