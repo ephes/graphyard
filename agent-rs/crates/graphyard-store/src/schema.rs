@@ -152,7 +152,8 @@ pub struct SchemaReport {
     pub incompatible_storage: Vec<String>,
     /// Whether the `django_migrations` table is missing.
     pub missing_migrations_table: bool,
-    /// Whether [`MIN_GRAPHYARD_MIGRATION`] is not recorded.
+    /// Whether the marker for [`MIN_GRAPHYARD_MIGRATION`] is absent or
+    /// cannot be verified because the migration table is missing or incompatible.
     pub missing_migration: bool,
     /// `PRAGMA journal_mode` (reported; `--check-schema` never changes it).
     pub journal_mode: String,
@@ -222,8 +223,18 @@ impl fmt::Display for SchemaReport {
     }
 }
 
+fn table_kind(connection: &Connection, table: &str) -> Result<Option<String>, StoreError> {
+    Ok(connection
+        .query_row(
+            "SELECT type FROM pragma_table_list(?) WHERE schema = 'main'",
+            [table],
+            |row| row.get(0),
+        )
+        .optional()?)
+}
+
 fn table_columns(connection: &Connection, table: &str) -> Result<Vec<String>, StoreError> {
-    let mut statement = connection.prepare("SELECT name FROM pragma_table_info(?)")?;
+    let mut statement = connection.prepare("SELECT name FROM pragma_table_info(?, 'main')")?;
     let rows = statement.query_map([table], |row| row.get::<_, String>(0))?;
     Ok(rows.collect::<rusqlite::Result<_>>()?)
 }
@@ -254,8 +265,8 @@ fn verify_storage(
     contract: &TableContract,
     problems: &mut Vec<String>,
 ) -> Result<(), StoreError> {
-    let mut statement =
-        connection.prepare("SELECT name, type, \"notnull\", pk FROM pragma_table_info(?)")?;
+    let mut statement = connection
+        .prepare("SELECT name, type, \"notnull\", pk FROM pragma_table_info(?, 'main')")?;
     let columns = statement
         .query_map([contract.table], |row| {
             Ok((
@@ -266,8 +277,8 @@ fn verify_storage(
             ))
         })?
         .collect::<rusqlite::Result<Vec<_>>>()?;
-    let mut statement =
-        connection.prepare("SELECT name, \"unique\", origin, partial FROM pragma_index_list(?)")?;
+    let mut statement = connection
+        .prepare("SELECT name, \"unique\", origin, partial FROM pragma_index_list(?, 'main')")?;
     let indexes = statement
         .query_map([contract.table], |row| {
             Ok((
@@ -306,8 +317,9 @@ fn verify_storage(
         if !unique || partial {
             continue;
         }
-        let mut statement = connection
-            .prepare("SELECT name, coll FROM pragma_index_xinfo(?) WHERE key = 1 ORDER BY seqno")?;
+        let mut statement = connection.prepare(
+            "SELECT name, coll FROM pragma_index_xinfo(?, 'main') WHERE key = 1 ORDER BY seqno",
+        )?;
         let columns = statement
             .query_map([index], |row| {
                 Ok((row.get::<_, Option<String>>(0)?, row.get::<_, String>(1)?))
@@ -356,13 +368,20 @@ fn inspect_schema(
     let mut missing_tables = Vec::new();
     let mut missing_columns = Vec::new();
     let mut incompatible_storage = Vec::new();
+    let mut tables = Vec::new();
     for (table, required) in REQUIRED_COLUMNS {
-        // Every table has at least one column, so no rows means no table.
-        let present = table_columns(connection, table)?;
-        if present.is_empty() {
-            missing_tables.push(table.to_owned());
-            continue;
+        match table_kind(connection, table)?.as_deref() {
+            None => {
+                missing_tables.push(table.to_owned());
+                continue;
+            }
+            Some("table") => tables.push(table),
+            Some(kind) => {
+                incompatible_storage.push(format!("{table} (expected table, found {kind})"));
+                continue;
+            }
         }
+        let present = table_columns(connection, table)?;
         for column in required {
             if !present.iter().any(|name| name == column) {
                 missing_columns.push((table.to_owned(), (*column).to_owned()));
@@ -370,22 +389,28 @@ fn inspect_schema(
         }
     }
     for contract in REQUIRED_STORAGE {
-        if !missing_tables.iter().any(|table| table == contract.table) {
+        if tables.contains(&contract.table) {
             verify_storage(connection, contract, &mut incompatible_storage)?;
             after_table(contract.table);
         }
     }
-    let missing_migrations_table = table_columns(connection, "django_migrations")?.is_empty();
-    let missing_migration = missing_migrations_table || {
+    let migrations_kind = table_kind(connection, "django_migrations")?;
+    let missing_migrations_table = migrations_kind.is_none();
+    let missing_migration = if migrations_kind.as_deref() == Some("table") {
         let (app, name) = MIN_GRAPHYARD_MIGRATION;
         connection
             .query_row(
-                "SELECT 1 FROM django_migrations WHERE app = ? AND name = ?",
+                "SELECT 1 FROM main.django_migrations WHERE app = ? AND name = ?",
                 [app, name],
                 |_| Ok(()),
             )
             .optional()?
             .is_none()
+    } else {
+        if let Some(kind) = migrations_kind {
+            incompatible_storage.push(format!("django_migrations (expected table, found {kind})"));
+        }
+        true
     };
     let journal_mode: String = connection.query_row("PRAGMA journal_mode", [], |row| row.get(0))?;
     Ok(SchemaReport {

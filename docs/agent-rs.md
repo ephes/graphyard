@@ -42,9 +42,11 @@ workers that never block monitoring and drop lines under backpressure (D-8).
 
 ## Schema contract
 
-Django migrations own the schema; the Rust agent runs no DDL. At startup (and
-with `--check-schema`) it checks that every column of the six agent tables
-exists and that `django_migrations` contains
+Django migrations own the schema. At startup and with `--check-schema`, the
+Rust agent requires ordinary SQLite tables for its six agent tables and for
+`django_migrations`. It reports views and other object types as incompatible
+storage. The check verifies that every required agent column exists and that
+the migration table contains
 `graphyard.0015_alter_conditiondefinition_breach_minutes_and_more`, the conservative
 migration floor (the last migration touching an agent model, including field
 validators). It also checks each required column's SQLite affinity, nullability

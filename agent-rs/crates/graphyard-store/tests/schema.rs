@@ -70,6 +70,35 @@ async fn migrated_schema_passes() {
 }
 
 #[test]
+fn readiness_rejects_views_in_place_of_required_tables() {
+    for table in ["django_migrations", "pipeline_heartbeat"] {
+        let db = TestDb::new();
+        assert!(
+            check_schema(db.path(), &default_settings())
+                .unwrap()
+                .is_ok()
+        );
+        db.raw()
+            .execute_batch(&format!(
+                "ALTER TABLE {table} RENAME TO original_table;
+                 CREATE VIEW {table} AS SELECT * FROM original_table;"
+            ))
+            .unwrap();
+
+        let report = check_schema(db.path(), &default_settings()).unwrap();
+        assert!(!report.is_ok(), "accepted {table} view: {report}");
+        assert_eq!(
+            report.incompatible_storage,
+            [format!("{table} (expected table, found view)")]
+        );
+        assert!(report.missing_tables.is_empty());
+        assert!(report.missing_columns.is_empty());
+        assert!(!report.missing_migrations_table);
+        assert_eq!(report.missing_migration, table == "django_migrations");
+    }
+}
+
+#[test]
 fn a_migration_that_drops_an_agent_column_is_named_with_the_migration() {
     // The 0009-era database: no stale allowance columns, migrations recorded
     // up to 0009.

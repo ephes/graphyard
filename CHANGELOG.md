@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Reject views and other non-table objects in place of required tables during
+  Rust agent schema readiness checks.
+
 - Break token name sort ties by token ID in both ingest-token audit reports.
 
 - Escape control characters in the token name shown by the revocation receipt.
