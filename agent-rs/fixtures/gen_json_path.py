@@ -11,11 +11,16 @@ Encoding:
 * a found value is its ``repr`` (``pycompat::py_repr`` in Rust); ``None``
   (not found, which includes a JSON ``null`` at the path) is ``null``;
 * errors are ``{"class": <exception class>, "message": str(exc)}``;
+* ``decimal_zeroes`` lists the non-ASCII code points with decimal value 0
+  in this interpreter's Unicode database; Rust's ``DECIMAL_ZEROES`` must
+  equal it, so a Python upgrade with new digit runs fails loudly.
 """
 
 from __future__ import annotations
 
 import json
+import sys
+import unicodedata
 from typing import Any
 
 from graphyard import services
@@ -174,8 +179,19 @@ def _resolve(payload_text: str, path: str) -> dict[str, Any]:
     return case
 
 
+def _decimal_zeroes() -> list[int]:
+    return [
+        code
+        for code in range(0x80, sys.maxunicode + 1)
+        if unicodedata.decimal(chr(code), None) == 0
+    ]
+
+
 def build_json_path() -> dict[str, Any]:
-    return {"cases": [_resolve(payload, path) for payload, path in CASES]}
+    return {
+        "cases": [_resolve(payload, path) for payload, path in CASES],
+        "decimal_zeroes": _decimal_zeroes(),
+    }
 
 
 GENERATORS = {"json_path.json": build_json_path}

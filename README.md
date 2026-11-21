@@ -679,7 +679,9 @@ Example `config` JSON for an HTTP JSON metric spec:
 ```
 
 HTTP JSON metric paths accept Unicode decimal digits for array indices,
-including leading zeroes. Other digit glyphs such as `²`, and indices
+including leading zeroes. Both agents use the Unicode 15.0 database of
+Python 3.12; the fixture drift check fails when another interpreter's
+database adds digit runs. Other digit glyphs such as `²`, and indices
 outside the array, produce the usual missing-path result. Object keys
 match the segment literally.
 

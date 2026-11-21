@@ -245,7 +245,8 @@ that differs is a bug.
   decimal digits; the Rust compatibility helper accepts ASCII digits.
   Rust strips Unicode `White_Space` plus `\x1c`–`\x1f` (matching
   `str.isspace`). HTTP JSON path indices use decimal digits from the
-  Python 3.12 Unicode database in both runtimes (see `json_path.json`).
+  Python 3.12 Unicode database in both runtimes (see `json_path.json`;
+  its `decimal_zeroes` table pins Rust's `DECIMAL_ZEROES`).
   Django's `datetime_re` fallback for stored datetimes (5.3) matches
   Unicode digits with `\d`. The Rust fallback matches ASCII digits, so
   such text loads as NULL in Rust (`fromisoformat` is ASCII-only in both).

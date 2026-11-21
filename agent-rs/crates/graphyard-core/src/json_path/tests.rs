@@ -34,3 +34,15 @@ fn json_paths_match_python() {
         }
     }
 }
+
+#[test]
+fn decimal_zeroes_match_the_python_unicode_database() {
+    let fixture = fixture();
+    let python: Vec<u64> = fixture
+        .list_field("decimal_zeroes")
+        .iter()
+        .map(|code| code.as_u64().expect("code point"))
+        .collect();
+    let rust: Vec<u64> = DECIMAL_ZEROES.iter().map(|&code| u64::from(code)).collect();
+    assert_eq!(rust, python, "regenerate DECIMAL_ZEROES from the fixture");
+}
