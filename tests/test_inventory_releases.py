@@ -189,13 +189,20 @@ def test_cache_failure_preserves_success_time_and_retry_is_not_skipped(monkeypat
 
 
 def test_registry_removal_disables_prior_source():
-    row = cache()
-    releases.refresh([])
+    row = cache(attempted_at=timezone.now())
+    original = (row.version, row.checked_at, row.attempted_at)
+    with CaptureQueriesContext(connection) as queries:
+        assert releases.refresh([]).complete
     row.refresh_from_db()
     assert not row.enabled and releases.registry() == {}
+    assert (row.version, row.checked_at, row.attempted_at) == original
+    source_table = connection.ops.quote_name(InventoryRelease._meta.db_table)
+    source_queries = [query["sql"] for query in queries if source_table in query["sql"]]
+    assert len(source_queries) == 1
+    assert source_queries[0].startswith(f"UPDATE {source_table} ")
 
 
-def test_refresh_only_updates_changed_or_reenabled_source_rows(monkeypatch):
+def test_refresh_only_updates_changed_or_reenabled_registered_sources(monkeypatch):
     django = cache(attempted_at=timezone.now())
     flask = InventoryRelease.objects.create(
         source_id="pypi:flask",
@@ -216,11 +223,13 @@ def test_refresh_only_updates_changed_or_reenabled_source_rows(monkeypatch):
     with CaptureQueriesContext(connection) as queries:
         assert releases.refresh([django.definition, flask.definition]).complete
     source_table = connection.ops.quote_name(InventoryRelease._meta.db_table)
-    assert not [
+    # Only the disable sweep runs, with no matching rows.
+    source_updates = [
         query["sql"]
         for query in queries
         if query["sql"].startswith(f"UPDATE {source_table} ")
     ]
+    assert len(source_updates) == 1
     fetch.assert_not_called()
 
     replacement = {**django.definition, "targets": [{"kind": "python", "name": "test"}]}

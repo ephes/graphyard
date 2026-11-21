@@ -212,11 +212,9 @@ def refresh(data, force=False):
             pk=1, generation=generation
         ).update(generation=F("generation")):
             return RefreshResult(skipped=len(registry), superseded=True)
-        removed = InventoryRelease.objects.filter(enabled=True).exclude(
+        InventoryRelease.objects.filter(enabled=True).exclude(
             source_id__in=registry
-        )
-        if removed.exists():
-            removed.update(enabled=False)
+        ).update(enabled=False)
         for key, definition in registry.items():
             row, created = InventoryRelease.objects.only(
                 "definition", "enabled"

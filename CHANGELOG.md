@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Disable removed release sources with one filtered update under the registry
+  generation lock.
+
 - Read remaining release cache statuses in one query when the refresh budget
   expires, preserving fresh-hit and skipped-source counts.
 
