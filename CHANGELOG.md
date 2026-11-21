@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Reject excess items in bounded Rust JSON arrays before rescanning their values.
+
 - Check the Rust Python-compatible integer digit limit before allocating
   normalized digits and parse plain digit runs without a copy.
 

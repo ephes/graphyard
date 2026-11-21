@@ -168,7 +168,9 @@ The slice table is PLAN.md section 12; the test coverage per slice is
 
 The Rust Python-compatibility integer parser checks the 4,300-digit limit
 before removing digit separators. Plain digit runs are parsed directly from
-the input.
+the input. The bounded JSON evidence decoder admits at most 4,096 items per
+array. After framing the document, it refuses the first excess item before
+scanning that item again.
 
 ## Layout
 
