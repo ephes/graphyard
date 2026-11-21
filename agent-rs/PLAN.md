@@ -882,8 +882,9 @@ statement or transaction short) and closes the connection.
   on SQLite's primary `SQLITE_BUSY` code (including extended BUSY codes)
   with sleeps of 50 ms and 100 ms (await points in Rust). For a Python
   SQLite driver error without a code, the exact legacy `database is locked`
-  message also qualifies. The exact column set per path
-  is pinned by the `store_ops.json` fixture, not by this paragraph.
+  message also qualifies. Python retries only standalone writes. Inside an
+  existing Django transaction the caller owns rollback and any retry.
+  The `store_ops.json` fixture pins the exact column set per path.
 - **Registry** (`touch_registry_from_points(points)`, `bound_subject_id=None`)
   — section 5.5.
 

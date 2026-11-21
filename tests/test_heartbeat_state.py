@@ -292,3 +292,35 @@ def test_heartbeat_retry_uses_sqlite_result_code(case):
             assert raised.value is error
             assert write.call_count == 1
             sleep.assert_not_called()
+
+
+@pytest.mark.django_db(transaction=True, databases=["default", "secondary"])
+@pytest.mark.parametrize("alias", ["default", "secondary"])
+def test_heartbeat_leaves_busy_snapshot_retry_to_caller(alias):
+    driver_error = sqlite3.OperationalError("stale snapshot")
+    driver_error.sqlite_errorcode = sqlite3.SQLITE_BUSY_SNAPSHOT
+    error = OperationalError("stale snapshot")
+    error.__cause__ = driver_error
+
+    with (
+        patch.object(services.router, "db_for_write", return_value=alias),
+        patch.object(
+            PipelineHeartbeat.objects, "update_or_create", side_effect=error
+        ) as write,
+        patch.object(services.time, "sleep") as sleep,
+    ):
+        with pytest.raises(OperationalError) as raised, transaction.atomic(using=alias):
+            PipelineHeartbeat.objects.using(alias).create(name="caller-write")
+            if alias == "default":
+                services._write_heartbeat(
+                    "synthetic", status="ok", last_error="", details=None, success=True
+                )
+            else:
+                services.record_heartbeat("synthetic", status="ok")
+
+    assert raised.value is error
+    write.assert_called_once()
+    sleep.assert_not_called()
+    assert (
+        not PipelineHeartbeat.objects.using(alias).filter(name="caller-write").exists()
+    )

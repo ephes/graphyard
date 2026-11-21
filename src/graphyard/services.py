@@ -2515,7 +2515,8 @@ def record_heartbeat(
     min_update_interval_seconds: int = 0,
 ) -> PipelineHeartbeat:
     state = (status, last_error, success)
-    outer_transaction = connection.in_atomic_block
+    alias = router.db_for_write(PipelineHeartbeat)
+    outer_transaction = connections[alias].in_atomic_block
     marker = object()
     with _heartbeat_write_lock:
         previous = _heartbeat_write_cache.get(name)
@@ -2542,7 +2543,9 @@ def record_heartbeat(
         published = True
         if outer_transaction:
             # A delayed outer commit must not install stale cached state.
-            transaction.on_commit(lambda: _heartbeat_write_cache.pop(name, None))
+            transaction.on_commit(
+                lambda: _heartbeat_write_cache.pop(name, None), using=alias
+            )
         return heartbeat
     finally:
         with _heartbeat_write_lock:
@@ -2558,9 +2561,6 @@ def record_heartbeat(
 
 
 def _is_heartbeat_sqlite_busy(error: OperationalError) -> bool:
-    alias = router.db_for_write(PipelineHeartbeat)
-    if connections[alias].vendor != "sqlite":
-        return False
     code = getattr(error.__cause__, "sqlite_errorcode", None)
     if isinstance(code, int):
         return (code & 0xFF) == sqlite3.SQLITE_BUSY
@@ -2575,6 +2575,12 @@ def _write_heartbeat(
     details: dict | None,
     success: bool,
 ) -> PipelineHeartbeat:
+    write_connection = connections[router.db_for_write(PipelineHeartbeat)]
+    retry_on_busy = (
+        write_connection.vendor == "sqlite"
+        and not write_connection.in_atomic_block
+        and (write_connection.connection is None or write_connection.get_autocommit())
+    )
     defaults = {
         "status": status,
         "last_error": last_error,
@@ -2590,7 +2596,8 @@ def _write_heartbeat(
             )
             return heartbeat
         except OperationalError as err:
-            if attempt == 3 or not _is_heartbeat_sqlite_busy(err):
+            # Only a standalone write can discard its failed snapshot.
+            if not retry_on_busy or attempt == 3 or not _is_heartbeat_sqlite_busy(err):
                 raise
             # Small bounded backoff to ride through short write locks.
             time.sleep(0.05 * attempt)

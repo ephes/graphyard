@@ -1074,6 +1074,11 @@ state per name; transitions and retries after failed/rolled-back writes publish.
 The retained Python agent uses this writer too; Rust writes every heartbeat and
 needs no throttle correction.
 
+Standalone SQLite heartbeat writes retry BUSY up to twice, after 50 and
+100 milliseconds. A Python heartbeat inside a caller-owned Django
+transaction propagates contention on the first attempt so the caller can
+roll back the transaction and decide whether to retry.
+
 Health resolves the lazy session login first, outside the snapshot (Django may write
 the session while resolving it, which a read-only PostgreSQL transaction refuses), and
 then materializes heartbeats and condition counts in one short database snapshot.

@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Propagate Python heartbeat contention immediately inside a caller-owned
+  transaction.
+
 - Classify Python and Rust heartbeat retries by SQLite BUSY result codes.
 
 - Bound Rust invalid-integer formatting to the 200-character diagnostic prefix.
