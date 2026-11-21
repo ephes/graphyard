@@ -1045,10 +1045,11 @@ built and published locally by `agent-rs/scripts/local_release.py` (`just rs-rel
 `just rs-release-publish`) as `agent-rs-v<version>` releases; the first is
 [`agent-rs-v0.1.0`](https://github.com/ephes/graphyard/releases/tag/agent-rs-v0.1.0),
 the one macmini runs
-[`agent-rs-v0.4.0`](https://github.com/ephes/graphyard/releases/tag/agent-rs-v0.4.0)
-(the agent fixes of scout rounds 87 to 99; `agent-rs-v0.3.0` carried those of
-rounds 79 to 85 and stays installed for rollback, `agent-rs-v0.2.0` added
-`evaluate-conditions`); `agent-rs-v0.4.1` is the first release built locally. The
+[`agent-rs-v0.4.2`](https://github.com/ephes/graphyard/releases/tag/agent-rs-v0.4.2)
+(since 2026-11-21; `agent-rs-v0.4.1`, the first release built locally, stays
+installed for rollback; `agent-rs-v0.4.0` carried the agent fixes of scout
+rounds 87 to 99, `agent-rs-v0.3.0` those of rounds 79 to 85,
+`agent-rs-v0.2.0` added `evaluate-conditions`). The
 [local release workflow](agent-rs/README.md#releases) validates and stages
 `notes.md` before tagging and compares downloaded assets in bounded blocks.
 

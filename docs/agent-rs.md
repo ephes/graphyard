@@ -165,11 +165,11 @@ switches to this command with the Python retirement (slice S15b); until then
 
 Release archives come from `agent-rs-v<version>` tags
 (built locally by `agent-rs/scripts/local_release.py`, see `agent-rs/README.md`); the
-first is `agent-rs-v0.1.0`, the one macmini runs `agent-rs-v0.4.0` (the
-fixes of scout rounds 87 to 99; `agent-rs-v0.3.0`, the Rust rollback target
-that stays installed, carried rounds 79 to 85,
-`agent-rs-v0.2.0` added `evaluate-conditions`; `agent-rs-v0.4.1` is the first
-release built locally);
+first is `agent-rs-v0.1.0`, the one macmini runs `agent-rs-v0.4.2` (since
+2026-11-21; `agent-rs-v0.4.1`, the first release built locally, is the Rust
+rollback target that stays installed; `agent-rs-v0.4.0` carried the fixes of
+scout rounds 87 to 99, `agent-rs-v0.3.0` rounds 79 to 85,
+`agent-rs-v0.2.0` added `evaluate-conditions`);
 their sha256 values are listed in `agent-rs/README.md`
 ("Published releases").
 The ops-library role `graphyard_deploy` and the ops-deploy pyinfra service

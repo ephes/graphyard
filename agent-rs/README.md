@@ -605,8 +605,10 @@ cutover of 2026-10-23 (PLAN.md 11.3) until 2026-11-12, when the
 `agent-rs-v0.3.0` (T1 15:18:42 UTC). Since 2026-11-15 the `graphyard_core`
 deploy of ops-control `281d408f` ran `agent-rs-v0.4.0` (T1 07:08:36 UTC).
 Since 2026-11-18 the deploy of ops-control `7f7cf38d` (graphyard source pinned
-to `e6384ce`) runs `agent-rs-v0.4.1`, the first release built locally
-(T1 16:42:05 UTC); 0.4.0 stays installed as the rollback target.
+to `e6384ce`) ran `agent-rs-v0.4.1`, the first release built locally
+(T1 16:42:05 UTC). Since 2026-11-21 the deploy of ops-control `81ce2c3f`
+(graphyard source pinned to `2308723`) runs `agent-rs-v0.4.2` (T1 18:25:43
+UTC); 0.4.1 stays installed as the rollback target.
 
 | Tag | Commit | Archive sha256 |
 | --- | --- | --- |
@@ -615,6 +617,7 @@ to `e6384ce`) runs `agent-rs-v0.4.1`, the first release built locally
 | [`agent-rs-v0.3.0`](https://github.com/ephes/graphyard/releases/tag/agent-rs-v0.3.0) | `eba6ea16af73c322232b28b1035876557e7d9871` | `55f947fd84edfacf04dd0f28fe00db3018fd4cc08b69bf96c1a28ebbb61643f3` |
 | [`agent-rs-v0.4.0`](https://github.com/ephes/graphyard/releases/tag/agent-rs-v0.4.0) | `3d6616df0df4dd7d4ca0e3e89df69ff56b2dc091` | `1528155d1c6fc8208ac22109ca158232c0302605fda1540b7721dc07a078eb7a` |
 | [`agent-rs-v0.4.1`](https://github.com/ephes/graphyard/releases/tag/agent-rs-v0.4.1) | `e6384ce7bd69456a03cc62f7d26aeb2366cbfe71` | `cb9826f953eb1b38ee90a9fe4c0955d28c8f61e7c77e8dc644643a97c3fdbc45` |
+| [`agent-rs-v0.4.2`](https://github.com/ephes/graphyard/releases/tag/agent-rs-v0.4.2) | `230872353e0a30a11d9b62494d42819171009121` | `d0f4748b782e4d7566c2a6a99b532ac72d1713daedde1de451ff0e9a5a890dde` |
 
 `agent-rs-v0.1.0` (slice S10b) was checked after publishing: the downloaded
 archive matches its `.sha256` file and is byte-identical to the archive of a
@@ -640,6 +643,14 @@ separate download of the public URL gave the same sha256. It holds
 floor check (newest symbol version `GLIBC_2.34`, libraries OK) and the smoke
 test (`graphyard-agent 0.4.1 (e6384ce7bd69456a03cc62f7d26aeb2366cbfe71)`) ran
 in the `linux/amd64` release container.
+
+`agent-rs-v0.4.2` was checked the same way by the program (re-download and
+byte comparison, GitHub's asset sha256); a separate download of the public URL
+gave the same sha256 and matches its `.sha256` asset. It holds
+`graphyard-agent` (0755, 9210360 bytes) and `LICENSE` (0644), root:root;
+`release_checks.py glibc-floor --max 2.35` on the extracted binary passes
+(newest symbol version `GLIBC_2.34`, libraries OK); the smoke test printed
+`graphyard-agent 0.4.2 (230872353e0a30a11d9b62494d42819171009121)`.
 
 `agent-rs-v0.3.0` (the fixes of scout rounds 79 to 85, rusqlite 0.41) was
 checked after publishing on 2026-11-12: the downloaded archive matches its
