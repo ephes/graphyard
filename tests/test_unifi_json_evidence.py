@@ -2,12 +2,12 @@
 
 import sys
 import tracemalloc
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 import httpx
 import pytest
 
-from graphyard import services
+from graphyard import services, unifi_json
 from graphyard.models import MetricCollectionSpec
 from graphyard.unifi_json import MAX_ARRAY_ITEMS, MAX_NODES, int_digit_limit_exceeded
 
@@ -225,6 +225,31 @@ def test_device_digit_limit_is_a_decoder_error(monkeypatch):
     result, write, _, _ = collect(monkeypatch, device=device)
     assert result == ("critical", 0, 0, "collector failure: ValueError")
     write.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "force_arithmetic_error", [False, True], ids=["exponent", "arithmetic"]
+)
+def test_streaming_number_failure_does_not_decode_full_body(
+    monkeypatch, force_arithmetic_error
+):
+    if force_arithmetic_error:
+
+        def failed_parse(*args, **kwargs):
+            yield "start_array", None
+            raise ArithmeticError("synthetic streaming number failure")
+
+        monkeypatch.setattr(unifi_json.STREAMING_JSON, "basic_parse", failed_parse)
+
+    # The exponent fits json.loads (as infinity) but not ijson's Decimal.
+    body = b"[1e" + b"9" * 30 + b",[" + b"{}," * MAX_ARRAY_ITEMS + b"{}]]"
+    with patch.object(
+        unifi_json.json,
+        "loads",
+        side_effect=AssertionError("full decode of refused body"),
+    ):
+        with pytest.raises(unifi_json.json.JSONDecodeError):
+            unifi_json.decode_unifi_json(body)
 
 
 @pytest.mark.parametrize(

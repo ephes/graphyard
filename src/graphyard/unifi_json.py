@@ -61,7 +61,7 @@ def int_digit_limit_exceeded(text):
 
 
 def _decoder_error(text):
-    """Raise the error json.loads reports for a body that was not admitted.
+    """Preserve decoder error order when the digit pre-scan finds an oversized integer.
 
     Deep nesting can exhaust Python's recursion before the syntax error is
     found; it is unparseable like serde_json's own nesting limit in Rust.
@@ -116,18 +116,15 @@ def _admit(events):
 
 
 def decode_unifi_json(body):
-    # Undecodable text, syntax errors and over-long integers are reported by
-    # json.loads itself, exactly like the unbounded decoder used before, and
-    # take precedence over admission refusals wherever they appear (the Rust
-    # collector checks the whole document's syntax and digits first).
     # UTF-8 only, like the Rust collector: json.loads(bytes) would also accept
     # UTF-16/32, which is unparseable here (UnicodeDecodeError) instead.
     text = body.decode("utf-8-sig")
+    # Keep syntax and digit errors ahead of admission refusals, as in Rust.
     if int_digit_limit_exceeded(text):
         _decoder_error(text)
         raise ValueError("Exceeds the limit for integer string conversion")
-    events = STREAMING_JSON.basic_parse(io.BytesIO(text.encode("utf-8")))
     try:
+        events = STREAMING_JSON.basic_parse(io.BytesIO(text.encode("utf-8")))
         try:
             _admit(events)
         except UnifiEvidenceError:
@@ -137,9 +134,10 @@ def decode_unifi_json(body):
                 pass
             raise
     except (ijson.JSONError, ArithmeticError):
-        # Report the decoder's own error. A document json.loads accepts but the
-        # strict pass does not (NaN/Infinity) is never returned unadmitted; it is
-        # unparseable, as the Rust decoder (RFC 8259 only) reports it.
-        _decoder_error(text)
-        raise json.JSONDecodeError("Non-standard JSON", text, 0) from None
+        # Syntax and number failures in the streaming pass already classify
+        # this body as unparseable. A full decode could build containers that
+        # the admission pass has not checked (for example after a huge exponent).
+        raise json.JSONDecodeError(
+            "Invalid or unsupported UniFi JSON", text, 0
+        ) from None
     return json.loads(text)

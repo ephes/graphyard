@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Report Python UniFi streaming decode failures without constructing an
+  unadmitted response object graph.
+
 - Count UniFi JSON integer digits during the Python pre-scan without copying
   numeric tokens.
 
