@@ -171,7 +171,7 @@ fn digit_run_len(body: &str) -> Option<usize> {
 
 /// The `ValueError` of a decimal integer longer than CPython's
 /// `sys.get_int_max_str_digits()` (4300).
-pub(super) fn int_limit_error(digits: usize) -> PyError {
+pub(crate) fn int_limit_error(digits: usize) -> PyError {
     PyError::value_error(format!(
         "Exceeds the limit ({MAX_INT_STR_DIGITS} digits) for integer string conversion: \
          value has {digits} digits; use sys.set_int_max_str_digits() to increase the limit"

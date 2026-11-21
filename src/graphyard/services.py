@@ -854,7 +854,7 @@ def _resolve_json_path(payload: object, path: str) -> object | None:
             current = current[part]
             continue
 
-        if isinstance(current, list) and part.isdigit():
+        if isinstance(current, list) and part.isdecimal():
             index = int(part)
             if index < 0 or index >= len(current):
                 return None

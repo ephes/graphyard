@@ -11,8 +11,6 @@ Encoding:
 * a found value is its ``repr`` (``pycompat::py_repr`` in Rust); ``None``
   (not found, which includes a JSON ``null`` at the path) is ``null``;
 * errors are ``{"class": <exception class>, "message": str(exc)}``;
-* ``divergence`` names the PLAN.md section 2.4 entry of a case whose Rust
-  result differs on purpose; ``rust`` is then the Rust result.
 """
 
 from __future__ import annotations
@@ -154,13 +152,14 @@ CASES: list[tuple[str, str]] = [
     ("[1, 2]", "$.1" + "0" * 4299),
     ('{"k": [1]}', "$.k.0" + "0" * 4300),
     ('{"' + "1" * 4301 + '": 5}', "$." + "1" * 4301),
-]
-
-# Unicode digit segments: ``str.isdigit`` is true, Rust takes ASCII digits
-# only (PLAN.md D-6) and finds nothing.
-DIVERGENT: list[tuple[str, str, str]] = [
-    ("[10, 20, 30, 40]", "$.٣", "D-6"),
-    ("[10, 20, 30, 40]", "$.²", "D-6"),
+    ("[10, 20, 30, 40]", "$.٣"),
+    ("[10, 20, 30, 40]", "$.٠３"),
+    ("[10, 20, 30, 40]", "$.𝟛"),
+    ("[10, 20, 30, 40]", "$.𑽓"),
+    ("[10, 20, 30, 40]", "$.٤"),
+    ("[10, 20, 30, 40]", "$.²"),
+    ('{"٣": 8, "²": 9, "3": 10}', "$.٣"),
+    ('{"٣": 8, "²": 9, "3": 10}', "$.²"),
 ]
 
 
@@ -176,13 +175,7 @@ def _resolve(payload_text: str, path: str) -> dict[str, Any]:
 
 
 def build_json_path() -> dict[str, Any]:
-    cases = [_resolve(payload, path) for payload, path in CASES]
-    for payload, path, divergence in DIVERGENT:
-        case = _resolve(payload, path)
-        case["divergence"] = divergence
-        case["rust"] = {"found": None}
-        cases.append(case)
-    return {"cases": cases}
+    return {"cases": [_resolve(payload, path) for payload, path in CASES]}
 
 
 GENERATORS = {"json_path.json": build_json_path}

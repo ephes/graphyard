@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Align Unicode decimal array indices and literal object keys in Python and
+  Rust HTTP JSON metric paths.
+
 - Report Python UniFi streaming decode failures without constructing an
   unadmitted response object graph.
 

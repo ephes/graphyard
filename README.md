@@ -678,6 +678,11 @@ Example `config` JSON for an HTTP JSON metric spec:
 }
 ```
 
+HTTP JSON metric paths accept Unicode decimal digits for array indices,
+including leading zeroes. Other digit glyphs such as `²`, and indices
+outside the array, produce the usual missing-path result. Object keys
+match the segment literally.
+
 For HTTP JSON metrics, Python and Rust reserve the `spec_name` tag for the
 collection spec's name. A configured `spec_name` is ignored, and other
 configured tags are still included as strings.

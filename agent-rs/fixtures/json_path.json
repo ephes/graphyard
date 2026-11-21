@@ -359,23 +359,42 @@
   {
    "payload": "[10, 20, 30, 40]",
    "path": "$.\u0663",
-   "found": "40",
-   "divergence": "D-6",
-   "rust": {
-    "found": null
-   }
+   "found": "40"
+  },
+  {
+   "payload": "[10, 20, 30, 40]",
+   "path": "$.\u0660\uff13",
+   "found": "40"
+  },
+  {
+   "payload": "[10, 20, 30, 40]",
+   "path": "$.\ud835\udfdb",
+   "found": "40"
+  },
+  {
+   "payload": "[10, 20, 30, 40]",
+   "path": "$.\ud807\udf53",
+   "found": "40"
+  },
+  {
+   "payload": "[10, 20, 30, 40]",
+   "path": "$.\u0664",
+   "found": null
   },
   {
    "payload": "[10, 20, 30, 40]",
    "path": "$.\u00b2",
-   "error": {
-    "class": "ValueError",
-    "message": "invalid literal for int() with base 10: '\u00b2'"
-   },
-   "divergence": "D-6",
-   "rust": {
-    "found": null
-   }
+   "found": null
+  },
+  {
+   "payload": "{\"\u0663\": 8, \"\u00b2\": 9, \"3\": 10}",
+   "path": "$.\u0663",
+   "found": "8"
+  },
+  {
+   "payload": "{\"\u0663\": 8, \"\u00b2\": 9, \"3\": 10}",
+   "path": "$.\u00b2",
+   "found": "9"
   }
  ]
 }
