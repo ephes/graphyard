@@ -201,6 +201,9 @@ just manage revoke_ingest_token --id 1
 just manage revoke_ingest_token --name macmini
 ```
 
+The revocation receipt shows the numeric token ID and escapes C0/DEL/C1 controls
+in the stored name as visible `\xNN` text, just like the audit reports.
+
 ### Single subject/host binding and rollout
 
 Each ingest token now has an optional `bound_subject_id` (one canonical subject/host
@@ -326,6 +329,9 @@ invalid and every identifier is marked outside it.
 Usage is recorded at ingest from this release onwards (table
 `ingest_token_host_usage`, `last_seen` updated at most hourly, at most 500 identifiers per token),
 so let it collect for a while before scoping existing tokens.
+
+Both reports sort by stored token name, using ascending token ID when names
+compare equal under the database collation.
 
 The binding and host-scope reports project token metadata in batches of 100 and
 read usage once per batch, without credential hashes or model hydration. Both

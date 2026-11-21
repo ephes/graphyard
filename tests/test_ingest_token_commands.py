@@ -122,6 +122,28 @@ def test_create_reuses_name_of_revoked_token():
 
 
 @pytest.mark.django_db
+def test_revoke_displays_legacy_name_with_terminal_controls_escaped():
+    name = "synthetic\x1b\r\n\x85"
+    token = IngestToken.objects.create(name=name, token_hash="synthetic-hash")
+    stdout = io.StringIO()
+
+    call_command("revoke_ingest_token", id=token.pk, stdout=stdout, no_color=True)
+
+    token.refresh_from_db()
+    revoked_at = token.revoked_at
+    assert token.enabled is False
+    assert revoked_at is not None
+    assert token.name == name
+    with pytest.raises(CommandError, match="No matching enabled token found"):
+        call_command("revoke_ingest_token", id=token.pk, stdout=stdout, no_color=True)
+    token.refresh_from_db()
+    assert token.revoked_at == revoked_at
+    assert stdout.getvalue() == (
+        f"Revoked token id={token.pk} " r"name=synthetic\x1b\x0d\x0a\x85" "\n"
+    )
+
+
+@pytest.mark.django_db
 def test_retired_name_fits_the_name_column():
     long_name = "n" * 128
     create_token(long_name)
