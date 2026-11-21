@@ -482,8 +482,9 @@ A source that exhausts its allowance records a bounded lookup failure and retain
 last-good evidence for the unchanged definition. Later sources needing a lookup
 are counted as skipped once the run allowance is exhausted; unchanged definitions'
 version, error, attempt and success timestamps are untouched. Changed definitions
-remain invalidated even if their new lookup is skipped. Fresh cache hits do not
-count as skipped. Output reports failed and skipped counts; any skipped sources
+remain invalidated even if their new lookup is skipped. After expiry, the
+command reads the remaining cache statuses together to distinguish fresh hits
+from skipped lookups. Output reports failed and skipped counts; any skipped sources
 make the command incomplete with a nonzero exit status. Rerun normally to resume
 (still-fresh successes are skipped without network requests); `--force` also
 rechecks fresh sources and remains subject to the same budget.
