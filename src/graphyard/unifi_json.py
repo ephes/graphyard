@@ -42,13 +42,19 @@ def int_digit_limit_exceeded(text):
                 index += 2 if text[index] == "\\" else 1
             index += 1
         elif char == "-" or "0" <= char <= "9":
-            start = index
-            while index < length and text[index] in "-+.eE0123456789":
+            digits = 0
+            is_integer = True
+            while index < length:
+                char = text[index]
+                if "0" <= char <= "9":
+                    digits += 1
+                elif char in ".eE":
+                    is_integer = False
+                elif char not in "-+":
+                    break
                 index += 1
-            token = text[start:index]
-            if not any(mark in token for mark in ".eE"):
-                if sum(digit.isdigit() for digit in token) > limit:
-                    return True
+            if is_integer and digits > limit:
+                return True
         else:
             index += 1
     return False

@@ -1,5 +1,7 @@
 """UniFi evidence must be unambiguous before either sink is called."""
 
+import sys
+import tracemalloc
 from unittest.mock import Mock
 
 import httpx
@@ -7,7 +9,7 @@ import pytest
 
 from graphyard import services
 from graphyard.models import MetricCollectionSpec
-from graphyard.unifi_json import MAX_ARRAY_ITEMS, MAX_NODES
+from graphyard.unifi_json import MAX_ARRAY_ITEMS, MAX_NODES, int_digit_limit_exceeded
 
 REFUSED = ("critical", 0, 0, "UniFi evidence refused")
 
@@ -47,6 +49,28 @@ def collect(monkeypatch, login=b"{}", device=b"{}"):
 
 
 VALID = b'{"data":[{"name":"synthetic","uplink":{"rx_bytes-r":1,"tx_bytes-r":2}}]}'
+
+
+@pytest.mark.parametrize(
+    "value,exceeds_limit",
+    [
+        ("-" + "9" * 250_000, True),
+        ("9" * 250_000 + "e+10", False),
+        ('"escaped quote: \\"' + "9" * 250_000 + '"', False),
+    ],
+    ids=["integer", "exponent", "quoted"],
+)
+def test_digit_scan_has_bounded_temporary_allocation(monkeypatch, value, exceeds_limit):
+    monkeypatch.setattr(sys, "get_int_max_str_digits", lambda: 4300)
+    text = f"[{value}]"
+    tracemalloc.start()
+    try:
+        result = int_digit_limit_exceeded(text)
+        _, peak = tracemalloc.get_traced_memory()
+    finally:
+        tracemalloc.stop()
+    assert result is exceeds_limit
+    assert peak < 64 * 1024
 
 
 @pytest.mark.parametrize(

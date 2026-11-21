@@ -1289,6 +1289,10 @@ fallback. Non-standard JSON that Python's `json.loads` would accept (`NaN`,
 decoder, both runtimes treat it as unparseable (`JSONDecodeError` or
 `UnicodeDecodeError`).
 
+The Python digit pre-scan counts digits as it advances through each numeric
+candidate without copying it. Decimal and exponent forms are exempt from the
+integer digit limit, and quoted text is skipped.
+
 Both Python and Rust UniFi collectors apply `max_body_bytes` (default 10 MiB)
 to the sum of all login attempts, redirect bodies and device responses.
 `total_timeout_seconds` (default three times `request_timeout_seconds`, maximum
