@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Check Python condition series for conflicting duplicates without copying the
+  sorted sample list.
+
+- Select the Python condition result in one pass over the series, preserving
+  severity, timestamp and structural tie-breaks.
+
 - Reuse cached release evidence across version-page rows for the same source.
 
 - Avoid updating unchanged source rows when refreshing the inventory release registry.

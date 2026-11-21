@@ -975,6 +975,8 @@ Python and Rust use severity, then the oldest latest-sample time, then the
 lexicographically smallest structural series key (sorted dimension/tag pairs)
 to choose a non-OK diagnostic. Healthy ties use the newest time and largest
 structural key. Input series order and label escaping do not affect this choice.
+The Python evaluator selects the deciding result and counts non-OK series in
+one pass over the grouped series, retaining at most two candidate results.
 Display labels JSON-quote both names and values (Unicode remains readable);
 missing dimensions render as `null`, distinct from `""`. Commas, equals signs,
 quotes and backslashes inside tags cannot impersonate another series.
@@ -1368,4 +1370,6 @@ and private, locked shadow-file recovery are documented in the
 [agent boundary contracts](docs/agent-rs.md#http-cancellation-and-resolver-admission).
 Both query runtimes refuse duplicate Flux labels, and both condition evaluators
 refuse conflicting values at the same series/timestamp before duration or anchor
-selection. Identical duplicate observations remain supported.
+selection. Identical duplicate observations remain supported. The Python
+evaluator checks adjacent samples in each time-sorted series without copying the
+sample list.
