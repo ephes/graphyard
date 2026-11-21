@@ -14,7 +14,9 @@
 
 use std::fmt;
 
-use serde::de::{self, Deserializer as _, IgnoredAny, MapAccess, SeqAccess, Visitor};
+use serde::de::{
+    self, DeserializeSeed, Deserializer as _, IgnoredAny, MapAccess, SeqAccess, Visitor,
+};
 use serde_json::value::RawValue;
 use serde_json::{Map, Number, Value};
 
@@ -119,6 +121,8 @@ pub const BOUNDED_MAX_ARRAY_ITEMS: usize = 4096;
 
 /// Decode unambiguous JSON with bounded expanded work. Object keys and values
 /// each count as nodes. Containers count as values; the root is level one.
+/// After framing the input, the array walker checks its item limit before
+/// scanning the first excess value.
 ///
 /// # Errors
 /// Syntax errors, duplicate members or an exceeded expansion budget.
@@ -191,12 +195,42 @@ impl<'de> Visitor<'de> for BoundedVisitor<'_> {
 
     fn visit_seq<A: SeqAccess<'de>>(self, mut access: A) -> Result<Value, A::Error> {
         let mut items = Vec::new();
-        while let Some(raw) = access.next_element::<&RawValue>()? {
-            if items.len() >= BOUNDED_MAX_ARRAY_ITEMS {
-                return Err(de::Error::custom("JSON array limit"));
-            }
+        for _ in 0..BOUNDED_MAX_ARRAY_ITEMS {
+            let Some(raw) = access.next_element::<&RawValue>()? else {
+                return Ok(Value::Array(items));
+            };
             items.push(bounded_raw(raw, self.depth, self.nodes).map_err(de::Error::custom)?);
         }
+        // Serde only calls the seed when another element is present.
+        access.next_element_seed(RejectExtraArrayItem)?;
         Ok(Value::Array(items))
+    }
+}
+
+struct RejectExtraArrayItem;
+
+impl<'de> DeserializeSeed<'de> for RejectExtraArrayItem {
+    type Value = ();
+
+    fn deserialize<D: de::Deserializer<'de>>(self, _deserializer: D) -> Result<(), D::Error> {
+        Err(de::Error::custom("JSON array limit"))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn array_limit_precedes_extra_value_scan() {
+        let prefix = format!("[{}null", "null,".repeat(BOUNDED_MAX_ARRAY_ITEMS - 1));
+        let exact = json_loads_bounded(&format!("{prefix}]")).unwrap();
+        assert_eq!(exact.as_array().unwrap().len(), BOUNDED_MAX_ARRAY_ITEMS);
+
+        let extra = format!(r#"{prefix},{{"nested":["{}"]}}]"#, "x".repeat(32_768));
+        let error = json_loads_bounded(&extra).unwrap_err();
+        assert!(error.to_string().starts_with("JSON array limit"));
+        // The error position records how far the bounded visitor scanned.
+        assert_eq!(error.column(), prefix.len() + 1);
     }
 }

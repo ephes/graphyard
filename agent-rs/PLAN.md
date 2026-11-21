@@ -778,7 +778,12 @@ their datetimes, 5.3), so the store selects every column too, including
   includes state-only field changes on agent models. Agent columns last changed
   in `0010`; the duration migration does not rewrite historical definitions.
 
-Extra columns and equivalent indexes are accepted (a newer, compatible schema).
+Equivalent indexes and compatible extra columns are accepted. The readiness
+check uses `PRAGMA foreign_key_list` to require a single-column reference from
+`service_registry.host_id` to `host_registry.id`. It uses `PRAGMA table_xinfo`
+to diagnose ordinary extra `NOT NULL` columns in the three registry tables
+when their defaults are absent or literal `NULL`. Generated and nullable
+extensions can be omitted by the agent's inserts.
 Round 101 adds the generated storage contract
 (`agent-rs/fixtures/schema/storage_contract.rs`: column affinity, nullability,
 rowid primary keys and unconditional unique identity keys) to the same check,

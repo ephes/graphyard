@@ -326,3 +326,96 @@ fn equivalent_named_binary_identity_index_is_allowed() {
             .is_ok()
     );
 }
+
+#[test]
+fn readiness_requires_the_service_host_foreign_key() {
+    let reference = r#" REFERENCES "host_registry" ("id") DEFERRABLE INITIALLY DEFERRED"#;
+    let cases = [
+        ("", false),
+        (" REFERENCES subject_registry(id)", false),
+        (" REFERENCES host_registry(host_id)", false),
+        (
+            ", FOREIGN KEY (host_id, enabled) REFERENCES host_registry(id, enabled)",
+            false,
+        ),
+        (" REFERENCES HOST_REGISTRY", true),
+        (reference, true),
+    ];
+    for (replacement, accepted) in cases {
+        let schema = change_table("service_registry", reference, replacement);
+        let db = TestDb::with_schema(&schema);
+        let report = check_schema(db.path(), &default_settings()).unwrap();
+        assert_eq!(report.is_ok(), accepted, "{replacement:?}: {report}");
+        if !accepted {
+            assert_eq!(
+                report.incompatible_storage,
+                ["service_registry.host_id (expected foreign key to host_registry.id)"]
+            );
+        }
+    }
+}
+
+#[tokio::test]
+async fn readiness_matches_registry_inserts_with_extra_columns() {
+    let cases = [
+        ("subject_registry", "TEXT NOT NULL", false),
+        ("host_registry", "TEXT NOT NULL", false),
+        ("service_registry", "TEXT NOT NULL", false),
+        (
+            "service_registry",
+            "TEXT NOT NULL DEFAULT (( NULL ))",
+            false,
+        ),
+        ("service_registry", "TEXT", true),
+        ("service_registry", "TEXT NOT NULL DEFAULT 'NULL'", true),
+        (
+            "service_registry",
+            "TEXT GENERATED ALWAYS AS (upper(service_id)) VIRTUAL NOT NULL",
+            true,
+        ),
+    ];
+    for (table, definition, accepted) in cases {
+        let db = TestDb::with_schema(&change_table(
+            table,
+            r#""last_seen_at""#,
+            &format!(r#"extension {definition}, "last_seen_at""#),
+        ));
+        let report = check_schema(db.path(), &default_settings()).unwrap();
+
+        let timestamp = common::now("2025-01-01 00:00:00");
+        let mut point = graphyard_core::model::MetricPoint::new(
+            timestamp,
+            "test.metric",
+            1.0,
+            "host",
+            "example",
+            "test",
+            "test",
+            "example",
+        );
+        point.service = Some("example_service".into());
+        let store = db.store();
+        let result = store.touch_registry(vec![point], timestamp).await;
+        store.close();
+        assert_eq!(result.is_ok(), accepted, "{table} {definition}: {result:?}");
+        assert_eq!(report.is_ok(), accepted, "{table} {definition}: {report}");
+        if accepted {
+            let service_count: i64 = db
+                .raw()
+                .query_row(
+                    "SELECT count(*) FROM service_registry WHERE host_id IS NOT NULL",
+                    [],
+                    |row| row.get(0),
+                )
+                .unwrap();
+            assert_eq!(service_count, 1);
+        } else {
+            assert_eq!(
+                report.incompatible_storage,
+                [format!(
+                    "{table}.extension (required column has no non-NULL default)"
+                )]
+            );
+        }
+    }
+}

@@ -344,6 +344,69 @@ fn verify_storage(
     Ok(())
 }
 
+fn verify_registry_extensions(
+    connection: &Connection,
+    contract: &TableContract,
+    problems: &mut Vec<String>,
+) -> Result<(), StoreError> {
+    // Fixed-column inserts omit extensions. Generated and nullable columns
+    // can be omitted without supplying a default.
+    let mut statement = connection.prepare(
+        r#"SELECT name, dflt_value FROM pragma_table_xinfo(?, 'main')
+            WHERE hidden = 0 AND "notnull" = 1 ORDER BY cid"#,
+    )?;
+    let columns = statement.query_map([contract.table], |row| {
+        Ok((row.get::<_, String>(0)?, row.get::<_, Option<String>>(1)?))
+    })?;
+    for column in columns {
+        let (name, default) = column?;
+        if contract
+            .columns
+            .iter()
+            .any(|required| required.name == name)
+        {
+            continue;
+        }
+        // The catalog stores default SQL. Detect a literal NULL without
+        // evaluating SQL from a restored database.
+        if default.as_deref().is_none_or(|sql| {
+            sql.trim_matches(|ch: char| ch.is_ascii_whitespace() || matches!(ch, '(' | ')'))
+                .eq_ignore_ascii_case("NULL")
+        }) {
+            problems.push(format!(
+                "{}.{} (required column has no non-NULL default)",
+                contract.table,
+                name.escape_debug()
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn verify_service_host_foreign_key(
+    connection: &Connection,
+    problems: &mut Vec<String>,
+) -> Result<(), StoreError> {
+    // A composite constraint is not a reference on host_id alone. A NULL
+    // parent column denotes the primary key, verified separately as id.
+    let present: bool = connection.query_row(
+        r#"SELECT EXISTS (
+            SELECT 1 FROM pragma_foreign_key_list('service_registry', 'main')
+            GROUP BY id
+            HAVING count(*) = 1
+                AND max("from" = 'host_id' COLLATE NOCASE
+                    AND "table" = 'host_registry' COLLATE NOCASE
+                    AND ("to" IS NULL OR "to" = 'id' COLLATE NOCASE))
+        )"#,
+        [],
+        |row| row.get(0),
+    )?;
+    if !present {
+        problems.push("service_registry.host_id (expected foreign key to host_registry.id)".into());
+    }
+    Ok(())
+}
+
 /// Verify the contract on `connection` (read-only: no DDL, no pragma writes).
 pub(crate) fn verify_schema(connection: &Connection) -> Result<SchemaReport, StoreError> {
     verify_schema_with_hook(connection, |_| {})
@@ -391,8 +454,17 @@ fn inspect_schema(
     for contract in REQUIRED_STORAGE {
         if tables.contains(&contract.table) {
             verify_storage(connection, contract, &mut incompatible_storage)?;
+            if matches!(
+                contract.table,
+                "host_registry" | "service_registry" | "subject_registry"
+            ) {
+                verify_registry_extensions(connection, contract, &mut incompatible_storage)?;
+            }
             after_table(contract.table);
         }
+    }
+    if tables.contains(&"service_registry") {
+        verify_service_host_foreign_key(connection, &mut incompatible_storage)?;
     }
     let migrations_kind = table_kind(connection, "django_migrations")?;
     let missing_migrations_table = migrations_kind.is_none();

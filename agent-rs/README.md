@@ -166,6 +166,12 @@ store handles exercise reordered commits.
 The slice table is PLAN.md section 12; the test coverage per slice is
 [`TESTMAP.md`](TESTMAP.md).
 
+The Rust Python-compatibility integer parser checks the 4,300-digit limit
+before removing digit separators. Plain digit runs are parsed directly from
+the input. The bounded JSON evidence decoder admits at most 4,096 items per
+array. After framing the document, it refuses the first excess item before
+scanning that item again.
+
 ## Layout
 
 ```
@@ -465,11 +471,16 @@ and unconditional unique identity keys, compiled into the readiness check.
 Verification requires ordinary SQLite tables for the six agent tables and
 `django_migrations`. Views and other object types are reported as incompatible
 storage before column or migration-marker checks on those objects.
+The foreign-key catalog must include a single-column reference from
+`service_registry.host_id` to `host_registry.id`.
 Verification reads one deferred SQLite snapshot, never mixes migration generations
 and never issues DDL or changes journal settings. Stop the agent for migrations;
 a readiness check does not make live migration safe. Incompatible storage fails
 before collectors or metric sink calls; repair it through Django migrations or restore
-the migrated schema. Extra columns/indexes remain supported.
+the migrated schema. Extra indexes and nullable or generated registry columns
+are supported. An ordinary `NOT NULL` registry extension must supply a
+database default. Preflight diagnoses absent and literal `NULL` defaults
+without evaluating default expressions.
 `tests/test_agent_rs_schema_contract.py`
 fails when a migration changes them; then run `just rs-fixtures`, update
 `REQUIRED_COLUMNS` / `MIN_GRAPHYARD_MIGRATION` in

@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- Diagnose additional required SQLite registry columns with absent or literal
+  NULL defaults before the Rust agent attempts inserts.
+
+- Report a missing or mismatched service-to-host foreign key during Rust agent
+  schema readiness checks.
+
+- Reject excess items in bounded Rust JSON arrays before rescanning their values.
+
+- Check the Rust Python-compatible integer digit limit before allocating
+  normalized digits and parse plain digit runs without a copy.
+
 - Report an empty effective TLS trust store before the Rust collector opens a
   verifying HTTPS connection.
 
