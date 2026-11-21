@@ -1266,6 +1266,60 @@ def test_expired_refresh_batches_remaining_freshness_reads(monkeypatch, force, s
     assert len(source_reads_after_expiry) == 1
 
 
+@pytest.mark.parametrize(("force", "skipped", "fetched"), [(False, 5, 0), (True, 6, 1)])
+def test_refresh_expiring_after_a_due_row_read_counts_it_once(
+    monkeypatch, force, skipped, fetched
+):
+    started = timezone.now()
+    stale = started - releases.REFRESH_AFTER
+    statuses = [
+        (started, ""),
+        (stale, ""),
+        (started, ""),
+        (started, "Release lookup failed"),
+        (stale, ""),
+        (started + timedelta(seconds=1), ""),
+        (None, ""),
+    ]
+    payload = [definition(project=f"project-{i}") for i in range(len(statuses))]
+    for item, (checked_at, error) in zip(payload, statuses, strict=True):
+        InventoryRelease.objects.create(
+            source_id="pypi:" + item["project"],
+            definition=item,
+            checked_at=checked_at,
+            error=error,
+        )
+    clock = [0.0]
+    monkeypatch.setattr(releases.timezone, "now", lambda: started)
+    monkeypatch.setattr(releases, "monotonic", lambda: clock[0])
+    fetch = Mock(return_value="2.0")
+    monkeypatch.setattr(releases, "fetch", fetch)
+    source_table = connection.ops.quote_name(InventoryRelease._meta.db_table)
+    reads_after_expiry = []
+
+    def expire_on_full_row_read(execute, sql, params, many, context):
+        selects_source = sql.startswith("SELECT") and f"FROM {source_table} " in sql
+        if clock[0]:
+            if selects_source:
+                reads_after_expiry.append(sql)
+        elif (
+            selects_source and '"version"' in sql and "pypi:project-1" in (params or ())
+        ):
+            # The loop's full-row read of the second source, after the
+            # registry sync: the budget expires before its lookup starts.
+            result = execute(sql, params, many, context)
+            clock[0] = releases.REFRESH_BUDGET_SECONDS
+            return result
+        return execute(sql, params, many, context)
+
+    with connection.execute_wrapper(expire_on_full_row_read):
+        outcome = releases.refresh(payload, force=force)
+
+    assert fetch.call_count == fetched
+    assert outcome == releases.RefreshResult(skipped=skipped)
+    assert len(reads_after_expiry) == 1
+
+
 def test_command_reports_incomplete_refresh(tmp_path, settings, monkeypatch, capsys):
     settings.BASE_DIR = tmp_path
     policy = tmp_path / "sources.json"
