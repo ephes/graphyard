@@ -487,6 +487,16 @@ until it actually finishes, even after caller cancellation. Abandoned lookup
 diagnostics remain available; IP literals bypass resolution. This limits
 resolver jobs, not the number of application futures waiting for admission.
 
+### Collector TLS trust-store readiness
+
+The Rust agent loads system roots when it creates its HTTP context. If no
+certificate is usable, verifying HTTPS connection setup fails before DNS or
+TCP with the fixed critical diagnostic
+`collector TLS trust store has no usable roots`. A partially usable store
+still works with its admitted roots. Plain HTTP and collectors explicitly
+configured with `verify_tls: false` can run with an empty store. Restart the
+agent after restoring the system CA certificates.
+
 ### Flux materialization and sparse labels
 
 Python and Rust admit at most 100,000 Flux records, 500,000 cells and 16 MiB

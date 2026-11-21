@@ -736,6 +736,60 @@ async fn tls_verification_follows_verify_tls() {
         .expect("verify_tls false ignores the host name");
 }
 
+#[tokio::test]
+async fn verifying_tls_requires_at_least_one_usable_root_before_network_io() {
+    use std::sync::atomic::Ordering;
+
+    use rustls_native_certs::{CertificateResult, Error, ErrorKind as NativeError};
+
+    use crate::http::connect::{TlsConfigs, roots_from_native};
+
+    let (root, acceptor) = tls_material();
+    let server = Server::start_with(|_| response("200 OK", &[], b"{}"), Some(acceptor)).await;
+    let url = format!("https://tls.test:{}/", server.port());
+    let plain = Server::start(|_| response("200 OK", &[], b"{}")).await;
+    let bad_der = || CertificateDer::from(vec![0_u8]);
+    let load_error = || Error {
+        context: "synthetic certificate load error",
+        kind: NativeError::Os(Box::new(std::io::Error::other("synthetic loader detail"))),
+    };
+    let cases = [
+        (vec![], vec![], false),
+        (vec![bad_der()], vec![load_error()], false),
+        (vec![root.clone(), bad_der()], vec![load_error()], true),
+        (vec![root], vec![], true),
+    ];
+
+    for (certs, errors, usable) in cases {
+        let mut loaded = CertificateResult::default();
+        loaded.certs = certs;
+        loaded.errors = errors;
+        let lookup = Arc::new(StubLookup::loopback());
+        let mut context = HttpContext::new().with_lookup(lookup.clone());
+        context.tls = Arc::new(TlsConfigs::new(roots_from_native(loaded)));
+        let verifying = client(&context, &ClientOptions::new(5.0, true));
+        let result = read_http_json(&verifying, &url, 100, &Deadline::none()).await;
+        if usable {
+            result.expect("at least one usable root");
+        } else {
+            let error = result.expect_err("empty effective trust store");
+            assert_eq!(
+                error.safe_message(),
+                "collector TLS trust store has no usable roots"
+            );
+            assert!(!error.kind.is_page_probe_warning());
+            assert_eq!(lookup.calls.load(Ordering::SeqCst), 0);
+            read_http_json(&verifying, &plain.origin(), 100, &Deadline::none())
+                .await
+                .expect("plain HTTP does not need a trust store");
+            let no_verify = client(&context, &ClientOptions::new(5.0, false));
+            read_http_json(&no_verify, &url, 100, &Deadline::none())
+                .await
+                .expect("explicit verification bypass does not need a trust store");
+        }
+    }
+}
+
 #[test]
 fn utf8_errors_and_bom_follow_json_loads() {
     use crate::http::probe::decode_json;

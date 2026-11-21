@@ -239,6 +239,33 @@ fn check_outcome(
 }
 
 #[tokio::test]
+async fn http_json_keeps_the_spec_name_and_other_configured_tags() {
+    use crate::http::tests::server::response;
+
+    let server = Server::start(|_| response("200 OK", &[], br#"{"depth":12}"#)).await;
+    let sink = ClockedSink::new(ts_of(text(fixture(), "now")));
+    let config = serde_json::json!({
+        "url": server.origin(),
+        "metric_path": "$.depth",
+        "metric_name": "service.queue_depth",
+        "tags": {"spec_name": "other spec", "source": "mail-health", "priority": 3}
+    });
+
+    let outcome = execute_http_json_metric(&HttpContext::new(), &sink, "mail queue depth", &config)
+        .await
+        .expect("collector outcome");
+    assert_eq!(outcome.ingested, 1);
+    let written = sink.written.borrow();
+    let tags = written.as_ref().expect("written point")[0]
+        .tags
+        .as_ref()
+        .expect("point tags");
+    assert_eq!(tags["spec_name"], "mail queue depth");
+    assert_eq!(tags["source"], "mail-health");
+    assert_eq!(tags["priority"], "3");
+}
+
+#[tokio::test]
 async fn executor_scenarios_match_python() {
     let fixture = fixture();
     let now = ts_of(text(fixture, "now"));

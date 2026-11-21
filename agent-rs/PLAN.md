@@ -308,7 +308,9 @@ that differs is a bug.
   a restart instead of a new agent release. `graphyard-agent.service` is
   added to macmini's `restart_units` in ops-control
   `playbooks/ca-trust-consumers.yml` (S11c), so the `ca_trust_consumers`
-  rollout restarts the agent after a CA update.
+  rollout restarts the agent after a CA update. Verifying collector TLS
+  setup requires at least one usable root before network I/O (see
+  [trust-store readiness](../docs/agent-rs.md#collector-tls-trust-store-readiness)).
 - **D-13 Stored values of another SQLite storage class.** Rust reads the
   `integer` columns of the agent tables (ids, `interval_seconds`,
   `next_run_time`, `window_minutes`, `breach_minutes`,
@@ -1125,7 +1127,8 @@ in the order the Python code checks them.
   field with its Python default chain (`subject_id` defaults to `service_id
   or host_id or "external"`, `collector_service` to `service_id or
   "graphyard-agent"`, …); required `url`, `metric_path`, `metric_name`; tags
-  `spec_name` + configured `tags` (`str()` of keys and values); optional
+  `spec_name` from the collection spec + configured `tags` (`str()` of keys
+  and values, ignoring a configured `spec_name`); optional
   Bearer token; Basic auth only when both username and password are
   non-empty; `_resolve_json_path` (`$`, `$.a.0.b`, list index by digits);
   missing → `warning, 0, 1, "metric_path not found: <path>"`; non-finite →

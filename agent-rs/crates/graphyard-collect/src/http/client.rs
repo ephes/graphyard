@@ -615,6 +615,11 @@ impl HttpClient {
     /// `start_tls`. The lookup is not bounded by the timeout (httpcore's
     /// `getaddrinfo` is not); the total deadline bounds it.
     async fn connect(&self, url: &HttpxUrl, tls: bool) -> Result<Stream, HttpError> {
+        let tls_config = match (tls, self.verify_tls) {
+            (false, _) => None,
+            (true, false) => Some(Arc::clone(&self.context.tls.no_verify)),
+            (true, true) => Some(self.context.tls.verify.clone()?),
+        };
         let port = url
             .port()
             .cloned()
@@ -645,15 +650,10 @@ impl HttpClient {
             .map(|ip| std::net::SocketAddr::new(ip, port))
             .collect();
         let tcp = connect_tcp(&addresses, self.timeout).await?;
-        if !tls {
-            return Ok(Stream::Plain(tcp));
+        match tls_config {
+            Some(config) => start_tls(tcp, host, config, self.timeout).await,
+            None => Ok(Stream::Plain(tcp)),
         }
-        let config = if self.verify_tls {
-            Arc::clone(&self.context.tls.verify)
-        } else {
-            Arc::clone(&self.context.tls.no_verify)
-        };
-        start_tls(tcp, host, config, self.timeout).await
     }
 
     /// The request on the wire: httpx's request target (`raw_path`), `Host`

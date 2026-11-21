@@ -1122,7 +1122,10 @@ def _execute_http_json_metric_spec(
     tags: dict[str, str] = {"spec_name": spec.name}
     configured_tags = spec.config.get("tags", {})
     if isinstance(configured_tags, dict):
-        tags.update({str(key): str(value) for key, value in configured_tags.items()})
+        for key, value in configured_tags.items():
+            tag_key = str(key)
+            if tag_key != "spec_name":
+                tags[tag_key] = str(value)
 
     headers = {"Accept": "application/json"}
     bearer_token = str(spec.config.get("bearer_token", "")).strip()
