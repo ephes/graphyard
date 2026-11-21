@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Report a storage error when SQLite ignores an update that would advance the
+  Rust agent heartbeat's last successful observation.
+
+- Reject views and other non-table objects in place of required tables during
+  Rust agent schema readiness checks.
+
 - Break token name sort ties by token ID in both ingest-token audit reports.
 
 - Escape control characters in the token name shown by the revocation receipt.

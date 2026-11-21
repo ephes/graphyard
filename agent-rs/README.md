@@ -158,8 +158,10 @@ Rust heartbeat projection compares observation timestamps while holding the
 writer reservation. Older observations cannot replace current status, error,
 details or `updated_at`; equal times retain the first committed projection.
 Successful observations, including delayed/equal-time ones, retain the maximum
-`last_success` without changing a newer projection. Fresh transitions still
-publish normally. Independent store handles exercise reordered commits.
+`last_success` without changing a newer projection. If SQLite ignores an update
+that would advance `last_success`, the store returns a storage error and rolls
+back the transaction. Fresh transitions still publish normally. Independent
+store handles exercise reordered commits.
 
 The slice table is PLAN.md section 12; the test coverage per slice is
 [`TESTMAP.md`](TESTMAP.md).
@@ -460,6 +462,9 @@ columns of the six agent tables and the minimum graphyard migration, the last
 one whose operations touch an agent model). It also generates
 `fixtures/schema/storage_contract.rs`: column affinity/nullability/primary keys
 and unconditional unique identity keys, compiled into the readiness check.
+Verification requires ordinary SQLite tables for the six agent tables and
+`django_migrations`. Views and other object types are reported as incompatible
+storage before column or migration-marker checks on those objects.
 Verification reads one deferred SQLite snapshot, never mixes migration generations
 and never issues DDL or changes journal settings. Stop the agent for migrations;
 a readiness check does not make live migration safe. Incompatible storage fails
