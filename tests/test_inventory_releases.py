@@ -189,13 +189,20 @@ def test_cache_failure_preserves_success_time_and_retry_is_not_skipped(monkeypat
 
 
 def test_registry_removal_disables_prior_source():
-    row = cache()
-    releases.refresh([])
+    row = cache(attempted_at=timezone.now())
+    original = (row.version, row.checked_at, row.attempted_at)
+    with CaptureQueriesContext(connection) as queries:
+        assert releases.refresh([]).complete
     row.refresh_from_db()
     assert not row.enabled and releases.registry() == {}
+    assert (row.version, row.checked_at, row.attempted_at) == original
+    source_table = connection.ops.quote_name(InventoryRelease._meta.db_table)
+    source_queries = [query["sql"] for query in queries if source_table in query["sql"]]
+    assert len(source_queries) == 1
+    assert source_queries[0].startswith(f"UPDATE {source_table} ")
 
 
-def test_refresh_only_updates_changed_or_reenabled_source_rows(monkeypatch):
+def test_refresh_only_updates_changed_or_reenabled_registered_sources(monkeypatch):
     django = cache(attempted_at=timezone.now())
     flask = InventoryRelease.objects.create(
         source_id="pypi:flask",
@@ -216,11 +223,13 @@ def test_refresh_only_updates_changed_or_reenabled_source_rows(monkeypatch):
     with CaptureQueriesContext(connection) as queries:
         assert releases.refresh([django.definition, flask.definition]).complete
     source_table = connection.ops.quote_name(InventoryRelease._meta.db_table)
-    assert not [
+    # Only the disable sweep runs, with no matching rows.
+    source_updates = [
         query["sql"]
         for query in queries
         if query["sql"].startswith(f"UPDATE {source_table} ")
     ]
+    assert len(source_updates) == 1
     fetch.assert_not_called()
 
     replacement = {**django.definition, "targets": [{"kind": "python", "name": "test"}]}
@@ -1205,6 +1214,110 @@ def test_whole_refresh_budget_bounds_200_sources_and_preserves_unattempted(monke
     ):
         assert row.version == "1.0" and row.checked_at == previous
         assert row.attempted_at == previous and row.error == ""
+
+
+@pytest.mark.parametrize(("force", "skipped"), [(False, 4), (True, 6)])
+def test_expired_refresh_batches_remaining_freshness_reads(monkeypatch, force, skipped):
+    started = timezone.now()
+    stale = started - releases.REFRESH_AFTER
+    statuses = [
+        (stale, ""),
+        (started, ""),
+        (started, ""),
+        (started, "Release lookup failed"),
+        (stale, ""),
+        (started + timedelta(seconds=1), ""),
+        (None, ""),
+    ]
+    payload = [definition(project=f"project-{i}") for i in range(len(statuses))]
+    for item, (checked_at, error) in zip(payload, statuses, strict=True):
+        InventoryRelease.objects.create(
+            source_id="pypi:" + item["project"],
+            definition=item,
+            checked_at=checked_at,
+            error=error,
+        )
+    clock = [0.0]
+    monkeypatch.setattr(releases.timezone, "now", lambda: started)
+    monkeypatch.setattr(releases, "monotonic", lambda: clock[0])
+
+    queries_before_expiry = 0
+
+    def lookup(client, item, **kwargs):
+        nonlocal queries_before_expiry
+        queries_before_expiry = len(queries)
+        clock[0] = releases.REFRESH_BUDGET_SECONDS
+        return "2.0"
+
+    fetch = Mock(side_effect=lookup)
+    monkeypatch.setattr(releases, "fetch", fetch)
+    with CaptureQueriesContext(connection) as queries:
+        outcome = releases.refresh(payload, force=force)
+
+    fetch.assert_called_once()
+    assert outcome == releases.RefreshResult(skipped=skipped)
+    assert not outcome.complete
+    source_table = connection.ops.quote_name(InventoryRelease._meta.db_table)
+    source_reads_after_expiry = [
+        query["sql"]
+        for query in queries.captured_queries[queries_before_expiry:]
+        if query["sql"].startswith("SELECT") and f"FROM {source_table} " in query["sql"]
+    ]
+    assert len(source_reads_after_expiry) == 1
+
+
+@pytest.mark.parametrize(("force", "skipped", "fetched"), [(False, 5, 0), (True, 6, 1)])
+def test_refresh_expiring_after_a_due_row_read_counts_it_once(
+    monkeypatch, force, skipped, fetched
+):
+    started = timezone.now()
+    stale = started - releases.REFRESH_AFTER
+    statuses = [
+        (started, ""),
+        (stale, ""),
+        (started, ""),
+        (started, "Release lookup failed"),
+        (stale, ""),
+        (started + timedelta(seconds=1), ""),
+        (None, ""),
+    ]
+    payload = [definition(project=f"project-{i}") for i in range(len(statuses))]
+    for item, (checked_at, error) in zip(payload, statuses, strict=True):
+        InventoryRelease.objects.create(
+            source_id="pypi:" + item["project"],
+            definition=item,
+            checked_at=checked_at,
+            error=error,
+        )
+    clock = [0.0]
+    monkeypatch.setattr(releases.timezone, "now", lambda: started)
+    monkeypatch.setattr(releases, "monotonic", lambda: clock[0])
+    fetch = Mock(return_value="2.0")
+    monkeypatch.setattr(releases, "fetch", fetch)
+    source_table = connection.ops.quote_name(InventoryRelease._meta.db_table)
+    reads_after_expiry = []
+
+    def expire_on_full_row_read(execute, sql, params, many, context):
+        selects_source = sql.startswith("SELECT") and f"FROM {source_table} " in sql
+        if clock[0]:
+            if selects_source:
+                reads_after_expiry.append(sql)
+        elif (
+            selects_source and '"version"' in sql and "pypi:project-1" in (params or ())
+        ):
+            # The loop's full-row read of the second source, after the
+            # registry sync: the budget expires before its lookup starts.
+            result = execute(sql, params, many, context)
+            clock[0] = releases.REFRESH_BUDGET_SECONDS
+            return result
+        return execute(sql, params, many, context)
+
+    with connection.execute_wrapper(expire_on_full_row_read):
+        outcome = releases.refresh(payload, force=force)
+
+    assert fetch.call_count == fetched
+    assert outcome == releases.RefreshResult(skipped=skipped)
+    assert len(reads_after_expiry) == 1
 
 
 def test_command_reports_incomplete_refresh(tmp_path, settings, monkeypatch, capsys):

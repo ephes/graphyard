@@ -212,11 +212,9 @@ def refresh(data, force=False):
             pk=1, generation=generation
         ).update(generation=F("generation")):
             return RefreshResult(skipped=len(registry), superseded=True)
-        removed = InventoryRelease.objects.filter(enabled=True).exclude(
+        InventoryRelease.objects.filter(enabled=True).exclude(
             source_id__in=registry
-        )
-        if removed.exists():
-            removed.update(enabled=False)
+        ).update(enabled=False)
         for key, definition in registry.items():
             row, created = InventoryRelease.objects.only(
                 "definition", "enabled"
@@ -255,14 +253,23 @@ def refresh(data, force=False):
                 and timedelta(0) <= started - row.checked_at < REFRESH_AFTER
             )
 
+        def count_due(source_ids):
+            rows = InventoryRelease.objects.filter(pk__in=source_ids).only(
+                "checked_at", "error"
+            )
+            return sum(not fresh(row) for row in rows)
+
         keys = list(registry)
         for index, (key, definition) in enumerate(registry.items()):
+            if monotonic() >= deadline:
+                skipped += count_due(keys[index:])
+                break
             row = InventoryRelease.objects.get(pk=key)
             if fresh(row):
                 continue
             if monotonic() >= deadline:
-                skipped += 1
-                continue
+                skipped += 1 + count_due(keys[index + 1 :])
+                break
             try:
                 version = fetch(client, definition, deadline=deadline)
                 values = {"version": version, "checked_at": timezone.now(), "error": ""}
@@ -290,10 +297,7 @@ def refresh(data, force=False):
                 # A newer refresh owns the registry: this result was discarded and
                 # the remaining sources needing a lookup are not looked up at all.
                 # A failed lookup already counts as failed, not also as skipped.
-                remaining = InventoryRelease.objects.filter(pk__in=keys[index + 1 :])
-                skipped += ("version" in values) + sum(
-                    1 for later in remaining if not fresh(later)
-                )
+                skipped += ("version" in values) + count_due(keys[index + 1 :])
                 break
     if not superseded:
         # Fresh cache hits publish nothing, so a run that only skipped them would

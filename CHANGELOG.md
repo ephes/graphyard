@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Disable removed release sources with one filtered update under the registry
+  generation lock.
+
+- Read remaining release cache statuses in one query when the refresh budget
+  expires, preserving fresh-hit and skipped-source counts.
+
 - Seed disk-usage conditions in a transaction on the condition write database,
   including the name lookup and save.
 
