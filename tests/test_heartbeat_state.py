@@ -5,7 +5,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 import pytest
-from django.db import DatabaseError, OperationalError, transaction
+from django.db import DatabaseError, OperationalError, connection, transaction
 from django.utils import timezone
 
 from graphyard import services
@@ -267,6 +267,9 @@ _RETRY_CODES = (
     ],
 )
 def test_heartbeat_retry_uses_sqlite_result_code(case):
+    if connection.vendor != "sqlite":
+        pytest.skip("heartbeat busy retries are SQLite-only")
+
     driver_error = sqlite3.OperationalError(case["message"])
     if case["code"] is not None:
         driver_error.sqlite_errorcode = case["code"]
