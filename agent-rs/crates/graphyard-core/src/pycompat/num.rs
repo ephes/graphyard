@@ -9,7 +9,7 @@ use num_bigint::{BigInt, Sign};
 use num_traits::ToPrimitive;
 use serde_json::{Number, Value};
 
-use super::text::py_str_repr;
+use super::text::{py_str_repr, py_str_repr_prefix};
 use super::value::{MAX_INT_STR_DIGITS, py_type_name};
 use super::{PyError, PyErrorKind};
 
@@ -148,7 +148,7 @@ thread_local! {
 fn invalid_int(text: &str) -> PyError {
     // CPython formats the literal with `%.200R`: its repr cut to 200
     // characters (the closing quote included in the count).
-    let literal: String = py_str_repr(text).chars().take(200).collect();
+    let literal = py_str_repr_prefix(text, 200);
     PyError::value_error(format!("invalid literal for int() with base 10: {literal}"))
 }
 
@@ -399,6 +399,24 @@ pub fn py_int_true_divide(numerator: &BigInt, denominator: u32) -> Result<f64, P
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn invalid_integer_only_formats_the_diagnostic_prefix() {
+        use crate::pycompat::text::REPR_INPUT_CHARS;
+
+        let prefix = "invalid literal for int() with base 10: ";
+        let long = format!("{}\n'", "é".repeat(198)) + &"\n".repeat(100_000);
+        for text in ["", "'", "a'\"\\\t\n\r\0\u{2003}é", long.as_str()] {
+            let expected: String = py_str_repr(text).chars().take(200).collect();
+            REPR_INPUT_CHARS.with(|count| count.set(0));
+
+            assert_eq!(
+                py_int(text).unwrap_err().message.strip_prefix(prefix),
+                Some(expected.as_str())
+            );
+            assert!(REPR_INPUT_CHARS.with(std::cell::Cell::get) < 200);
+        }
+    }
 
     #[test]
     fn integer_digit_budget_precedes_normalization() {

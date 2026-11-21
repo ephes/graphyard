@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Bound Rust invalid-integer formatting to the 200-character diagnostic prefix.
+
 - Align Unicode decimal array indices and literal object keys in Python and
   Rust HTTP JSON metric paths.
 
