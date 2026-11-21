@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Diagnose additional required SQLite registry columns with absent or literal
+  NULL defaults before the Rust agent attempts inserts.
+
 - Report a missing or mismatched service-to-host foreign key during Rust agent
   schema readiness checks.
 

@@ -477,7 +477,10 @@ Verification reads one deferred SQLite snapshot, never mixes migration generatio
 and never issues DDL or changes journal settings. Stop the agent for migrations;
 a readiness check does not make live migration safe. Incompatible storage fails
 before collectors or metric sink calls; repair it through Django migrations or restore
-the migrated schema. Extra columns/indexes remain supported.
+the migrated schema. Extra indexes and nullable or generated registry columns
+are supported. An ordinary `NOT NULL` registry extension must supply a
+database default. Preflight diagnoses absent and literal `NULL` defaults
+without evaluating default expressions.
 `tests/test_agent_rs_schema_contract.py`
 fails when a migration changes them; then run `just rs-fixtures`, update
 `REQUIRED_COLUMNS` / `MIN_GRAPHYARD_MIGRATION` in
