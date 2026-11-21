@@ -1,13 +1,15 @@
 """UniFi evidence must be unambiguous before either sink is called."""
 
-from unittest.mock import Mock
+import sys
+import tracemalloc
+from unittest.mock import Mock, patch
 
 import httpx
 import pytest
 
-from graphyard import services
+from graphyard import services, unifi_json
 from graphyard.models import MetricCollectionSpec
-from graphyard.unifi_json import MAX_ARRAY_ITEMS, MAX_NODES
+from graphyard.unifi_json import MAX_ARRAY_ITEMS, MAX_NODES, int_digit_limit_exceeded
 
 REFUSED = ("critical", 0, 0, "UniFi evidence refused")
 
@@ -47,6 +49,28 @@ def collect(monkeypatch, login=b"{}", device=b"{}"):
 
 
 VALID = b'{"data":[{"name":"synthetic","uplink":{"rx_bytes-r":1,"tx_bytes-r":2}}]}'
+
+
+@pytest.mark.parametrize(
+    "value,exceeds_limit",
+    [
+        ("-" + "9" * 250_000, True),
+        ("9" * 250_000 + "e+10", False),
+        ('"escaped quote: \\"' + "9" * 250_000 + '"', False),
+    ],
+    ids=["integer", "exponent", "quoted"],
+)
+def test_digit_scan_has_bounded_temporary_allocation(monkeypatch, value, exceeds_limit):
+    monkeypatch.setattr(sys, "get_int_max_str_digits", lambda: 4300)
+    text = f"[{value}]"
+    tracemalloc.start()
+    try:
+        result = int_digit_limit_exceeded(text)
+        _, peak = tracemalloc.get_traced_memory()
+    finally:
+        tracemalloc.stop()
+    assert result is exceeds_limit
+    assert peak < 64 * 1024
 
 
 @pytest.mark.parametrize(
@@ -201,6 +225,31 @@ def test_device_digit_limit_is_a_decoder_error(monkeypatch):
     result, write, _, _ = collect(monkeypatch, device=device)
     assert result == ("critical", 0, 0, "collector failure: ValueError")
     write.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "force_arithmetic_error", [False, True], ids=["exponent", "arithmetic"]
+)
+def test_streaming_number_failure_does_not_decode_full_body(
+    monkeypatch, force_arithmetic_error
+):
+    if force_arithmetic_error:
+
+        def failed_parse(*args, **kwargs):
+            yield "start_array", None
+            raise ArithmeticError("synthetic streaming number failure")
+
+        monkeypatch.setattr(unifi_json.STREAMING_JSON, "basic_parse", failed_parse)
+
+    # The exponent fits json.loads (as infinity) but not ijson's Decimal.
+    body = b"[1e" + b"9" * 30 + b",[" + b"{}," * MAX_ARRAY_ITEMS + b"{}]]"
+    with patch.object(
+        unifi_json.json,
+        "loads",
+        side_effect=AssertionError("full decode of refused body"),
+    ):
+        with pytest.raises(unifi_json.json.JSONDecodeError):
+            unifi_json.decode_unifi_json(body)
 
 
 @pytest.mark.parametrize(

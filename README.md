@@ -1282,12 +1282,18 @@ conversion. These fixed work limits supplement the byte/deadline budgets and ref
 the whole collection with the fixed diagnostic `UniFi evidence refused` and no
 metric or registry publication. Bodies that are not UTF-8 JSON, contain an integer
 beyond Python's 4,300-digit limit or have a syntax error (anywhere in the document,
-even after a duplicate member or exceeded limit) keep the decoder's own diagnostic (`collector failure: UnicodeDecodeError`,
-`ValueError` or `JSONDecodeError`) and remain "unparseable" for the legacy login
-fallback. Non-standard JSON that Python's `json.loads` would accept (`NaN`,
-`Infinity`, UTF-16/32 bodies) is never returned without admission: like the Rust
-decoder, both runtimes treat it as unparseable (`JSONDecodeError` or
-`UnicodeDecodeError`).
+even after a duplicate member or exceeded limit) keep their diagnostic category
+(`collector failure: UnicodeDecodeError`, `ValueError` or `JSONDecodeError`) and
+remain "unparseable" for the legacy login fallback. Both runtimes treat input
+such as `NaN`, `Infinity` and UTF-16/32 bodies as unparseable (`JSONDecodeError`
+or `UnicodeDecodeError`), even though Python's `json.loads` accepts them.
+
+The Python digit pre-scan counts digits as it advances through each numeric
+candidate without copying it. Decimal and exponent forms are exempt from the
+integer digit limit, and quoted text is skipped. After the digit check, a
+streaming syntax error or an unsupported number (such as an exponent outside
+the streaming decoder's range) is reported as `JSONDecodeError` without building
+the response object graph.
 
 Both Python and Rust UniFi collectors apply `max_body_bytes` (default 10 MiB)
 to the sum of all login attempts, redirect bodies and device responses.

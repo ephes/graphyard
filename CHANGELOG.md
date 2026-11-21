@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Report Python UniFi streaming decode failures without constructing an
+  unadmitted response object graph.
+
+- Count UniFi JSON integer digits during the Python pre-scan without copying
+  numeric tokens.
+
 - Diagnose additional required SQLite registry columns with absent or literal
   NULL defaults before the Rust agent attempts inserts.
 
