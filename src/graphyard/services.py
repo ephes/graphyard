@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Collection
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from itertools import pairwise
 import json
 import logging
 import math
@@ -199,8 +200,7 @@ def _group_samples_by_series(
     for series_samples in grouped.values():
         series_samples.sort(key=lambda item: item.ts)
         if any(
-            a.ts == b.ts and a.value != b.value
-            for a, b in zip(series_samples, series_samples[1:])
+            a.ts == b.ts and a.value != b.value for a, b in pairwise(series_samples)
         ):
             raise ValueError("Conflicting values for same series and timestamp")
     return grouped

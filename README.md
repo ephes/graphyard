@@ -1370,4 +1370,6 @@ and private, locked shadow-file recovery are documented in the
 [agent boundary contracts](docs/agent-rs.md#http-cancellation-and-resolver-admission).
 Both query runtimes refuse duplicate Flux labels, and both condition evaluators
 refuse conflicting values at the same series/timestamp before duration or anchor
-selection. Identical duplicate observations remain supported.
+selection. Identical duplicate observations remain supported. The Python
+evaluator checks adjacent samples in each time-sorted series without copying the
+sample list.

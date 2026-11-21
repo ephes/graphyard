@@ -1112,3 +1112,26 @@ def test_r102_identical_same_time_evidence_supported(monkeypatch):
         "graphyard.services.influx.query_condition_window", lambda *a, **k: samples
     )
     assert evaluate_condition(_condition(), now=now).status == StatusLevel.CRITICAL
+
+
+def test_group_samples_checks_dense_series_without_a_slice_copy(monkeypatch):
+    from graphyard import services
+
+    def reject_sample_copy(*iterables):
+        # A second list one item shorter is the copied tail passed to zip.
+        assert not (
+            len(iterables) == 2
+            and all(isinstance(items, list) for items in iterables)
+            and len(iterables[1]) == len(iterables[0]) - 1
+        ), "Duplicate detection copied the series tail"
+        return zip(*iterables)
+
+    monkeypatch.setattr(services, "zip", reject_sample_copy, raising=False)
+    now = datetime(2026, 3, 4, 12, 0, tzinfo=UTC)
+    samples = [_sample_at(now, seconds_ago=i / 10, value=80) for i in range(4096)]
+    duplicate = samples[2048]
+    samples.append(duplicate)
+
+    grouped = services._group_samples_by_series(samples)
+
+    assert list(grouped.values()) == [sorted(samples, key=lambda sample: sample.ts)]
