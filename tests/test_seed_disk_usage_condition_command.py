@@ -1,10 +1,150 @@
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
+from contextlib import ExitStack
+from io import StringIO
+from threading import Barrier
+
 import pytest
 from django.core.management import call_command
 from django.core.management.base import CommandError
+from django.db import IntegrityError, connection, connections, router
+from django.db.models.query import QuerySet
+from django.test.utils import CaptureQueriesContext
 
 from graphyard.models import ComparisonOperator, ConditionDefinition, SubjectType
+
+
+@pytest.mark.django_db(
+    transaction=True, databases=["default", "secondary", "spec_writer"]
+)
+@pytest.mark.parametrize("existing", [False, True])
+def test_seed_uses_only_the_routed_writer(monkeypatch, existing):
+    class SplitRouter:
+        def db_for_read(self, model, **hints):
+            return "secondary" if model is ConditionDefinition else None
+
+        def db_for_write(self, model, **hints):
+            return "spec_writer" if model is ConditionDefinition else None
+
+    for alias in ("default", "secondary"):
+        ConditionDefinition.objects.using(alias).create(
+            name="fixture", metric_name=f"{alias}.metric"
+        )
+    writer = ConditionDefinition.objects.using("spec_writer")
+    if existing:
+        writer.create(name="fixture", metric_name="writer.metric", message="keep")
+    monkeypatch.setattr(router, "routers", [SplitRouter()])
+
+    output = StringIO()
+    with ExitStack() as stack:
+        untouched = [
+            stack.enter_context(CaptureQueriesContext(connections[alias]))
+            for alias in ("default", "secondary")
+        ]
+        writer_queries = stack.enter_context(
+            CaptureQueriesContext(connections["spec_writer"])
+        )
+        call_command(
+            "seed_disk_usage_condition", host="fixture", name="fixture", stdout=output
+        )
+
+    assert all(len(queries) == 0 for queries in untouched)
+    assert writer_queries[0]["sql"].startswith("BEGIN")
+    assert writer_queries[-1]["sql"] == "COMMIT"
+    condition = writer.get(name="fixture")
+    assert condition.metric_name == "host.filesystem_used_ratio"
+    assert condition.message == ("keep" if existing else "")
+    assert output.getvalue().startswith("Updated" if existing else "Created")
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("unrelated_error", [False, True])
+def test_seed_reconciles_only_the_name_collision(monkeypatch, unrelated_error):
+    winner = ConditionDefinition.objects.create(
+        name="fixture", metric_name="winner.metric", message="keep"
+    )
+    original_first = QuerySet.first
+    missed = False
+
+    def miss_initial_lookup(rows):
+        nonlocal missed
+        if rows.model is ConditionDefinition and not missed:
+            missed = True
+            return None
+        return original_first(rows)
+
+    monkeypatch.setattr(QuerySet, "first", miss_initial_lookup)
+    output = StringIO()
+    if unrelated_error:
+        original_save = ConditionDefinition.save
+
+        def fail_save(self, *args, **kwargs):
+            if self._state.adding:
+                raise IntegrityError("unrelated integrity failure")
+            return original_save(self, *args, **kwargs)
+
+        monkeypatch.setattr(ConditionDefinition, "save", fail_save)
+        with pytest.raises(CommandError, match="unrelated integrity failure"):
+            call_command(
+                "seed_disk_usage_condition",
+                host="fixture",
+                name="fixture",
+                stdout=output,
+            )
+        assert output.getvalue() == ""
+        winner.refresh_from_db()
+        assert winner.metric_name == "winner.metric"
+    else:
+        call_command(
+            "seed_disk_usage_condition", host="fixture", name="fixture", stdout=output
+        )
+        assert output.getvalue().startswith("Updated condition")
+        winner.refresh_from_db()
+        assert winner.metric_name == "host.filesystem_used_ratio"
+        assert winner.message == "keep"
+    assert ConditionDefinition.objects.count() == 1
+
+
+@pytest.mark.django_db(transaction=True)
+def test_concurrent_first_disk_seed_on_postgres(monkeypatch):
+    if connection.vendor != "postgresql":
+        pytest.skip("requires PostgreSQL row locking")
+
+    both_missing = Barrier(2, timeout=10)
+    original_first = QuerySet.first
+
+    def synchronize_empty_reads(rows):
+        row = original_first(rows)
+        if rows.model is ConditionDefinition and row is None:
+            both_missing.wait()
+        return row
+
+    monkeypatch.setattr(QuerySet, "first", synchronize_empty_reads)
+
+    def seed():
+        output = StringIO()
+        try:
+            call_command(
+                "seed_disk_usage_condition",
+                host="fixture",
+                name="fixture",
+                stdout=output,
+            )
+            return output.getvalue()
+        finally:
+            connections.close_all()
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        outcomes = [executor.submit(seed) for _ in range(2)]
+        first_lines = sorted(
+            outcome.result(timeout=20).splitlines()[0] for outcome in outcomes
+        )
+
+    assert first_lines == ["Created condition", "Updated condition"]
+    condition = ConditionDefinition.objects.get()
+    assert condition.name == "fixture"
+    assert condition.metric_name == "host.filesystem_used_ratio"
 
 
 @pytest.mark.django_db

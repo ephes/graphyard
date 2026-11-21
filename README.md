@@ -879,7 +879,11 @@ Seed ratios must be finite and between 0 and 1. For `gt`/`gte`, warning must
 be at most critical (defaults: 0.8/0.9). For `lt`/`lte`, warning must be at
 least critical, for example `--operator lte --warning-threshold 0.2
 --critical-threshold 0.1`; 0.15 then reports warning.
-Seeding validates before saving and creates/updates atomically by unique name.
+Seeding validates before saving and creates/updates atomically by unique name
+on the database selected by Django's write router for condition definitions.
+If two first-time seeds race to create the same name on PostgreSQL, the
+second locks the row created by the first and applies its definition as a
+normal update.
 Validation or database save failures leave new and existing conditions unchanged.
 
 Defaults: warning `0.80`, critical `0.90`, operator `gte`, metric `host.filesystem_used_ratio`.
@@ -1129,14 +1133,15 @@ resolved hook environment is outside this graph. Rust advisories remain covered
 by `cargo deny`. The PostgreSQL contract job's separately injected `psycopg`
 package is also outside the locked graph.
 
-To check the token audit snapshot with two databases and a concurrent writer,
-point the contract settings at a disposable PostgreSQL instance. The role
-must be able to create test databases.
+The token audit snapshot and disk-usage seed tests cover concurrent writes
+on PostgreSQL. Point the contract settings at a disposable PostgreSQL instance
+with a role that can create test databases.
 
 ```bash
 GRAPHYARD_TEST_DATABASE_URL=postgres://graphyard_test@127.0.0.1:5432/graphyard_test \
   uv run --with 'psycopg[binary]==3.2.10' pytest -q \
-  --ds=config.settings.postgres_contract tests/test_token_report_batches.py
+  --ds=config.settings.postgres_contract tests/test_token_report_batches.py \
+  tests/test_seed_disk_usage_condition_command.py
 ```
 
 ```bash
