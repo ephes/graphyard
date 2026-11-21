@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Read the default database directly when checking for enabled legacy ingest tokens.
+
 - Check Python condition series for conflicting duplicates without copying the
   sorted sample list.
 

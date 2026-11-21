@@ -368,7 +368,8 @@ Ingest authentication looks up the SHA-256 digest by equality before trying only
 enabled legacy password-hash rows. Invalid credentials still cost one password
 check per legacy row until those rows are upgraded or rotated. Run
 `just manage check --database default` to report `graphyard.W001` while enabled
-legacy rows remain. The check tolerates an unmigrated database during setup.
+legacy rows remain on the default database. The check queries that alias directly
+and tolerates an unmigrated database during setup.
 
 ## Metric Collection Specs
 
