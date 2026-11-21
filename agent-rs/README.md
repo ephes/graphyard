@@ -166,6 +166,10 @@ store handles exercise reordered commits.
 The slice table is PLAN.md section 12; the test coverage per slice is
 [`TESTMAP.md`](TESTMAP.md).
 
+The Rust Python-compatibility integer parser checks the 4,300-digit limit
+before removing digit separators. Plain digit runs are parsed directly from
+the input.
+
 ## Layout
 
 ```

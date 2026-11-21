@@ -140,6 +140,11 @@ pub fn py_format_g(x: f64) -> String {
     out
 }
 
+#[cfg(test)]
+thread_local! {
+    static INT_NORMALIZATIONS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+
 fn invalid_int(text: &str) -> PyError {
     // CPython formats the literal with `%.200R`: its repr cut to 200
     // characters (the closing quote included in the count).
@@ -148,13 +153,20 @@ fn invalid_int(text: &str) -> PyError {
 }
 
 /// Digits with single underscores between them (PEP 515), ASCII only (D-6).
-fn valid_digit_run(body: &str) -> bool {
-    let bytes = body.as_bytes();
-    !bytes.is_empty()
-        && bytes[0].is_ascii_digit()
-        && bytes[bytes.len() - 1].is_ascii_digit()
-        && bytes.iter().all(|b| b.is_ascii_digit() || *b == b'_')
-        && !body.contains("__")
+fn digit_run_len(body: &str) -> Option<usize> {
+    let mut digits = 0;
+    let mut previous_was_digit = false;
+    for byte in body.bytes() {
+        match byte {
+            b'0'..=b'9' => {
+                digits += 1;
+                previous_was_digit = true;
+            }
+            b'_' if previous_was_digit => previous_was_digit = false,
+            _ => return None,
+        }
+    }
+    previous_was_digit.then_some(digits)
 }
 
 /// The `ValueError` of a decimal integer longer than CPython's
@@ -179,13 +191,19 @@ pub fn py_int(text: &str) -> Result<BigInt, PyError> {
         Some(b'+') => (false, &stripped[1..]),
         _ => (false, stripped),
     };
-    if !valid_digit_run(body) {
-        return Err(invalid_int(text));
+    let digit_count = digit_run_len(body).ok_or_else(|| invalid_int(text))?;
+    if digit_count > MAX_INT_STR_DIGITS {
+        return Err(int_limit_error(digit_count));
     }
-    let digits: String = body.chars().filter(|c| *c != '_').collect();
-    if digits.len() > MAX_INT_STR_DIGITS {
-        return Err(int_limit_error(digits.len()));
-    }
+    let normalized;
+    let digits = if digit_count == body.len() {
+        body
+    } else {
+        #[cfg(test)]
+        INT_NORMALIZATIONS.with(|count| count.set(count.get() + 1));
+        normalized = body.replace('_', "");
+        &normalized
+    };
     let magnitude: BigInt = digits.parse().map_err(|_| invalid_int(text))?;
     Ok(if negative { -magnitude } else { magnitude })
 }
@@ -376,4 +394,36 @@ pub fn py_int_true_divide(numerator: &BigInt, denominator: u32) -> Result<f64, P
     let exponent = i32::try_from(exponent).expect("exponent within the double range");
     let value = mantissa as f64 * 2f64.powi(exponent);
     Ok(if negative { -value } else { value })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn integer_digit_budget_precedes_normalization() {
+        let plain = "9".repeat(MAX_INT_STR_DIGITS);
+        let underscored = format!("{}9", "9_".repeat(MAX_INT_STR_DIGITS - 1));
+        INT_NORMALIZATIONS.with(|count| count.set(0));
+
+        for body in [format!("{plain}9"), format!("{underscored}_9")] {
+            assert_eq!(
+                py_int(&format!(" -{body} ")).unwrap_err(),
+                int_limit_error(MAX_INT_STR_DIGITS + 1)
+            );
+        }
+        assert_eq!(INT_NORMALIZATIONS.with(std::cell::Cell::get), 0);
+
+        let expected: BigInt = plain.parse().unwrap();
+        for (sign, expected) in [("+", expected.clone()), ("-", -expected)] {
+            for body in [&plain, &underscored] {
+                assert_eq!(py_int(&format!(" {sign}{body} ")).unwrap(), expected);
+            }
+        }
+        assert_eq!(INT_NORMALIZATIONS.with(std::cell::Cell::get), 2);
+        assert_eq!(
+            py_int(&format!("{plain}9_")).unwrap_err(),
+            invalid_int(&format!("{plain}9_"))
+        );
+    }
 }
