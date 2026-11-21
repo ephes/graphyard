@@ -158,8 +158,10 @@ Rust heartbeat projection compares observation timestamps while holding the
 writer reservation. Older observations cannot replace current status, error,
 details or `updated_at`; equal times retain the first committed projection.
 Successful observations, including delayed/equal-time ones, retain the maximum
-`last_success` without changing a newer projection. Fresh transitions still
-publish normally. Independent store handles exercise reordered commits.
+`last_success` without changing a newer projection. If SQLite ignores an update
+that would advance `last_success`, the store returns a storage error and rolls
+back the transaction. Fresh transitions still publish normally. Independent
+store handles exercise reordered commits.
 
 The slice table is PLAN.md section 12; the test coverage per slice is
 [`TESTMAP.md`](TESTMAP.md).

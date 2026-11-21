@@ -120,10 +120,13 @@ fn write_heartbeat(
             // late successful evidence may still advance last_success.
             if loaded_updated_at.is_some_and(|updated| observed <= updated) {
                 if record.success && loaded_last_success.is_none_or(|last| observed > last) {
-                    transaction.execute(
+                    let changed = transaction.execute(
                         "UPDATE pipeline_heartbeat SET last_success = ? WHERE id = ?",
                         params![last_success, id],
                     )?;
+                    if changed == 0 {
+                        return Err(StoreError::NotUpdated);
+                    }
                 }
                 transaction.commit()?;
                 return Ok(());

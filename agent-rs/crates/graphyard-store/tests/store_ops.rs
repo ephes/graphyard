@@ -578,3 +578,51 @@ async fn condition_watermark_orders_legacy_text_by_utc_at_microsecond_precision(
         }
     }
 }
+
+#[tokio::test]
+async fn ignored_late_heartbeat_success_fails_and_can_be_retried() {
+    let db = TestDb::new();
+    let store = db.store();
+    let failure = HeartbeatRecord {
+        name: "synthetic".into(),
+        status: StatusLevel::Warning,
+        last_error: "synthetic failure".into(),
+        details: vec![("failed".into(), 1)],
+        success: false,
+    };
+    let success = HeartbeatRecord {
+        name: failure.name.clone(),
+        status: StatusLevel::Ok,
+        last_error: String::new(),
+        details: vec![("failed".into(), 0)],
+        success: true,
+    };
+    let late = "2026-11-08 12:00:00";
+    store
+        .record_heartbeat(failure, now("2026-11-08 12:01:00"))
+        .await
+        .unwrap();
+    let mut expected = db.rows("pipeline_heartbeat");
+    db.raw()
+        .execute_batch(
+            "CREATE TRIGGER ignore_late_success BEFORE UPDATE OF last_success ON pipeline_heartbeat
+             BEGIN SELECT RAISE(IGNORE); END;",
+        )
+        .unwrap();
+
+    let result = store.record_heartbeat(success.clone(), now(late)).await;
+    assert!(matches!(result, Err(StoreError::NotUpdated)), "{result:?}");
+    assert_eq!(db.rows("pipeline_heartbeat"), expected);
+
+    db.raw()
+        .execute_batch("DROP TRIGGER ignore_late_success")
+        .unwrap();
+    store.record_heartbeat(success, now(late)).await.unwrap();
+    let (_, last_success) = expected[0]
+        .iter_mut()
+        .find(|(column, _)| column == "last_success")
+        .unwrap();
+    *last_success = rusqlite::types::Value::Text(late.into());
+    assert_eq!(db.rows("pipeline_heartbeat"), expected);
+    store.close();
+}
