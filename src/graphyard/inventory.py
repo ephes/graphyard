@@ -207,12 +207,21 @@ def ingest(request):
         if request.content_type != "application/json":
             return JsonResponse({"error": "application/json required"}, status=415)
         # Limit this endpoint without lifting Django's global upload limit.
-        length = request.META.get("CONTENT_LENGTH", "")
-        if length and (not length.isdigit() or int(length) > MAX_BYTES):
-            return JsonResponse({"error": "report too large"}, status=413)
+        declared = request.META.get("CONTENT_LENGTH")
+        length = None
+        if declared is not None:
+            if not (declared.isascii() and declared.isdecimal()):
+                return JsonResponse({"error": "report too large"}, status=413)
+            digits = declared.lstrip("0") or "0"
+            limit = str(MAX_BYTES)
+            if (len(digits), digits) > (len(limit), limit):
+                return JsonResponse({"error": "report too large"}, status=413)
+            length = int(digits)
         body = request.read(MAX_BYTES + 1)
         if len(body) > MAX_BYTES:
             return JsonResponse({"error": "report too large"}, status=413)
+        if length is not None and len(body) != length:
+            return JsonResponse({"error": "invalid inventory report"}, status=400)
         report = decode_report(body)
         # Vector JSON encoding can frame one event as a one-element array.
         if isinstance(report, list) and len(report) == 1:
@@ -226,8 +235,13 @@ def ingest(request):
         with transaction.atomic(durable=True):
             # Issuance/rotation locks this same row first. Holding it through
             # commit orders revocation against the entire admitted ingest.
-            HostRegistry.objects.select_for_update().get(pk=credential.host.host_id)
-            host = InventoryHost.objects.select_for_update().get(pk=credential.host_id)
+            try:
+                HostRegistry.objects.select_for_update().get(pk=credential.host.host_id)
+                host = InventoryHost.objects.select_for_update().get(
+                    pk=credential.host_id
+                )
+            except (HostRegistry.DoesNotExist, InventoryHost.DoesNotExist):
+                return JsonResponse({"error": "credential revoked"}, status=401)
             # Recheck revocation inside the write transaction.
             if not InventoryCredential.objects.filter(
                 pk=credential.pk, enabled=True, host__host__enabled=True

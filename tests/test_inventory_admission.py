@@ -10,7 +10,7 @@ import pytest
 from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.db import connection, connections
-from django.test import Client
+from django.test import Client, RequestFactory
 from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 from uuid import uuid4
@@ -70,6 +70,91 @@ def test_ingest_locks_registry_before_inventory_host(admission):
     # The first admitted read is the same registry row issuance locks, even on
     # SQLite where BEGIN IMMEDIATE supplies the actual serialization.
     assert 'from "host_registry"' in admitted_reads[0]
+
+
+@pytest.mark.parametrize("remove_registry", [False, True])
+def test_host_retired_after_authentication(admission, monkeypatch, remove_registry):
+    host, auth, body = admission
+    registry_id = host.host_id
+    authenticated, resume = Event(), Event()
+    authenticate = inventory.authenticate
+
+    def pause(request):
+        credential = authenticate(request)
+        assert credential is not None
+        authenticated.set()
+        assert resume.wait(timeout=10)
+        return credential
+
+    def deliver():
+        try:
+            return post(auth, body)
+        finally:
+            connections.close_all()
+
+    monkeypatch.setattr(inventory, "authenticate", pause)
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        future = pool.submit(deliver)
+        try:
+            assert authenticated.wait(timeout=10)
+            host.delete()
+            if remove_registry:
+                HostRegistry.objects.get(pk=registry_id).delete()
+        finally:
+            resume.set()
+        response = future.result(timeout=15)
+
+    assert response.status_code == 401
+    assert response.json() == {"error": "credential revoked"}
+    assert not InventorySnapshot.objects.exists()
+    assert not InventoryCategory.objects.exists()
+
+
+@pytest.mark.parametrize(
+    ("length", "status"),
+    [
+        ("longer", 400),
+        ("shorter", 400),
+        ("0", 400),
+        ("", 413),
+        ("+1", 413),
+        ("１２", 413),
+        ("²", 413),
+        pytest.param("9" * 5_000, 413, id="oversized"),
+        ("padded", 200),
+        (None, 200),
+    ],
+)
+def test_inventory_declared_length(admission, monkeypatch, length, status):
+    _, auth, body = admission
+    request = RequestFactory().post(
+        "/v1/inventory", body, content_type="application/json", HTTP_AUTHORIZATION=auth
+    )
+    size = int(request.META["CONTENT_LENGTH"])
+    # Simulate a bounded adapter that delivers bytes independently of the header.
+    if length is None:
+        del request.META["CONTENT_LENGTH"]
+    else:
+        request.META["CONTENT_LENGTH"] = {
+            "longer": str(size + 2),
+            "shorter": str(size - 2),
+            "padded": "0" * 5_000 + str(size),
+        }.get(length, length)
+
+    if status != 200:
+
+        def unexpected(_body):
+            pytest.fail("Invalid representation reached JSON decoding or hashing")
+
+        monkeypatch.setattr(inventory, "decode_report", unexpected)
+        monkeypatch.setattr(inventory, "canonical", unexpected)
+
+    response = inventory.ingest(request)
+
+    assert response.status_code == status
+    assert InventorySnapshot.objects.count() == (1 if status == 200 else 0)
+    if status != 200:
+        assert not InventoryCategory.objects.exists()
 
 
 @pytest.mark.parametrize("conflicting", [False, True])

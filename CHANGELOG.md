@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- Reject nonstandard JSON numeric literals in public releases, including in
+  ignored metadata, while retaining the last successful lookup.
+
+- Require public release bodies to match their declared length before decoding
+  and preserve the last successful version and timestamp on mismatch.
+
+- Validate inventory request lengths as bounded ASCII decimals and refuse
+  mismatches before decoding or storing reports.
+
+- Return HTTP 401 when an inventory host is removed after authentication and
+  before ingest admission.
+
 - Read host summaries and cached release-source health together for inventory
   status, keeping attention totals consistent during concurrent registry changes.
 

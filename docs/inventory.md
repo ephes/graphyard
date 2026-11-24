@@ -29,7 +29,8 @@ after commit. A replacement failure rolls back retirement and freshness edits.
 Issuance/rotation and ingest admission lock the registered host row first, then
 access the inventory host, holding the lock through commit. The enabled-credential
 recheck under that lock is the admission point: an ingest admitted first commits
-before rotation; a rotation committed first makes the old credential fail with 401.
+before rotation. If rotation or host removal commits before locked reauthorization,
+the in-flight credential receives HTTP 401 and the report is discarded.
 SQLite uses the configured immediate transaction; PostgreSQL uses the row lock.
 A partial unique constraint allows at most one enabled inventory credential per
 host, including writes outside this command. A contended command either completes
@@ -76,7 +77,11 @@ requirements. The collector must allowlist sources and avoid secrets; the receiv
 cannot infer whether arbitrary text in a producer's metadata contains a secret.
 Host identity must match the credential. The envelope rejects unknown fields,
 invalid identifiers, naive/future timestamps, excessive nesting and non-JSON numbers.
-Inventory ingest caps the body at 2 MiB. Before building a report object, a
+Inventory ingest caps the body at 2 MiB. A supplied `Content-Length` must
+contain ASCII decimal digits and fit the byte limit, or ingest returns 413.
+If the received length differs from an admitted declaration, ingest returns
+400 before decoding or storing the report. Without a declaration the read is
+still bounded by the same byte limit. Before building a report object, a
 streaming JSON event pass rejects more than 100000 elements (containers,
 scalar values and object keys, including duplicate keys) or nesting deeper than
 16 levels. Budget failures return 400; byte failures return 413. The base report
@@ -468,9 +473,11 @@ with equal wall-clock timestamps. Network I/O stays outside database transaction
 Release requests ask for `Accept-Encoding: identity`; a compressed reply, or one
 declaring a `Content-Length` above 16 MiB (or an invalid one), is refused before its
 body is read. A declared length uses ASCII decimal digits, with leading zeroes
-allowed. With or without this header, each body is bounded to 16 MiB. A chunk
-that would cross the limit is refused before buffering. JSON nested too deeply to decode counts as that
-source's lookup failure; later sources are still checked while time remains.
+allowed. Before decoding, Graphyard requires the received byte count to match
+any declaration. With or without this header, each body is bounded to 16 MiB.
+A chunk that would cross the limit is refused before buffering. A length mismatch
+or excessive JSON nesting counts as a lookup failure for that source. Later
+sources are still checked while time remains.
 Each source has a 60-second monotonic elapsed budget. The whole refresh has a
 300-second monotonic budget from entry, including registry replacement. The
 command checks the remaining budget before each lookup and caps that source's
@@ -495,10 +502,12 @@ credential is used; rate limits appear as failed checks. A PyPI response must
 provide a project name as a string that matches the registered project after
 normalization. The latest release must have at least one non-yanked artifact.
 The lookup does not run a compatibility resolver.
-Release response JSON rejects duplicate object members at every depth, including
-escaped-equivalent names, identical values and ignored metadata. Repeated array
-entries remain supported. Such ambiguity is a private, fixed-text lookup failure:
-the prior successful version/timestamp survive and independent sources continue.
+Release response JSON rejects duplicate object members and the nonstandard
+literals `NaN`, `Infinity` and `-Infinity` at every depth, including in ignored
+metadata. Duplicate names are refused even when written with different escapes
+or paired with identical values. Repeated array entries remain supported. Invalid
+JSON records a private, fixed-text lookup failure. The prior successful version
+and timestamp survive, and independent sources continue.
 
 The explicit registry defines package identity; matching a distribution name is not
 proof of its original download registry. Private/repacked distributions must not be
