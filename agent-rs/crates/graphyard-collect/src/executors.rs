@@ -37,7 +37,7 @@ use graphyard_core::spec_config::{
     page_probe_total_timeout_config, positive_int_config, request_timeout_config,
 };
 
-use crate::http::{HttpClient, HttpError, read_http_json, run_with_deadline};
+use crate::http::{HttpClient, HttpError, post_http_json, read_http_json, run_with_deadline};
 
 pub use home_assistant::{execute_home_assistant_env_scan, execute_home_assistant_sensor};
 pub use http_json::execute_http_json_metric;
@@ -227,6 +227,27 @@ pub(crate) async fn read_json_with_deadline(
     run_with_deadline(client, url, knobs.total_timeout_seconds, |deadline| async move {
         read_http_json(client, url, knobs.max_body_bytes, &deadline).await
     })
+    .await
+}
+
+/// [`post_http_json`] under the spec's total deadline (Rust-only).
+///
+/// # Errors
+/// The errors of [`post_http_json`] and [`run_with_deadline`].
+pub(crate) async fn post_json_with_deadline(
+    client: &HttpClient,
+    url: &str,
+    body: Vec<u8>,
+    knobs: HttpKnobs,
+) -> Result<Value, HttpError> {
+    run_with_deadline(
+        client,
+        url,
+        knobs.total_timeout_seconds,
+        |deadline| async move {
+            post_http_json(client, url, body, knobs.max_body_bytes, &deadline).await
+        },
+    )
     .await
 }
 

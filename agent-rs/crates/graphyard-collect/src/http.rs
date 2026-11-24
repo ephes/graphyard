@@ -34,7 +34,8 @@ pub use client::{ClientOptions, HttpClient, HttpContext, Method, Request, Respon
 pub use deadline::{Deadline, run_with_deadline};
 pub use error::{ErrorKind, HttpError};
 pub use probe::{
-    PageProbeResult, decode_json, read_http_json, run_page_probe, send_following_redirects,
+    PageProbeResult, decode_json, post_http_json, read_http_json, run_page_probe,
+    send_following_redirects,
 };
 pub use resolve::{Lookup, LookupError, SystemLookup};
 pub use url::HttpxUrl;

@@ -157,27 +157,82 @@ def test_network_device_dashboards_are_subject_pinned(
     assert "\"device_class\" = 'temperature'" in combined
 
 
+def _all_panels(panels: list[dict]) -> list[dict]:
+    """Top-level panels plus the panels inside collapsed rows."""
+
+    result = []
+    for panel in panels:
+        result.append(panel)
+        result.extend(panel.get("panels", []))
+    return result
+
+
 def test_room_climate_dashboard_is_environment_sensor_only() -> None:
     dashboard_path = (
         GRAFANA_DASHBOARDS_ROOT / "room-climate" / "graphyard-room-climate.json"
     )
     payload = json.loads(dashboard_path.read_text())
 
+    panels = _all_panels(payload["panels"])
     queries = [
         target["query"]
-        for panel in payload["panels"]
+        for panel in panels
         for target in panel.get("targets", [])
         if "query" in target
     ]
-    combined = "\n".join(queries)
+    flux = [query for query in queries if "from(bucket:" in query]
+    influxql = [query for query in queries if "from(bucket:" not in query]
     variable_names = [item["name"] for item in payload["templating"]["list"]]
 
     assert payload["title"] == "Graphyard Room Climate"
-    assert "\"subject_type\" = 'environment_sensor'" in combined
-    assert "\"device_class\" = 'temperature'" in combined
-    assert "\"device_class\" = 'humidity'" in combined
-    assert "\"measurement_kind\" = 'valve_position'" in combined
-    assert variable_names == ["collector_host", "source_system", "subject_id"]
+    assert variable_names == [
+        "room",
+        "outdoor_room",
+        "collector_host",
+        "source_system",
+        "subject_id",
+    ]
+    # Every Flux query stays on Home Assistant room climate points.
+    assert flux
+    for query in flux + [payload["templating"]["list"][0]["query"]]:
+        assert 'r.subject_type == "environment_sensor"' in query
+        assert 'r.source_system == "homeassistant"' in query
+    combined = "\n".join(flux)
+    assert 'r.device_class == "temperature"' in combined
+    assert 'r.device_class == "humidity"' in combined
+    assert 'r.measurement_kind == "valve_position"' in combined
+    assert 'r.measurement_kind == "setpoint"' in combined
+    # Series stay keyed by entity_id; names and rooms come from the latest point.
+    assert 'm: meta}, on: ["entity_id"])' in combined
+    assert 'group(columns: ["entity_id", "name"])' in combined
+    # One repeated row per room.
+    rows = [panel for panel in payload["panels"] if panel["type"] == "row"]
+    assert any(row.get("repeat") == "room" for row in rows)
+    # The raw InfluxQL panels stay, collapsed at the bottom.
+    assert rows[-1]["collapsed"] is True
+    raw = "\n".join(influxql)
+    assert "\"subject_type\" = 'environment_sensor'" in raw
+    assert "\"device_class\" = 'temperature'" in raw
+    assert "\"device_class\" = 'humidity'" in raw
+    flux_uid = {
+        panel["datasource"]["uid"]
+        for panel in panels
+        if panel.get("targets") and "from(bucket:" in panel["targets"][0]["query"]
+    }
+    assert flux_uid == {"graphyard-influxdb-flux"}
+
+
+def test_flux_datasource_is_provisioned_with_the_env_token() -> None:
+    text = (
+        GRAFANA_DASHBOARDS_ROOT.parent
+        / "provisioning"
+        / "datasources"
+        / "graphyard.yaml"
+    ).read_text()
+
+    assert "uid: graphyard-influxdb-flux" in text
+    assert "version: Flux" in text
+    assert "token: ${GRAPHYARD_INFLUX_FLUX_TOKEN}" in text
 
 
 def test_http_page_probes_dashboard_is_service_probe_only() -> None:

@@ -7,6 +7,7 @@
 
 mod ha_json;
 mod ha_json_budget;
+mod ha_metadata;
 mod page_probe;
 mod support;
 mod unifi;

@@ -135,7 +135,13 @@ For Grafana in the Procfile stack:
 - URL: `http://127.0.0.1:3000`
 - default login: `admin` / `admin`
 - dev startup resets Grafana admin password to `admin` for deterministic local login
-- datasource `Graphyard InfluxDB` is auto-provisioned
+- datasources `Graphyard InfluxDB` (InfluxQL) and `Graphyard InfluxDB (Flux)`
+  are auto-provisioned; the Flux one (used by `Graphyard Room Climate`) needs
+  a read token of a local InfluxDB 2 in `GRAPHYARD_INFLUX_FLUX_TOKEN` in the
+  shell that runs `just dev` (Procfile passes it on; InfluxDB 3 has no Flux).
+  It is provisioned for organization `graphyard` and bucket `graphyard`
+  (`GRAPHYARD_INFLUX_DB` in the Procfile), so set up the local InfluxDB 2
+  with those names for Room Climate
 - dashboard folders are auto-provisioned from filesystem structure:
   - folder `overview` with dashboard title `Graphyard Overview`
   - folder `host-infrastructure` with dashboard titles `Fractal`, `Macmini`, `Marina`, `Production`, and `Staging`
@@ -617,6 +623,30 @@ plus optional metric remapping for selected infrastructure traffic sensors):
 }
 ```
 
+Rust-only `home_assistant_env_scan` knobs (the Python collector ignores them;
+on a rollback to it the points lose these tags and the climate points stop):
+
+- `include_entity_metadata` (default `false`): tag every point with the
+  entity's `friendly_name`, its Home Assistant area (`area`, the entity's own
+  area or its device's) and `device_role=thermostat` when its device has a
+  `climate.*` entity. A tag the point already has (for example from
+  `metric_mapping.extra_tags`) keeps its value, and these tags are added only
+  while the point stays within the writer's 32 tags (in the order above). Areas come from one `POST /api/template` per spec,
+  cached for `entity_metadata_refresh_seconds` (default `600`); a failed
+  refresh keeps the previous map (or none), logs a warning and is retried on
+  the next run, and the points are still written. Tag values that are empty,
+  longer than 256 characters or contain control characters are left out;
+  entities without an area get no `area` tag. `entity_id` stays the series
+  key, so dashboards join the latest name and area onto it (Flux) instead of
+  grouping by these tags.
+- `climate_attributes` (default none, at most four lower-case names): every
+  `climate.*` entity writes each listed numeric attribute as its own point,
+  metric `<metric_prefix><entity_id>.<attribute>`, tags `entity_id`,
+  `climate_attribute` and `measurement_kind` (`setpoint` for `temperature`,
+  else `climate_<attribute>`), timestamp the entity's `last_updated`. Missing
+  or non-numeric attributes (`hvac_action`) write nothing. Anything else in
+  the list is a critical outcome (`invalid climate_attributes`).
+
 Both Home Assistant collectors stream decoded response bytes with `max_body_bytes`
 (default `10485760`, 10 MiB) and `total_timeout_seconds` (default: three request
 timeouts, normally 30 seconds). Set these in either HA config when a legitimate
@@ -639,6 +669,16 @@ atomic or possessive groups, conditionals, `\K`, `\G`; all production patterns
 are plain) run on the linear `regex` engine and do not count against that limit. Ordinary lookaround
 patterns fit it on 255-byte entity ids; an unbounded backreference such as
 `(\w+)_\1` on a long id can exceed it and then fails the collection as critical.
+
+With `climate_attributes`, every `climate.*` row reserves one extra row per
+configured attribute (entity id `<entity_id>.<attribute>`), whether or not
+the attribute is present or numeric, against the row, match and match-input
+ceilings and the output budget; with `include_entity_metadata`,
+every reserved row (filtered rows included) is charged its friendly name
+(up to 1024 bytes), the longest area and 64 bytes for the role and keys
+against the same 8 MiB output budget. Enabling
+either can therefore make a scan that fit before fail with
+`collector failure: _HomeAssistantLimitExceeded` and write no points.
 
 Output admission reserves at most 8 MiB of point string/tag bytes: for each row,
 the largest configured extra-tags rule, both projected attribute tags, and eight

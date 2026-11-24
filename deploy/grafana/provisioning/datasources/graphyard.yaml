@@ -15,3 +15,20 @@ datasources:
     user: ${GRAPHYARD_INFLUX_USER}
     secureJsonData:
       password: ${GRAPHYARD_INFLUX_PASSWORD}
+  # Flux for dashboards that join the latest Home Assistant metadata (friendly
+  # name, area) onto series keyed by entity_id (Room Climate). Read-only token
+  # created on the host by the ops deploy (GRAPHYARD_INFLUX_FLUX_TOKEN from an
+  # env file); without it the datasource exists but cannot query.
+  - name: Graphyard InfluxDB (Flux)
+    uid: graphyard-influxdb-flux
+    type: influxdb
+    access: proxy
+    url: http://graphyard-influxdb:8086
+    isDefault: false
+    editable: true
+    jsonData:
+      version: Flux
+      organization: graphyard
+      defaultBucket: ${GRAPHYARD_INFLUX_DB}
+    secureJsonData:
+      token: ${GRAPHYARD_INFLUX_FLUX_TOKEN}

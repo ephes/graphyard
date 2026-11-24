@@ -42,7 +42,9 @@ Error details in that record use at most 512 source characters before formatting
 
 Graphyard includes Grafana provisioning:
 
-- datasource: `Graphyard InfluxDB`
+- datasources: `Graphyard InfluxDB` (InfluxQL, uid `graphyard-influxdb`) and
+  `Graphyard InfluxDB (Flux)` (uid `graphyard-influxdb-flux`, read-only token
+  from `GRAPHYARD_INFLUX_FLUX_TOKEN`, which the ops deploy writes on the host)
 - dashboard folders are derived from `deploy/grafana/dashboards/` filesystem paths
 - default home dashboard: `Graphyard Overview` (uid `graphyard-home`)
 - folder names are the directory names:
@@ -65,7 +67,8 @@ Graphyard includes Grafana provisioning:
 
 Important compatibility note:
 
-- Current provisioned dashboard queries are InfluxQL.
+- Provisioned dashboard queries are InfluxQL, except Room Climate, which
+  uses Flux to join the latest Home Assistant metadata onto each series.
 - This is directly compatible with InfluxDB v2 datasource usage.
 - If you standardize on InfluxDB v3, you need a different Grafana datasource/query setup (Flight SQL datasource and SQL-based panels).
 - The provisioned datasource URL is intentionally `http://graphyard-influxdb:8086`.
@@ -96,11 +99,26 @@ Important compatibility note:
   `network_device.network_transmit_bytes_per_second`.
 - Network-device temperatures are pinned by `subject_id` and grouped by
   `entity_id`.
-- Room Climate dashboard queries are room-sensor-only (`subject_type='environment_sensor'`).
-  Temperature and humidity panels select by `device_class`; the heating
-  valve panel selects `measurement_kind='valve_position'`, a tag the Home
-  Assistant env scan spec sets through a `metric_mapping` rule for
-  `sensor.*_valve_position` entities.
+- Room Climate dashboard queries are room-sensor-only
+  (`subject_type='environment_sensor'`, `source_system='homeassistant'`).
+  Rooms are the Home Assistant areas (`area` tag from the env scan's
+  `include_entity_metadata`; no area: "Ohne Raum"). Every Flux query keys
+  series by `entity_id` and joins the entity's latest `friendly_name` and
+  `area` within the time range, so a rename or a new area changes the legend
+  and the room of the whole curve instead of splitting it. Points carry Home
+  Assistant's `last_updated`, and an area change does not touch it: until the
+  entity's next state change the old and new area share that timestamp, so
+  the room may still show the old area for a while (a rename changes the
+  state attributes and with it `last_updated`). The `room` options follow
+  the selected time range. Layout: an
+  overview (current temperature per room from room sensors, else thermostats;
+  the outdoor area from the hidden constant `outdoor_room`, default `Balkon`;
+  humidity per room), one row per room repeated over the multi-select
+  variable `room` (temperature with the setpoint dashed, valve position,
+  humidity), and the raw InfluxQL panels per `entity_id` in a collapsed row.
+  Temperature and humidity select by `device_class`; valves by
+  `measurement_kind='valve_position'` (a `metric_mapping` tag), setpoints by
+  `measurement_kind='setpoint'` (env scan `climate_attributes`).
 - HTTP Page Probes dashboard queries are service-only (`subject_type='service'`) and scoped to the `service.http_page_*` metric family from `source_system='http_probe'`.
 - Host filesystem panels use mountpoint-only legends:
   `${__field.labels.mountpoint}`.

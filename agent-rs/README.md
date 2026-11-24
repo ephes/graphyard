@@ -12,8 +12,9 @@ Status: slices S1 (scaffold), S2, S3a, S3b, S4a, S5, S6, S7a, S7b, S8, S9a, S9b,
 subcommand, release `agent-rs-v0.2.0`); release `agent-rs-v0.3.0` carries the
 fixes of scout rounds 79 to 85, release `agent-rs-v0.4.0` those of scout
 rounds 87 to 99, release `agent-rs-v0.4.1` (the first one built locally) the
-later agent fixes, release `agent-rs-v0.4.2` the agent fixes merged after it
-(CHANGELOG). S1: the workspace, the toolchain pin,
+later agent fixes, release `agent-rs-v0.4.2` the agent fixes merged after it,
+release `agent-rs-v0.4.3` the Home Assistant entity metadata and climate
+attributes of the env scan (CHANGELOG). S1: the workspace, the toolchain pin,
 the cargo-deny policy, the CI `rust` job, the `just rs-*` recipes, the shared
 model types (`graphyard_core::model`) and the fixture pipeline with its drift
 test. S2: the CPython compatibility helpers (`graphyard_core::pycompat`), the

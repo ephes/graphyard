@@ -2,6 +2,26 @@
 
 ## Unreleased
 
+- Rust agent (`agent-rs/`): version 0.4.3, released as `agent-rs-v0.4.3`.
+  `home_assistant_env_scan` gains two opt-in, Rust-only knobs (README "Metric
+  collection specs"): `include_entity_metadata` tags every point with the
+  entity's `friendly_name`, its Home Assistant area (`area`, cached from one
+  `POST /api/template` per `entity_metadata_refresh_seconds`, default 600) and
+  `device_role=thermostat`; `climate_attributes` writes numeric `climate.*`
+  attributes as their own points (`temperature` as
+  `measurement_kind=setpoint`). Both stay inside the HA output envelope; the
+  metadata tags never replace a point's tags or exceed 32 tags per point. The
+  Python collector ignores them.
+
+- Grafana: `Graphyard Room Climate` is rebuilt around Home Assistant areas on
+  a new Flux datasource (`graphyard-influxdb-flux`, token from
+  `GRAPHYARD_INFLUX_FLUX_TOKEN`): an overview (current temperature per room,
+  outdoor reference, humidity per room), one repeated row per room
+  (temperature with the setpoint dashed, valve position, humidity) and the
+  previous InfluxQL panels collapsed at the bottom. Legends are the latest
+  `friendly_name` per `entity_id`, so a rename in Home Assistant does not
+  split a curve.
+
 - Grafana: the `Graphyard Room Climate` dashboard gains a `Heating Valve
   Position` panel (radiator thermostat valve opening in percent, series tagged
   `measurement_kind='valve_position'` by the Home Assistant env scan's

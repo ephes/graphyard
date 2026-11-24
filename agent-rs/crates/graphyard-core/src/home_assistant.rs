@@ -42,6 +42,23 @@ pub const HA_MAX_OUTPUT_BYTES: usize = 8 * 1024 * 1024;
 /// # Errors
 /// A fixed collector limit was exceeded; callers must publish no points.
 pub fn admit_work(config: &Map<String, Value>, items: &[Value]) -> Result<(), &'static str> {
+    let entity_bytes = items.iter().fold(0usize, |total, item| {
+        total.saturating_add(item.get("entity_id").map_or(0, |id| py_str(id).len()))
+    });
+    admit_work_rows(config, items.len(), entity_bytes)
+}
+
+/// [`admit_work`] for `rows` rows whose entity ids hold `entity_bytes` bytes
+/// in total; for callers that fan rows out into more matching work (the
+/// env scan's climate attributes) without materialising the extra rows.
+///
+/// # Errors
+/// A fixed collector limit was exceeded; callers must publish no points.
+pub fn admit_work_rows(
+    config: &Map<String, Value>,
+    rows: usize,
+    entity_bytes: usize,
+) -> Result<(), &'static str> {
     let rules = ["subject_mapping", "metric_mapping"]
         .iter()
         .filter_map(|key| config.get(*key)?.get("rules")?.as_array())
@@ -64,13 +81,10 @@ pub fn admit_work(config: &Map<String, Value>, items: &[Value]) -> Result<(), &'
         return Err("collector failure: _HomeAssistantLimitExceeded");
     }
     let matches_per_row = rules.saturating_add(1);
-    let input_bytes = items.iter().fold(0usize, |total, item| {
-        let bytes = item.get("entity_id").map_or(0, |id| py_str(id).len());
-        total.saturating_add(bytes.saturating_mul(matches_per_row))
-    });
-    if items.len() > HA_MAX_ENTITIES
+    let input_bytes = entity_bytes.saturating_mul(matches_per_row);
+    if rows > HA_MAX_ENTITIES
         || rules > HA_MAX_MAPPING_RULES
-        || items.len().saturating_mul(matches_per_row) > HA_MAX_MATCHES
+        || rows.saturating_mul(matches_per_row) > HA_MAX_MATCHES
         || input_bytes > HA_MAX_MATCH_INPUT_BYTES
     {
         return Err("collector failure: _HomeAssistantLimitExceeded");
@@ -92,6 +106,67 @@ pub fn admit_output(
     name: &str,
     items: &[Value],
 ) -> Result<(), &'static str> {
+    let reservation = OutputReservation::new(config, name);
+    let mut total = 0usize;
+    for item in items {
+        total = total.saturating_add(reservation.row(item));
+        if total > HA_MAX_OUTPUT_BYTES {
+            return Err("collector failure: _HomeAssistantLimitExceeded");
+        }
+    }
+    Ok(())
+}
+
+/// The per-row output reservation of [`admit_output`]: the configured
+/// dimensions and mapped tags once, then each row's share. Rows add up, so a
+/// caller can charge extra points (climate attributes) and extra tags to the
+/// same [`HA_MAX_OUTPUT_BYTES`] budget.
+#[derive(Clone, Copy, Debug)]
+pub struct OutputReservation {
+    dimensions: usize,
+    mapped_tags: usize,
+}
+
+impl OutputReservation {
+    #[must_use]
+    pub fn new(config: &Map<String, Value>, name: &str) -> Self {
+        let (dimensions, mapped_tags) = reservation_base(config, name);
+        Self {
+            dimensions,
+            mapped_tags,
+        }
+    }
+
+    /// The reservation of one row with this entity id length and the
+    /// `device_class`/`unit_of_measurement` attributes of `item`.
+    #[must_use]
+    pub fn row(&self, item: &Value) -> usize {
+        let entity_bytes = item.get("entity_id").map_or(0, |v| py_str(v).len());
+        let mut bytes = self.entity(entity_bytes);
+        if let Some(attributes) = item.get("attributes").and_then(Value::as_object) {
+            for key in ["device_class", "unit_of_measurement"] {
+                if let Some(value) = attributes.get(key) {
+                    bytes = bytes
+                        .saturating_add(key.len())
+                        .saturating_add(py_str(value).len());
+                }
+            }
+        }
+        bytes
+    }
+
+    /// The reservation of a row without attributes whose entity id holds
+    /// `entity_bytes` bytes.
+    #[must_use]
+    pub fn entity(&self, entity_bytes: usize) -> usize {
+        self.dimensions
+            .saturating_add(entity_bytes)
+            .saturating_mul(8)
+            .saturating_add(self.mapped_tags)
+    }
+}
+
+fn reservation_base(config: &Map<String, Value>, name: &str) -> (usize, usize) {
     let mut dimensions = 256 + name.len();
     for key in [
         "source_system",
@@ -129,28 +204,7 @@ pub fn admit_output(
         }
         dimensions = dimensions.saturating_add(max_dimension);
     }
-    let mut total = 0usize;
-    for item in items {
-        let entity_bytes = item.get("entity_id").map_or(0, |v| py_str(v).len());
-        let mut bytes = dimensions
-            .saturating_add(entity_bytes)
-            .saturating_mul(8)
-            .saturating_add(mapped_tags);
-        if let Some(attributes) = item.get("attributes").and_then(Value::as_object) {
-            for key in ["device_class", "unit_of_measurement"] {
-                if let Some(value) = attributes.get(key) {
-                    bytes = bytes
-                        .saturating_add(key.len())
-                        .saturating_add(py_str(value).len());
-                }
-            }
-        }
-        total = total.saturating_add(bytes);
-        if total > HA_MAX_OUTPUT_BYTES {
-            return Err("collector failure: _HomeAssistantLimitExceeded");
-        }
-    }
-    Ok(())
+    (dimensions, mapped_tags)
 }
 
 /// Compile each admitted mapping pattern (and the subject fullmatch form) once

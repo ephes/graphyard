@@ -45,6 +45,45 @@ pub async fn read_http_json(
     finish_json(&body, deadline)
 }
 
+/// A JSON POST read like [`read_http_json`] (Rust-only, no Python
+/// counterpart): no redirects, `raise_for_status()`, the decoded body capped
+/// at `max_body_bytes`, the deadline checked before the request, per chunk,
+/// before and after the parse. Used for Home Assistant's `/api/template`.
+///
+/// # Errors
+/// As [`read_http_json`].
+pub async fn post_http_json(
+    client: &HttpClient,
+    url: &str,
+    body: Vec<u8>,
+    max_body_bytes: u64,
+    deadline: &Deadline,
+) -> Result<Value, HttpError> {
+    let content_length = body.len().to_string();
+    let request = client.build_request(
+        Method::Post,
+        url,
+        &[
+            ("Content-Type", "application/json"),
+            ("Content-Length", &content_length),
+        ],
+        Some(body),
+    )?;
+    deadline.check()?;
+    let mut response = client.send(&request).await?;
+    response.raise_for_status()?;
+    response.set_body_limit(max_body_bytes);
+    let mut received: Vec<u8> = Vec::new();
+    while let Some(chunk) = response.chunk().await? {
+        deadline.check()?;
+        if exceeds(received.len() + chunk.len(), max_body_bytes) {
+            return Err(HttpError::body_limit(max_body_bytes));
+        }
+        received.extend_from_slice(&chunk);
+    }
+    finish_json(&received, deadline)
+}
+
 /// The end of `_read_http_json`: the deadline is checked before and after
 /// `json.loads`, so a deadline that passes while a large body is parsed
 /// still fails the operation.
