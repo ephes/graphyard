@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Return HTTP 401 when an inventory host is removed after authentication and
+  before ingest admission.
+
 - Read host summaries and cached release-source health together for inventory
   status, keeping attention totals consistent during concurrent registry changes.
 

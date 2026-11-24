@@ -72,6 +72,44 @@ def test_ingest_locks_registry_before_inventory_host(admission):
     assert 'from "host_registry"' in admitted_reads[0]
 
 
+@pytest.mark.parametrize("remove_registry", [False, True])
+def test_host_retired_after_authentication(admission, monkeypatch, remove_registry):
+    host, auth, body = admission
+    registry_id = host.host_id
+    authenticated, resume = Event(), Event()
+    authenticate = inventory.authenticate
+
+    def pause(request):
+        credential = authenticate(request)
+        assert credential is not None
+        authenticated.set()
+        assert resume.wait(timeout=10)
+        return credential
+
+    def deliver():
+        try:
+            return post(auth, body)
+        finally:
+            connections.close_all()
+
+    monkeypatch.setattr(inventory, "authenticate", pause)
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        future = pool.submit(deliver)
+        try:
+            assert authenticated.wait(timeout=10)
+            host.delete()
+            if remove_registry:
+                HostRegistry.objects.get(pk=registry_id).delete()
+        finally:
+            resume.set()
+        response = future.result(timeout=15)
+
+    assert response.status_code == 401
+    assert response.json() == {"error": "credential revoked"}
+    assert not InventorySnapshot.objects.exists()
+    assert not InventoryCategory.objects.exists()
+
+
 @pytest.mark.parametrize("conflicting", [False, True])
 def test_concurrent_snapshot_identity_is_immutable(admission, monkeypatch, conflicting):
     host, auth, body = admission

@@ -226,8 +226,13 @@ def ingest(request):
         with transaction.atomic(durable=True):
             # Issuance/rotation locks this same row first. Holding it through
             # commit orders revocation against the entire admitted ingest.
-            HostRegistry.objects.select_for_update().get(pk=credential.host.host_id)
-            host = InventoryHost.objects.select_for_update().get(pk=credential.host_id)
+            try:
+                HostRegistry.objects.select_for_update().get(pk=credential.host.host_id)
+                host = InventoryHost.objects.select_for_update().get(
+                    pk=credential.host_id
+                )
+            except (HostRegistry.DoesNotExist, InventoryHost.DoesNotExist):
+                return JsonResponse({"error": "credential revoked"}, status=401)
             # Recheck revocation inside the write transaction.
             if not InventoryCredential.objects.filter(
                 pk=credential.pk, enabled=True, host__host__enabled=True

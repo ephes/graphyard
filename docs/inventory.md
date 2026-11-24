@@ -29,7 +29,8 @@ after commit. A replacement failure rolls back retirement and freshness edits.
 Issuance/rotation and ingest admission lock the registered host row first, then
 access the inventory host, holding the lock through commit. The enabled-credential
 recheck under that lock is the admission point: an ingest admitted first commits
-before rotation; a rotation committed first makes the old credential fail with 401.
+before rotation. If rotation or host removal commits before locked reauthorization,
+the in-flight credential receives HTTP 401 and the report is discarded.
 SQLite uses the configured immediate transaction; PostgreSQL uses the row lock.
 A partial unique constraint allows at most one enabled inventory credential per
 host, including writes outside this command. A contended command either completes
