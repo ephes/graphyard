@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Require public release bodies to match their declared length before decoding
+  and preserve the last successful version and timestamp on mismatch.
+
 - Validate inventory request lengths as bounded ASCII decimals and refuse
   mismatches before decoding or storing reports.
 

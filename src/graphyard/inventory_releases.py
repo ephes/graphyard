@@ -134,15 +134,17 @@ def fetch(client, definition, *, deadline=None):
         if encoding not in ("", "identity"):
             raise ValueError("Unsupported release response encoding")
         declared = response.headers.get("Content-Length")
+        length = None
         if declared is not None:
             declared = declared.strip(" \t")
             if not (declared.isascii() and declared.isdecimal()):
                 raise ValueError("Release response too large")
             digits = declared.lstrip("0") or "0"
             limit = str(MAX_BODY)
-            # Compare decimal magnitudes without converting an untrusted header.
+            # Bound the decimal magnitude before integer conversion.
             if (len(digits), digits) > (len(limit), limit):
                 raise ValueError("Release response too large")
+            length = int(digits)
         raw = bytearray()
         for chunk in response.iter_bytes():
             check_deadline()
@@ -150,6 +152,8 @@ def fetch(client, definition, *, deadline=None):
                 raise ValueError("Release response too large")
             raw.extend(chunk)
     check_deadline()
+    if length is not None and len(raw) != length:
+        raise ValueError("Invalid release response length")
     try:
         data = json.loads(raw, object_pairs_hook=_unique_release_object)
     except RecursionError as exc:

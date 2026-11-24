@@ -922,6 +922,34 @@ def test_identity_release_response_is_accepted(monkeypatch, padding):
     assert result == "6.1"
 
 
+@pytest.mark.parametrize("length_delta", [-1, 1])
+def test_release_length_mismatch_preserves_cache(monkeypatch, length_delta):
+    row = cache()
+    checked = row.checked_at
+    stream = RecordingStream(VALID_PYPI[:10], VALID_PYPI[10:])
+
+    def handler(request):
+        return httpx.Response(
+            200,
+            stream=stream,
+            headers={"Content-Length": str(len(VALID_PYPI) + length_delta)},
+        )
+
+    factory = httpx.Client
+    monkeypatch.setattr(
+        releases.httpx,
+        "Client",
+        lambda **kw: factory(transport=httpx.MockTransport(handler), **kw),
+    )
+
+    result = releases.refresh([definition()], force=True)
+
+    assert result.complete and result.failures == 1
+    row.refresh_from_db()
+    assert row.version == "6.0" and row.checked_at == checked
+    assert row.error == "Release lookup failed"
+
+
 def test_malformed_release_source_is_isolated_from_other_sources(monkeypatch):
     row = cache()
     checked = row.checked_at
