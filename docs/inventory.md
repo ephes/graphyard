@@ -77,7 +77,11 @@ requirements. The collector must allowlist sources and avoid secrets; the receiv
 cannot infer whether arbitrary text in a producer's metadata contains a secret.
 Host identity must match the credential. The envelope rejects unknown fields,
 invalid identifiers, naive/future timestamps, excessive nesting and non-JSON numbers.
-Inventory ingest caps the body at 2 MiB. Before building a report object, a
+Inventory ingest caps the body at 2 MiB. A supplied `Content-Length` must
+contain ASCII decimal digits and fit the byte limit, or ingest returns 413.
+If the received length differs from an admitted declaration, ingest returns
+400 before decoding or storing the report. Without a declaration the read is
+still bounded by the same byte limit. Before building a report object, a
 streaming JSON event pass rejects more than 100000 elements (containers,
 scalar values and object keys, including duplicate keys) or nesting deeper than
 16 levels. Budget failures return 400; byte failures return 413. The base report

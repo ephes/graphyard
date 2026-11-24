@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Validate inventory request lengths as bounded ASCII decimals and refuse
+  mismatches before decoding or storing reports.
+
 - Return HTTP 401 when an inventory host is removed after authentication and
   before ingest admission.
 
