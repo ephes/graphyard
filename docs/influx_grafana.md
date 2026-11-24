@@ -109,7 +109,10 @@ Important compatibility note:
   Assistant's `last_updated`, and an area change does not touch it: until the
   entity's next state change the old and new area share that timestamp, so
   the room may still show the old area for a while (a rename changes the
-  state attributes and with it `last_updated`). The `room` options follow
+  state attributes and with it `last_updated`). Points written before the
+  tags existed never win such a tie. Queries map every row to one schema
+  before `sort()`: Grafana's Flux reader panics on sorted tables whose
+  columns differ (old points have no `area`/`friendly_name`). The `room` options follow
   the selected time range. Layout: an
   overview (current temperature per room from room sensors, else thermostats;
   the outdoor area from the hidden constant `outdoor_room`, default `Balkon`;
