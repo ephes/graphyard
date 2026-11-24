@@ -51,7 +51,9 @@ pub use num::{
 };
 #[cfg(test)]
 pub(crate) use text::REPR_INPUT_CHARS;
-pub use text::{py_isspace, py_split_whitespace, py_str_repr, py_strip};
+pub use text::{
+    DECIMAL_ZEROES, decimal_digit, py_isspace, py_split_whitespace, py_str_repr, py_strip,
+};
 pub use value::{
     MAX_INT_STR_DIGITS, describe_text, int_digit_limit_error, py_describe, py_eq, py_repr, py_str,
     py_type_name,

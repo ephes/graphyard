@@ -247,9 +247,9 @@ that differs is a bug.
   `str.isspace`). HTTP JSON path indices use decimal digits from the
   Python 3.12 Unicode database in both runtimes (see `json_path.json`;
   its `decimal_zeroes` table pins Rust's `DECIMAL_ZEROES`).
-  Django's `datetime_re` fallback for stored datetimes (5.3) matches
-  Unicode digits with `\d`. The Rust fallback matches ASCII digits, so
-  such text loads as NULL in Rust (`fromisoformat` is ASCII-only in both).
+  Django's `datetime_re` fallback for stored datetimes (5.3) uses the
+  same Python 3.12 decimal digits for date, time, fraction and numeric
+  offset fields in both agents. `fromisoformat` uses ASCII numeric fields.
   Since round 90 the UniFi selector `port_idx:<n>` (S7b) takes ASCII
   digits only in both runtimes; it is no longer a Unicode-digit divergence.
 - **D-7 Django command plumbing.** No Django system checks, no Django global
@@ -835,7 +835,8 @@ statement or transaction short) and closes the connection.
   backend registers `parse_datetime` as the `sqlite3` converter of the
   `datetime` declared type, so the value's text form (also of an INTEGER or
   REAL value) goes through CPython 3.12's `datetime.fromisoformat` (the C
-  implementation, ported byte for byte), then Django's `datetime_re`, then
+  implementation, with a seven-scalar minimum checked by reading at most
+  seven scalars), then Django's `datetime_re`, then
   `convert_datetimefield_value` (naive is UTC). Text neither accepts loads as
   NULL; text `datetime_re` matches with out-of-range fields (`2026-13-01
   00:00:00`) raises `ValueError`, which fails the whole load of specs or

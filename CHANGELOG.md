@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Bound the Rust store’s ISO timestamp minimum-length check to seven Unicode
+  scalars so malformed date prefixes can be rejected without scanning long tails.
+
+- Match Django’s Unicode decimal digits when the Rust store reads legacy
+  SQLite timestamps, including fractions and numeric timezone offsets.
+
 - Grow Rust Flux base64 output buffers with decoded bytes.
 
 - Use the current time for structured Home Assistant timestamps without

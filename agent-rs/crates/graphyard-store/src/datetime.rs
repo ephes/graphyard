@@ -22,16 +22,17 @@
 //!
 //! `fromisoformat` is ported from CPython 3.12's C implementation
 //! (`Modules/_datetimemodule.c`, which runs in production), byte for byte
-//! over the UTF-8 text. `datetime_re` accepts ASCII digits only where Python's
-//! `\d` matches every Unicode decimal digit (D-6). Pinned by the
+//! over the UTF-8 text. Django's `datetime_re` fallback uses the decimal
+//! digits from Python 3.12's Unicode database. Pinned by the
 //! `datetime_codec.json` fixture.
 
-use std::fmt;
+use std::fmt::{self, Write as _};
 use std::sync::LazyLock;
 
 use chrono::{
     DateTime, Datelike, Duration, NaiveDate, NaiveDateTime, NaiveTime, Timelike, Utc, Weekday,
 };
+use graphyard_core::pycompat::{DECIMAL_ZEROES, decimal_digit};
 use regex::Regex;
 
 /// A datetime column value as Django holds it after loading: an aware
@@ -382,11 +383,9 @@ fn parse_time(bytes: &[u8], start: usize) -> Option<ParsedTime> {
 
 /// `datetime.fromisoformat` (CPython 3.12, C implementation).
 pub fn fromisoformat(value: &str) -> Option<ParsedDateTime> {
-    // `_sanitize_isoformat_str`: fewer than 7 characters is invalid. (Lone
-    // surrogates, which it replaces, cannot occur in a Rust string.)
-    if value.chars().count() < 7 {
-        return None;
-    }
+    // `_sanitize_isoformat_str` requires seven Unicode scalars. Stop at
+    // the seventh so an invalid prefix does not incur a scan of its tail.
+    value.chars().nth(6)?;
     let bytes = value.as_bytes();
     let separator = find_separator(bytes)?;
     let (year, month, day) = parse_date(bytes, separator)?;
@@ -468,14 +467,27 @@ fn checked_datetime(
 // (Unicode White_Space plus U+001C..U+001F).
 
 static DATETIME_RE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(concat!(
-        r"\A(?P<year>[0-9]{4})-(?P<month>[0-9]{1,2})-(?P<day>[0-9]{1,2})",
-        r"[T ](?P<hour>[0-9]{1,2}):(?P<minute>[0-9]{1,2})",
-        r"(?::(?P<second>[0-9]{1,2})(?:[.,](?P<microsecond>[0-9]{1,6})[0-9]{0,6})?)?",
-        r"[\s\x1c-\x1f]*(?P<tzinfo>Z|[+-][0-9]{2}(?::?[0-9]{2})?)?\n?\z",
-    ))
-    .expect("datetime_re compiles")
+    // Use the same Unicode version for regex admission and digit conversion.
+    let mut decimal_class = String::from("[0-9");
+    for zero in DECIMAL_ZEROES {
+        write!(decimal_class, r"\x{{{zero:x}}}-\x{{{:x}}}", zero + 9)
+            .expect("writing to a String succeeds");
+    }
+    decimal_class.push(']');
+    let pattern = concat!(
+        r"\A(?P<year>\d{4})-(?P<month>\d{1,2})-(?P<day>\d{1,2})",
+        r"[T ](?P<hour>\d{1,2}):(?P<minute>\d{1,2})",
+        r"(?::(?P<second>\d{1,2})(?:[.,](?P<microsecond>\d{1,6})\d{0,6})?)?",
+        r"[\s\x1c-\x1f]*(?P<tzinfo>Z|[+-](?P<tz_hour>\d{2})(?::?(?P<tz_minute>\d{2}))?)?\n?\z",
+    );
+    Regex::new(&pattern.replace(r"\d", &decimal_class)).expect("datetime_re compiles")
 });
+
+fn fallback_number(digits: &str) -> i64 {
+    digits.chars().fold(0, |value, c| {
+        value * 10 + i64::from(decimal_digit(c).expect("matched a decimal digit"))
+    })
+}
 
 fn parse_datetime_re(value: &str) -> Result<Option<ParsedDateTime>, DateTimeError> {
     let Some(captures) = DATETIME_RE.captures(value) else {
@@ -484,24 +496,19 @@ fn parse_datetime_re(value: &str) -> Result<Option<ParsedDateTime>, DateTimeErro
     let number = |name: &str| -> i64 {
         captures
             .name(name)
-            .map_or(0, |m| m.as_str().parse().expect("ASCII digits"))
+            .map_or(0, |m| fallback_number(m.as_str()))
     };
     let micros = captures.name("microsecond").map_or(0, |m| {
-        format!("{:0<6}", m.as_str())
-            .parse::<i64>()
-            .expect("ASCII digits")
+        let digits = m.as_str();
+        let width = digits.chars().count() as u32;
+        fallback_number(digits) * 10_i64.pow(6 - width)
     });
     // `get_fixed_timezone(offset)` runs before `datetime(...)`.
     let offset_micros = match captures.name("tzinfo").map(|m| m.as_str()) {
         None => None,
         Some("Z") => Some(0),
         Some(tz) => {
-            let minutes_part = if tz.len() > 3 {
-                tz[tz.len() - 2..].parse::<i64>().expect("ASCII digits")
-            } else {
-                0
-            };
-            let mut minutes = 60 * tz[1..3].parse::<i64>().expect("ASCII digits") + minutes_part;
+            let mut minutes = 60 * number("tz_hour") + number("tz_minute");
             if tz.starts_with('-') {
                 minutes = -minutes;
             }
@@ -553,6 +560,34 @@ fn timedelta_repr(micros: i64) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    #[ignore = "timing regression probe; run explicitly on a local machine"]
+    fn rejects_invalid_iso_prefix_without_scanning_the_tail() {
+        use std::hint::black_box;
+        use std::time::Instant;
+
+        let tail_sizes = [32, 4 * 1024, 4 * 1024 * 1024];
+        let timings = tail_sizes.map(|size| {
+            let value = format!("x{}", "é".repeat(size));
+            (0..3)
+                .map(|_| {
+                    let start = Instant::now();
+                    for _ in 0..128 {
+                        assert!(fromisoformat(black_box(&value)).is_none());
+                    }
+                    start.elapsed()
+                })
+                .min()
+                .unwrap()
+        });
+        eprintln!("128 rejected parses for tails of {tail_sizes:?} scalars: {timings:?}");
+        let budget = timings[0] * 32 + std::time::Duration::from_millis(5);
+        assert!(
+            timings[1..].iter().all(|&elapsed| elapsed <= budget),
+            "invalid prefix rejection exceeded {budget:?}: {timings:?}"
+        );
+    }
 
     #[test]
     fn writes_drop_a_zero_fraction() {
