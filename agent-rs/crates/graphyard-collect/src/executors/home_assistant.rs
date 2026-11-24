@@ -483,7 +483,10 @@ fn climate_attribute_state(
     let mut state = serde_json::Map::new();
     state.insert("entity_id".to_owned(), item.get("entity_id")?.clone());
     state.insert("state".to_owned(), value.clone());
-    if let Some(updated) = item.get("last_updated") {
+    if let Some(updated) = item
+        .get("last_updated")
+        .filter(|value| !matches!(value, Value::Array(_) | Value::Object(_)))
+    {
         state.insert("last_updated".to_owned(), updated.clone());
     }
     Some(state)
@@ -661,4 +664,25 @@ pub async fn execute_home_assistant_env_scan<S: MetricSink>(
         return Ok(warning(skipped, "no matching numeric states"));
     }
     Ok(write_and_touch(sink, &points, skipped).await)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::climate_attribute_state;
+    use serde_json::json;
+
+    #[test]
+    fn climate_attribute_state_does_not_copy_structured_timestamp() {
+        let mut item = json!({
+            "entity_id": "climate.room",
+            "attributes": {"temperature": 21},
+            "last_updated": {"nested": ["ignored"]},
+        });
+        let state = climate_attribute_state(item.as_object().unwrap(), "temperature").unwrap();
+        assert!(!state.contains_key("last_updated"));
+
+        item["last_updated"] = json!(20260304);
+        let state = climate_attribute_state(item.as_object().unwrap(), "temperature").unwrap();
+        assert_eq!(state["last_updated"], json!(20260304));
+    }
 }

@@ -34,7 +34,7 @@ fn escapes_non_ascii(c: char) -> bool {
 
 #[cfg(test)]
 thread_local! {
-    pub(super) static REPR_INPUT_CHARS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+    pub(crate) static REPR_INPUT_CHARS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
 }
 
 /// `repr(text)` for a `str`: single quotes unless the text contains a single

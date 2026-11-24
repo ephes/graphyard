@@ -647,6 +647,10 @@ on a rollback to it the points lose these tags and the climate points stop):
   or non-numeric attributes (`hvac_action`) write nothing. Anything else in
   the list is a critical outcome (`invalid climate_attributes`).
 
+Both agents use the current UTC time for a list or object in `last_updated`
+without converting it to text. ISO timestamps with offsets and compact
+calendar dates (such as `"20260304"` or `20260304`) still yield UTC point times.
+
 Both Home Assistant collectors stream decoded response bytes with `max_body_bytes`
 (default `10485760`, 10 MiB) and `total_timeout_seconds` (default: three request
 timeouts, normally 30 seconds). Set these in either HA config when a legitimate

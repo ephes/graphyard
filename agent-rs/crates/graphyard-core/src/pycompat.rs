@@ -49,6 +49,8 @@ pub use num::{
     PyNumber, bigint_to_i64_saturating, py_float, py_float_of, py_float_repr, py_format_g, py_int,
     py_int_true_divide, py_number,
 };
+#[cfg(test)]
+pub(crate) use text::REPR_INPUT_CHARS;
 pub use text::{py_isspace, py_split_whitespace, py_str_repr, py_strip};
 pub use value::{
     MAX_INT_STR_DIGITS, describe_text, int_digit_limit_error, py_describe, py_eq, py_repr, py_str,
