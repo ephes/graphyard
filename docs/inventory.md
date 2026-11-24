@@ -502,10 +502,12 @@ credential is used; rate limits appear as failed checks. A PyPI response must
 provide a project name as a string that matches the registered project after
 normalization. The latest release must have at least one non-yanked artifact.
 The lookup does not run a compatibility resolver.
-Release response JSON rejects duplicate object members at every depth, including
-escaped-equivalent names, identical values and ignored metadata. Repeated array
-entries remain supported. Such ambiguity is a private, fixed-text lookup failure:
-the prior successful version/timestamp survive and independent sources continue.
+Release response JSON rejects duplicate object members and the nonstandard
+literals `NaN`, `Infinity` and `-Infinity` at every depth, including in ignored
+metadata. Duplicate names are refused even when written with different escapes
+or paired with identical values. Repeated array entries remain supported. Invalid
+JSON records a private, fixed-text lookup failure. The prior successful version
+and timestamp survive, and independent sources continue.
 
 The explicit registry defines package identity; matching a distribution name is not
 proof of its original download registry. Private/repacked distributions must not be

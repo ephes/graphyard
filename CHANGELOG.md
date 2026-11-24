@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Reject nonstandard JSON numeric literals in public releases, including in
+  ignored metadata, while retaining the last successful lookup.
+
 - Require public release bodies to match their declared length before decoding
   and preserve the last successful version and timestamp on mismatch.
 

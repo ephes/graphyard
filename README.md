@@ -33,10 +33,11 @@ older in-flight results cannot publish after a newer registry refresh, including
 removal and A → B → A changes. Registry generations order publications even
 when the wall clock moves backwards; timestamps govern freshness and display.
 Unpublishable results make the refresh incomplete. Public release JSON rejects
-duplicate object members at every depth, preserving prior successful evidence
-and continuing independent sources after a failed lookup. Release refreshes have
-a five-minute monotonic budget (60 seconds per source); skipped unchanged sources retain their observation
-times, and an incomplete command reports skipped counts and exits unsuccessfully.
+duplicate object members and nonstandard numeric literals at every depth,
+preserving prior successful evidence and continuing independent sources after a
+failed lookup. Release refreshes have a five-minute monotonic budget (60 seconds
+per source). Skipped unchanged sources retain their observation times. An
+incomplete command reports skipped counts and exits unsuccessfully.
 See [release cache policy](docs/inventory.md) for transport limits.
 
 ## MVP Scope

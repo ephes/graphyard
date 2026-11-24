@@ -107,6 +107,10 @@ def _unique_release_object(pairs):
     return result
 
 
+def _reject_release_constant(_constant):
+    raise ValueError("Invalid release response")
+
+
 def fetch(client, definition, *, deadline=None):
     now = monotonic()
     deadline = (
@@ -155,7 +159,11 @@ def fetch(client, definition, *, deadline=None):
     if length is not None and len(raw) != length:
         raise ValueError("Invalid release response length")
     try:
-        data = json.loads(raw, object_pairs_hook=_unique_release_object)
+        data = json.loads(
+            raw,
+            object_pairs_hook=_unique_release_object,
+            parse_constant=_reject_release_constant,
+        )
     except RecursionError as exc:
         raise ValueError("Release response nested too deeply") from exc
     check_deadline()
