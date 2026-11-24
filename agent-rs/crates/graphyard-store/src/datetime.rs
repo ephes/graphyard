@@ -383,11 +383,9 @@ fn parse_time(bytes: &[u8], start: usize) -> Option<ParsedTime> {
 
 /// `datetime.fromisoformat` (CPython 3.12, C implementation).
 pub fn fromisoformat(value: &str) -> Option<ParsedDateTime> {
-    // `_sanitize_isoformat_str`: fewer than 7 characters is invalid. (Lone
-    // surrogates, which it replaces, cannot occur in a Rust string.)
-    if value.chars().count() < 7 {
-        return None;
-    }
+    // `_sanitize_isoformat_str` requires seven Unicode scalars. Stop at
+    // the seventh so an invalid prefix does not incur a scan of its tail.
+    value.chars().nth(6)?;
     let bytes = value.as_bytes();
     let separator = find_separator(bytes)?;
     let (year, month, day) = parse_date(bytes, separator)?;
@@ -562,6 +560,34 @@ fn timedelta_repr(micros: i64) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    #[ignore = "timing regression probe; run explicitly on a local machine"]
+    fn rejects_invalid_iso_prefix_without_scanning_the_tail() {
+        use std::hint::black_box;
+        use std::time::Instant;
+
+        let tail_sizes = [32, 4 * 1024, 4 * 1024 * 1024];
+        let timings = tail_sizes.map(|size| {
+            let value = format!("x{}", "é".repeat(size));
+            (0..3)
+                .map(|_| {
+                    let start = Instant::now();
+                    for _ in 0..128 {
+                        assert!(fromisoformat(black_box(&value)).is_none());
+                    }
+                    start.elapsed()
+                })
+                .min()
+                .unwrap()
+        });
+        eprintln!("128 rejected parses for tails of {tail_sizes:?} scalars: {timings:?}");
+        let budget = timings[0] * 32 + std::time::Duration::from_millis(5);
+        assert!(
+            timings[1..].iter().all(|&elapsed| elapsed <= budget),
+            "invalid prefix rejection exceeded {budget:?}: {timings:?}"
+        );
+    }
 
     #[test]
     fn writes_drop_a_zero_fraction() {

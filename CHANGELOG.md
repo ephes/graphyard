@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Bound the Rust store’s ISO timestamp minimum-length check to seven Unicode
+  scalars so malformed date prefixes can be rejected without scanning long tails.
+
 - Match Django’s Unicode decimal digits when the Rust store reads legacy
   SQLite timestamps, including fractions and numeric timezone offsets.
 
