@@ -205,6 +205,89 @@
       ],
       "title": "Humidity Sensors",
       "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "graphyard-influxdb"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineInterpolation": "stepAfter",
+            "lineWidth": 2,
+            "pointSize": 3,
+            "showPoints": "auto",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "displayName": "${__field.labels.subject_id} (${__field.labels.entity_id})",
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "percent",
+          "min": 0,
+          "max": 100
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 14
+      },
+      "id": 4,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "12.4.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "graphyard-influxdb"
+          },
+          "query": "SELECT mean(\"value\") FROM \"graphyard_metrics\" WHERE $timeFilter AND \"collector_host\" =~ /^$collector_host$/ AND \"source_system\" =~ /^$source_system$/ AND \"subject_type\" = 'environment_sensor' AND \"subject_id\" =~ /^$subject_id$/ AND \"measurement_kind\" = 'valve_position' GROUP BY time($__interval), \"subject_id\", \"entity_id\" fill(null)",
+          "rawQuery": true,
+          "refId": "A",
+          "resultFormat": "time_series"
+        }
+      ],
+      "title": "Heating Valve Position",
+      "type": "timeseries",
+      "description": "Valve opening of the radiator thermostats (Home Assistant `sensor.*_valve_position`, tag `measurement_kind='valve_position'`)."
     }
   ],
   "refresh": "1m",

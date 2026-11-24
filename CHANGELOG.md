@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Grafana: the `Graphyard Room Climate` dashboard gains a `Heating Valve
+  Position` panel (radiator thermostat valve opening in percent, series tagged
+  `measurement_kind='valve_position'` by the Home Assistant env scan's
+  metric mapping).
+
 - Rust agent (`agent-rs/`): version 0.4.2, released as `agent-rs-v0.4.2`
   (built and published locally by `agent-rs/scripts/local_release.py`). It
   carries the Rust agent fixes merged since `agent-rs-v0.4.1` (entries below),

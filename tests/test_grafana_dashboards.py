@@ -176,6 +176,7 @@ def test_room_climate_dashboard_is_environment_sensor_only() -> None:
     assert "\"subject_type\" = 'environment_sensor'" in combined
     assert "\"device_class\" = 'temperature'" in combined
     assert "\"device_class\" = 'humidity'" in combined
+    assert "\"measurement_kind\" = 'valve_position'" in combined
     assert variable_names == ["collector_host", "source_system", "subject_id"]
 
 

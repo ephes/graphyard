@@ -97,6 +97,10 @@ Important compatibility note:
 - Network-device temperatures are pinned by `subject_id` and grouped by
   `entity_id`.
 - Room Climate dashboard queries are room-sensor-only (`subject_type='environment_sensor'`).
+  Temperature and humidity panels select by `device_class`; the heating
+  valve panel selects `measurement_kind='valve_position'`, a tag the Home
+  Assistant env scan spec sets through a `metric_mapping` rule for
+  `sensor.*_valve_position` entities.
 - HTTP Page Probes dashboard queries are service-only (`subject_type='service'`) and scoped to the `service.http_page_*` metric family from `source_system='http_probe'`.
 - Host filesystem panels use mountpoint-only legends:
   `${__field.labels.mountpoint}`.
