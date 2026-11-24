@@ -744,10 +744,10 @@ def _normalize_home_assistant_sensor_state(
     except (TypeError, ValueError):
         return None
 
-    updated_raw = str(payload.get("last_updated") or "")
+    updated_raw = payload.get("last_updated")
     ts = datetime.now(UTC)
-    if updated_raw:
-        normalized = updated_raw.replace("Z", "+00:00")
+    if not isinstance(updated_raw, (list, dict)) and updated_raw:
+        normalized = str(updated_raw).replace("Z", "+00:00")
         try:
             parsed = datetime.fromisoformat(normalized)
             if parsed.tzinfo is None:

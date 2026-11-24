@@ -10,6 +10,29 @@ use crate::logline::LogLevel;
 use crate::normalize::tests::point_of;
 use crate::pycompat::{json_loads, py_float, py_float_repr};
 
+#[test]
+fn state_timestamp_skips_container_rendering_and_preserves_scalar_dates() {
+    use crate::pycompat::REPR_INPUT_CHARS;
+    use serde_json::json;
+
+    let now = "2026-11-24T12:00:00Z".parse::<DateTime<Utc>>().unwrap();
+    let midnight = "2026-03-04T00:00:00Z".parse::<DateTime<Utc>>().unwrap();
+    let cases = [
+        (json!(vec!["ignored"; 4096]), now),
+        (json!({"nested": ["ignored"]}), now),
+        (json!(20260304), midnight),
+        (json!("20260304"), midnight),
+        (json!("2026-03-04T01:00:00+01:00"), midnight),
+    ];
+    let mut payload = Map::new();
+    for (value, expected) in cases {
+        payload.insert("last_updated".to_owned(), value);
+        REPR_INPUT_CHARS.with(|count| count.set(0));
+        assert_eq!(state_timestamp(&payload, now).unwrap(), expected);
+        assert_eq!(REPR_INPUT_CHARS.with(std::cell::Cell::get), 0);
+    }
+}
+
 fn fixture() -> Value {
     load(include_str!("../../../../fixtures/ha_mapping.json"))
 }

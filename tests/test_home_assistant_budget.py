@@ -3,6 +3,8 @@
 import gzip
 import json
 
+from datetime import UTC, datetime
+
 import httpx
 import pytest
 
@@ -16,6 +18,41 @@ TYPES = [
     MetricCollectionSpecType.HOME_ASSISTANT_ENV_SCAN,
 ]
 STATE = {"entity_id": "sensor.temperature", "state": "7", "attributes": {}}
+
+
+def test_ha_timestamp_skips_container_rendering_and_preserves_scalar_dates(monkeypatch):
+    class UnrenderableList(list):
+        def __str__(self):
+            pytest.fail("last_updated list was rendered")
+
+    class UnrenderableDict(dict):
+        def __str__(self):
+            pytest.fail("last_updated map was rendered")
+
+    fallback = datetime(2026, 11, 24, 12, tzinfo=UTC)
+    midnight = datetime(2026, 3, 4, tzinfo=UTC)
+
+    class FixedClock(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            assert tz is UTC
+            return fallback
+
+    monkeypatch.setattr(services, "datetime", FixedClock)
+    spec = MetricCollectionSpec(name="ha-test", spec_type=TYPES[0])
+    cases = [
+        (UnrenderableList(["ignored"] * 4096), fallback),
+        (UnrenderableDict(nested=["ignored"]), fallback),
+        (20260304, midnight),
+        ("20260304", midnight),
+        ("2026-03-04T01:00:00+01:00", midnight),
+    ]
+    for value, expected in cases:
+        point = services._normalize_home_assistant_sensor_state(
+            {**STATE, "last_updated": value}, spec=spec
+        )
+        assert point is not None
+        assert point.ts == expected
 
 
 class Stream(httpx.SyncByteStream):

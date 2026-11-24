@@ -674,7 +674,7 @@ fn truthy(value: &Value) -> bool {
 
 /// The point timestamp from `last_updated`: `Z` replaced by `+00:00`,
 /// `datetime.fromisoformat`, naive taken as UTC, converted to UTC; `now`
-/// when it is missing, falsy or not ISO text.
+/// when it is missing, falsy, structured or not ISO text.
 ///
 /// # Errors
 /// The `OverflowError` of the UTC conversion (an aware time whose UTC value
@@ -684,6 +684,7 @@ fn state_timestamp(
     now: DateTime<Utc>,
 ) -> Result<DateTime<Utc>, PyError> {
     let updated_raw = match payload.get("last_updated") {
+        Some(Value::Array(_) | Value::Object(_)) => return Ok(now),
         Some(value) if truthy(value) => py_str(value),
         _ => return Ok(now),
     };
