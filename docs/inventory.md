@@ -162,9 +162,11 @@ application evidence. Inventory age and receipt age are separate; retries do not
 make an old scan fresh.
 
 The response has `schema_version: 1`, a server `generated_at` timestamp and
-`Cache-Control: private, no-store`. `releases` summarizes only enabled cached public
-sources: `total`, `attention`, `status`, `max_age_seconds`, and source IDs with their
-status and original attempt/success times. Failed, missing, stale/future and invalid
+`Cache-Control: private, no-store`. Host summaries and cached release-source health
+come from one database snapshot. Attention totals use that evidence and are
+computed after the transaction closes. For enabled cached public sources,
+`releases` includes `total`, `attention`, `status`, `max_age_seconds`, and source IDs
+with their status and original attempt/success times. Failed, missing, stale/future and invalid
 cached versions require attention; no raw diagnostic or credential is returned.
 `summary.release_attention` repeats this failure count and `summary.release_total`
 the enabled source count. Aggregate release status is `ok`, `attention`, or
@@ -571,10 +573,11 @@ GRAPHYARD_TEST_DATABASE_URL=postgres://graphyard_test@127.0.0.1:5432/graphyard_t
   uv run --with 'psycopg[binary]==3.2.10' pytest -q \
   --ds=config.settings.postgres_contract \
   tests/test_inventory_credential_lifecycle.py tests/test_inventory_admission.py \
-  tests/test_inventory_migration_alias.py
+  tests/test_inventory_migration_alias.py tests/test_inventory_projection.py
 ```
 
-Run these files locally to check row-lock admission and retry identity on PostgreSQL.
+Run these files locally to check row-lock admission, retry identity and inventory
+read snapshots on PostgreSQL.
 The normal suite uses SQLite; the Rust agent's production store remains SQLite-only.
 
 Migration alias tests run 0012→0013 against two isolated databases on the selected

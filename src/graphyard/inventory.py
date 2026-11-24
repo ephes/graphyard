@@ -515,11 +515,14 @@ def status(request):
     )
     if not request.user.is_authenticated and not machine:
         return JsonResponse({"error": "inventory read access required"}, status=401)
-    from .inventory_releases import source_health
+    from .inventory_releases import source_health, source_health_rows
 
     now = timezone.now()
-    hosts = summaries(now)
-    releases = source_health(now)
+    with _read_snapshot():
+        evidence = _summary_evidence()
+        release_rows = source_health_rows()
+    hosts = _fleet_summaries(now, *evidence)
+    releases = source_health(now, release_rows)
     response = JsonResponse(
         {
             "schema_version": 1,

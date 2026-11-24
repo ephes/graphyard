@@ -14,8 +14,10 @@ Host latest and category pointers order reports by observation time, receive tim
 then row ID; failed categories keep their last successful evidence. Fleet summaries
 batch timestamps, category statuses, item counts and gaps in the database.
 Per-host, version-page and export views can still read full reports.
-Summary, per-host and version-page evidence is materialized in one short database snapshot, so
-concurrent ingestion/pruning cannot mix generations; rendering holds no transaction.
+Inventory summary, detail and version views each capture evidence in a short
+database snapshot.
+Monitoring status reads the fleet and release-source health in the same snapshot.
+Attention totals and responses are built after the snapshot closes.
 Application pages also capture one response-entry clock for host/application
 freshness and every software-health projection, including threshold crossings
 and wall-clock rollback.

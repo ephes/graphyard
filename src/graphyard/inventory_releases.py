@@ -322,10 +322,19 @@ def _cached_release_state(release, now):
         return "invalid", None
 
 
-def source_health(now):
-    """Report cached public-source freshness without fetching or trusting host names."""
+def source_health_rows():
+    """Materialize release health evidence in the caller's snapshot."""
+    return list(
+        InventoryRelease.objects.filter(enabled=True)
+        .only("source_id", "version", "error", "checked_at", "attempted_at")
+        .order_by("source_id")
+    )
+
+
+def source_health(now, releases):
+    """Compute public-source freshness from captured cache rows."""
     rows = []
-    for release in InventoryRelease.objects.filter(enabled=True).order_by("source_id"):
+    for release in releases:
         state, _ = _cached_release_state(release, now)
         rows.append(
             {

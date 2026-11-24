@@ -1,4 +1,4 @@
-"""Synthetic fleet cost oracle and a two-connection WAL generation race."""
+"""Synthetic fleet cost and cross-connection snapshot checks."""
 
 import os
 from pathlib import Path
@@ -125,6 +125,14 @@ def test_summary_projects_counts_without_decoding_reports(count, monkeypatch):
 @pytest.mark.parametrize("projection", ["host", "fleet"])
 @pytest.mark.parametrize("mode", ["IMMEDIATE", "DEFERRED"])
 def test_projection_survives_concurrent_ingest_and_pruning(tmp_path, projection, mode):
+    _run_sqlite_probe(tmp_path, projection, mode)
+
+
+def test_sqlite_status_reads_host_and_release_health_in_one_snapshot(tmp_path):
+    _run_sqlite_probe(tmp_path, "status", "DEFERRED")
+
+
+def _run_sqlite_probe(tmp_path, projection, mode):
     root = Path(__file__).resolve().parents[1]
     env = {
         **os.environ,
@@ -178,6 +186,10 @@ def _probe(db_path, projection, mode):
     with connection.cursor() as cursor:
         cursor.execute("PRAGMA journal_mode=WAL")
         assert cursor.fetchone()[0] == "wal"
+    if projection == "status":
+        _assert_status_snapshot()
+        connection.close()
+        return
     host = InventoryHost.objects.create(
         host=HostRegistry.objects.create(host_id="synthetic")
     )
@@ -293,6 +305,77 @@ def test_postgres_projection_reads_one_repeatable_read_snapshot():
             read_only = cursor.fetchone()[0]
     assert (isolation, read_only) == ("repeatable read", "on")
     assert not connection.in_atomic_block
+
+
+@pytest.mark.django_db(transaction=True)
+def test_postgres_status_reads_host_and_release_health_in_one_snapshot():
+    from django.db import connection
+
+    if connection.vendor != "postgresql":
+        pytest.skip("PostgreSQL snapshot oracle")
+    _assert_status_snapshot()
+
+
+def _assert_status_snapshot():
+    from concurrent.futures import ThreadPoolExecutor
+    import json
+    from django.conf import settings
+    from django.contrib.auth.models import AnonymousUser
+    from django.db import connection, connections, transaction
+    from django.test import RequestFactory, override_settings
+    from django.utils import timezone
+    from graphyard import inventory
+    from graphyard.models import HostRegistry, InventoryHost, InventoryRelease
+
+    host = HostRegistry.objects.create(host_id="synthetic")
+    InventoryHost.objects.create(host=host)
+    InventoryRelease.objects.create(
+        source_id="synthetic", definition={}, checked_at=timezone.now(), version="1.0"
+    )
+    fired = False
+
+    def writer():
+        try:
+            with transaction.atomic():
+                HostRegistry.objects.filter(pk=host.pk).update(enabled=False)
+                InventoryRelease.objects.filter(pk="synthetic").update(error="failed")
+        finally:
+            connections.close_all()
+
+    def pause(execute, sql, params, many, context):
+        nonlocal fired
+        if (
+            not fired
+            and 'FROM "graphyard_inventoryrelease"' in sql
+            and sql.lstrip().upper().startswith("SELECT")
+        ):
+            fired = True
+            with ThreadPoolExecutor(max_workers=1) as pool:
+                pool.submit(writer).result(timeout=15)
+        return execute(sql, params, many, context)
+
+    def fetch():
+        request = RequestFactory().get(
+            "/v1/inventory/status",
+            HTTP_AUTHORIZATION=f"Bearer {settings.GRAPHYARD_INVENTORY_MONITOR_TOKEN}",
+        )
+        request.user = AnonymousUser()
+        response = inventory.status(request)
+        assert response.status_code == 200
+        assert not connection.in_atomic_block
+        return json.loads(response.content)
+
+    with override_settings(GRAPHYARD_INVENTORY_MONITOR_TOKEN="synthetic-monitor"):
+        with connection.execute_wrapper(pause):
+            before = fetch()
+        after = fetch()
+    assert fired
+    assert before["summary"]["attention"] == 1
+    assert before["summary"]["release_attention"] == 0
+    assert before["releases"]["sources"][0]["status"] == "ok"
+    assert after["summary"]["attention"] == 0
+    assert after["summary"]["release_attention"] == 1
+    assert after["releases"]["sources"][0]["status"] == "failed"
 
 
 if __name__ == "__main__":
