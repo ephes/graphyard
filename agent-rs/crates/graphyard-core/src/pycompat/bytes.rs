@@ -38,7 +38,7 @@ pub fn py_b64decode(text: &str) -> Result<Vec<u8>, PyError> {
             "string argument should contain only ASCII characters",
         ));
     }
-    let mut out = Vec::with_capacity(text.len() / 4 * 3 + 3);
+    let mut out = Vec::new();
     let mut quad_pos = 0;
     let mut left: u8 = 0;
     let mut pads = 0;
@@ -144,6 +144,16 @@ mod tests {
                     assert_eq!(py_bytes_repr(&decoded), case.str_field("str"), "{input:?}");
                 }
             }
+        }
+    }
+
+    #[test]
+    fn b64decode_capacity_tracks_decoded_bytes() {
+        let ignored = "!".repeat(65_536);
+        for input in [format!("YQ=={ignored}"), format!("{ignored}Y{ignored}Q==")] {
+            let decoded = py_b64decode(&input).unwrap();
+            assert_eq!(decoded, b"a");
+            assert!(decoded.capacity() <= 16, "capacity: {}", decoded.capacity());
         }
     }
 

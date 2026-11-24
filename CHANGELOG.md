@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Grow Rust Flux base64 output buffers with decoded bytes.
+
 - Rust agent (`agent-rs/`): version 0.4.3, released as `agent-rs-v0.4.3`.
   `home_assistant_env_scan` gains two opt-in, Rust-only knobs (README "Metric
   collection specs"): `include_entity_metadata` tags every point with the

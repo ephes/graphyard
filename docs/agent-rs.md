@@ -512,6 +512,10 @@ cell). These limits supplement the 10 MiB wire cap. Exceeding a limit refuses th
 entire query as `InfluxTransferError`, preserving the distinction from empty
 results. Duplicate-column warnings contain only a fixed category and count.
 
+Rust decodes Flux `base64Binary` fields with Python-compatible padding and
+errors. The output buffer grows with decoded bytes, so ignored input and bytes
+after complete padding do not contribute to its capacity.
+
 Condition diagnostics visit present dimensions once and format only the selected
 structural series; quoted labels, missing versus empty dimensions and tie order
 remain shared with Python.
