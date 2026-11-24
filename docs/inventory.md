@@ -162,9 +162,11 @@ application evidence. Inventory age and receipt age are separate; retries do not
 make an old scan fresh.
 
 The response has `schema_version: 1`, a server `generated_at` timestamp and
-`Cache-Control: private, no-store`. `releases` summarizes only enabled cached public
-sources: `total`, `attention`, `status`, `max_age_seconds`, and source IDs with their
-status and original attempt/success times. Failed, missing, stale/future and invalid
+`Cache-Control: private, no-store`. Host summaries and cached release-source health
+come from one database snapshot. Attention totals use that evidence and are
+computed after the transaction closes. For enabled cached public sources,
+`releases` includes `total`, `attention`, `status`, `max_age_seconds`, and source IDs
+with their status and original attempt/success times. Failed, missing, stale/future and invalid
 cached versions require attention; no raw diagnostic or credential is returned.
 `summary.release_attention` repeats this failure count and `summary.release_total`
 the enabled source count. Aggregate release status is `ok`, `attention`, or
@@ -233,8 +235,7 @@ for the legacy UUID comparison described above. Regression tests cover this for
 new and duplicate deliveries, wrong content types, the disabled monitor credential
 and invalid freshness settings.
 
-Pilot follow-ups: summary/status views still decode retained report payloads and
-should receive compact stored summaries before frequent fleet monitoring. Host
+Pilot follow-up: host
 revocation and freshness policy editing currently use Django ORM administration;
 a complete operator CLI is not included in this checkpoint.
 
@@ -437,7 +438,7 @@ It supports host, component/application and finding filters. Each row links the
 immutable source report and the release API, showing both observation times.
 The page never makes outbound requests and never modifies host reports.
 The release cache, host list and every category pointer and report shown come from
-one short database snapshot (the same read transaction as the fleet summaries), so
+one short database snapshot, so
 a concurrent ingest or pruning cannot mix report generations or drop a host's
 evidence mid-render; rendering holds no transaction. Pointers and reports are
 batched with a constant number of queries regardless of fleet size, each referenced
@@ -572,10 +573,11 @@ GRAPHYARD_TEST_DATABASE_URL=postgres://graphyard_test@127.0.0.1:5432/graphyard_t
   uv run --with 'psycopg[binary]==3.2.10' pytest -q \
   --ds=config.settings.postgres_contract \
   tests/test_inventory_credential_lifecycle.py tests/test_inventory_admission.py \
-  tests/test_inventory_migration_alias.py
+  tests/test_inventory_migration_alias.py tests/test_inventory_projection.py
 ```
 
-Run these files locally to check row-lock admission and retry identity on PostgreSQL.
+Run these files locally to check row-lock admission, retry identity and inventory
+read snapshots on PostgreSQL.
 The normal suite uses SQLite; the Rust agent's production store remains SQLite-only.
 
 Migration alias tests run 0012→0013 against two isolated databases on the selected
@@ -613,11 +615,12 @@ No database lock spans public-source I/O.
 
 ## Coherent inventory reads
 
-Fleet summaries batch the selected hosts' latest/category pointers and referenced
-reports rather than running three queries per host. Each distinct report is decoded
-once per projection, including shared attempt/success references. Detail and application
-pages use the same materialized evidence boundary. Historical successes remain visible
-when the newest category failed; partial evidence does not replace successful items.
+The inventory index and monitoring status batch timestamps, category attempt
+statuses, last-success item counts and latest gaps in the database. This avoids
+transferring and decoding retained report payloads. Detail and application pages
+still materialize full evidence and decode each referenced report once. Historical
+successes remain visible when the newest category failed. Partial evidence does
+not replace successful items.
 
 All pointer/report reads complete inside a short database snapshot before rendering or
 serialization. SQLite uses the configured `BEGIN IMMEDIATE` transaction, briefly reserving the
