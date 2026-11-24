@@ -37,6 +37,8 @@ fn json_paths_match_python() {
 
 #[test]
 fn decimal_zeroes_match_the_python_unicode_database() {
+    use crate::pycompat::DECIMAL_ZEROES;
+
     let fixture = fixture();
     let python: Vec<u64> = fixture
         .list_field("decimal_zeroes")

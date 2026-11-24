@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Match Django’s Unicode decimal digits when the Rust store reads legacy
+  SQLite timestamps, including fractions and numeric timezone offsets.
+
 - Grow Rust Flux base64 output buffers with decoded bytes.
 
 - Use the current time for structured Home Assistant timestamps without

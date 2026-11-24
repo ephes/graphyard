@@ -22,16 +22,17 @@
 //!
 //! `fromisoformat` is ported from CPython 3.12's C implementation
 //! (`Modules/_datetimemodule.c`, which runs in production), byte for byte
-//! over the UTF-8 text. `datetime_re` accepts ASCII digits only where Python's
-//! `\d` matches every Unicode decimal digit (D-6). Pinned by the
+//! over the UTF-8 text. Django's `datetime_re` fallback uses the decimal
+//! digits from Python 3.12's Unicode database. Pinned by the
 //! `datetime_codec.json` fixture.
 
-use std::fmt;
+use std::fmt::{self, Write as _};
 use std::sync::LazyLock;
 
 use chrono::{
     DateTime, Datelike, Duration, NaiveDate, NaiveDateTime, NaiveTime, Timelike, Utc, Weekday,
 };
+use graphyard_core::pycompat::{DECIMAL_ZEROES, decimal_digit};
 use regex::Regex;
 
 /// A datetime column value as Django holds it after loading: an aware
@@ -468,14 +469,27 @@ fn checked_datetime(
 // (Unicode White_Space plus U+001C..U+001F).
 
 static DATETIME_RE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(concat!(
-        r"\A(?P<year>[0-9]{4})-(?P<month>[0-9]{1,2})-(?P<day>[0-9]{1,2})",
-        r"[T ](?P<hour>[0-9]{1,2}):(?P<minute>[0-9]{1,2})",
-        r"(?::(?P<second>[0-9]{1,2})(?:[.,](?P<microsecond>[0-9]{1,6})[0-9]{0,6})?)?",
-        r"[\s\x1c-\x1f]*(?P<tzinfo>Z|[+-][0-9]{2}(?::?[0-9]{2})?)?\n?\z",
-    ))
-    .expect("datetime_re compiles")
+    // Use the same Unicode version for regex admission and digit conversion.
+    let mut decimal_class = String::from("[0-9");
+    for zero in DECIMAL_ZEROES {
+        write!(decimal_class, r"\x{{{zero:x}}}-\x{{{:x}}}", zero + 9)
+            .expect("writing to a String succeeds");
+    }
+    decimal_class.push(']');
+    let pattern = concat!(
+        r"\A(?P<year>\d{4})-(?P<month>\d{1,2})-(?P<day>\d{1,2})",
+        r"[T ](?P<hour>\d{1,2}):(?P<minute>\d{1,2})",
+        r"(?::(?P<second>\d{1,2})(?:[.,](?P<microsecond>\d{1,6})\d{0,6})?)?",
+        r"[\s\x1c-\x1f]*(?P<tzinfo>Z|[+-](?P<tz_hour>\d{2})(?::?(?P<tz_minute>\d{2}))?)?\n?\z",
+    );
+    Regex::new(&pattern.replace(r"\d", &decimal_class)).expect("datetime_re compiles")
 });
+
+fn fallback_number(digits: &str) -> i64 {
+    digits.chars().fold(0, |value, c| {
+        value * 10 + i64::from(decimal_digit(c).expect("matched a decimal digit"))
+    })
+}
 
 fn parse_datetime_re(value: &str) -> Result<Option<ParsedDateTime>, DateTimeError> {
     let Some(captures) = DATETIME_RE.captures(value) else {
@@ -484,24 +498,19 @@ fn parse_datetime_re(value: &str) -> Result<Option<ParsedDateTime>, DateTimeErro
     let number = |name: &str| -> i64 {
         captures
             .name(name)
-            .map_or(0, |m| m.as_str().parse().expect("ASCII digits"))
+            .map_or(0, |m| fallback_number(m.as_str()))
     };
     let micros = captures.name("microsecond").map_or(0, |m| {
-        format!("{:0<6}", m.as_str())
-            .parse::<i64>()
-            .expect("ASCII digits")
+        let digits = m.as_str();
+        let width = digits.chars().count() as u32;
+        fallback_number(digits) * 10_i64.pow(6 - width)
     });
     // `get_fixed_timezone(offset)` runs before `datetime(...)`.
     let offset_micros = match captures.name("tzinfo").map(|m| m.as_str()) {
         None => None,
         Some("Z") => Some(0),
         Some(tz) => {
-            let minutes_part = if tz.len() > 3 {
-                tz[tz.len() - 2..].parse::<i64>().expect("ASCII digits")
-            } else {
-                0
-            };
-            let mut minutes = 60 * tz[1..3].parse::<i64>().expect("ASCII digits") + minutes_part;
+            let mut minutes = 60 * number("tz_hour") + number("tz_minute");
             if tz.starts_with('-') {
                 minutes = -minutes;
             }

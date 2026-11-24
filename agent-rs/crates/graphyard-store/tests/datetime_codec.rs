@@ -26,16 +26,6 @@ fn stored_text_converts_like_django() {
     for case in cases {
         let text = case["text"].as_str().unwrap();
         let actual = parse_column(Some(text));
-        if text.chars().any(|c| c.is_numeric() && !c.is_ascii_digit()) {
-            // D-6: Django's `datetime_re` matches Unicode digits (`\d`) and
-            // `int()` converts them; the Rust regex takes ASCII digits only,
-            // so such text is unparseable (NULL). `fromisoformat` is
-            // ASCII-only in both.
-            if actual != Ok(None) {
-                failures.push(format!("{text:?}: rust {actual:?}, expected NULL (D-6)"));
-            }
-            continue;
-        }
         let ok = match (&actual, case.get("error")) {
             (Err(err), Some(expected)) => {
                 err.class == expected["class"].as_str().unwrap()
