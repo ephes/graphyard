@@ -17,8 +17,9 @@ from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.core.exceptions import RequestDataTooBig
-from django.db import OperationalError, transaction
-from django.db.models import OuterRef, Subquery
+from django.db import OperationalError, connection, transaction
+from django.db.models import Case, Func, IntegerField, OuterRef, Subquery, When
+from django.db.models.fields.json import KeyTextTransform
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
@@ -318,17 +319,20 @@ def ingest(request):
         return JsonResponse({"error": "inventory storage unavailable"}, status=503)
 
 
-def _host_states(hosts):
-    """Batch pointers and decode every distinct referenced report once."""
-    host_ids = [host.pk for host in hosts]
-    latest_query = (
+def _latest_snapshot_id():
+    return Subquery(
         InventorySnapshot.objects.filter(host_id=OuterRef("pk"))
         .order_by("-observed_at", "-received_at", "-pk")
         .values("pk")[:1]
     )
+
+
+def _host_states(hosts):
+    """Batch pointers and decode every distinct referenced report once."""
+    host_ids = [host.pk for host in hosts]
     latest_ids = dict(
         InventoryHost.objects.filter(pk__in=host_ids)
-        .annotate(latest_id=Subquery(latest_query))
+        .annotate(latest_id=_latest_snapshot_id())
         .values_list("pk", "latest_id")
     )
     categories = list(
@@ -361,47 +365,138 @@ def host_summary(host, now, state=None):
     categories = {}
     for category in observations:
         attempt, success = category.latest_attempt, category.latest_success
-        categories[category.name] = {
-            "status": attempt.report["categories"][category.name]["status"]
-            if attempt
-            else "missing",
-            "observed_at": attempt.observed_at.isoformat() if attempt else None,
-            "last_success_at": success.observed_at.isoformat() if success else None,
-            "count": len(success.report["categories"][category.name]["items"])
+        categories[category.name] = _category_summary(
+            attempt.report["categories"][category.name]["status"] if attempt else None,
+            attempt.observed_at if attempt else None,
+            success.observed_at if success else None,
+            len(success.report["categories"][category.name]["items"])
             if success
             else None,
-        }
-    age = max(0, (now - latest.observed_at).total_seconds()) if latest else None
+        )
+    return _host_summary(
+        host,
+        now,
+        categories,
+        latest.observed_at if latest else None,
+        latest.received_at if latest else None,
+        latest.report["gaps"] if latest else ["never_reported"],
+    )
+
+
+def _category_summary(status, observed_at, last_success_at, count):
+    return {
+        "status": status if observed_at is not None else "missing",
+        "observed_at": observed_at.isoformat() if observed_at else None,
+        "last_success_at": last_success_at.isoformat() if last_success_at else None,
+        "count": count,
+    }
+
+
+def _host_summary(host, now, categories, observed_at, received_at, gaps):
+    age = max(0, (now - observed_at).total_seconds()) if observed_at else None
     stale = age is None or age > host.warning_after_seconds
     incomplete = len(categories) != len(CATEGORIES) or any(
         value["status"] in ("error", "missing") for value in categories.values()
     )
-    delivery_alert = latest is None or (stale and host.alert_when_stale)
+    delivery_alert = observed_at is None or (stale and host.alert_when_stale)
     return {
         "host": host.host.host_id,
-        "observed_at": latest.observed_at.isoformat() if latest else None,
-        "received_at": latest.received_at.isoformat() if latest else None,
+        "observed_at": observed_at.isoformat() if observed_at else None,
+        "received_at": received_at.isoformat() if received_at else None,
         "stale": stale,
         "alert": incomplete or delivery_alert,
         "delivery_alert": delivery_alert,
-        "coverage_alert": latest is not None and incomplete,
+        "coverage_alert": observed_at is not None and incomplete,
         "warning_after_seconds": host.warning_after_seconds,
         "alert_when_stale": host.alert_when_stale,
         "categories": categories,
-        "gaps": latest.report["gaps"] if latest else ["never_reported"],
+        "gaps": gaps,
     }
+
+
+def _summary_evidence():
+    """Materialize only fleet summary metadata in the caller's snapshot."""
+    hosts = list(
+        InventoryHost.objects.filter(host__enabled=True)
+        .select_related("host")
+        .annotate(latest_id=_latest_snapshot_id())
+        .order_by("host__host_id")
+    )
+    latest = {
+        pk: (observed_at, received_at, gaps)
+        for pk, observed_at, received_at, gaps in InventorySnapshot.objects.filter(
+            pk__in=[host.latest_id for host in hosts]
+        ).values_list("pk", "observed_at", "received_at", "report__gaps")
+    }
+    array_length = (
+        "jsonb_array_length"
+        if connection.vendor == "postgresql"
+        else "json_array_length"
+    )
+    # JSON paths come from the report schema's fixed category names.
+    observations = list(
+        InventoryCategory.objects.filter(host_id__in=[host.pk for host in hosts])
+        .order_by("name")
+        .annotate(
+            attempt_status=Case(
+                *(
+                    When(
+                        name=name,
+                        then=KeyTextTransform(
+                            "status", f"latest_attempt__report__categories__{name}"
+                        ),
+                    )
+                    for name in CATEGORIES
+                )
+            ),
+            success_count=Case(
+                *(
+                    When(
+                        name=name,
+                        then=Func(
+                            f"latest_success__report__categories__{name}__items",
+                            function=array_length,
+                            output_field=IntegerField(),
+                        ),
+                    )
+                    for name in CATEGORIES
+                )
+            ),
+        )
+        .values_list(
+            "host_id",
+            "name",
+            "attempt_status",
+            "latest_attempt__observed_at",
+            "latest_success__observed_at",
+            "success_count",
+        )
+    )
+    return hosts, latest, observations
+
+
+def _fleet_summaries(now, hosts, latest, observations):
+    categories = {host.pk: {} for host in hosts}
+    for host_id, name, status, observed_at, last_success_at, count in observations:
+        categories[host_id][name] = _category_summary(
+            status, observed_at, last_success_at, count
+        )
+    return [
+        _host_summary(
+            host,
+            now,
+            categories[host.pk],
+            *latest.get(host.latest_id, (None, None, ["never_reported"])),
+        )
+        for host in hosts
+    ]
 
 
 def summaries(now=None):
     now = timezone.now() if now is None else now
     with _read_snapshot():
-        hosts = list(
-            InventoryHost.objects.filter(host__enabled=True)
-            .select_related("host")
-            .order_by("host__host_id")
-        )
-        states = _host_states(hosts)
-        return [host_summary(host, now, states[host.pk]) for host in hosts]
+        evidence = _summary_evidence()
+    return _fleet_summaries(now, *evidence)
 
 
 @require_GET

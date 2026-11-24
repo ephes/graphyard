@@ -473,7 +473,7 @@ def test_credential_lookup_database_failure_is_retryable(client, enrolled, monke
     assert InventorySnapshot.objects.count() == 0
 
 
-def test_summary_decodes_each_distinct_report_once(
+def test_only_detail_decodes_the_report(
     client, enrolled, django_user_model, monkeypatch
 ):
     from django.db.models import JSONField
@@ -498,7 +498,7 @@ def test_summary_decodes_each_distinct_report_once(
             "graphyard:" + route, args=["studio"] if route == "inventory_detail" else []
         )
         assert client.get(url).status_code == 200
-        assert decoded == [data["snapshot_id"]]
+        assert decoded == ([data["snapshot_id"]] if route == "inventory_detail" else [])
 
 
 @pytest.mark.parametrize("previous_success", [False, True])

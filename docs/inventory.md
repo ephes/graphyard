@@ -233,8 +233,7 @@ for the legacy UUID comparison described above. Regression tests cover this for
 new and duplicate deliveries, wrong content types, the disabled monitor credential
 and invalid freshness settings.
 
-Pilot follow-ups: summary/status views still decode retained report payloads and
-should receive compact stored summaries before frequent fleet monitoring. Host
+Pilot follow-up: host
 revocation and freshness policy editing currently use Django ORM administration;
 a complete operator CLI is not included in this checkpoint.
 
@@ -437,7 +436,7 @@ It supports host, component/application and finding filters. Each row links the
 immutable source report and the release API, showing both observation times.
 The page never makes outbound requests and never modifies host reports.
 The release cache, host list and every category pointer and report shown come from
-one short database snapshot (the same read transaction as the fleet summaries), so
+one short database snapshot, so
 a concurrent ingest or pruning cannot mix report generations or drop a host's
 evidence mid-render; rendering holds no transaction. Pointers and reports are
 batched with a constant number of queries regardless of fleet size, each referenced
@@ -613,11 +612,12 @@ No database lock spans public-source I/O.
 
 ## Coherent inventory reads
 
-Fleet summaries batch the selected hosts' latest/category pointers and referenced
-reports rather than running three queries per host. Each distinct report is decoded
-once per projection, including shared attempt/success references. Detail and application
-pages use the same materialized evidence boundary. Historical successes remain visible
-when the newest category failed; partial evidence does not replace successful items.
+The inventory index and monitoring status batch timestamps, category attempt
+statuses, last-success item counts and latest gaps in the database. This avoids
+transferring and decoding retained report payloads. Detail and application pages
+still materialize full evidence and decode each referenced report once. Historical
+successes remain visible when the newest category failed. Partial evidence does
+not replace successful items.
 
 All pointer/report reads complete inside a short database snapshot before rendering or
 serialization. SQLite uses the configured `BEGIN IMMEDIATE` transaction, briefly reserving the

@@ -12,7 +12,8 @@ serialize on the same registered host row; simultaneous snapshot retries preserv
 one immutable report, with SQLite contention returned as retryable HTTP 503.
 Host latest and category pointers order reports by observation time, receive time,
 then row ID; failed categories keep their last successful evidence. Fleet summaries
-batch host/category pointers and reports, decoding each referenced report once.
+batch timestamps, category statuses, item counts and gaps in the database.
+Per-host, version-page and export views can still read full reports.
 Summary, per-host and version-page evidence is materialized in one short database snapshot, so
 concurrent ingestion/pruning cannot mix generations; rendering holds no transaction.
 Application pages also capture one response-entry clock for host/application

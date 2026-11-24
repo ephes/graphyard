@@ -10,7 +10,7 @@ import pytest
 
 @pytest.mark.django_db(transaction=True)
 @pytest.mark.parametrize("count", [1, 12])
-def test_summary_queries_and_decodes_are_bounded(count, monkeypatch):
+def test_summary_projects_counts_without_decoding_reports(count, monkeypatch):
     from datetime import timedelta
     from uuid import uuid4
     from django.db import connection
@@ -36,6 +36,19 @@ def test_summary_queries_and_decodes_are_bounded(count, monkeypatch):
             c: {"status": "ok", "items": [{"name": "synthetic"}]}
             for c in inventory.CATEGORIES
         }
+        categories["packages"]["items"] = [
+            {"name": f"synthetic-{index}"} for index in range(2048)
+        ]
+        InventorySnapshot.objects.bulk_create(
+            InventorySnapshot(
+                host=host,
+                snapshot_id=uuid4(),
+                observed_at=now - timedelta(days=2),
+                digest="a" * 64,
+                report={"categories": categories, "gaps": []},
+            )
+            for _ in range(8)
+        )
         good = InventorySnapshot.objects.create(
             host=host,
             snapshot_id=uuid4(),
@@ -84,7 +97,7 @@ def test_summary_queries_and_decodes_are_bounded(count, monkeypatch):
                         "last_success_at": (
                             good.observed_at if c == "applications" else now
                         ).isoformat(),
-                        "count": 1,
+                        "count": 2048 if c == "packages" else 1,
                     }
                     for c in sorted(inventory.CATEGORIES)
                 },
@@ -104,7 +117,7 @@ def test_summary_queries_and_decodes_are_bounded(count, monkeypatch):
     with CaptureQueriesContext(connection) as queries:
         actual = inventory.summaries(now)
     assert actual == expected
-    assert len(decoded) == 2 * count
+    assert not decoded
     selects = [q for q in queries if q["sql"].lstrip().upper().startswith("SELECT")]
     assert len(selects) <= 4
 

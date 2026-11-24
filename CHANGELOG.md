@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Read fleet inventory summaries from timestamps, category statuses, item counts
+  and gaps projected by the database. Full evidence remains available in detail
+  and export views.
+
 - Bound the Rust store’s ISO timestamp minimum-length check to seven Unicode
   scalars so malformed date prefixes can be rejected without scanning long tails.
 
