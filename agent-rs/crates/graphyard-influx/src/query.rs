@@ -24,7 +24,7 @@ use reqwest::{StatusCode, Url};
 use serde_json::Value;
 use tokio::time::Instant;
 
-use crate::config::InfluxClientConfig;
+use crate::config::{INVALID_AUTHORIZATION_HEADER, InfluxClientConfig};
 use crate::error::QueryError;
 use crate::flux::{
     flux_query, flux_request_body, flux_samples_cooperative, parse_annotated_csv_cooperative,
@@ -101,16 +101,17 @@ impl QueryClient {
         self.query_range(&range).await
     }
 
-    /// `influx.query_range` in the configured mode.
-    ///
-    /// Unlike Python, this does not reject an empty or reversed window before
-    /// the request; it only checks the returned samples. Condition windows
-    /// always have start < stop, so evaluation results agree.
+    /// `influx.query_range` in the configured mode, with a half-open window.
     ///
     /// # Errors
-    /// The exception the Python query raises (configuration, HTTP, decoding,
-    /// non-finite samples).
+    /// Returns a configuration error when `start >= stop`, before choosing a
+    /// transport. Other errors include HTTP failures and invalid results.
     pub async fn query_range(&self, range: &QueryRange) -> Result<Vec<MetricSample>, QueryError> {
+        if range.start >= range.stop {
+            return Err(QueryError::config(
+                "Invalid InfluxDB query window: start must precede stop",
+            ));
+        }
         let samples = match self.mode {
             InfluxApiMode::V3 => self.query_v3(range).await,
             InfluxApiMode::Auto => match self.query_v2(range).await {
@@ -150,7 +151,7 @@ impl QueryClient {
             quote_plus(&settings.influx_org)
         ))?;
         let target = Target::of(&url);
-        let authorization = latin1_header(&format!("Token {}", config.token))?;
+        let authorization = latin1_authorization(&config.token)?;
         let client = build_client(timeout.map(|timeout| timeout.duration))
             .map_err(|err| client_error(&err))?;
         // The request asks for `identity`, but urllib3 decodes a gzip or
@@ -371,9 +372,9 @@ fn client_error(err: &reqwest::Error) -> QueryError {
     QueryError::python("ValueError", err.to_string())
 }
 
-/// A header value as `http.client` sends it: Latin-1 encoded, without bare
-/// line breaks.
-fn latin1_header(value: &str) -> Result<HeaderValue, QueryError> {
+/// A token header as `http.client` sends it, with credential-free errors.
+fn latin1_authorization(token: &str) -> Result<HeaderValue, QueryError> {
+    let value = format!("Token {token}");
     let mut bytes = Vec::with_capacity(value.len());
     for (position, c) in value.chars().enumerate() {
         let code = u32::from(c);
@@ -381,23 +382,14 @@ fn latin1_header(value: &str) -> Result<HeaderValue, QueryError> {
             return Err(QueryError::python(
                 "UnicodeEncodeError",
                 format!(
-                    "'latin-1' codec can't encode character {} in position {position}: ordinal \
-                     not in range(256)",
-                    py_str_repr(&c.to_string())
+                    "InfluxDB Authorization header cannot be encoded as Latin-1 at position {position}"
                 ),
             ));
         };
         bytes.push(byte);
     }
-    HeaderValue::from_bytes(&bytes).map_err(|_| {
-        QueryError::python(
-            "ValueError",
-            format!(
-                "Invalid header value {}",
-                graphyard_core::pycompat::py_bytes_repr(&bytes)
-            ),
-        )
-    })
+    HeaderValue::from_bytes(&bytes)
+        .map_err(|_| QueryError::python("ValueError", INVALID_AUTHORIZATION_HEADER))
 }
 
 /// The reason phrase of the status line as received.

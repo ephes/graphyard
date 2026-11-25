@@ -6,6 +6,46 @@ use graphyard_influx::QueryRange;
 use serde_json::{Value, json};
 
 #[tokio::test]
+async fn invalid_ranges_never_reach_any_transport() {
+    let start = "2026-11-01T00:00:00Z"
+        .parse::<DateTime<chrono::Utc>>()
+        .unwrap();
+    let stop = start + chrono::Duration::seconds(1);
+    for (mode, body, path) in [
+        ("v2", "", "/api/v2/query?org=synthetic"),
+        ("v3", "[]", "/api/v3/query_sql"),
+        ("auto", "", "/api/v2/query?org=synthetic"),
+    ] {
+        let server = FakeInflux::start(&[
+            json!({"status": 200, "reason": "OK", "headers": [], "body": body}),
+        ])
+        .await;
+        let case = json!({"settings": {"INFLUX_API_MODE": mode, "INFLUX_TOKEN": "synthetic", "INFLUX_ORG": "synthetic"}});
+        let client = client_for(&case, &server);
+        for (lower, upper) in [(start, start), (stop, start)] {
+            let result = client
+                .query_range(&QueryRange::new("cpu", lower, upper))
+                .await;
+            assert!(server.recorded().is_empty(), "invalid range sent in {mode}");
+            let error = result.expect_err("invalid range");
+            assert_eq!(error.python_class(), "InfluxConfigurationError");
+            assert_eq!(
+                error.to_string(),
+                "Invalid InfluxDB query window: start must precede stop"
+            );
+        }
+        let samples = client
+            .query_range(&QueryRange::new("cpu", start, stop))
+            .await
+            .unwrap();
+        assert!(samples.is_empty());
+        let requests = server.recorded();
+        assert_eq!(requests.len(), 1);
+        assert_eq!(requests[0].target, path);
+    }
+}
+
+#[tokio::test]
 async fn complete_replies_are_bound_to_selection() {
     let start = DateTime::parse_from_rfc3339("2026-11-01T00:00:00Z")
         .unwrap()
