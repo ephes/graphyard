@@ -1,10 +1,10 @@
 //! Retained writer memory excludes caller-owned collector input.
-use chrono::{TimeZone, Utc};
+use graphyard_core::utc::UtcDateTime;
 use graphyard_core::{line_protocol::prepare_write, model::MetricPoint};
 #[test]
 fn excessive_tags_and_text_do_not_get_cloned_or_logged_in_full() {
     let mut invalid = MetricPoint::new(
-        Utc.timestamp_opt(0, 0).unwrap(),
+        UtcDateTime::UNIX_EPOCH,
         "x".repeat(1_000_000),
         1.0,
         "host",
@@ -19,7 +19,7 @@ fn excessive_tags_and_text_do_not_get_cloned_or_logged_in_full() {
             .collect(),
     );
     let valid = MetricPoint::new(
-        Utc.timestamp_opt(0, 0).unwrap(),
+        UtcDateTime::UNIX_EPOCH,
         "ok",
         1.0,
         "host",

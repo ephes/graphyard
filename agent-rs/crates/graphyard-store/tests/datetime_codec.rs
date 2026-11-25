@@ -3,19 +3,10 @@
 
 mod common;
 
-use chrono::{DateTime, Duration, NaiveDateTime};
-use common::{DATETIME_CODEC_JSON, load};
+use common::{DATETIME_CODEC_JSON, load, now};
+use graphyard_core::utc::UtcDateTime;
 use graphyard_store::DbDateTime;
 use graphyard_store::datetime::parse_column;
-
-fn naive(text: &str) -> NaiveDateTime {
-    let format = if text.contains('.') {
-        "%Y-%m-%d %H:%M:%S%.f"
-    } else {
-        "%Y-%m-%d %H:%M:%S"
-    };
-    NaiveDateTime::parse_from_str(text, format).unwrap()
-}
 
 #[test]
 fn stored_text_converts_like_django() {
@@ -39,10 +30,11 @@ fn stored_text_converts_like_django() {
                     false
                 }
                 loaded => {
-                    let local = naive(loaded["local"].as_str().unwrap());
-                    let offset = Duration::microseconds(loaded["offset_micros"].as_i64().unwrap());
+                    // The wall time, read as if it were UTC.
+                    let local = now(loaded["local"].as_str().unwrap());
+                    let offset = loaded["offset_micros"].as_i64().unwrap();
                     let value = value.expect("loaded");
-                    let instant_ok = value.naive_utc() == local - offset;
+                    let instant_ok = value.to_utc().micros() == local.micros() - offset;
                     let stored = value.to_db_text();
                     let stored_ok = match (&stored, case.get("stored"), case.get("stored_error")) {
                         (Ok(text), Some(expected), None) => text == expected.as_str().unwrap(),
@@ -74,7 +66,7 @@ fn clock_values_are_written_like_django() {
     let fixture = load(DATETIME_CODEC_JSON);
     for case in fixture["format"].as_array().unwrap() {
         let micros = case["timestamp_micros"].as_i64().unwrap();
-        let value = DateTime::from_timestamp_micros(micros).unwrap();
+        let value = UtcDateTime::from_micros(micros);
         assert_eq!(
             DbDateTime::from_utc(value).to_db_text().unwrap(),
             case["stored"].as_str().unwrap()

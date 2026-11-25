@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- Rust agent: replace the unmaintained `chrono` crate (RUSTSEC-2026-0543) with
+  `jiff` 1.x and remove the advisory exception from `agent-rs/deny.toml`. The
+  agent's instants are now `graphyard_core::utc::UtcDateTime`, microseconds
+  since the Unix epoch like a Python `datetime`; jiff supplies the clock and
+  the calendar. Stored datetimes, Flux and SQL query timestamps, line protocol
+  and shadow records are unchanged. New Python-derived fixture cases pin the
+  ends of the calendar: the last 26 hours of year 9999 (after the last instant
+  jiff's own timestamp type can hold), offsets that move a stored value into
+  year 0 or 10000, and ISO week dates that name a day of the neighbouring
+  year. No release; the change ships with the next agent release.
+
 - Rust agent: update `cookie` to 0.18.3 and `url` to 2.5.9 for
   RUSTSEC-2026-0594 and RUSTSEC-2026-0592, which failed `cargo deny`.
 

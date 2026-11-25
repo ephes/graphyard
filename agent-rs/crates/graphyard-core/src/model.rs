@@ -14,7 +14,7 @@
 
 use std::fmt;
 
-use chrono::{DateTime, Utc};
+use crate::utc::UtcDateTime;
 use indexmap::IndexMap;
 
 /// Custom tags of a point or sample: a Python `dict[str, str]` (insertion
@@ -205,7 +205,7 @@ impl fmt::Display for ComparisonOperator {
 /// normalisation can report what it rejected.
 #[derive(Clone, Debug, PartialEq)]
 pub struct MetricPoint {
-    pub ts: DateTime<Utc>,
+    pub ts: UtcDateTime,
     pub metric: String,
     pub value: f64,
     pub subject_type: String,
@@ -228,7 +228,7 @@ impl MetricPoint {
     /// (`source_instance="default"`, every optional field `None`).
     #[allow(clippy::too_many_arguments)]
     pub fn new(
-        ts: DateTime<Utc>,
+        ts: UtcDateTime,
         metric: impl Into<String>,
         value: f64,
         subject_type: impl Into<String>,
@@ -258,7 +258,7 @@ impl MetricPoint {
 /// `influx.py:MetricSample`: one sample read back for condition evaluation.
 #[derive(Clone, Debug, PartialEq)]
 pub struct MetricSample {
-    pub ts: DateTime<Utc>,
+    pub ts: UtcDateTime,
     pub value: f64,
     pub host: String,
     pub metric: String,
@@ -277,7 +277,7 @@ impl MetricSample {
     /// A sample with the required fields and the dataclass defaults (every
     /// optional dimension `None`, no custom tags).
     pub fn new(
-        ts: DateTime<Utc>,
+        ts: UtcDateTime,
         value: f64,
         host: impl Into<String>,
         metric: impl Into<String>,
@@ -307,7 +307,7 @@ pub struct ConditionEvaluation {
     pub status: StatusLevel,
     pub message: String,
     pub last_value: Option<f64>,
-    pub evaluated_at: DateTime<Utc>,
+    pub evaluated_at: UtcDateTime,
 }
 
 /// `services.py:ConditionEvaluationRun`: counters of one conditions run.

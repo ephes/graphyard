@@ -5,8 +5,8 @@
 use std::future::Future;
 use std::pin::pin;
 use std::task::{Context, Poll, Waker};
+use std::time::Duration;
 
-use chrono::{DateTime, TimeZone, Utc};
 use num_bigint::BigInt;
 use serde_json::Value;
 
@@ -31,10 +31,9 @@ fn ready<F: Future>(future: F) -> F::Output {
     }
 }
 
-fn datetime(text: &str) -> DateTime<Utc> {
-    DateTime::parse_from_rfc3339(text)
+fn datetime(text: &str) -> UtcDateTime {
+    UtcDateTime::parse_rfc3339(text)
         .unwrap_or_else(|err| panic!("fixture datetime {text:?}: {err}"))
-        .with_timezone(&Utc)
 }
 
 /// A `repr(float)` text.
@@ -111,7 +110,7 @@ fn assert_case(case: &Value) {
     let query_error = case.get("query_error").and_then(Value::as_str);
 
     let mut queried = Vec::new();
-    let mut source = |at: DateTime<Utc>| {
+    let mut source = |at: UtcDateTime| {
         queried.push(at);
         let result = match query_error {
             Some(message) => Err(message.to_owned()),
@@ -257,8 +256,8 @@ fn humidity_rule() -> ConditionRule {
     }
 }
 
-fn now() -> DateTime<Utc> {
-    Utc.with_ymd_and_hms(2026, 3, 4, 12, 0, 0).unwrap()
+fn now() -> UtcDateTime {
+    UtcDateTime::from_ymd_hms(2026, 3, 4, 12, 0, 0).unwrap()
 }
 
 fn fresh(value: f64) -> Vec<MetricSample> {
@@ -266,7 +265,7 @@ fn fresh(value: f64) -> Vec<MetricSample> {
         .rev()
         .map(|minutes| {
             MetricSample::new(
-                now() - chrono::TimeDelta::minutes(minutes),
+                now() - Duration::from_secs(60 * minutes),
                 value,
                 "homeassistant",
                 "ha.sensor.office_humidity",
@@ -283,7 +282,7 @@ fn invalid_durations_fail_before_source_entry() {
             breach_minutes,
             ..humidity_rule()
         };
-        let mut source = |_: DateTime<Utc>| async {
+        let mut source = |_: UtcDateTime| async {
             panic!("invalid duration reached source");
             #[allow(unreachable_code)]
             Ok::<Vec<MetricSample>, String>(vec![])
@@ -315,7 +314,7 @@ fn unknown_operator_is_a_key_error_with_the_repr() {
 
 #[test]
 fn query_errors_display_as_the_source_error() {
-    let mut source = |_: DateTime<Utc>| async { Err::<Vec<MetricSample>, _>("boom".to_owned()) };
+    let mut source = |_: UtcDateTime| async { Err::<Vec<MetricSample>, _>("boom".to_owned()) };
     let err = ready(evaluate_condition(
         &humidity_rule(),
         &BigInt::from(600),
@@ -329,10 +328,10 @@ fn query_errors_display_as_the_source_error() {
 
 #[test]
 fn now_is_truncated_to_microseconds_for_query_and_result() {
-    let precise = now() + chrono::TimeDelta::nanoseconds(123_456_789);
-    let expected = now() + chrono::TimeDelta::microseconds(123_456);
+    let precise = now() + Duration::from_nanos(123_456_789);
+    let expected = now() + Duration::from_micros(123_456);
     let mut seen = Vec::new();
-    let mut source = |at: DateTime<Utc>| {
+    let mut source = |at: UtcDateTime| {
         seen.push(at);
         async { Ok::<_, String>(Vec::new()) }
     };
@@ -355,7 +354,7 @@ impl SampleSource for Fixed {
 
     async fn query_condition_window(
         &mut self,
-        _now: DateTime<Utc>,
+        _now: UtcDateTime,
     ) -> Result<Vec<MetricSample>, Self::Error> {
         Ok(self.0.clone())
     }
@@ -390,10 +389,10 @@ fn stale_limit_uses_the_allowance_unless_unset_or_zero() {
 
 #[test]
 fn far_apart_timestamps_do_not_panic() {
-    // Outside Python's datetime range (chrono allows more): the age
+    // Outside Python's datetime range (the type allows more): the age
     // saturates instead of overflowing.
     let ancient = MetricSample::new(
-        DateTime::<Utc>::MIN_UTC,
+        UtcDateTime::MIN,
         80.0,
         "h",
         "ha.sensor.office_humidity",
@@ -402,7 +401,7 @@ fn far_apart_timestamps_do_not_panic() {
     let result = evaluate_samples(
         &humidity_rule(),
         &[ancient],
-        DateTime::<Utc>::MAX_UTC,
+        UtcDateTime::MAX,
         &BigInt::from(600),
     )
     .unwrap();
@@ -429,7 +428,7 @@ fn r102_sparse_labels_do_not_build_a_matrix() {
     let samples: Vec<_> = (0..128)
         .map(|i| {
             let mut point = fresh(80.0).remove(0);
-            point.ts = now() - chrono::TimeDelta::minutes(10);
+            point.ts = now() - Duration::from_secs(600);
             point.tags.insert(format!("tag{i:04}"), "x".into());
             point
         })
@@ -452,7 +451,7 @@ fn r102_conflicting_equal_time_evidence_is_unavailable() {
         for reversed in [false, true] {
             let mut samples = fresh(80.0);
             let mut a = samples[0].clone();
-            a.ts = now() - chrono::TimeDelta::minutes(minutes);
+            a.ts = now() - Duration::from_secs(60 * minutes);
             let mut b = a.clone();
             b.value = 20.0;
             if reversed {

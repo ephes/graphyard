@@ -1,7 +1,7 @@
 //! `normalize` against `fixtures/normalize.json` (built by
 //! `fixtures/gen_normalize.py`).
 
-use chrono::{DateTime, Utc};
+use crate::utc::UtcDateTime;
 use serde_json::Value;
 
 use super::*;
@@ -38,10 +38,8 @@ fn tags_of(value: &Value) -> Option<Tags> {
     })
 }
 
-fn ts_of(text: &str) -> DateTime<Utc> {
-    DateTime::parse_from_rfc3339(text)
-        .expect("fixture timestamp")
-        .with_timezone(&Utc)
+fn ts_of(text: &str) -> UtcDateTime {
+    UtcDateTime::parse_rfc3339(text).expect("fixture timestamp")
 }
 
 /// A fixture point (`gen_normalize.py:_encode_point`).

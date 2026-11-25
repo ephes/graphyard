@@ -3,9 +3,9 @@
 
 use std::net::TcpListener;
 
-use chrono::{DateTime, Utc};
 use graphyard_core::MetricPoint;
 use graphyard_core::settings::Settings;
+use graphyard_core::utc::UtcDateTime;
 use graphyard_influx::{InfluxWriter, WriteError};
 use influxdb_line_protocol::parse_lines;
 
@@ -19,7 +19,7 @@ fn settings(env: &[(&str, &str)]) -> Settings {
 }
 
 fn point(subject_id: &str, value: f64) -> MetricPoint {
-    let ts: DateTime<Utc> = "2026-10-21T08:15:30.123456Z".parse().unwrap();
+    let ts: UtcDateTime = "2026-10-21T08:15:30.123456Z".parse().unwrap();
     MetricPoint::new(
         ts,
         "host.cpu_usage",
@@ -82,7 +82,7 @@ async fn batches_are_appended_and_counted_without_a_request() {
     for (comment, points) in [(lines[1], 2), (lines[5], 1)] {
         let rest = comment.strip_prefix("# write ").expect(comment);
         let (stamp, count) = rest.split_once(' ').unwrap();
-        assert!(stamp.parse::<DateTime<Utc>>().is_ok(), "{stamp}");
+        assert!(stamp.parse::<UtcDateTime>().is_ok(), "{stamp}");
         assert!(stamp.ends_with('Z'), "{stamp}");
         assert!(count.starts_with(&format!("points={points} bytes=")));
     }

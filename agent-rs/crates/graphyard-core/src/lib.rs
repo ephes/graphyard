@@ -17,6 +17,7 @@ pub mod normalize;
 pub mod pycompat;
 pub mod settings;
 pub mod spec_config;
+pub mod utc;
 
 pub use conditions::{
     ConditionRule, EvaluationError, SampleSource, evaluate_condition, evaluate_samples,

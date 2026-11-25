@@ -1,9 +1,9 @@
 //! Synthetic loopback regressions for transfer budgets and single submissions.
 mod common;
-use chrono::Utc;
 use common::{FakeInflux, capture_logs, take_logs};
 use graphyard_core::model::MetricPoint;
 use graphyard_core::settings::Settings;
+use graphyard_core::utc::UtcDateTime;
 use graphyard_influx::{InfluxWriter, QueryClient, QueryRange};
 use serde_json::json;
 use std::time::{Duration, Instant};
@@ -20,7 +20,7 @@ fn settings(server: &FakeInflux) -> Settings {
 }
 fn point() -> MetricPoint {
     MetricPoint {
-        ts: Utc::now(),
+        ts: UtcDateTime::now(),
         metric: "m".into(),
         value: 2.0,
         subject_type: "host".into(),
@@ -37,8 +37,8 @@ fn point() -> MetricPoint {
 }
 
 fn query_range() -> QueryRange {
-    let stop = Utc::now();
-    QueryRange::new("m", stop - chrono::Duration::seconds(1), stop)
+    let stop = UtcDateTime::now();
+    QueryRange::new("m", stop - Duration::from_secs(1), stop)
 }
 
 #[tokio::test]

@@ -280,7 +280,6 @@ pub(super) async fn replay(case: &Value, origin: &str, run: Run) {
             call.points.iter().all(|point| point.ts == first.ts),
             "{name}"
         );
-        assert_eq!(first.ts.timestamp_subsec_nanos() % 1000, 0, "{name}");
     }
 
     // `HTTP Request:` lines.

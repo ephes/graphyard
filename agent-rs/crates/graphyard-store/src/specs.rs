@@ -3,8 +3,8 @@
 
 use std::sync::Arc;
 
-use chrono::{DateTime, Utc};
 use graphyard_core::StatusLevel;
+use graphyard_core::utc::UtcDateTime;
 use rusqlite::{Connection, params};
 
 use crate::actor::Store;
@@ -59,7 +59,7 @@ impl SpecRow {
 pub struct SpecRunUpdate {
     pub id: i64,
     /// The run's `now`.
-    pub last_run_at: DateTime<Utc>,
+    pub last_run_at: UtcDateTime,
     pub last_status: StatusLevel,
     pub last_error: String,
     /// `now_ts + max(1, interval_seconds)`, computed by the caller.

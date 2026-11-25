@@ -29,43 +29,30 @@
 use std::fmt::{self, Write as _};
 use std::sync::LazyLock;
 
-use chrono::{
-    DateTime, Datelike, Duration, NaiveDate, NaiveDateTime, NaiveTime, Timelike, Utc, Weekday,
+use graphyard_core::pycompat::{
+    DECIMAL_ZEROES, PY_DATETIME_MAX_MICROS, PY_DATETIME_MIN_MICROS, decimal_digit, py_iso_to_ymd,
 };
-use graphyard_core::pycompat::{DECIMAL_ZEROES, decimal_digit};
+use graphyard_core::utc::UtcDateTime;
 use regex::Regex;
 
 /// A datetime column value as Django holds it after loading: an aware
 /// datetime, kept as its UTC instant with microsecond precision. The instant
-/// may lie outside Python's year range when the stored text carried an
-/// offset; [`DbDateTime::to_db_text`] then fails like Python's conversion.
+/// may lie up to a day outside Python's year range when the stored text
+/// carried an offset; [`DbDateTime::to_db_text`] then fails like Python's
+/// conversion.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct DbDateTime(NaiveDateTime);
+pub struct DbDateTime(UtcDateTime);
 
 impl DbDateTime {
-    /// An instant from the clock, truncated to microseconds (Python's
-    /// `datetime` resolution).
-    pub fn from_utc(value: DateTime<Utc>) -> Self {
-        Self::from_naive_utc(value.naive_utc())
-    }
-
-    /// A naive UTC datetime, truncated to microseconds.
-    pub fn from_naive_utc(value: NaiveDateTime) -> Self {
-        let micros = (value.nanosecond() / 1000).min(999_999);
-        let truncated = value
-            .with_nanosecond(micros * 1000)
-            .expect("a whole number of microseconds below one second is valid");
-        Self(truncated)
+    /// An instant from the clock (microsecond resolution, like Python's
+    /// `datetime`).
+    pub fn from_utc(value: UtcDateTime) -> Self {
+        Self(value)
     }
 
     /// The UTC instant.
-    pub fn naive_utc(self) -> NaiveDateTime {
+    pub fn to_utc(self) -> UtcDateTime {
         self.0
-    }
-
-    /// The UTC instant as an aware chrono value.
-    pub fn to_utc(self) -> DateTime<Utc> {
-        self.0.and_utc()
     }
 
     /// The stored text (`adapt_datetimefield_value`: naive UTC
@@ -75,10 +62,12 @@ impl DbDateTime {
     /// `OverflowError: date value out of range` when the UTC instant is
     /// outside Python's year range 1..=9999.
     pub fn to_db_text(self) -> Result<String, DateTimeError> {
-        let value = self.0;
-        if !(1..=9999).contains(&value.year()) {
-            return Err(DateTimeError::overflow("date value out of range"));
+        let out_of_range = || DateTimeError::overflow("date value out of range");
+        if !(PY_DATETIME_MIN_MICROS..=PY_DATETIME_MAX_MICROS).contains(&self.0.micros()) {
+            return Err(out_of_range());
         }
+        // Python's range lies within the civil calendar.
+        let value = self.0.civil().ok_or_else(out_of_range)?;
         let mut text = format!(
             "{:04}-{:02}-{:02} {:02}:{:02}:{:02}",
             value.year(),
@@ -88,7 +77,7 @@ impl DbDateTime {
             value.minute(),
             value.second()
         );
-        let micros = value.nanosecond() / 1000;
+        let micros = self.0.subsec_micros();
         if micros != 0 {
             text.push_str(&format!(".{micros:06}"));
         }
@@ -132,7 +121,9 @@ impl std::error::Error for DateTimeError {}
 /// text carried one, the UTC offset in microseconds.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ParsedDateTime {
-    pub local: NaiveDateTime,
+    /// The wall time (years 1..=9999), placed on the UTC timeline as if it
+    /// carried no offset.
+    pub local: UtcDateTime,
     pub offset_micros: Option<i64>,
 }
 
@@ -140,8 +131,9 @@ impl ParsedDateTime {
     /// `convert_datetimefield_value`: an aware value keeps its instant, a
     /// naive one is UTC.
     pub fn to_db_datetime(self) -> DbDateTime {
-        let offset = Duration::microseconds(self.offset_micros.unwrap_or(0));
-        DbDateTime(self.local - offset)
+        // The offset is below 24 hours: no overflow.
+        let offset = self.offset_micros.unwrap_or(0);
+        DbDateTime(self.local.saturating_add_micros(-offset))
     }
 }
 
@@ -235,8 +227,8 @@ fn find_separator(bytes: &[u8]) -> Option<usize> {
 }
 
 /// `parse_isoformat_date`: `(year, month, day)`; the week-date form is
-/// resolved like `iso_to_ymd` (which may yield year 0 or 10000; the range
-/// check comes later).
+/// resolved like `iso_to_ymd` (which may yield year 10000; the range check
+/// comes later).
 fn parse_date(bytes: &[u8], len: usize) -> Option<(i64, i64, i64)> {
     let mut pos = 0;
     let mut year = 0;
@@ -262,7 +254,7 @@ fn parse_date(bytes: &[u8], len: usize) -> Option<(i64, i64, i64)> {
         } else {
             weekday = 1;
         }
-        return iso_to_ymd(year, week, weekday);
+        return py_iso_to_ymd(year, week, weekday);
     }
     let mut month = 0;
     parse_digits(bytes, &mut pos, 2, &mut month)?;
@@ -276,38 +268,6 @@ fn parse_date(bytes: &[u8], len: usize) -> Option<(i64, i64, i64)> {
     let mut day = 0;
     parse_digits(bytes, &mut pos, 2, &mut day)?;
     Some((year, month, day))
-}
-
-/// `iso_to_ymd`.
-fn iso_to_ymd(year: i64, week: i64, weekday: i64) -> Option<(i64, i64, i64)> {
-    if !(1..=9999).contains(&year) {
-        return None;
-    }
-    let year = i32::try_from(year).ok()?;
-    if !(1..=53).contains(&week) {
-        return None;
-    }
-    if week == 53 {
-        // 53 weeks in years starting on a Thursday and leap years starting
-        // on a Wednesday.
-        let first = NaiveDate::from_ymd_opt(year, 1, 1)?.weekday();
-        let leap = NaiveDate::from_ymd_opt(year, 2, 29).is_some();
-        if !(first == Weekday::Thu || (first == Weekday::Wed && leap)) {
-            return None;
-        }
-    }
-    if !(1..=7).contains(&weekday) {
-        return None;
-    }
-    // Monday of ISO week 1: the Monday on or before January 4th.
-    let jan4 = NaiveDate::from_ymd_opt(year, 1, 4)?;
-    let week1_monday = jan4 - Duration::days(i64::from(jan4.weekday().num_days_from_monday()));
-    let date = week1_monday + Duration::days((week - 1) * 7 + weekday - 1);
-    Some((
-        i64::from(date.year()),
-        i64::from(date.month()),
-        i64::from(date.day()),
-    ))
 }
 
 /// `parse_hh_mm_ss_ff` over `bytes[start..end]`: `(rv, [h, m, s, us])` with
@@ -432,16 +392,17 @@ fn checked_datetime(
     month: i64,
     day: i64,
     [hour, minute, second, micros]: [i64; 4],
-) -> Result<NaiveDateTime, DateTimeError> {
+) -> Result<UtcDateTime, DateTimeError> {
     if !(1..=9999).contains(&year) {
         return Err(DateTimeError::value(format!("year {year} is out of range")));
     }
     if !(1..=12).contains(&month) {
         return Err(DateTimeError::value("month must be in 1..12"));
     }
-    let date = u32::try_from(day)
+    // Year and month are valid, so only the day can fail here.
+    let day = i8::try_from(day)
         .ok()
-        .and_then(|day| NaiveDate::from_ymd_opt(year as i32, month as u32, day))
+        .filter(|&day| UtcDateTime::from_ymd_hms(year as i16, month as i8, day, 0, 0, 0).is_some())
         .ok_or_else(|| DateTimeError::value("day is out of range for month"))?;
     if !(0..=23).contains(&hour) {
         return Err(DateTimeError::value("hour must be in 0..23"));
@@ -455,10 +416,16 @@ fn checked_datetime(
     if !(0..=999_999).contains(&micros) {
         return Err(DateTimeError::value("microsecond must be in 0..999999"));
     }
-    let time =
-        NaiveTime::from_hms_micro_opt(hour as u32, minute as u32, second as u32, micros as u32)
-            .expect("fields are in range");
-    Ok(date.and_time(time))
+    Ok(UtcDateTime::from_ymd_hms_micro(
+        year as i16,
+        month as i8,
+        day,
+        hour as i8,
+        minute as i8,
+        second as i8,
+        micros as i32,
+    )
+    .expect("fields are in range"))
 }
 
 // ---------------------------------------------------------------------------
@@ -591,17 +558,14 @@ mod tests {
 
     #[test]
     fn writes_drop_a_zero_fraction() {
-        let base = NaiveDate::from_ymd_opt(2026, 10, 21)
-            .unwrap()
-            .and_hms_opt(8, 15, 30)
-            .unwrap();
+        let base = UtcDateTime::from_ymd_hms(2026, 10, 21, 8, 15, 30).unwrap();
         assert_eq!(
-            DbDateTime::from_naive_utc(base).to_db_text().unwrap(),
+            DbDateTime::from_utc(base).to_db_text().unwrap(),
             "2026-10-21 08:15:30"
         );
-        let fraction = base + Duration::nanoseconds(123_456_789);
+        let fraction = base + std::time::Duration::from_nanos(123_456_789);
         assert_eq!(
-            DbDateTime::from_naive_utc(fraction).to_db_text().unwrap(),
+            DbDateTime::from_utc(fraction).to_db_text().unwrap(),
             "2026-10-21 08:15:30.123456"
         );
     }

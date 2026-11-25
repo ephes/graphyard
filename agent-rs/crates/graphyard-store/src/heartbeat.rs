@@ -15,8 +15,8 @@
 
 use std::time::Duration;
 
-use chrono::{DateTime, Utc};
 use graphyard_core::StatusLevel;
+use graphyard_core::utc::UtcDateTime;
 use rusqlite::{Connection, OptionalExtension, TransactionBehavior, params};
 
 use crate::actor::Store;
@@ -164,7 +164,7 @@ impl Store {
     pub async fn record_heartbeat(
         &self,
         record: HeartbeatRecord,
-        now: DateTime<Utc>,
+        now: UtcDateTime,
     ) -> Result<(), StoreError> {
         let now = now_text(now)?;
         let mut attempt = 1;

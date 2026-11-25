@@ -1,16 +1,14 @@
 mod common;
 
-use chrono::DateTime;
 use common::{FakeInflux, client_for};
+use graphyard_core::utc::UtcDateTime;
 use graphyard_influx::QueryRange;
 use serde_json::{Value, json};
 
 #[tokio::test]
 async fn invalid_ranges_never_reach_any_transport() {
-    let start = "2026-11-01T00:00:00Z"
-        .parse::<DateTime<chrono::Utc>>()
-        .unwrap();
-    let stop = start + chrono::Duration::seconds(1);
+    let start = UtcDateTime::parse_rfc3339("2026-11-01T00:00:00Z").unwrap();
+    let stop = start + std::time::Duration::from_secs(1);
     for (mode, body, path) in [
         ("v2", "", "/api/v2/query?org=synthetic"),
         ("v3", "[]", "/api/v3/query_sql"),
@@ -47,10 +45,8 @@ async fn invalid_ranges_never_reach_any_transport() {
 
 #[tokio::test]
 async fn complete_replies_are_bound_to_selection() {
-    let start = DateTime::parse_from_rfc3339("2026-11-01T00:00:00Z")
-        .unwrap()
-        .to_utc();
-    let stop = start + chrono::Duration::hours(1);
+    let start = UtcDateTime::parse_rfc3339("2026-11-01T00:00:00Z").unwrap();
+    let stop = start + std::time::Duration::from_secs(3600);
     let mut range = QueryRange::new("cpu", start, stop);
     range.host = Some("edge".into());
     range.service = Some("web".into());

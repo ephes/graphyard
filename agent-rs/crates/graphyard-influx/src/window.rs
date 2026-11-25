@@ -1,14 +1,14 @@
 //! The query window of a condition (`influx.py:query_condition_window`,
 //! PLAN.md 6.5) and the range a query covers (`query_range`'s arguments).
 
-use chrono::{DateTime, Utc};
 use graphyard_core::conditions::validate_condition_duration;
 use graphyard_core::logline::escape_log_value;
 use graphyard_core::normalize::normalize_subject_id;
 use graphyard_core::pycompat::{
-    PyError, date_out_of_range, py_datetime_add, py_int_true_divide, py_str, py_strip,
-    py_timedelta_minutes, py_type_name,
+    PyError, py_datetime_add, py_int_true_divide, py_str, py_strip, py_timedelta_minutes,
+    py_type_name,
 };
+use graphyard_core::utc::UtcDateTime;
 use graphyard_core::{MetricSample, Tags};
 use num_bigint::BigInt;
 use num_traits::{FromPrimitive, ToPrimitive};
@@ -52,8 +52,8 @@ impl ConditionQuery<'_> {
 #[derive(Clone, Debug, PartialEq)]
 pub struct QueryRange {
     pub metric: String,
-    pub start: DateTime<Utc>,
-    pub stop: DateTime<Utc>,
+    pub start: UtcDateTime,
+    pub stop: UtcDateTime,
     pub host: Option<String>,
     pub service: Option<String>,
     pub subject_type: Option<String>,
@@ -64,7 +64,7 @@ pub struct QueryRange {
 
 impl QueryRange {
     /// A range over `metric` without filters.
-    pub fn new(metric: impl Into<String>, start: DateTime<Utc>, stop: DateTime<Utc>) -> Self {
+    pub fn new(metric: impl Into<String>, start: UtcDateTime, stop: UtcDateTime) -> Self {
         Self {
             metric: metric.into(),
             start,
@@ -141,14 +141,14 @@ fn ceil_minutes(seconds: &BigInt) -> Result<BigInt, PyError> {
 /// `now - timedelta(minutes=minutes)` with CPython's checks: the
 /// `timedelta` constructor (days must fit a C `int` and be at most
 /// 999999999 in magnitude) and the datetime range.
-fn minus_minutes(now: DateTime<Utc>, minutes: &BigInt) -> Result<DateTime<Utc>, PyError> {
+fn minus_minutes(now: UtcDateTime, minutes: &BigInt) -> Result<UtcDateTime, PyError> {
     // Beyond `i64` the day count cannot fit a C `int` either.
     let minutes = minutes
         .to_i64()
         .ok_or_else(|| PyError::overflow_error("Python int too large to convert to C int"))?;
     let delta = py_timedelta_minutes(minutes)?;
-    let start = py_datetime_add(now.timestamp_micros(), -delta)?;
-    DateTime::from_timestamp_micros(start).ok_or_else(date_out_of_range)
+    let start = py_datetime_add(now.micros(), -delta)?;
+    Ok(UtcDateTime::from_micros(start))
 }
 
 /// `influx.query_condition_window` up to the `query_range` call: the
@@ -164,7 +164,7 @@ fn minus_minutes(now: DateTime<Utc>, minutes: &BigInt) -> Result<DateTime<Utc>, 
 pub fn condition_window(
     condition: &ConditionQuery<'_>,
     stale_warning_seconds: &BigInt,
-    now: DateTime<Utc>,
+    now: UtcDateTime,
 ) -> Result<QueryRange, QueryError> {
     validate_condition_duration(condition.window_minutes)?;
     validate_condition_duration(condition.breach_minutes)?;

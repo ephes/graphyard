@@ -8,7 +8,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::sync::OnceLock;
 
-use chrono::{DateTime, Utc};
+use graphyard_core::utc::UtcDateTime;
 use serde_json::Value;
 
 use graphyard_core::model::{MetricPoint, Tags};
@@ -27,7 +27,7 @@ use crate::http::tests::server::{Reply, Server};
 /// A sink recording what the executor hands over, optionally failing (as
 /// the generator's recorders), with a fixed clock.
 pub(super) struct ClockedSink {
-    pub now: DateTime<Utc>,
+    pub now: UtcDateTime,
     pub written: RefCell<Option<Vec<MetricPoint>>>,
     pub touched: RefCell<Option<Vec<MetricPoint>>>,
     pub write_error: Option<String>,
@@ -35,7 +35,7 @@ pub(super) struct ClockedSink {
 }
 
 impl ClockedSink {
-    pub fn new(now: DateTime<Utc>) -> Self {
+    pub fn new(now: UtcDateTime) -> Self {
         Self {
             now,
             written: RefCell::new(None),
@@ -47,7 +47,7 @@ impl ClockedSink {
 }
 
 impl MetricSink for ClockedSink {
-    fn now(&self) -> DateTime<Utc> {
+    fn now(&self) -> UtcDateTime {
         self.now
     }
 
@@ -118,10 +118,8 @@ async fn scripted_server(scenario: &Value) -> Server {
     .await
 }
 
-fn ts_of(text: &str) -> DateTime<Utc> {
-    DateTime::parse_from_rfc3339(text)
-        .expect("fixture timestamp")
-        .with_timezone(&Utc)
+fn ts_of(text: &str) -> UtcDateTime {
+    UtcDateTime::parse_rfc3339(text).expect("fixture timestamp")
 }
 
 fn opt_string(value: &Value) -> Option<String> {

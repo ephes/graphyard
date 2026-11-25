@@ -4,9 +4,9 @@
 
 mod common;
 
-use chrono::{DateTime, Utc};
 use common::{capture_logs, expected_logs, list, load, take_logs, text};
 use graphyard_core::pycompat::py_isoformat_utc;
+use graphyard_core::utc::UtcDateTime;
 use graphyard_influx::flux::flux_query;
 use graphyard_influx::{ConditionQuery, QueryRange, condition_window};
 use num_bigint::BigInt;
@@ -16,10 +16,8 @@ fn fixture() -> Value {
     load(include_str!("../../../fixtures/flux.json"))
 }
 
-fn time(text: &str) -> DateTime<Utc> {
-    DateTime::parse_from_rfc3339(text)
-        .expect("fixture time")
-        .to_utc()
+fn time(text: &str) -> UtcDateTime {
+    UtcDateTime::parse_rfc3339(text).expect("fixture time")
 }
 
 fn optional(value: &Value) -> Option<String> {

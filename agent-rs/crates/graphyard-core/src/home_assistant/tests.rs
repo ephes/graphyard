@@ -1,7 +1,7 @@
 //! `home_assistant` against `fixtures/ha_mapping.json` (built by
 //! `fixtures/gen_ha_mapping.py`).
 
-use chrono::{DateTime, Utc};
+use crate::utc::UtcDateTime;
 use serde_json::Value;
 
 use super::*;
@@ -15,8 +15,8 @@ fn state_timestamp_skips_container_rendering_and_preserves_scalar_dates() {
     use crate::pycompat::REPR_INPUT_CHARS;
     use serde_json::json;
 
-    let now = "2026-11-24T12:00:00Z".parse::<DateTime<Utc>>().unwrap();
-    let midnight = "2026-03-04T00:00:00Z".parse::<DateTime<Utc>>().unwrap();
+    let now = "2026-11-24T12:00:00Z".parse::<UtcDateTime>().unwrap();
+    let midnight = "2026-03-04T00:00:00Z".parse::<UtcDateTime>().unwrap();
     let cases = [
         (json!(vec!["ignored"; 4096]), now),
         (json!({"nested": ["ignored"]}), now),
@@ -90,7 +90,7 @@ fn assert_error(expected: &Value, actual: &PyError, context: &str) {
 fn run_call(
     call: &Value,
     spec: HaSpec<'_>,
-    now: DateTime<Utc>,
+    now: UtcDateTime,
     state: &mut MappingState,
     context: &str,
 ) {
@@ -163,9 +163,7 @@ fn run_call(
 #[test]
 fn ha_mapping_cases_match_python() {
     let fixture = fixture();
-    let now = DateTime::parse_from_rfc3339(fixture.str_field("now"))
-        .expect("now")
-        .with_timezone(&Utc);
+    let now = UtcDateTime::parse_rfc3339(fixture.str_field("now")).expect("now");
     let cases = fixture.list_field("cases");
     assert!(cases.len() >= 25, "fixture has the full corpus");
     for case in cases {

@@ -12,8 +12,8 @@ use std::future::Future;
 use std::panic::AssertUnwindSafe;
 use std::time::Duration;
 
-use chrono::{DateTime, SubsecRound, Utc};
 use futures_util::FutureExt as _;
+use graphyard_core::utc::UtcDateTime;
 use num_bigint::BigInt;
 use serde_json::Value;
 
@@ -30,7 +30,7 @@ use graphyard_store::{ConditionRow, HeartbeatRecord, SpecRow, SpecRunUpdate, Sto
 
 /// The UTC wall clock (`timezone.now()`, `datetime.now(UTC)`).
 pub trait Clock {
-    fn now(&self) -> DateTime<Utc>;
+    fn now(&self) -> UtcDateTime;
 }
 
 /// The system clock at Python's microsecond precision.
@@ -38,8 +38,8 @@ pub trait Clock {
 pub struct SystemClock;
 
 impl Clock for SystemClock {
-    fn now(&self) -> DateTime<Utc> {
-        Utc::now().trunc_subsecs(6)
+    fn now(&self) -> UtcDateTime {
+        UtcDateTime::now()
     }
 }
 
@@ -59,7 +59,7 @@ pub trait ConditionSamples {
     fn query_condition_window(
         &self,
         condition: &ConditionQuery<'_>,
-        now: DateTime<Utc>,
+        now: UtcDateTime,
     ) -> impl Future<Output = Result<Vec<MetricSample>, QueryError>>;
 }
 
@@ -300,7 +300,7 @@ async fn run_metric_spec<E: SpecExecutors, C: Clock>(
     clock: &C,
     state: &mut RunState,
     spec: &SpecRow,
-    run_at: DateTime<Utc>,
+    run_at: UtcDateTime,
     due_only: bool,
 ) -> Result<Option<SpecOutcome>, RunError> {
     let run_ts = run_at.timestamp();
@@ -372,7 +372,7 @@ async fn run_metric_spec<E: SpecExecutors, C: Clock>(
 async fn evaluate<S: ConditionSamples>(
     condition: &ConditionRow,
     samples: &S,
-    now: DateTime<Utc>,
+    now: UtcDateTime,
     stale_warning_seconds: &BigInt,
 ) -> Result<graphyard_core::ConditionEvaluation, &'static str> {
     validate_condition_duration(condition.window_minutes).map_err(|_| "ValueError")?;

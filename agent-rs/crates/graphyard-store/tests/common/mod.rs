@@ -5,8 +5,8 @@
 
 use std::path::{Path, PathBuf};
 
-use chrono::{DateTime, NaiveDateTime, Utc};
 use graphyard_core::settings::Settings;
+use graphyard_core::utc::UtcDateTime;
 use graphyard_core::{MetricPoint, Tags};
 use graphyard_store::{Store, StoreError};
 use rusqlite::Connection;
@@ -166,9 +166,7 @@ pub fn metric_point(value: &Value) -> MetricPoint {
     let text = |key: &str| value[key].as_str().unwrap().to_owned();
     let optional = |key: &str| value[key].as_str().map(str::to_owned);
     MetricPoint {
-        ts: DateTime::parse_from_rfc3339(value["ts"].as_str().unwrap())
-            .unwrap()
-            .with_timezone(&Utc),
+        ts: UtcDateTime::parse_rfc3339(value["ts"].as_str().unwrap()).unwrap(),
         metric: text("metric"),
         value: value["value"].as_f64().unwrap(),
         subject_type: text("subject_type"),
@@ -251,13 +249,22 @@ pub fn assert_rows(actual: &[Vec<(String, SqlValue)>], expected: &[Value], conte
 }
 
 /// A fixture `now` (`YYYY-MM-DD HH:MM:SS[.ffffff]`, UTC).
-pub fn now(text: &str) -> DateTime<Utc> {
-    let format = if text.contains('.') {
-        "%Y-%m-%d %H:%M:%S%.f"
-    } else {
-        "%Y-%m-%d %H:%M:%S"
-    };
-    NaiveDateTime::parse_from_str(text, format)
-        .unwrap()
-        .and_utc()
+pub fn now(text: &str) -> UtcDateTime {
+    let (date, time) = text.split_once(' ').unwrap();
+    let (time, fraction) = time.split_once('.').unwrap_or((time, ""));
+    assert!(fraction.len() <= 6, "{text}");
+    let date: Vec<&str> = date.split('-').collect();
+    let time: Vec<&str> = time.split(':').collect();
+    assert_eq!((date.len(), time.len()), (3, 3), "{text}");
+    let field = |digits: &str| digits.parse::<i8>().unwrap();
+    UtcDateTime::from_ymd_hms_micro(
+        date[0].parse().unwrap(),
+        field(date[1]),
+        field(date[2]),
+        field(time[0]),
+        field(time[1]),
+        field(time[2]),
+        format!("{fraction:0<6}").parse().unwrap(),
+    )
+    .unwrap()
 }

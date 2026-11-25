@@ -3,7 +3,7 @@
 //! Python datetimes have microsecond resolution and the range
 //! `0001-01-01 00:00:00` to `9999-12-31 23:59:59.999999`; `timedelta`
 //! allows at most 999 999 999 days. The condition evaluation computes with
-//! microseconds since the Unix epoch (`DateTime::timestamp_micros`) and
+//! microseconds since the Unix epoch (`UtcDateTime::micros`) and
 //! these helpers reproduce where CPython raises and how
 //! `timedelta.total_seconds()` rounds.
 //!
@@ -21,7 +21,9 @@
 //! NULs and multi-byte separators behave as in CPython. Pinned by
 //! `fixtures/isoformat.json`.
 
-use chrono::{DateTime, Datelike, Duration, NaiveDate, Timelike, Utc, Weekday};
+use jiff::civil;
+
+use crate::utc::UtcDateTime;
 
 use super::{PyError, py_str_repr};
 
@@ -114,13 +116,22 @@ pub struct PyDateTime {
 }
 
 impl PyDateTime {
-    /// The naive UTC wall time of the fields (no offset applied).
-    fn naive(&self) -> chrono::NaiveDateTime {
-        NaiveDate::from_ymd_opt(self.year, self.month, self.day)
-            .and_then(|date| {
-                date.and_hms_micro_opt(self.hour, self.minute, self.second, self.microsecond)
-            })
-            .expect("PyDateTime fields are validated on construction")
+    /// The wall time of the fields on the UTC timeline (no offset applied).
+    fn naive(&self) -> UtcDateTime {
+        // Validated on construction: year 1..=9999, a day of its month, a
+        // time of day below 24:00 with at most 999999 microseconds. Every
+        // field fits the narrower integer types of jiff.
+        let field = |value: u32| value as i8;
+        UtcDateTime::from_ymd_hms_micro(
+            self.year as i16,
+            field(self.month),
+            field(self.day),
+            field(self.hour),
+            field(self.minute),
+            field(self.second),
+            self.microsecond as i32,
+        )
+        .expect("PyDateTime fields are validated on construction")
     }
 
     /// `influx._ensure_utc`: a naive datetime is taken as UTC
@@ -129,16 +140,14 @@ impl PyDateTime {
     /// # Errors
     /// `OverflowError: date value out of range` when the conversion leaves
     /// Python's year range 1..9999.
-    pub fn to_utc(&self) -> Result<DateTime<Utc>, PyError> {
-        let naive = self.naive();
-        let utc = match self.offset_us {
-            None => naive,
-            Some(offset) => naive - Duration::microseconds(offset),
-        };
-        if !(MIN_YEAR..=MAX_YEAR).contains(&utc.year()) {
+    pub fn to_utc(&self) -> Result<UtcDateTime, PyError> {
+        // The offset is below 24 hours, the wall time within years
+        // 1..=9999: no overflow.
+        let utc = self.naive().micros() - self.offset_us.unwrap_or(0);
+        if !(PY_DATETIME_MIN_MICROS..=PY_DATETIME_MAX_MICROS).contains(&utc) {
             return Err(date_out_of_range());
         }
-        Ok(utc.and_utc())
+        Ok(UtcDateTime::from_micros(utc))
     }
 }
 
@@ -185,17 +194,21 @@ fn format_offset(offset_us: i64) -> String {
 
 /// `datetime.isoformat()` of an aware UTC datetime
 /// (`YYYY-MM-DDTHH:MM:SS[.ffffff]+00:00`).
-pub fn py_isoformat_utc(dt: &DateTime<Utc>) -> String {
+///
+/// Python has no datetime outside years 1..=9999; an instant outside jiff's
+/// civil range (years -9999..=9999) renders as the nearest end of it.
+pub fn py_isoformat_utc(dt: &UtcDateTime) -> String {
+    let civil = dt.civil_saturating();
     let mut out = format!(
         "{:04}-{:02}-{:02}T{:02}:{:02}:{:02}",
-        dt.year(),
-        dt.month(),
-        dt.day(),
-        dt.hour(),
-        dt.minute(),
-        dt.second()
+        civil.year(),
+        civil.month(),
+        civil.day(),
+        civil.hour(),
+        civil.minute(),
+        civil.second()
     );
-    let micro = dt.timestamp_subsec_micros();
+    let micro = civil.subsec_nanosecond() / 1000;
     if micro != 0 {
         out.push_str(&format!(".{micro:06}"));
     }
@@ -287,26 +300,53 @@ fn find_separator(s: &CStr<'_>, len: usize) -> Option<usize> {
     Some(8)
 }
 
-/// `iso_to_ymd`; `Err` for an invalid ISO year, week or weekday.
-fn iso_to_ymd(iso_year: i64, iso_week: i64, iso_day: i64) -> Result<(i64, i64, i64), ()> {
+/// CPython's `iso_to_ymd` (`_datetimemodule.c`): the calendar date of an ISO
+/// week date; `None` for an invalid ISO year, week or weekday (its `-2`,
+/// `-3` and `-4`).
+///
+/// The date may lie in the neighbouring year, for ISO year 9999 in year
+/// 10000 (`9999-W52-6` is `10000-01-01`); the datetime constructor rejects
+/// that later, as in CPython. The neighbouring years are computed by hand
+/// because jiff's civil dates end with year 9999.
+pub fn py_iso_to_ymd(iso_year: i64, iso_week: i64, iso_day: i64) -> Option<(i64, i64, i64)> {
     if !(i64::from(MIN_YEAR)..=i64::from(MAX_YEAR)).contains(&iso_year) {
-        return Err(());
+        return None;
     }
-    let year = i32::try_from(iso_year).map_err(|_| ())?;
+    let first = civil::Date::new(i16::try_from(iso_year).ok()?, 1, 1).ok()?;
+    // Monday is 0, as in `weekday()`.
+    let first_weekday = i64::from(first.weekday().to_monday_zero_offset());
     if !(1..53).contains(&iso_week) {
-        let first = NaiveDate::from_ymd_opt(year, 1, 1).ok_or(())?.weekday();
-        let leap = NaiveDate::from_ymd_opt(year, 2, 29).is_some();
-        let long_year = first == Weekday::Thu || (first == Weekday::Wed && leap);
+        // 53 weeks in years starting on a Thursday and in leap years
+        // starting on a Wednesday.
+        let long_year = first_weekday == 3 || (first_weekday == 2 && first.in_leap_year());
         if iso_week != 53 || !long_year {
-            return Err(());
+            return None;
         }
     }
     if !(1..8).contains(&iso_day) {
-        return Err(());
+        return None;
     }
-    let monday = NaiveDate::from_isoywd_opt(year, 1, Weekday::Mon).ok_or(())?;
-    let date = monday + Duration::days((iso_week - 1) * 7 + iso_day - 1);
-    Ok((
+    // `iso_week1_monday`: the Monday on or before January 1st, the one after
+    // it when January 1st is a Friday, Saturday or Sunday. As a day offset
+    // from January 1st (-3..=3).
+    let week1_monday = if first_weekday > 3 {
+        7 - first_weekday
+    } else {
+        -first_weekday
+    };
+    // -3..=373 days from January 1st.
+    let offset = week1_monday + (iso_week - 1) * 7 + iso_day - 1;
+    let days_in_year = i64::from(first.days_in_year());
+    if offset < 0 {
+        return Some((iso_year - 1, 12, 32 + offset));
+    }
+    if offset >= days_in_year {
+        return Some((iso_year + 1, 1, offset - days_in_year + 1));
+    }
+    let date = first
+        .checked_add(jiff::SignedDuration::from_hours(24 * offset))
+        .ok()?;
+    Some((
         i64::from(date.year()),
         i64::from(date.month()),
         i64::from(date.day()),
@@ -346,9 +386,9 @@ fn parse_date(s: &CStr<'_>, len: Option<usize>) -> (i32, [i64; 3]) {
         } else {
             1
         };
-        return match iso_to_ymd(year, week, day) {
-            Ok((y, m, d)) => (0, [y, m, d]),
-            Err(()) => (-5, ymd),
+        return match py_iso_to_ymd(year, week, day) {
+            Some((y, m, d)) => (0, [y, m, d]),
+            None => (-5, ymd),
         };
     }
     let Some((after_month, month)) = s.digits(p, 2) else {

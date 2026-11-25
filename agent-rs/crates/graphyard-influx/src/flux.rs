@@ -3,11 +3,11 @@
 //! annotated CSV response (`FluxCsvParser` in table mode, then the sample
 //! loop of `_query_range_v2_flux`). PLAN.md 6.5.
 
-use chrono::{DateTime, Utc};
 use graphyard_core::pycompat::{
     PyDateTime, py_b64decode, py_bytes_repr, py_float, py_float_repr, py_fromisoformat, py_int,
     py_isoformat_utc, py_str_repr,
 };
+use graphyard_core::utc::UtcDateTime;
 use graphyard_core::{MetricSample, Tags};
 use indexmap::IndexMap;
 use num_bigint::BigInt;
@@ -30,7 +30,7 @@ fn record_access(key: &str) -> String {
 
 /// `influx._fmt_utc_query_ts`: `isoformat()` of the UTC time with `Z`
 /// (`influx.query_range` normalizes the bounds to UTC first).
-pub fn flux_timestamp(ts: &DateTime<Utc>) -> String {
+pub fn flux_timestamp(ts: &UtcDateTime) -> String {
     py_isoformat_utc(ts).replace("+00:00", "Z")
 }
 

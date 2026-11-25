@@ -14,10 +14,12 @@
 
 use std::collections::{HashMap, HashSet};
 
-use chrono::{DateTime, NaiveDateTime, TimeDelta, Utc};
+use std::time::Duration;
+
 use graphyard_core::model::{MetricPoint, SubjectType};
 use graphyard_core::normalize::normalize_metric_point;
 use graphyard_core::pycompat::PyError;
+use graphyard_core::utc::UtcDateTime;
 use indexmap::IndexMap;
 use rusqlite::types::{Type, Value};
 use rusqlite::{Connection, ErrorCode, Params, Transaction, TransactionBehavior, params_from_iter};
@@ -29,7 +31,7 @@ use crate::rows::bool_column;
 
 /// `REGISTRY_LAST_SEEN_UPDATE_INTERVAL`: a row whose `last_seen_at` is at
 /// least this old (or NULL) is refreshed.
-pub const REGISTRY_LAST_SEEN_UPDATE_INTERVAL: TimeDelta = TimeDelta::seconds(60);
+pub const REGISTRY_LAST_SEEN_UPDATE_INTERVAL: Duration = Duration::from_secs(60);
 
 /// `_RegistryBatch`: the distinct rows one batch names, in first-seen order.
 #[derive(Debug, Default)]
@@ -328,9 +330,10 @@ fn service_target_host<'a>(
 }
 
 /// `_last_seen_is_stale`.
-fn is_stale(value: Option<DbDateTime>, now: NaiveDateTime) -> bool {
+fn is_stale(value: Option<DbDateTime>, now: UtcDateTime) -> bool {
     value.is_none_or(|seen| {
-        now.signed_duration_since(seen.naive_utc()) >= REGISTRY_LAST_SEEN_UPDATE_INTERVAL
+        // The interval is a small constant: the cast is exact.
+        now.micros_since(seen.to_utc()) >= REGISTRY_LAST_SEEN_UPDATE_INTERVAL.as_micros() as i64
     })
 }
 
@@ -356,7 +359,7 @@ impl RegistryPlan {
 }
 
 /// `_plan_registry_updates` over the rows that exist.
-fn plan_updates(batch: &RegistryBatch, rows: &RegistryRows, now: NaiveDateTime) -> RegistryPlan {
+fn plan_updates(batch: &RegistryBatch, rows: &RegistryRows, now: UtcDateTime) -> RegistryPlan {
     let mut plan = RegistryPlan::default();
     for (key, source_system) in &batch.subjects {
         let Some(subject) = rows.subjects.get(key) else {
@@ -396,7 +399,7 @@ fn plan_updates(batch: &RegistryBatch, rows: &RegistryRows, now: NaiveDateTime) 
 }
 
 /// `_registry_needs_write`.
-fn needs_write(batch: &RegistryBatch, rows: &RegistryRows, now: NaiveDateTime) -> bool {
+fn needs_write(batch: &RegistryBatch, rows: &RegistryRows, now: UtcDateTime) -> bool {
     rows.subjects.len() < batch.subjects.len()
         || batch
             .host_ids
@@ -576,13 +579,12 @@ pub(crate) fn write_registry(
 ) -> Result<(), StoreError> {
     let now_text = now.to_db_text()?;
     let cutoff_text =
-        DbDateTime::from_naive_utc(now.naive_utc() - REGISTRY_LAST_SEEN_UPDATE_INTERVAL)
-            .to_db_text()?;
+        DbDateTime::from_utc(now.to_utc() - REGISTRY_LAST_SEEN_UPDATE_INTERVAL).to_db_text()?;
     let mut transaction = connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
     // Reload under the write lock so the plan sees committed concurrent work.
     let mut rows = load_rows(&transaction, batch)?;
     create_missing(&mut transaction, batch, &mut rows, now, &now_text)?;
-    let plan = plan_updates(batch, &rows, now.naive_utc());
+    let plan = plan_updates(batch, &rows, now.to_utc());
 
     update_seen(
         &transaction,
@@ -629,7 +631,7 @@ pub(crate) fn registry_needs_write(
     now: DbDateTime,
 ) -> Result<bool, StoreError> {
     let rows = load_rows(connection, batch)?;
-    Ok(needs_write(batch, &rows, now.naive_utc()))
+    Ok(needs_write(batch, &rows, now.to_utc()))
 }
 
 /// `touch_registry_from_points(points)` on a collected batch at `now`.
@@ -656,7 +658,7 @@ impl Store {
     pub async fn touch_registry(
         &self,
         points: Vec<MetricPoint>,
-        now: DateTime<Utc>,
+        now: UtcDateTime,
     ) -> Result<(), StoreError> {
         let batch = RegistryBatch::collect(&points).map_err(StoreError::Point)?;
         if batch.is_empty() {

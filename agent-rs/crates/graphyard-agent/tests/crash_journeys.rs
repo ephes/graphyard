@@ -7,13 +7,13 @@ use std::process::{Child, Command, Stdio};
 use std::sync::{Arc, mpsc};
 use std::time::Duration;
 
-use chrono::{DateTime, Utc};
 use graphyard_agent::collectors::AgentSink;
 use graphyard_agent::runs::{Clock, SpecExecutors, run_metric_specs};
 use graphyard_collect::executors::{
     ExecutorResult, MetricSink, RunState, SinkError, execute_http_json_metric,
 };
 use graphyard_collect::http::HttpContext;
+use graphyard_core::utc::UtcDateTime;
 use graphyard_core::{MetricPoint, SpecType};
 use graphyard_influx::InfluxWriter;
 use graphyard_store::Store;
@@ -24,8 +24,8 @@ use common::{FakeServer, TestDb, insert_spec, settings};
 const START: i64 = 1_800_000_000;
 struct Fixed(i64);
 impl Clock for Fixed {
-    fn now(&self) -> DateTime<Utc> {
-        DateTime::from_timestamp(self.0, 0).unwrap()
+    fn now(&self) -> UtcDateTime {
+        UtcDateTime::from_seconds(self.0)
     }
 }
 
@@ -44,7 +44,7 @@ struct GatedSink {
     phase: String,
 }
 impl MetricSink for GatedSink {
-    fn now(&self) -> DateTime<Utc> {
+    fn now(&self) -> UtcDateTime {
         Fixed(START).now()
     }
 

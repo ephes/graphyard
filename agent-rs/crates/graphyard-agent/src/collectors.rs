@@ -7,7 +7,7 @@
 
 use std::sync::Arc;
 
-use chrono::{DateTime, Utc};
+use graphyard_core::utc::UtcDateTime;
 use serde_json::Value;
 
 use graphyard_collect::executors::{
@@ -85,7 +85,7 @@ impl ConditionSamples for InfluxSamples {
     async fn query_condition_window(
         &self,
         condition: &ConditionQuery<'_>,
-        now: DateTime<Utc>,
+        now: UtcDateTime,
     ) -> Result<Vec<MetricSample>, QueryError> {
         self.0.query_condition_window(condition, now).await
     }

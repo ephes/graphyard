@@ -4,11 +4,11 @@
 
 mod common;
 
-use chrono::{DateTime, Utc};
 use common::{
     FakeInflux, assert_requests, assert_result, capture_logs, client_for, e2e_range, expected_logs,
     list, load, take_logs, text,
 };
+use graphyard_core::utc::UtcDateTime;
 use graphyard_influx::QueryRange;
 use graphyard_influx::sql::sql_query;
 use serde_json::Value;
@@ -17,10 +17,8 @@ fn fixture() -> Value {
     load(include_str!("../../../fixtures/sql_v3.json"))
 }
 
-fn time(text: &str) -> DateTime<Utc> {
-    DateTime::parse_from_rfc3339(text)
-        .expect("fixture time")
-        .to_utc()
+fn time(text: &str) -> UtcDateTime {
+    UtcDateTime::parse_rfc3339(text).expect("fixture time")
 }
 
 #[test]

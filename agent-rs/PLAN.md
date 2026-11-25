@@ -727,7 +727,7 @@ keep every fixture-tested function in `graphyard-core`.
 | Python integers | `num-bigint` (+ `num-traits`) | exact `int` of any size where Python keeps one: `py_int` and the integer settings (3.3), `int == float` in `py_eq`; same crate as nyxmon's `pyjson` |
 | regex | `fancy-regex` | user regexes from spec configs need lookaround/backreference support like Python `re` (D-5) |
 | fixed regexes | `regex` | Django's `datetime_re` fallback when reading stored datetimes (5.3); `fancy-regex` builds on it |
-| time | `chrono` | Django datetime text, ISO parsing of HA `last_updated`, RFC 3339 of Flux |
+| time | `jiff` (`std` only, no tz database) | clock and calendar under `graphyard_core::utc::UtcDateTime` (microseconds since the epoch, Python's whole `datetime` range): Django datetime text, ISO parsing of HA `last_updated`, RFC 3339 of Flux |
 | CLI | `clap` (derive) | |
 | logging | `log` + bounded standard-library stdout/stderr workers | matches the production format; no `tracing` stack needed |
 | tests | `tempfile`, `tokio-test`, `rcgen` + `time` (TLS fake servers with a CA and a short-lived server certificate); the collectors' fake servers write raw HTTP/1.1 over tokio sockets to drip headers and bodies byte by byte | |

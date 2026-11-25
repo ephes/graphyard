@@ -180,7 +180,9 @@ fn validate_with(
         let text = std::str::from_utf8(&header).map_err(|_| incomplete(complete))?;
         let fields: Vec<_> = text.split_whitespace().collect();
         if !(4..=5).contains(&fields.len())
-            || fields[2].parse::<chrono::DateTime<chrono::Utc>>().is_err()
+            || fields[2]
+                .parse::<graphyard_core::utc::UtcDateTime>()
+                .is_err()
         {
             return Err(incomplete(complete));
         }
