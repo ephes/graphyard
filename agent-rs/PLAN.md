@@ -361,8 +361,10 @@ that differs is a bug.
   Unique prefixes of long flags are matched among all flags, the Rust-only
   ones included, so `--c` is ambiguous in Rust (`--condition-interval`,
   `--check-schema`) where argparse expands it. A collector schedule beyond
-  SQLite’s INTEGER range fails only its spec. A collector store error after a
-  committed completion or a schedule overflow can publish a partial heartbeat
+  SQLite’s INTEGER range fails only its spec. In a Rust due sweep, a stored
+  row conversion failure counts as a failed spec with an ID-only diagnostic
+  and leaves its schedule untouched. Python's bulk load can fail the sweep. A
+  collector store error after a counted outcome can publish a partial heartbeat
   (section 3.4). Rust collector claims, renewals and completions also compare
   the exact stored `updated_at` text, so a definition edited and reverted
   during an attempt rejects that attempt; Python compares only the captured

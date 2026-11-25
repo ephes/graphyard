@@ -349,6 +349,11 @@ messages in spec order (critical outcomes and warnings with a message). A fixed
 already emitted during collection cannot be recalled. Python and Rust share
 claim/recovery/completion fixtures and run only synthetic collectors in tests.
 
+When a due row has unreadable stored metadata, Rust counts it as failed and
+continues with later collectors. The log and up to five heartbeat error samples
+identify the row by ID without exposing the stored value. The row stays due so
+an operator can repair it. SQLite query failures still fail the run.
+
 A claim, renewal or completion store error stops later specs in the batch.
 After a committed completion or a schedule overflow, the agent tries to write
 a degraded `metric_collectors` heartbeat with `partial: 1` in its details. The

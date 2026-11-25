@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Keep Rust due sweeps running when a collector row has unreadable stored
+  metadata. Report the row ID in diagnostics and leave it due for repair.
+
 - Fence Rust collector claims, renewals and local results by the definition's
   update timestamp, including after edits that restore the previous settings.
 

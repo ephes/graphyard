@@ -85,6 +85,33 @@ async fn collector_failure_is_private_in_rows_heartbeat_and_logs() {
     store.close();
 }
 
+#[tokio::test]
+async fn due_collectors_isolate_a_malformed_stored_timestamp() {
+    let db = TestDb::new();
+    for name in ["a corrupt", "b good"] {
+        common::insert_spec(&db, name, "http_json_metric", &serde_json::json!({}));
+    }
+    db.execute(
+        "UPDATE metric_collection_spec SET last_run_at = '2026-02-30 03:04:05' \
+         WHERE name = 'a corrupt'",
+    );
+
+    let store = Store::open(db.path(), &settings(&[])).unwrap();
+    let result = run_metric_specs(&store, &Faults, &SystemClock, true)
+        .await
+        .unwrap();
+    assert_eq!((result.total, result.failed), (2, 1));
+    assert_eq!(
+        db.text("metric_collection_spec", "b good", "last_status"),
+        "ok"
+    );
+    assert_eq!(
+        db.text("pipeline_heartbeat", "metric_collectors", "last_error"),
+        "spec_id=1: invalid stored collector metadata"
+    );
+    store.close();
+}
+
 struct Samples {
     fail: bool,
 }

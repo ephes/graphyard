@@ -90,6 +90,27 @@ fn decode_spec(row: &rusqlite::Row<'_>) -> Result<SpecRow, StoreError> {
     Ok(spec)
 }
 
+/// A due row that cannot be decoded. Report only the key, never stored values.
+#[derive(Debug)]
+pub struct InvalidSpecRow {
+    pub id: i64,
+}
+
+fn decode_due_spec(row: &rusqlite::Row<'_>) -> Result<Result<SpecRow, InvalidSpecRow>, StoreError> {
+    match decode_spec(row) {
+        Ok(spec) => Ok(Ok(spec)),
+        Err(
+            StoreError::DateTime(_)
+            | StoreError::Sqlite(
+                rusqlite::Error::InvalidColumnType(..)
+                | rusqlite::Error::FromSqlConversionFailure(..)
+                | rusqlite::Error::IntegralValueOutOfRange(..),
+            ),
+        ) => Ok(Err(InvalidSpecRow { id: row.get(0)? })),
+        Err(error) => Err(error),
+    }
+}
+
 const SELECT_SPECS: &str = "SELECT id, name, CAST(enabled AS TEXT), spec_type, interval_seconds, \
      next_run_time, config, CAST(last_run_at AS TEXT), last_status, last_error, \
      CAST(created_at AS TEXT), CAST(updated_at AS TEXT) FROM metric_collection_spec";
@@ -257,6 +278,25 @@ impl Store {
     pub async fn load_specs(&self, due_before: Option<i64>) -> Result<Vec<SpecRow>, StoreError> {
         self.call(move |connection| load_specs(connection, due_before))
             .await
+    }
+
+    /// Read due specs in name order, preserving row conversion failures separately.
+    ///
+    /// # Errors
+    /// Query preparation and iteration errors.
+    pub async fn load_due_specs(
+        &self,
+        due_before: i64,
+    ) -> Result<Vec<Result<SpecRow, InvalidSpecRow>>, StoreError> {
+        self.call(move |connection| {
+            let mut statement = connection.prepare(&format!(
+                "{SELECT_SPECS} WHERE enabled AND next_run_time <= ? ORDER BY name ASC"
+            ))?;
+            statement
+                .query_and_then([due_before], decode_due_spec)?
+                .collect()
+        })
+        .await
     }
 
     /// Write one spec's run result.

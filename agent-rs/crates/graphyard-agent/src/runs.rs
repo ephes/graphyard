@@ -205,13 +205,15 @@ pub(crate) async fn run_metric_specs_until_shutdown<E: SpecExecutors, C: Clock>(
     let mut state = RunState::new();
     let now = clock.now();
     let now_ts = now.timestamp();
-    let specs = store.load_specs(due_only.then_some(now_ts)).await?;
-    if specs.is_empty() {
-        if due_only {
-            return Ok(MetricCollectionSpecRun::default());
+    let specs = if due_only {
+        store.load_due_specs(now_ts).await?
+    } else {
+        let specs = store.load_specs(None).await?;
+        if specs.is_empty() {
+            return Err(RunError::NoMatchingSpecs);
         }
-        return Err(RunError::NoMatchingSpecs);
-    }
+        specs.into_iter().map(Ok).collect()
+    };
 
     let mut run = MetricCollectionSpecRun::default();
     let mut errors: Vec<String> = Vec::new();
@@ -222,6 +224,21 @@ pub(crate) async fn run_metric_specs_until_shutdown<E: SpecExecutors, C: Clock>(
             interrupted = true;
             break;
         }
+        let spec = match spec {
+            Ok(spec) => spec,
+            Err(row) => {
+                log::error!("Invalid stored collector metadata spec_id={}", row.id);
+                run.total += 1;
+                run.failed += 1;
+                if errors.len() < MAX_HEARTBEAT_ERRORS {
+                    errors.push(format!(
+                        "spec_id={}: invalid stored collector metadata",
+                        row.id
+                    ));
+                }
+                continue;
+            }
+        };
         let run_at = if due_only { clock.now() } else { now };
         let outcome = match run_metric_spec(
             store, executors, clock, &mut state, spec, run_at, due_only,
