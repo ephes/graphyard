@@ -427,9 +427,10 @@ _FLUX_MAX_CELLS = 500_000
 
 def _admit_flux_csv(body: bytes) -> None:
     """Check expanded defaults before the library materializes retained tables."""
-    columns: list[str] = []
+    column_count = 0
     defaults: list[str] = []
-    labels: list[str] = []
+    label_costs: list[int] = []
+    default_sizes: list[int] = []
     new_table = False
     expanded = records = cells = 0
     for row in csv.reader(StringIO(body.decode("utf-8"))):
@@ -438,10 +439,11 @@ def _admit_flux_csv(body: bytes) -> None:
         token = row[0]
         if token in {"#datatype", "#group", "#default"}:
             if not new_table:
-                columns, defaults, labels = [], [], []
+                column_count = 0
+                defaults = []
                 new_table = True
             if token == "#datatype":
-                columns.extend(row[1:])
+                column_count += len(row) - 1
             elif token == "#default":
                 defaults = row[1:]
             continue
@@ -451,17 +453,24 @@ def _admit_flux_csv(body: bytes) -> None:
             if duplicates:
                 logger.warning("InfluxDB Flux duplicate_columns count=%d", duplicates)
                 raise InfluxConfigurationError("InfluxDB Flux duplicate column labels")
+            label_costs = [
+                64 + len(label.encode("utf-8")) for label in labels[:column_count]
+            ]
+            default_sizes = [
+                len(value.encode("utf-8")) for value in defaults[:column_count]
+            ]
             new_table = False
             continue
         records += 1
         if records > _FLUX_MAX_RECORDS:
             raise InfluxTransferError("InfluxDB Flux response exceeded record limit")
-        for i in range(len(columns)):
-            text = row[i + 1] if i + 1 < len(row) else ""
-            if not text:
-                text = defaults[i] if i < len(defaults) else ""
-            label = labels[i] if i < len(labels) else "None"
-            expanded += len(text.encode("utf-8")) + len(label.encode("utf-8")) + 64
+        for i in range(column_count):
+            value = row[i + 1] if i + 1 < len(row) else ""
+            expanded += label_costs[i] if i < len(label_costs) else 64 + len("None")
+            if value:
+                expanded += len(value.encode("utf-8"))
+            elif i < len(default_sizes):
+                expanded += default_sizes[i]
             cells += 1
             if expanded > _FLUX_MAX_EXPANDED_BYTES or cells > _FLUX_MAX_CELLS:
                 raise InfluxTransferError(
@@ -536,8 +545,8 @@ def _sql_identifier(name: str) -> str:
     return f'"{name}"'
 
 
-def _fmt_flux_ts(ts: datetime) -> str:
-    return _ensure_utc(ts).isoformat().replace("+00:00", "Z")
+def _fmt_utc_query_ts(ts: datetime) -> str:
+    return ts.isoformat().replace("+00:00", "Z")
 
 
 def write_points(points: list[MetricPoint]) -> int:
@@ -627,6 +636,15 @@ def query_range(
     subject_id: str | None = None,
     tags: dict[str, str] | None = None,
 ) -> list[MetricSample]:
+    try:
+        start, stop = _ensure_utc(start), _ensure_utc(stop)
+    except (ValueError, OverflowError):
+        raise InfluxConfigurationError("Invalid InfluxDB query window") from None
+    if start >= stop:
+        raise InfluxConfigurationError(
+            "Invalid InfluxDB query window: start must precede stop"
+        )
+
     mode = settings.INFLUX_API_MODE
     if mode == "v3":
         return _query_range_v3_sql(
@@ -690,25 +708,21 @@ def _validate_query_selection(
     subject_id: str | None,
     tags: dict[str, str] | None,
 ) -> list[MetricSample]:
-    filters = {
+    dimensions_requested = {
         "host": host,
         "service": service,
         "subject_type": subject_type,
         "subject_id": subject_id,
     }
+    filters = [(key, value) for key, value in dimensions_requested.items() if value]
+    filters.extend((str(key), str(value)) for key, value in (tags or {}).items())
     for sample in samples:
         dimensions = {name: getattr(sample, name) for name in _RESERVED_TAG_KEYS}
         dimensions.update(sample.tags)
         if (
             sample.metric != metric_name
-            or not (_ensure_utc(start) <= sample.ts < _ensure_utc(stop))
-            or any(
-                value and dimensions.get(key) != value for key, value in filters.items()
-            )
-            or any(
-                dimensions.get(str(key)) != str(value)
-                for key, value in (tags or {}).items()
-            )
+            or not (start <= sample.ts < stop)
+            or any(dimensions.get(key) != value for key, value in filters)
         ):
             raise InfluxConfigurationError(
                 "InfluxDB query result does not match selection"
@@ -733,6 +747,7 @@ def _query_range_v2_flux(
     subject_id: str | None = None,
     tags: dict[str, str] | None = None,
 ) -> list[MetricSample]:
+    """Query Flux with the UTC bounds prepared by query_range."""
     clauses = [
         f'r._measurement == "{_flux_escape(settings.INFLUX_MEASUREMENT)}"',
         'r._field == "value"',
@@ -759,7 +774,7 @@ def _query_range_v2_flux(
     filter_clause = " and ".join(clauses)
     flux = (
         f'from(bucket: "{_flux_escape(settings.INFLUX_BUCKET)}")\n'
-        f"  |> range(start: {_fmt_flux_ts(start)}, stop: {_fmt_flux_ts(stop)})\n"
+        f"  |> range(start: {_fmt_utc_query_ts(start)}, stop: {_fmt_utc_query_ts(stop)})\n"
         f"  |> filter(fn: (r) => {filter_clause})\n"
         '  |> sort(columns: ["_time"], desc: false)'
     )
@@ -965,9 +980,10 @@ def _query_range_v3_sql(
     subject_id: str | None = None,
     tags: dict[str, str] | None = None,
 ) -> list[MetricSample]:
+    """Query SQL with the UTC bounds prepared by query_range."""
     where_clauses = [
-        f"time >= '{_sql_escape(_fmt_flux_ts(start))}'",
-        f"time < '{_sql_escape(_fmt_flux_ts(stop))}'",
+        f"time >= '{_sql_escape(_fmt_utc_query_ts(start))}'",
+        f"time < '{_sql_escape(_fmt_utc_query_ts(stop))}'",
         f"metric = '{_sql_escape(metric_name)}'",
     ]
     if host:

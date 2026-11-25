@@ -1,6 +1,7 @@
 """Synthetic transport regressions through the public query/write callers."""
 
 import asyncio
+from collections import Counter
 from datetime import UTC, datetime, timedelta
 import gzip
 import json
@@ -290,6 +291,42 @@ def test_r102_flux_default_expansion_refused(monkeypatch):
     install(monkeypatch, Stream([body]))
     with pytest.raises(influx.InfluxTransferError, match="expanded cell"):
         call(False)
+
+
+@pytest.mark.parametrize("over_budget", [False, True])
+def test_flux_admission_measures_labels_and_defaults_once_per_table(
+    monkeypatch, over_budget
+):
+    measurements = Counter()
+    reader = influx.csv.reader
+
+    class MeasuredText(str):
+        def encode(self, *args, **kwargs):
+            measurements[self] += 1
+            return super().encode(*args, **kwargs)
+
+    def measured_reader(source):
+        for row in reader(source):
+            yield [MeasuredText(value) for value in row]
+
+    monkeypatch.setattr(influx.csv, "reader", measured_reader)
+    repeated_rows = 128
+    body = (
+        "#datatype,string,string\n#default,é,猫\n,clé,値\n"
+        + ",,\n" * repeated_rows
+        + "#datatype,string,string\n#default,é,é\n,clé,値\n,😀,\n"
+    ).encode()
+    # Two cells per row, four-byte and three-byte labels. The second table
+    # overrides one default with a four-byte value and uses a two-byte default.
+    limit = repeated_rows * (128 + 4 + 3 + 2 + 3) + (128 + 4 + 3 + 4 + 2)
+    monkeypatch.setattr(influx, "_FLUX_MAX_EXPANDED_BYTES", limit - int(over_budget))
+    if over_budget:
+        with pytest.raises(influx.InfluxTransferError, match="expanded cell"):
+            influx._admit_flux_csv(body)
+    else:
+        influx._admit_flux_csv(body)
+
+    assert measurements == {"clé": 2, "値": 2, "é": 3, "猫": 1, "😀": 1}
 
 
 def test_r102_successful_binary_write(monkeypatch):

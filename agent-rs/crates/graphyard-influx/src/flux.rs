@@ -28,7 +28,8 @@ fn record_access(key: &str) -> String {
     format!("r[\"{}\"]", flux_escape(key))
 }
 
-/// `influx._fmt_flux_ts`: `isoformat()` of the UTC time with `Z`.
+/// `influx._fmt_utc_query_ts`: `isoformat()` of the UTC time with `Z`
+/// (`influx.query_range` normalizes the bounds to UTC first).
 pub fn flux_timestamp(ts: &DateTime<Utc>) -> String {
     py_isoformat_utc(ts).replace("+00:00", "Z")
 }
