@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Measure Flux column labels and defaults once per table when checking expanded
+  result limits.
+
 - Credit synced Rust shadow appends at their calculated end, avoiding a
   post-sync metadata failure for a batch already on disk.
 

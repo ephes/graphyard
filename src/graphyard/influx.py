@@ -427,9 +427,10 @@ _FLUX_MAX_CELLS = 500_000
 
 def _admit_flux_csv(body: bytes) -> None:
     """Check expanded defaults before the library materializes retained tables."""
-    columns: list[str] = []
+    column_count = 0
     defaults: list[str] = []
-    labels: list[str] = []
+    label_costs: list[int] = []
+    default_sizes: list[int] = []
     new_table = False
     expanded = records = cells = 0
     for row in csv.reader(StringIO(body.decode("utf-8"))):
@@ -438,10 +439,11 @@ def _admit_flux_csv(body: bytes) -> None:
         token = row[0]
         if token in {"#datatype", "#group", "#default"}:
             if not new_table:
-                columns, defaults, labels = [], [], []
+                column_count = 0
+                defaults = []
                 new_table = True
             if token == "#datatype":
-                columns.extend(row[1:])
+                column_count += len(row) - 1
             elif token == "#default":
                 defaults = row[1:]
             continue
@@ -451,17 +453,24 @@ def _admit_flux_csv(body: bytes) -> None:
             if duplicates:
                 logger.warning("InfluxDB Flux duplicate_columns count=%d", duplicates)
                 raise InfluxConfigurationError("InfluxDB Flux duplicate column labels")
+            label_costs = [
+                64 + len(label.encode("utf-8")) for label in labels[:column_count]
+            ]
+            default_sizes = [
+                len(value.encode("utf-8")) for value in defaults[:column_count]
+            ]
             new_table = False
             continue
         records += 1
         if records > _FLUX_MAX_RECORDS:
             raise InfluxTransferError("InfluxDB Flux response exceeded record limit")
-        for i in range(len(columns)):
-            text = row[i + 1] if i + 1 < len(row) else ""
-            if not text:
-                text = defaults[i] if i < len(defaults) else ""
-            label = labels[i] if i < len(labels) else "None"
-            expanded += len(text.encode("utf-8")) + len(label.encode("utf-8")) + 64
+        for i in range(column_count):
+            value = row[i + 1] if i + 1 < len(row) else ""
+            expanded += label_costs[i] if i < len(label_costs) else 64 + len("None")
+            if value:
+                expanded += len(value.encode("utf-8"))
+            elif i < len(default_sizes):
+                expanded += default_sizes[i]
             cells += 1
             if expanded > _FLUX_MAX_EXPANDED_BYTES or cells > _FLUX_MAX_CELLS:
                 raise InfluxTransferError(

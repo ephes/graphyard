@@ -271,3 +271,9 @@ continues to report a failed query safely and preserves the last known value.
 Python uses httpx streaming with the Influx library's annotated CSV parser and
 point serializer; Rust uses reqwest streaming. Both retain existing request
 payloads and authentication. HTTP request log lines now include v2 transfers.
+
+Before parsing Flux tables, Python caps the expanded result at 100,000 records,
+500,000 cells and 16 MiB. Each cell counts 64 bytes plus the UTF-8 size of its
+label and value, including a default substituted for an empty or missing value.
+The admission check measures column labels and defaults once per table and
+charges their bytes for every applicable cell.
