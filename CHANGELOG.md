@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Cancel in-progress public release reads at the remaining source or refresh
+  deadline, allowing later lookups while refresh time remains.
+
 - Normalize Python Influx query bounds once and reject empty or reversed windows
   before contacting the backend. Prepare dimension filters once per result scan.
 

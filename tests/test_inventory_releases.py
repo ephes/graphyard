@@ -1,5 +1,8 @@
+import asyncio
 import fcntl
 import json
+from contextlib import contextmanager
+from functools import partial
 from datetime import timedelta
 from unittest.mock import Mock
 from uuid import uuid4
@@ -23,6 +26,16 @@ from graphyard.models import (
 )
 
 pytestmark = pytest.mark.django_db
+
+
+@contextmanager
+def release_lookup(**kwargs):
+    with asyncio.Runner() as runner:
+        client = httpx.AsyncClient(**kwargs)
+        try:
+            yield partial(releases.fetch, client, runner=runner)
+        finally:
+            runner.run(client.aclose())
 
 
 def definition(kind="pypi", project="django", target="python"):
@@ -100,10 +113,10 @@ def test_fetch_reads_only_constructed_public_source(kind, project, payload, expe
         return httpx.Response(200, json=payload)
 
     item = definition(kind, project)
-    with httpx.Client(
+    with release_lookup(
         transport=httpx.MockTransport(handler), follow_redirects=False
-    ) as client:
-        assert releases.fetch(client, item) == expected
+    ) as lookup:
+        assert lookup(item) == expected
     assert str(seen[0].url) == releases.url(item)
 
 
@@ -113,13 +126,13 @@ def test_pypi_requires_textual_name_for_numeric_project():
         "info": {"name": "123", "version": "6.0", "yanked": False},
         "urls": [{"yanked": False}],
     }
-    with httpx.Client(
+    with release_lookup(
         transport=httpx.MockTransport(lambda request: httpx.Response(200, json=payload))
-    ) as client:
-        assert releases.fetch(client, item) == "6.0"
+    ) as lookup:
+        assert lookup(item) == "6.0"
         payload["info"]["name"] = 123
         with pytest.raises(ValueError, match="PyPI project mismatch"):
-            releases.fetch(client, item)
+            lookup(item)
 
 
 @pytest.mark.parametrize(
@@ -153,16 +166,16 @@ def test_fetch_failures_do_not_create_release_success(change, monkeypatch):
     if change == "oversize":
         monkeypatch.setattr(releases, "MAX_BODY", 8)
     status = 302 if change == "redirect" else 429 if change == "rate_limit" else 200
-    with httpx.Client(
+    with release_lookup(
         transport=httpx.MockTransport(
             lambda r: httpx.Response(
                 status, json=payload, headers={"Location": "http://localhost"}
             )
         ),
         follow_redirects=False,
-    ) as client:
+    ) as lookup:
         with pytest.raises((ValueError, httpx.HTTPError)):
-            releases.fetch(client, definition())
+            lookup(definition())
 
 
 def test_cache_failure_preserves_success_time_and_retry_is_not_skipped(monkeypatch):
@@ -396,7 +409,7 @@ def test_view_uses_snapshot_metadata_without_network_and_exposes_unknown(
     )
     row = cache()
     monkeypatch.setattr(
-        httpx.Client,
+        httpx.AsyncClient,
         "send",
         Mock(side_effect=AssertionError("Request view must not fetch")),
     )
@@ -707,7 +720,7 @@ def test_monitor_status_reports_cached_release_failures_without_fetch(
     def no_fetch(*args, **kwargs):
         raise AssertionError("monitoring must not contact release sources")
 
-    monkeypatch.setattr(httpx, "Client", no_fetch)
+    monkeypatch.setattr(httpx, "AsyncClient", no_fetch)
     response = client.get(
         reverse("graphyard:inventory_status"),
         HTTP_AUTHORIZATION="Bearer synthetic-monitor",
@@ -785,14 +798,14 @@ def test_slow_stream_exhausts_budget_preserves_success_and_continues(monkeypatch
     monkeypatch.setattr(releases, "monotonic", lambda: clock[0], raising=False)
     closed = []
 
-    class SlowStream(httpx.SyncByteStream):
-        def __iter__(self):
+    class SlowStream(httpx.AsyncByteStream):
+        async def __aiter__(self):
             for _ in range(10):
                 clock[0] += 19
                 yield b" "
             yield b'{"info":{"name":"django","version":"6.1","yanked":false},"urls":[{"yanked":false}]}'
 
-        def close(self):
+        async def aclose(self):
             closed.append(True)
 
     def handler(request):
@@ -806,10 +819,10 @@ def test_slow_stream_exhausts_budget_preserves_success_and_continues(monkeypatch
             },
         )
 
-    factory = httpx.Client
+    factory = httpx.AsyncClient
     monkeypatch.setattr(
         releases.httpx,
-        "Client",
+        "AsyncClient",
         lambda **kw: factory(transport=httpx.MockTransport(handler), **kw),
     )
     assert (
@@ -824,6 +837,52 @@ def test_slow_stream_exhausts_budget_preserves_success_and_continues(monkeypatch
     assert InventoryRelease.objects.get(pk="pypi:flask").version == "3.1"
     assert closed == [True]
     assert clock[0] == 76
+
+
+def test_stalled_body_read_stops_at_source_deadline_and_next_source_publishes(
+    monkeypatch,
+):
+    events = []
+    monkeypatch.setattr(releases, "FETCH_BUDGET_SECONDS", 0.2)
+
+    class StalledStream(httpx.AsyncByteStream):
+        async def __aiter__(self):
+            await asyncio.sleep(0.12)
+            yield b" "
+            events.append("stall started")
+            await asyncio.sleep(0.4)
+            events.append("stall finished")
+            yield b" "
+
+        async def aclose(self):
+            events.append("body closed")
+
+    def handler(request):
+        if request.url.path == "/pypi/django/json":
+            return httpx.Response(200, stream=StalledStream())
+        events.append("next source")
+        return httpx.Response(
+            200,
+            json={
+                "info": {"name": "flask", "version": "3.1", "yanked": False},
+                "urls": [{"yanked": False}],
+            },
+        )
+
+    factory = httpx.AsyncClient
+    monkeypatch.setattr(
+        httpx,
+        "AsyncClient",
+        lambda **kw: factory(transport=httpx.MockTransport(handler), **kw),
+    )
+
+    result = releases.refresh([definition(), definition(project="flask")])
+    assert result == releases.RefreshResult(failures=1)
+    assert (
+        InventoryRelease.objects.get(pk="pypi:django").error == "Release lookup failed"
+    )
+    assert InventoryRelease.objects.get(pk="pypi:flask").version == "3.1"
+    assert events == ["stall started", "body closed", "next source"]
 
 
 @pytest.mark.parametrize(
@@ -858,12 +917,12 @@ def test_delayed_policy_cannot_replace_newer_registry(monkeypatch, replacement):
 VALID_PYPI = b'{"info":{"name":"django","version":"6.1","yanked":false},"urls":[{"yanked":false}]}'
 
 
-class RecordingStream(httpx.SyncByteStream):
+class RecordingStream(httpx.AsyncByteStream):
     def __init__(self, *chunks):
         self.chunks = chunks
         self.read = []
 
-    def __iter__(self):
+    async def __aiter__(self):
         for chunk in self.chunks:
             self.read.append(chunk)
             yield chunk
@@ -876,11 +935,11 @@ def fetch_with(response_factory):
         seen.append(request)
         return response_factory()
 
-    with httpx.Client(
+    with release_lookup(
         transport=httpx.MockTransport(handler), follow_redirects=False
-    ) as client:
+    ) as lookup:
         try:
-            return releases.fetch(client, definition()), seen
+            return lookup(definition()), seen
         except ValueError as exc:
             return exc, seen
 
@@ -973,10 +1032,10 @@ def test_partial_release_response_preserves_cache_before_read(
     def handler(request):
         return httpx.Response(status, stream=stream, headers=headers)
 
-    factory = httpx.Client
+    factory = httpx.AsyncClient
     monkeypatch.setattr(
         releases.httpx,
-        "Client",
+        "AsyncClient",
         lambda **kw: factory(transport=httpx.MockTransport(handler), **kw),
     )
 
@@ -1002,10 +1061,10 @@ def test_release_length_mismatch_preserves_cache(monkeypatch, length_delta):
             headers={"Content-Length": str(len(VALID_PYPI) + length_delta)},
         )
 
-    factory = httpx.Client
+    factory = httpx.AsyncClient
     monkeypatch.setattr(
         releases.httpx,
-        "Client",
+        "AsyncClient",
         lambda **kw: factory(transport=httpx.MockTransport(handler), **kw),
     )
 
@@ -1033,10 +1092,10 @@ def test_malformed_release_source_is_isolated_from_other_sources(monkeypatch):
             },
         )
 
-    factory = httpx.Client
+    factory = httpx.AsyncClient
     monkeypatch.setattr(
         releases.httpx,
-        "Client",
+        "AsyncClient",
         lambda **kw: factory(transport=httpx.MockTransport(handler), **kw),
     )
     assert (
@@ -1263,12 +1322,12 @@ def test_whole_refresh_budget_bounds_200_sources_and_preserves_unattempted(monke
     closed = []
     monkeypatch.setattr(releases, "monotonic", lambda: clock[0])
 
-    class Stream(httpx.SyncByteStream):
+    class Stream(httpx.AsyncByteStream):
         def __init__(self, project, allowance):
             self.project = project
             self.allowance = allowance
 
-        def __iter__(self):
+        async def __aiter__(self):
             # A source stays inside its own 60-second allowance, then another
             # read consumes the remaining whole-run time on the final source.
             for _ in range(5):
@@ -1282,7 +1341,7 @@ def test_whole_refresh_budget_bounds_200_sources_and_preserves_unattempted(monke
                 }
             ).encode()
 
-        def close(self):
+        async def aclose(self):
             closed.append(self.project)
 
     def handler(request):
@@ -1292,10 +1351,10 @@ def test_whole_refresh_budget_bounds_200_sources_and_preserves_unattempted(monke
             200, stream=Stream(project, request.extensions["timeout"]["read"])
         )
 
-    factory = httpx.Client
+    factory = httpx.AsyncClient
     monkeypatch.setattr(
         releases.httpx,
-        "Client",
+        "AsyncClient",
         lambda **kw: factory(transport=httpx.MockTransport(handler), **kw),
     )
     result = releases.refresh(payload, force=True)
@@ -1330,7 +1389,7 @@ def test_release_refresh_rechecks_budget_after_publication_fence(monkeypatch, ex
     monkeypatch.setattr(releases, "monotonic", lambda: clock[0])
     budget = releases.REFRESH_BUDGET_SECONDS
 
-    def lookup(client, item, *, deadline):
+    def lookup(client, item, *, runner, deadline):
         clock[0] = budget - 1
         return "2.0"
 
@@ -1507,9 +1566,9 @@ def test_fetch_uses_remaining_refresh_budget(monkeypatch):
         clock[0] = 7.0
         return httpx.Response(200, stream=stream)
 
-    with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+    with release_lookup(transport=httpx.MockTransport(handler)) as lookup:
         with pytest.raises(ValueError, match="budget"):
-            releases.fetch(client, definition(), deadline=7.0)
+            lookup(definition(), deadline=7.0)
     assert all(value <= 7 for value in seen[0].values())
 
 
@@ -1673,10 +1732,10 @@ def test_invalid_release_json_preserves_cache_and_isolates_source(
             },
         )
 
-    factory = httpx.Client
+    factory = httpx.AsyncClient
     monkeypatch.setattr(
         releases.httpx,
-        "Client",
+        "AsyncClient",
         lambda **kw: factory(transport=httpx.MockTransport(handler), **kw),
     )
     result = releases.refresh([item, sibling], force=True)

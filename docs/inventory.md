@@ -486,11 +486,11 @@ sources are still checked while time remains.
 Each source has a 60-second monotonic elapsed budget. The whole refresh has a
 300-second monotonic budget from entry, including registry replacement. The
 command checks the remaining budget before each lookup and caps that source's
-deadline and HTTP operation timeout to the remaining run allowance. Deadline
-checks run before requests, after headers, each streamed chunk and JSON parsing.
-The normal HTTP operation timeout is 20 seconds; cooperative budget detection
-can lag until an in-progress operation returns, and database work/cleanup is not
-forcibly interrupted. This is an elapsed admission budget, not process termination.
+deadline and HTTP operation timeout to the remaining run allowance. The
+request deadline cancels an in-progress body read when the elapsed budget runs
+out and closes the response. The normal HTTP operation timeout is 20 seconds.
+Elapsed checks also cover response validation and JSON parsing. Database work and
+cleanup run to completion.
 A source that exhausts its allowance records a bounded lookup failure and retains
 last-good evidence for the unchanged definition. After acquiring the publication
 fence, the refresh checks the run deadline before accepting a successful result.
