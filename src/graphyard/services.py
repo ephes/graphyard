@@ -2696,9 +2696,9 @@ class _RegistryBatch:
     subjects: dict[tuple[str, str], str | None]
     # Host subject id -> index of the first point that registers it.
     host_ids: dict[str, int]
-    # service_id -> (host_id, point index) for each point naming the service:
-    # the point's own host subject, else its collector host.
-    service_hosts: dict[str, list[tuple[str | None, int]]]
+    # service_id -> host_id -> latest point index, in last-seen order.
+    # Each point supplies its own host subject or its collector host.
+    service_hosts: dict[str, dict[str | None, int]]
 
 
 @dataclass
@@ -2722,9 +2722,9 @@ def _collect_registry_batch(points: list[influx.MetricPoint]) -> _RegistryBatch:
             batch.host_ids.setdefault(normalized.subject_id, index)
         if normalized.service:
             host_id = normalized.subject_id if is_host else normalized.collector_host
-            batch.service_hosts.setdefault(normalized.service, []).append(
-                (host_id, index)
-            )
+            candidates = batch.service_hosts.setdefault(normalized.service, {})
+            candidates.pop(host_id, None)
+            candidates[host_id] = index
     return batch
 
 
@@ -2756,7 +2756,7 @@ def _load_registry_rows(batch: _RegistryBatch) -> _RegistryRows:
     host_ids = set(batch.host_ids) | {
         host_id
         for candidates in batch.service_hosts.values()
-        for host_id, _ in candidates
+        for host_id in candidates
         if host_id
     }
     hosts = {
@@ -2782,8 +2782,9 @@ def _service_target_host(
 
     Matches per-point processing: the last point whose host was registered at
     that point (before the batch, or by an earlier or the same point) wins.
+    A candidate eligible on an earlier occurrence is still eligible at its last.
     """
-    for host_id, index in reversed(batch.service_hosts[service_id]):
+    for host_id, index in reversed(batch.service_hosts[service_id].items()):
         if not host_id or host_id not in rows.hosts:
             continue
         if (

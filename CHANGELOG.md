@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Keep one candidate per service and host in registry planning, preserving
+  last eligible host selection in metric batches.
+
 - Load only the exact subject type and ID pairs named by a metric batch in
   both registry reads.
 

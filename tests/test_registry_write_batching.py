@@ -321,3 +321,25 @@ def test_new_service_from_unknown_collector_host_has_no_host():
         [sensor_point("mail", "edge"), host_point("edge")]
     )
     assert ServiceRegistry.objects.get(service_id="mail").host is None
+
+
+@pytest.mark.parametrize(
+    "repeat_edge, expected_host", [(False, "other"), (True, "edge")]
+)
+def test_service_candidates_keep_only_last_positions_and_eligible_fallback(
+    repeat_edge, expected_host
+):
+    HostRegistry.objects.create(host_id="other")
+    edge = sensor_point("mail", "edge")
+    unknown = sensor_point("mail", "unknown")
+    points = [edge, sensor_point("mail", "other"), host_point("edge")]
+    if repeat_edge:
+        points.append(edge)
+    points.extend([unknown] * 1000)
+
+    batch = services._collect_registry_batch(points)
+    assert len(batch.service_hosts["mail"]) == 3
+
+    services.touch_registry_from_points(points)
+
+    assert ServiceRegistry.objects.get(service_id="mail").host.host_id == expected_host
