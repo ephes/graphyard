@@ -91,8 +91,12 @@ Every difference between the two implementations has a class (PLAN.md 2.3):
   other log lines. Persisted collector/condition failures now use the P1 bounded
   type/status contract in README; raw exception text is not persisted.
 - **P3 intentional divergence**: the exhaustive list D-1 to D-15 in PLAN.md
-  2.4. The operationally visible ones: SIGTERM ends the agent at the next
-  await point with exit 0 (D-1); a database without the required schema stops
+  2.4. The operationally visible ones: SIGTERM stops new work, gives an
+  in-flight metric attempt up to 500 ms to persist its outcome and ends the
+  agent with exit 0 (D-1); an empty condition sweep does not advance
+  `last_success`, an explicit `--condition-id` without a matching enabled
+  row exits 1, and collector attempts are fenced by the stored `updated_at`
+  (D-15); a database without the required schema stops
   the agent at startup instead of failing every run (D-2); non-standard JSON
   (`NaN`, UTF-16 bodies) from a collector endpoint is a decode error (D-4);
   user regexes run on `fancy-regex` (D-5); stdout/stderr go through bounded,
@@ -319,7 +323,9 @@ completion leaves the next attempt to collect again, and any previous remote
 sink acceptance stands. Renewal reuses the captured identity regardless of
 the size of the previous diagnostics. The
 retained Python agent follows the same due-lease and renewal contract
-(`tests/test_due_collection_claim.py`).
+(`tests/test_due_collection_claim.py`), but compares only the captured
+business fields: the `updated_at` fence against edit-and-revert is
+Rust-only (PLAN.md D-15).
 
 ## Condition duration admission
 

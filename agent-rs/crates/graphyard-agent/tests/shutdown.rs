@@ -144,6 +144,14 @@ fn shutdown_finishes_the_current_claim_without_starting_the_next_spec() {
         SqlValue::Null
     );
     assert_eq!(db.count("pipeline_heartbeat"), 1);
+    assert!(
+        db.text("pipeline_heartbeat", "metric_collectors", "last_error")
+            .starts_with("partial run: agent shutdown"),
+    );
+    assert!(
+        db.text("pipeline_heartbeat", "metric_collectors", "details")
+            .contains(r#""partial": 1"#),
+    );
 }
 
 #[test]

@@ -167,8 +167,13 @@ that differs is a bug.
 ### 2.4 Intentional divergences (P3, exhaustive)
 
 - **D-1 Signals.** SIGTERM: Python dies by the default signal action at any
-  point; Rust stops at the next await point (an in-flight SQLite statement
-  completes first), prints nothing and exits 0. systemd reports both as
+  point; Rust stops starting new work, gives a metric attempt already in
+  progress up to 500 ms to finish and persist its outcome, and otherwise
+  stops at the next await point (an in-flight SQLite statement completes
+  first), prints nothing and exits 0. A metric sweep stopped this way with
+  counted outcomes and unstarted specs publishes a partial
+  `metric_collectors` heartbeat (`partial: 1`, `partial run: agent
+  shutdown`, section 3.4); Python writes no heartbeat for a killed sweep. systemd reports both as
   "Deactivated successfully". SIGINT behaves like Python's
   `KeyboardInterrupt` handler: stdout `graphyard-agent interrupted, exiting`,
   exit 0. Rust does the same during `--run-once`, where Python's handler is
@@ -358,7 +363,16 @@ that differs is a bug.
   `--check-schema`) where argparse expands it. A collector schedule beyond
   SQLite’s INTEGER range fails only its spec. A collector store error after a
   committed completion or a schedule overflow can publish a partial heartbeat
-  (section 3.4).
+  (section 3.4). Rust collector claims, renewals and completions also compare
+  the exact stored `updated_at` text, so a definition edited and reverted
+  during an attempt rejects that attempt; Python compares only the captured
+  business fields (section 3.4). An empty full condition sweep writes its
+  heartbeat with `no_work: 1` and without success, preserving
+  `last_success`; Python marks it successful (section 3.5).
+  `evaluate-conditions --condition-id` selecting no enabled row (missing,
+  disabled or outside the 64-bit range) exits 1 with stderr
+  `CommandError: No matching enabled condition.`; Python prints
+  `Condition evaluation completed (0).` and exits 0 (section 11.4).
 
 ---
 
@@ -528,6 +542,10 @@ Due-only runs now atomically claim each observed scheduling timestamp before
 execution (`WHERE enabled AND next_run_time = observed AND next_run_time <= now`
 plus the captured name, type, interval and config since round 85, so an edit
 between load and claim reaches no external I/O and leaves the spec due).
+Rust also captures the exact stored `updated_at` text
+(`CAST(updated_at AS TEXT) IS ?`) for the claim, every renewal and the
+completion, so an edit reverted to the same business fields still rejects the
+older attempt (D-15); Python does not compare `updated_at`.
 Use the per-spec claim start time and advance the Rust claim by
 `min(max(3, interval_seconds), 300)` seconds. Renew it every one third of that
 lease while the collector/sink/registry future is live. Each renewal compares the
@@ -551,7 +569,10 @@ A load, claim, renewal or completion store error stops the batch: error log
 `Metric collection failed`, stderr `Metric collection failed: <err>`, and the
 scheduler loop continues. After a committed completion or a schedule overflow,
 Rust tries to publish a partial `metric_collectors` heartbeat. It marks `partial: 1`
-in details, counts the prefix, and preserves `last_success`. Its status is
+in details, counts the prefix, and preserves `last_success`. A sweep stopped
+by SIGTERM/SIGINT after counted outcomes, with specs left unstarted, publishes
+the same partial heartbeat with the first message `partial run: agent
+shutdown` instead of `partial run: collector store failure` (D-1). Its status is
 `warning`, or `critical` when all counted outcomes failed. If the heartbeat
 write also fails, the run still returns the original store error. A deleted
 spec is a superseded claim/completion. The run skips it and can still publish
@@ -587,7 +608,8 @@ No raw exception/query text enters that event or failure message. Heartbeat
 `condition_evaluator`: `ok`/`""`/success when nothing failed, else
 `warning`/`"<n> condition(s) failed"`/no success; details
 `{"evaluated": <total>, "failed": <failed>}`. Rust adds `"no_work": 1`
-on an empty sweep and refreshes liveness while preserving `last_success`.
+on an empty sweep, writes it without success and so refreshes liveness while
+preserving `last_success` (D-15; Python marks the empty sweep successful).
 stdout `Condition eval: evaluated=<total> failed=<failed>`.
 
 ### 3.6 Output and logging
