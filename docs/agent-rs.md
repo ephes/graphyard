@@ -543,7 +543,11 @@ credits the batch at that calculated end after sync, without querying file
 metadata again. The comparison tool refuses incomplete framed evidence, publishing
 no partial report. Earlier unframed captures remain readable; their historical
 format has no commit-trailer guarantee. The writer verifies their declared point
-count before reuse; comment-only preambles remain supported.
+count before reuse. Ordinary comments and blank lines may appear between
+batches. A `# commit ` trailer outside a framed batch marks an incomplete
+tail, with recovery starting at the preceding complete offset. Each framed
+row must fit within the remaining declared body bytes, and the rows must
+account for exactly that byte count before the writer checks the trailer.
 
 Cooperating writers hold the same opened data inode's OS lock over suffix
 validation, complete append and sync. In-process and OS-lock admission share a

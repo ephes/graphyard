@@ -167,10 +167,7 @@ fn validate_with(
     let mut complete = start;
     while work.bytes < suffix_bytes {
         let header = work.line(&mut input, 4096, complete)?;
-        if header.is_empty() {
-            return Err(incomplete(complete));
-        }
-        if !header.ends_with(b"\n") {
+        if !header.ends_with(b"\n") || header.starts_with(b"# commit ") {
             return Err(incomplete(complete));
         }
         if !header.starts_with(b"# write ") {
@@ -203,10 +200,13 @@ fn validate_with(
         } else {
             None
         };
+        // A v2 row cut off at the declared body boundary is incomplete.
+        // Legacy bodies keep the existing frame cap enforced by work.line.
+        let mut body = (&mut input).take(expected_bytes.map_or(u64::MAX, |bytes| bytes as u64));
         let mut bytes = 0usize;
         for _ in 0..points {
             let row = work.line(
-                &mut input,
+                &mut body,
                 (WRITE_MAX_REQUEST_BYTES + 1).saturating_sub(bytes),
                 complete,
             )?;
@@ -216,10 +216,11 @@ fn validate_with(
             bytes += row.len();
         }
         if let Some(expected) = expected_bytes {
+            if bytes != expected {
+                return Err(incomplete(complete));
+            }
             let trailer = work.line(&mut input, 4096, complete)?;
-            if bytes != expected
-                || trailer != format!("# commit points={points} bytes={bytes}\n").as_bytes()
-            {
+            if trailer != format!("# commit points={points} bytes={expected}\n").as_bytes() {
                 return Err(incomplete(complete));
             }
         }
@@ -672,6 +673,43 @@ mod tests {
         let state = ShadowFile::new(file);
         assert_eq!(state.validated_end, 0);
         assert!(validate(&state.file, state.validated_end, VALIDATION_LIMITS).is_err());
+    }
+
+    #[test]
+    fn orphan_commit_preserves_the_last_complete_boundary() {
+        let mut file = tempfile::tempfile().unwrap();
+        file.write_all(record(1).as_bytes()).unwrap();
+        file.write_all(b"# ordinary comment\n\n").unwrap();
+        file.write_all(b"# write 2026-10-21T08:15:30Z points=1\nm value=2 123\n")
+            .unwrap();
+        let complete = file.metadata().unwrap().len();
+        assert_eq!(validate(&file, 0, VALIDATION_LIMITS).unwrap(), complete);
+
+        file.write_all(b"# commit points=1 bytes=14\n").unwrap();
+        file.write_all(record(3).as_bytes()).unwrap();
+        for start in [0, complete] {
+            let error = validate(&file, start, VALIDATION_LIMITS).unwrap_err();
+            assert_eq!(error.to_string(), incomplete(complete).to_string());
+        }
+    }
+
+    #[test]
+    fn framed_body_exceeding_its_byte_count_stops_before_the_next_row() {
+        let mut file = tempfile::tempfile().unwrap();
+        file.write_all(record(1).as_bytes()).unwrap();
+        let complete = file.metadata().unwrap().len();
+
+        let row = "m value=2 123\n";
+        let declared = row.len() + 2;
+        write!(
+            file,
+            "# write 2026-10-21T08:15:30Z points=3 bytes={declared}\n{row}{row}{row}# commit points=3 bytes={declared}\n"
+        )
+        .unwrap();
+        // Allow the header and two rows. Trying the third would report a
+        // line-budget failure instead of the second row's framing failure.
+        let error = validate(&file, complete, tiny_limits(1024, 3)).unwrap_err();
+        assert_eq!(error.to_string(), incomplete(complete).to_string());
     }
 
     #[test]
