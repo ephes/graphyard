@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Exit unsuccessfully when an explicit Rust condition ID matches no enabled
+  row, including IDs outside the database key range.
+
 - Give an in-flight Rust metric attempt up to 500 ms to finish and persist its
   outcome on shutdown, then leave the remaining collectors for the next run.
 

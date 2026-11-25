@@ -176,10 +176,11 @@ fn condition_id_evaluates_only_that_condition() {
     // A disabled, unknown or out-of-range id also leaves the heartbeat alone.
     for id in ["3", "-7", "99999999999999999999"] {
         let output = evaluate(&db, &["--condition-id", id], &pairs(&env));
-        assert_eq!(output.status.code(), Some(0), "{id}: {output:?}");
+        assert_eq!(output.status.code(), Some(1), "{id}: {output:?}");
+        assert!(output.stdout.is_empty());
         assert_eq!(
-            text(&output.stdout),
-            "Condition evaluation completed (0).\n"
+            text(&output.stderr),
+            "CommandError: No matching enabled condition.\n"
         );
         assert_eq!(db.rows("pipeline_heartbeat"), before);
     }

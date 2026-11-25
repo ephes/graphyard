@@ -143,6 +143,8 @@ commit trailer. Queries still go to InfluxDB.
 the enabled conditions (or the one with the given id) once, writes their
 rows, and updates the global `condition_evaluator` heartbeat only on a full
 run. Targeted checks leave the global status, counts and timestamps untouched.
+A missing, disabled or out-of-range ID prints
+`CommandError: No matching enabled condition.` and exits 1.
 A result can replace an observation only if its attempt started after the
 stored timestamp and the evaluated definition still matches. The agent
 compares timestamps as UTC instants at microsecond precision, including
