@@ -615,8 +615,11 @@ deploy of ops-control `281d408f` ran `agent-rs-v0.4.0` (T1 07:08:36 UTC).
 Since 2026-11-18 the deploy of ops-control `7f7cf38d` (graphyard source pinned
 to `e6384ce`) ran `agent-rs-v0.4.1`, the first release built locally
 (T1 16:42:05 UTC). Since 2026-11-21 the deploy of ops-control `81ce2c3f`
-(graphyard source pinned to `2308723`) runs `agent-rs-v0.4.2` (T1 18:25:43
-UTC); 0.4.1 stays installed as the rollback target.
+(graphyard source pinned to `2308723`) ran `agent-rs-v0.4.2` (T1 18:25:43
+UTC). Since 2026-11-24 the deploy of ops-control `76553901` runs
+`agent-rs-v0.4.3` (first start 16:32:16 UTC; its 24 h gate passed on
+2026-11-25); 0.4.2 stays installed as the rollback target.
+`agent-rs-v0.4.4` is published (2026-11-25) and not yet deployed.
 
 | Tag | Commit | Archive sha256 |
 | --- | --- | --- |
@@ -626,6 +629,8 @@ UTC); 0.4.1 stays installed as the rollback target.
 | [`agent-rs-v0.4.0`](https://github.com/ephes/graphyard/releases/tag/agent-rs-v0.4.0) | `3d6616df0df4dd7d4ca0e3e89df69ff56b2dc091` | `1528155d1c6fc8208ac22109ca158232c0302605fda1540b7721dc07a078eb7a` |
 | [`agent-rs-v0.4.1`](https://github.com/ephes/graphyard/releases/tag/agent-rs-v0.4.1) | `e6384ce7bd69456a03cc62f7d26aeb2366cbfe71` | `cb9826f953eb1b38ee90a9fe4c0955d28c8f61e7c77e8dc644643a97c3fdbc45` |
 | [`agent-rs-v0.4.2`](https://github.com/ephes/graphyard/releases/tag/agent-rs-v0.4.2) | `230872353e0a30a11d9b62494d42819171009121` | `d0f4748b782e4d7566c2a6a99b532ac72d1713daedde1de451ff0e9a5a890dde` |
+| [`agent-rs-v0.4.3`](https://github.com/ephes/graphyard/releases/tag/agent-rs-v0.4.3) | `670c01e4c5b07d1335c4b347bd0f49a2e5dc0a3f` | `00160481f04bc4a3cc893efe3e53bfa4105b746682a19329eea33dfd4bef839b` |
+| [`agent-rs-v0.4.4`](https://github.com/ephes/graphyard/releases/tag/agent-rs-v0.4.4) | `fd0423b1a5e14f1fcc5155f31cce5ec9a5efcf20` | `9edb53d6d467cdacc676d47e958a441abfaa7dd3f3a574751c2b0dd787c3dcc7` |
 
 `agent-rs-v0.1.0` (slice S10b) was checked after publishing: the downloaded
 archive matches its `.sha256` file and is byte-identical to the archive of a
