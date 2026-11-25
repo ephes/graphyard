@@ -319,8 +319,10 @@ If a row cannot be decoded, the store returns the first error and discards the
 partial result.
 
 The Rust agent checks that each spec’s next run time fits in SQLite before
-claiming or executing it, even in manual mode. An overflow fails the run
-without collecting that spec or updating the heartbeat.
+claiming or executing it, even in manual mode. An overflowing schedule
+counts as a failed spec and leaves its row untouched. Later specs still run.
+The heartbeat includes the failure in its totals and can show a fixed
+diagnostic with the spec ID among its five samples.
 
 Due-only metric runs claim the observed `next_run_time` before invoking a
 collector. Claims use a 3–300 second lease (the clamped interval), renewed every one third
@@ -339,12 +341,22 @@ schedulers together for the same specs.
 Explicit non-due/manual runs still execute every enabled spec regardless of due
 time, with completion fenced by the captured definition and original schedule.
 Superseded completions contribute no run counts, errors or heartbeat evidence;
-when none are accepted, the heartbeat is untouched. The Rust agent counts every
+when there are no accepted completions or schedule failures, the heartbeat is
+untouched. The Rust agent counts every
 accepted critical or warning outcome and retains only the first five eligible
 messages in spec order (critical outcomes and warnings with a message). A fixed
 `Collection superseded spec_id=<id>` event retains execution diagnostics. Metrics
 already emitted during collection cannot be recalled. Python and Rust share
 claim/recovery/completion fixtures and run only synthetic collectors in tests.
+
+A claim, renewal or completion store error stops later specs in the batch.
+After at least one committed completion, the agent tries to write a degraded
+`metric_collectors` heartbeat with `partial: 1` in its details. The counters cover
+completions and schedule failures observed before the store error. A fixed batch
+error precedes the usual spec diagnostics. The partial
+heartbeat preserves `last_success`. If the store error occurs before any
+completion, the heartbeat is untouched. The run reports the original store
+error even if the heartbeat write fails.
 
 ### Evaluating conditions once
 

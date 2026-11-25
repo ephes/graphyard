@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Publish a partial Rust collector heartbeat when a later store error stops a
+  batch after a committed completion. Keep the original error and the last
+  successful heartbeat timestamp.
+
+- Isolate Rust collector schedule overflows so later specs still run and the
+  collector heartbeat reports the failed spec.
+
 - Rust agent (`agent-rs/`): version 0.4.4, released as `agent-rs-v0.4.4`
   (built and published locally by `agent-rs/scripts/local_release.py`). It
   carries the Rust agent fixes merged since `agent-rs-v0.4.3` (entries below):

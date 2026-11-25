@@ -355,7 +355,9 @@ that differs is a bug.
   the float range and raises `OverflowError` after the first run beyond it.
   Unique prefixes of long flags are matched among all flags, the Rust-only
   ones included, so `--c` is ambiguous in Rust (`--condition-interval`,
-  `--check-schema`) where argparse expands it.
+  `--check-schema`) where argparse expands it. A collector schedule beyond
+  SQLite’s INTEGER range fails only its spec. A collector store error after a
+  committed completion can publish a partial heartbeat (section 3.4).
 
 ---
 
@@ -541,14 +543,18 @@ publication/completion after a lost renewal; never run both schedulers on the
 same specs.
 Non-due manual runs retain unconditional execution and the shared run-start
 timestamp, with completion fenced by the originally observed schedule and
-captured definition. Superseded completions are not counted, and a run with no
-accepted completions leaves the heartbeat untouched.
+captured definition. Superseded completions are not counted. A run with no
+accepted completions or schedule failures leaves the heartbeat untouched.
 
-A store failure outside a spec (including claim, renewal or completion storage
-errors) aborts the run: error log `Metric collection failed`, stderr
-`Metric collection failed: <err>`, no heartbeat, the loop continues. A deleted
-spec is instead a superseded claim/completion: it is skipped, while accepted
-sibling outcomes can still contribute their heartbeat.
+A load, claim, renewal or completion store error stops the batch: error log
+`Metric collection failed`, stderr `Metric collection failed: <err>`, and the
+scheduler loop continues. After at least one committed completion, Rust tries
+to publish a partial `metric_collectors` heartbeat. It marks `partial: 1` in
+details, counts the prefix, and preserves `last_success`. Its status is
+`warning`, or `critical` when all counted outcomes failed. If the heartbeat
+write also fails, the run still returns the original store error. A deleted
+spec is a superseded claim/completion. The run skips it and can still publish
+a heartbeat for accepted sibling outcomes.
 
 As implemented in S8 (`graphyard-agent::runs`, pinned by `runs.json`): the
 executors receive the stored `config` decoded with
@@ -557,8 +563,9 @@ the spec's `critical` message (the CPython digit-limit text, or `config is
 not valid JSON: <err>`), and a condition's `tags_filter` likewise its
 `evaluation error: ...`. The Rust agent computes `next_run_time` from the same
 clock reading it uses for `last_run_at`, before claiming or executing the spec.
-A result beyond SQLite's INTEGER range aborts the run with sqlite3's
-`OverflowError` text `Python int too large to convert to SQLite INTEGER`.
+A result beyond SQLite's INTEGER range counts as a failed spec and leaves
+its row untouched. Rust continues to later specs and includes the failure in the
+heartbeat totals, with a fixed spec-ID diagnostic subject to the five-sample cap.
 A panicking executor is isolated (D-15).
 
 ### 3.5 Conditions run (`services.py:evaluate_conditions_once`, P1)

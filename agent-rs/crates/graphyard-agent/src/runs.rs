@@ -63,14 +63,15 @@ pub trait ConditionSamples {
     ) -> impl Future<Output = Result<Vec<MetricSample>, QueryError>>;
 }
 
-/// Why a whole run failed (stderr `Metric collection failed: <err>` /
-/// `Condition eval failed: <err>`, no heartbeat).
+/// Run errors (stderr `Metric collection failed: <err>` /
+/// `Condition eval failed: <err>`).
 #[derive(Debug)]
 pub enum RunError {
     /// `ValueError("No matching enabled metric collection specs")`.
     NoMatchingSpecs,
     /// `next_run_time` beyond SQLite's INTEGER range: sqlite3's
-    /// `OverflowError`.
+    /// `OverflowError` text. Raised per spec only; [`run_metric_specs`]
+    /// counts it as a failed spec and never returns it.
     NextRunTimeOverflow,
     /// A load, update or heartbeat failure.
     Store(StoreError),
@@ -179,8 +180,9 @@ fn retain_heartbeat_error(errors: &mut Vec<String>, name: &str, outcome: &SpecOu
 /// `run_metric_collection_specs_once(due_only=...)`.
 ///
 /// # Errors
-/// See [`RunError`]; the specs processed before the failure keep their
-/// rows, no heartbeat is written.
+/// See [`RunError`]. A store error stops the batch and leaves earlier
+/// completions committed. If any spec completed, try to publish a partial
+/// heartbeat before returning the original store error.
 pub async fn run_metric_specs<E: SpecExecutors, C: Clock>(
     store: &Store,
     executors: &E,
@@ -201,70 +203,36 @@ pub async fn run_metric_specs<E: SpecExecutors, C: Clock>(
 
     let mut run = MetricCollectionSpecRun::default();
     let mut errors: Vec<String> = Vec::new();
+    let mut has_completion = false;
+    let mut store_error = None;
     for spec in &specs {
         let run_at = if due_only { clock.now() } else { now };
-        let run_ts = run_at.timestamp();
-        let next_run_time = run_ts
-            .checked_add(spec.interval_seconds.max(1))
-            .ok_or(RunError::NextRunTimeOverflow)?;
-        let lease_seconds = spec.interval_seconds.clamp(3, 300);
-        let claim = spec.claim_identity();
-        let mut claim_until = if due_only {
-            let until = run_ts
-                .checked_add(lease_seconds)
-                .ok_or(RunError::NextRunTimeOverflow)?;
-            if !store
-                .claim_due_spec(claim.clone(), spec.next_run_time, run_ts, until)
-                .await?
-            {
+        let outcome = match run_metric_spec(
+            store, executors, clock, &mut state, spec, run_at, due_only,
+        )
+        .await
+        {
+            Ok(Some(outcome)) => outcome,
+            Ok(None) => continue,
+            Err(RunError::NextRunTimeOverflow) => {
+                log::error!("Collection schedule overflow spec_id={}", spec.id);
+                run.total += 1;
+                run.failed += 1;
+                if errors.len() < MAX_HEARTBEAT_ERRORS {
+                    errors.push(format!(
+                        "spec_id={}: next run time exceeds SQLite INTEGER range",
+                        spec.id
+                    ));
+                }
                 continue;
             }
-            Some(until)
-        } else {
-            None
-        };
-        let outcome = if let Some(until) = claim_until.as_mut() {
-            // Keep ownership through collection, the sink and registry publication.
-            // Dropping this run also drops renewal; recovery stays bounded.
-            let execution = run_single_spec(executors, &mut state, spec);
-            tokio::pin!(execution);
-            loop {
-                tokio::select! {
-                    biased;
-                    outcome = &mut execution => break Some(outcome),
-                    _ = tokio::time::sleep(Duration::from_secs((lease_seconds / 3) as u64)) => {
-                        let renewed = clock.now().timestamp()
-                            .checked_add(lease_seconds)
-                            .ok_or(RunError::NextRunTimeOverflow)?
-                            .max(until.checked_add(1).ok_or(RunError::NextRunTimeOverflow)?);
-                        if !store.renew_spec_claim(claim.clone(), *until, renewed).await? {
-                            break None;
-                        }
-                        *until = renewed;
-                    }
-                }
+            Err(RunError::Store(err)) if has_completion => {
+                store_error = Some(err);
+                break;
             }
-        } else {
-            Some(run_single_spec(executors, &mut state, spec).await)
+            Err(err) => return Err(err),
         };
-        let Some(outcome) = outcome else {
-            log::info!("Collection superseded spec_id={}", spec.id);
-            continue;
-        };
-        let update = SpecRunUpdate {
-            id: spec.id,
-            last_run_at: run_at,
-            last_status: outcome.status,
-            last_error: outcome.message.clone(),
-            next_run_time,
-        };
-        if !store
-            .finish_claimed_spec(claim, update, claim_until.unwrap_or(spec.next_run_time))
-            .await?
-        {
-            log::info!("Collection superseded spec_id={}", spec.id);
-            continue;
-        }
+        has_completion = true;
         run.total += 1;
         run.ingested += outcome.ingested;
         run.skipped += outcome.skipped;
@@ -279,36 +247,125 @@ pub async fn run_metric_specs<E: SpecExecutors, C: Clock>(
     if run.total == 0 {
         return Ok(run);
     }
-    let (status, success) = if run.failed > 0 && run.total == run.failed {
-        (StatusLevel::Critical, false)
-    } else if run.failed > 0 || run.warning > 0 {
-        (StatusLevel::Warning, true)
+    let partial = store_error.is_some();
+    let status = if run.failed == run.total {
+        StatusLevel::Critical
+    } else if partial || run.failed > 0 || run.warning > 0 {
+        StatusLevel::Warning
     } else {
-        (StatusLevel::Ok, true)
+        StatusLevel::Ok
     };
-    let details = [
+    let mut details: Vec<_> = [
         ("total", run.total),
         ("failed", run.failed),
         ("warning", run.warning),
         ("ingested", run.ingested),
         ("skipped", run.skipped),
-    ];
-    store
+    ]
+    .into_iter()
+    .map(|(key, value)| (key.to_owned(), count(value)))
+    .collect();
+    if partial {
+        details.push(("partial".to_owned(), 1));
+        errors.insert(0, "partial run: collector store failure".to_owned());
+    }
+    let heartbeat = store
         .record_heartbeat(
             HeartbeatRecord {
                 name: "metric_collectors".to_owned(),
                 status,
                 last_error: errors.join("; "),
-                details: details
-                    .iter()
-                    .map(|(key, value)| ((*key).to_owned(), count(*value)))
-                    .collect(),
-                success,
+                details,
+                success: status != StatusLevel::Critical && !partial,
             },
             clock.now(),
         )
-        .await?;
+        .await;
+    if let Some(err) = store_error {
+        if let Err(heartbeat_err) = heartbeat {
+            log::warn!(
+                "Partial collector heartbeat publication failed category={}",
+                heartbeat_err.python_class()
+            );
+        }
+        return Err(err.into());
+    }
+    heartbeat?;
     Ok(run)
+}
+
+async fn run_metric_spec<E: SpecExecutors, C: Clock>(
+    store: &Store,
+    executors: &E,
+    clock: &C,
+    state: &mut RunState,
+    spec: &SpecRow,
+    run_at: DateTime<Utc>,
+    due_only: bool,
+) -> Result<Option<SpecOutcome>, RunError> {
+    let run_ts = run_at.timestamp();
+    let next_run_time = run_ts
+        .checked_add(spec.interval_seconds.max(1))
+        .ok_or(RunError::NextRunTimeOverflow)?;
+    let lease_seconds = spec.interval_seconds.clamp(3, 300);
+    let claim = spec.claim_identity();
+    let mut claim_until = if due_only {
+        let until = run_ts
+            .checked_add(lease_seconds)
+            .ok_or(RunError::NextRunTimeOverflow)?;
+        if !store
+            .claim_due_spec(claim.clone(), spec.next_run_time, run_ts, until)
+            .await?
+        {
+            return Ok(None);
+        }
+        Some(until)
+    } else {
+        None
+    };
+    let outcome = if let Some(until) = claim_until.as_mut() {
+        // Keep ownership through collection, the sink and registry publication.
+        // Dropping this run also drops renewal; recovery stays bounded.
+        let execution = run_single_spec(executors, state, spec);
+        tokio::pin!(execution);
+        loop {
+            tokio::select! {
+                biased;
+                outcome = &mut execution => break Some(outcome),
+                _ = tokio::time::sleep(Duration::from_secs((lease_seconds / 3) as u64)) => {
+                    let renewed = clock.now().timestamp()
+                        .checked_add(lease_seconds)
+                        .ok_or(RunError::NextRunTimeOverflow)?
+                        .max(until.checked_add(1).ok_or(RunError::NextRunTimeOverflow)?);
+                    if !store.renew_spec_claim(claim.clone(), *until, renewed).await? {
+                        break None;
+                    }
+                    *until = renewed;
+                }
+            }
+        }
+    } else {
+        Some(run_single_spec(executors, state, spec).await)
+    };
+    let Some(outcome) = outcome else {
+        log::info!("Collection superseded spec_id={}", spec.id);
+        return Ok(None);
+    };
+    let update = SpecRunUpdate {
+        id: spec.id,
+        last_run_at: run_at,
+        last_status: outcome.status,
+        last_error: outcome.message.clone(),
+        next_run_time,
+    };
+    if !store
+        .finish_claimed_spec(claim, update, claim_until.unwrap_or(spec.next_run_time))
+        .await?
+    {
+        log::info!("Collection superseded spec_id={}", spec.id);
+        return Ok(None);
+    }
+    Ok(Some(outcome))
 }
 
 /// `evaluate_condition(condition)` with its own `now`; errors retain only a category.

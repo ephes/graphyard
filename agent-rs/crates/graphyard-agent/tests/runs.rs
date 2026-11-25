@@ -334,13 +334,18 @@ async fn overflowing_next_run_time_never_claims_or_collects() {
         let executor = RecordingCollector::default();
         let clock = FixedClock("2026-10-21T08:15:30Z".parse().unwrap());
 
-        let result = run_metric_specs(&store, &executor, &clock, due_only).await;
-        assert!(matches!(result, Err(RunError::NextRunTimeOverflow)));
+        let run = run_metric_specs(&store, &executor, &clock, due_only)
+            .await
+            .unwrap();
+        assert_eq!((run.total, run.failed, run.ingested), (1, 1, 0));
         store.close();
 
         assert_eq!(executor.0.get(), 0, "collector calls (due_only={due_only})");
         assert_eq!(db.rows(table), before, "spec rows (due_only={due_only})");
-        assert_eq!(db.count("pipeline_heartbeat"), 0);
+        assert_eq!(
+            db.text("pipeline_heartbeat", "metric_collectors", "status"),
+            "critical"
+        );
     }
 }
 
@@ -379,29 +384,122 @@ async fn stored_json_python_cannot_load_fails_only_its_spec_or_condition() {
 }
 
 #[tokio::test]
-async fn a_next_run_time_beyond_sqlite_integers_aborts_the_run() {
+async fn overflowing_schedule_does_not_starve_later_due_specs() {
     let db = TestDb::new();
-    common::insert_spec(
-        &db,
-        "huge interval",
-        "http_json_metric",
-        &serde_json::json!({}),
-    );
+    for name in ["a huge interval", "b healthy"] {
+        common::insert_spec(&db, name, "http_json_metric", &serde_json::json!({}));
+    }
     db.execute(&format!(
-        "UPDATE metric_collection_spec SET interval_seconds = {}",
+        "UPDATE metric_collection_spec SET interval_seconds = {} WHERE name = 'a huge interval'",
         i64::MAX
     ));
     let store = Store::open(db.path(), &settings(&[])).unwrap();
     let clock = FixedClock("2026-10-21T08:15:30Z".parse().unwrap());
-    let err = run_metric_specs(&store, &Faulty, &clock, false)
+    let executor = RecordingCollector::default();
+    let run = run_metric_specs(&store, &executor, &clock, true)
+        .await
+        .unwrap();
+    store.close();
+
+    assert_eq!((run.total, run.failed, run.ingested), (2, 1, 1));
+    assert_eq!(executor.0.get(), 1);
+    assert_eq!(
+        db.text("metric_collection_spec", "b healthy", "last_status"),
+        "ok"
+    );
+    let heartbeat = |column| db.text("pipeline_heartbeat", "metric_collectors", column);
+    assert_eq!(heartbeat("status"), "warning");
+    assert_eq!(
+        heartbeat("last_error"),
+        "spec_id=1: next run time exceeds SQLite INTEGER range"
+    );
+}
+
+#[tokio::test]
+async fn later_claim_failure_marks_committed_prefix_as_partial() {
+    let db = TestDb::new();
+    let specs = "metric_collection_spec";
+    for name in ["a healthy", "b blocked", "c unattempted"] {
+        common::insert_spec(&db, name, "http_json_metric", &serde_json::json!({}));
+    }
+    db.execute(
+        "INSERT INTO pipeline_heartbeat (name, status, last_success, last_error, details, updated_at)
+         VALUES ('metric_collectors', 'ok', '2026-10-20 08:15:30', '', '{}', '2026-10-20 08:15:30');
+         CREATE TRIGGER reject_later_claim BEFORE UPDATE OF next_run_time ON metric_collection_spec
+         WHEN OLD.name = 'b blocked' BEGIN SELECT RAISE(ABORT, 'synthetic claim failure'); END;",
+    );
+    let store = Store::open(db.path(), &settings(&[])).unwrap();
+    let clock = FixedClock("2026-10-21T08:15:30Z".parse().unwrap());
+    let executor = RecordingCollector::default();
+    let err = run_metric_specs(&store, &executor, &clock, true)
+        .await
+        .unwrap_err();
+
+    assert!(matches!(err, RunError::Store(_)));
+    assert!(err.to_string().contains("synthetic claim failure"));
+    assert_eq!(executor.0.get(), 1);
+    assert_eq!(db.text(specs, "a healthy", "last_status"), "ok");
+    assert_eq!(
+        db.value(specs, "a healthy", "next_run_time"),
+        rusqlite::types::Value::Integer(clock.now().timestamp() + 60)
+    );
+    for name in ["b blocked", "c unattempted"] {
+        assert_eq!(
+            db.value(specs, name, "last_run_at"),
+            rusqlite::types::Value::Null
+        );
+        assert_eq!(
+            db.value(specs, name, "next_run_time"),
+            rusqlite::types::Value::Integer(0)
+        );
+    }
+    let heartbeat = |column| db.text("pipeline_heartbeat", "metric_collectors", column);
+    assert_eq!(heartbeat("status"), "warning");
+    assert_eq!(
+        heartbeat("last_error"),
+        "partial run: collector store failure"
+    );
+    assert_eq!(heartbeat("last_success"), "2026-10-20 08:15:30");
+    assert_eq!(
+        serde_json::from_str::<Value>(&heartbeat("details")).unwrap(),
+        serde_json::json!({"total": 1, "failed": 0, "warning": 0, "ingested": 1, "skipped": 0, "partial": 1})
+    );
+
+    db.execute(
+        "CREATE TRIGGER reject_heartbeat BEFORE UPDATE ON pipeline_heartbeat
+         BEGIN SELECT RAISE(ABORT, 'synthetic heartbeat failure'); END;",
+    );
+    let next_clock = FixedClock(clock.now() + chrono::TimeDelta::minutes(2));
+    let err = run_metric_specs(&store, &executor, &next_clock, true)
+        .await
+        .unwrap_err();
+    assert!(err.to_string().contains("synthetic claim failure"));
+    assert_eq!(executor.0.get(), 2);
+    store.close();
+}
+
+#[tokio::test]
+async fn claim_failure_without_a_completion_leaves_heartbeat_untouched() {
+    let db = TestDb::new();
+    for name in ["a unrepresentable", "b blocked"] {
+        common::insert_spec(&db, name, "http_json_metric", &serde_json::json!({}));
+    }
+    db.execute(&format!(
+        "UPDATE metric_collection_spec SET interval_seconds = {} WHERE name = 'a unrepresentable';
+         CREATE TRIGGER reject_claim BEFORE UPDATE OF next_run_time ON metric_collection_spec
+         BEGIN SELECT RAISE(ABORT, 'synthetic claim failure'); END;",
+        i64::MAX
+    ));
+    let store = Store::open(db.path(), &settings(&[])).unwrap();
+    let clock = FixedClock("2026-10-21T08:15:30Z".parse().unwrap());
+    let executor = RecordingCollector::default();
+    let err = run_metric_specs(&store, &executor, &clock, true)
         .await
         .unwrap_err();
     store.close();
-    assert_eq!(err.python_class(), "OverflowError");
-    assert_eq!(
-        err.to_string(),
-        "Python int too large to convert to SQLite INTEGER"
-    );
+
+    assert!(err.to_string().contains("synthetic claim failure"));
+    assert_eq!(executor.0.get(), 0);
     assert_eq!(db.count("pipeline_heartbeat"), 0);
 }
 
