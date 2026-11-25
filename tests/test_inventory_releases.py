@@ -202,6 +202,36 @@ def test_registry_removal_disables_prior_source():
     assert source_queries[0].startswith(f"UPDATE {source_table} ")
 
 
+@pytest.mark.parametrize("lookup_fails", [False, True])
+def test_reactivated_source_requires_current_release_evidence(monkeypatch, lookup_fails):
+    row = cache(attempted_at=timezone.now())
+    original_checked_at = row.checked_at
+    assert releases.refresh([]).complete
+    row.refresh_from_db()
+    assert not row.enabled and row.version == "6.0"
+
+    now = original_checked_at + timedelta(minutes=1)
+    monkeypatch.setattr(releases.timezone, "now", lambda: now)
+    fetch = Mock(return_value="6.1")
+    if lookup_fails:
+        fetch.side_effect = ValueError("synthetic outage")
+    monkeypatch.setattr(releases, "fetch", fetch)
+
+    result = releases.refresh([row.definition])
+    fetch.assert_called_once()
+    assert result.complete and result.failures == int(lookup_fails)
+    projected = releases.registry()["python", "django"]
+    comparison = releases.compare("6.0", projected, now, now)
+    if lookup_fails:
+        assert projected.checked_at is None
+        assert comparison["status"] == "unknown"
+        assert comparison["available"] == "Unknown"
+    else:
+        assert projected.checked_at == now
+        assert comparison["status"] == "update"
+        assert comparison["available"] == "6.1"
+
+
 def test_refresh_only_updates_changed_or_reenabled_registered_sources(monkeypatch):
     django = cache(attempted_at=timezone.now())
     flask = InventoryRelease.objects.create(
@@ -234,7 +264,7 @@ def test_refresh_only_updates_changed_or_reenabled_registered_sources(monkeypatc
 
     replacement = {**django.definition, "targets": [{"kind": "python", "name": "test"}]}
     added = definition(project="example")
-    assert releases.refresh([replacement, disabled.definition, added]).failures == 2
+    assert releases.refresh([replacement, disabled.definition, added]).failures == 3
     django.refresh_from_db()
     flask.refresh_from_db()
     disabled.refresh_from_db()
@@ -245,10 +275,11 @@ def test_refresh_only_updates_changed_or_reenabled_registered_sources(monkeypatc
         "Release lookup failed",
     )
     assert not flask.enabled and flask.version == "3.1"
-    assert (disabled.enabled, disabled.version, disabled.checked_at) == (
-        True,
-        "0.45",
-        flask.checked_at,
+    assert disabled.enabled
+    assert (disabled.version, disabled.checked_at, disabled.error) == (
+        "",
+        None,
+        "Release lookup failed",
     )
     created = InventoryRelease.objects.get(pk="pypi:example")
     assert created.enabled and created.definition == added

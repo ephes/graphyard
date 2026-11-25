@@ -13,6 +13,7 @@ from django.db.models import F
 from django.utils import timezone
 from packaging.version import Version
 
+from .inventory import observation_is_fresh
 from .models import InventoryRelease, InventoryReleaseRegistry
 
 MAX_AGE = timedelta(days=8)
@@ -233,8 +234,8 @@ def refresh(data, force=False):
             ).get_or_create(source_id=key, defaults={"definition": definition})
             if created:
                 continue
-            if row.definition != definition:
-                # Cached evidence belongs to the entire definition, including targets.
+            if not row.enabled or row.definition != definition:
+                # Evidence belongs to an unchanged, continuously enabled definition.
                 InventoryRelease.objects.filter(pk=key).update(
                     definition=definition,
                     enabled=True,
@@ -243,8 +244,6 @@ def refresh(data, force=False):
                     attempted_at=None,
                     error="",
                 )
-            elif not row.enabled:
-                InventoryRelease.objects.filter(pk=key).update(enabled=True)
     failures = skipped = 0
     superseded = False
     with httpx.Client(
@@ -436,11 +435,7 @@ def _compare(installed, release, observed_at, now, historical):
             "invalid": "Cached release version is invalid",
         }[release.state]
         return result
-    if (
-        historical
-        or not observed_at
-        or not timedelta(0) <= now - observed_at <= MAX_AGE
-    ):
+    if historical or not observation_is_fresh(observed_at, now, MAX_AGE):
         result["reason"] = "Installed-version observation missing or stale"
         return result
     try:

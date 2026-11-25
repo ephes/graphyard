@@ -7,7 +7,7 @@
 {% if basis == 'partial' %}<p class="notice"><strong>Incomplete application inventory.</strong> Showing partial evidence from a failed attempt. Coverage errors remain active.</p>
 {% elif basis == 'historical' %}<p class="notice"><strong>Historical evidence.</strong> The latest attempt has no usable application details. Showing the last successful application report; it does not establish the current installation.</p>
 {% elif basis == 'missing' %}<p class="notice">No usable application evidence has been received.</p>{% endif %}
-{% if observation_stale %}<p class="notice">This application observation is missing or older than the host's configured freshness threshold.</p>{% endif %}
+{% if observation_stale %}<p class="notice">This application observation is missing, dated in the future, or older than the host's configured freshness threshold.</p>{% endif %}
 {% if snapshot %}<p>Evidence observed: {{ snapshot.observed_at }}. <a href="{% url 'graphyard:inventory_download' host.host snapshot.snapshot_id %}">Download this evidence report</a>.</p>{% endif %}
 {% if latest_attempt %}<p>Latest application attempt: {{ latest_attempt.observed_at }}. Status: {{ attempt_status }}. {{ attempt_error }} <a href="{% url 'graphyard:inventory_download' host.host latest_attempt.snapshot_id %}">Download latest attempt</a>.</p>{% endif %}
 <form method="get"><label for="q">Find an application</label> <input id="q" name="q" maxlength="100" value="{{ query }}"><button type="submit">Search</button> <a href="{% url 'graphyard:inventory_applications' host.host %}">Clear</a></form>

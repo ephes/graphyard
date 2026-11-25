@@ -8,7 +8,7 @@ import hmac
 import io
 import json
 import logging
-from datetime import timedelta
+from datetime import datetime, timedelta
 from uuid import UUID
 
 import ijson
@@ -406,6 +406,12 @@ def _category_summary(status, observed_at, last_success_at, count):
     }
 
 
+def observation_is_fresh(
+    observed_at: datetime | None, now: datetime, max_age: timedelta
+) -> bool:
+    return observed_at is not None and timedelta(0) <= now - observed_at <= max_age
+
+
 def _host_summary(host, now, categories, observed_at, received_at, gaps):
     age = max(0, (now - observed_at).total_seconds()) if observed_at else None
     stale = age is None or age > host.warning_after_seconds
@@ -631,6 +637,7 @@ def application_list(request, host_id):
     state = host_state(host)
     category = next((entry for entry in state[1] if entry.name == "applications"), None)
     snapshot, basis, entries = presentation.source(category)
+    observed_at = snapshot.observed_at if snapshot else None
     latest_category = (
         category.latest_attempt.report["categories"]["applications"]
         if category and category.latest_attempt
@@ -654,9 +661,9 @@ def application_list(request, host_id):
             "host": host_summary(host, now, state),
             "snapshot": snapshot,
             "basis": basis,
-            "observation_stale": snapshot is None
-            or (now - snapshot.observed_at).total_seconds()
-            > host.warning_after_seconds,
+            "observation_stale": not observation_is_fresh(
+                observed_at, now, timedelta(seconds=host.warning_after_seconds)
+            ),
             "latest_attempt": category.latest_attempt if category else None,
             "attempt_status": presentation.text(
                 latest_category.get("status"), 40, "missing"
@@ -666,7 +673,7 @@ def application_list(request, host_id):
                 presentation.project(
                     row,
                     host_id=host.host.host_id,
-                    observed_at=snapshot.observed_at if snapshot else None,
+                    observed_at=observed_at,
                     now=now,
                 )
                 for row in page.object_list

@@ -28,7 +28,8 @@ projection functions in an application transaction. This pilot does not make rem
 producer schedules.
 
 Cached public releases belong to the exact configured source definition,
-including comparison targets. Changes clear prior success before the next lookup;
+including comparison targets. Definition changes and source reactivation clear
+prior success before the next lookup;
 older in-flight results cannot publish after a newer registry refresh, including
 removal and A → B → A changes. Registry generations order publications even
 when the wall clock moves backwards; timestamps govern freshness and display.

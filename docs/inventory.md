@@ -463,8 +463,11 @@ Cached success belongs to the complete source definition (`kind`, `project` and
 and error before looking up the replacement, even inside the freshness window.
 Registry synchronization leaves enabled rows with unchanged definitions untouched.
 Registry replacement disables all removed, enabled sources in one filtered
-update. Re-enabling the same definition retains its prior evidence, and an
-unchanged definition retains last-good evidence on lookup failure. Results
+update and preserves their evidence while disabled. Re-enabling a source clears
+its version, success/attempt timestamps and error, even when the definition is
+identical. Comparisons require a successful lookup after reactivation. A
+continuously enabled, unchanged definition retains last-good evidence on lookup
+failure. Results
 publish only while their registry generation and enabled definition still match,
 with the attempt-time fence retained. A newer refresh fences older in-flight
 successes and failures, including removal/re-enable and A → B → A edits, even
@@ -651,6 +654,8 @@ entries remain valid. All inventory reader HTML, JSON and SBOM responses carry
 The application response captures one timestamp at entry and uses it for host
 freshness, application-observation freshness and every software-health row. A
 clock step during projection cannot change the verdict between rows or helpers.
+The application observation notice and version comparisons both require a
+nonnegative observation age within their respective freshness limits.
 Health source time remains distinct from report observation time; persistence
 keeps its own receive/observation timestamps. Rendering is read-only.
 
