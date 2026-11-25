@@ -28,7 +28,8 @@ projection functions in an application transaction. This pilot does not make rem
 producer schedules.
 
 Cached public releases belong to the exact configured source definition,
-including comparison targets. Changes clear prior success before the next lookup;
+including comparison targets. Definition changes and source reactivation clear
+prior success before the next lookup;
 older in-flight results cannot publish after a newer registry refresh, including
 removal and A → B → A changes. Registry generations order publications even
 when the wall clock moves backwards; timestamps govern freshness and display.
@@ -36,7 +37,8 @@ Unpublishable results make the refresh incomplete. Public release JSON rejects
 duplicate object members and nonstandard numeric literals at every depth,
 preserving prior successful evidence and continuing independent sources after a
 failed lookup. Release refreshes have a five-minute monotonic budget (60 seconds
-per source). Skipped unchanged sources retain their observation times. An
+per source). A successful lookup must still be within the run budget at the publication
+fence. Skipped unchanged sources retain their observation times. An
 incomplete command reports skipped counts and exits unsuccessfully.
 See [release cache policy](docs/inventory.md) for transport limits.
 

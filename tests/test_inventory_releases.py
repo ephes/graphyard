@@ -202,6 +202,38 @@ def test_registry_removal_disables_prior_source():
     assert source_queries[0].startswith(f"UPDATE {source_table} ")
 
 
+@pytest.mark.parametrize("lookup_fails", [False, True])
+def test_reactivated_source_requires_current_release_evidence(
+    monkeypatch, lookup_fails
+):
+    row = cache(attempted_at=timezone.now())
+    original_checked_at = row.checked_at
+    assert releases.refresh([]).complete
+    row.refresh_from_db()
+    assert not row.enabled and row.version == "6.0"
+
+    now = original_checked_at + timedelta(minutes=1)
+    monkeypatch.setattr(releases.timezone, "now", lambda: now)
+    fetch = Mock(return_value="6.1")
+    if lookup_fails:
+        fetch.side_effect = ValueError("synthetic outage")
+    monkeypatch.setattr(releases, "fetch", fetch)
+
+    result = releases.refresh([row.definition])
+    fetch.assert_called_once()
+    assert result.complete and result.failures == int(lookup_fails)
+    projected = releases.registry()["python", "django"]
+    comparison = releases.compare("6.0", projected, now, now)
+    if lookup_fails:
+        assert projected.checked_at is None
+        assert comparison["status"] == "unknown"
+        assert comparison["available"] == "Unknown"
+    else:
+        assert projected.checked_at == now
+        assert comparison["status"] == "update"
+        assert comparison["available"] == "6.1"
+
+
 def test_refresh_only_updates_changed_or_reenabled_registered_sources(monkeypatch):
     django = cache(attempted_at=timezone.now())
     flask = InventoryRelease.objects.create(
@@ -234,7 +266,7 @@ def test_refresh_only_updates_changed_or_reenabled_registered_sources(monkeypatc
 
     replacement = {**django.definition, "targets": [{"kind": "python", "name": "test"}]}
     added = definition(project="example")
-    assert releases.refresh([replacement, disabled.definition, added]).failures == 2
+    assert releases.refresh([replacement, disabled.definition, added]).failures == 3
     django.refresh_from_db()
     flask.refresh_from_db()
     disabled.refresh_from_db()
@@ -245,10 +277,11 @@ def test_refresh_only_updates_changed_or_reenabled_registered_sources(monkeypatc
         "Release lookup failed",
     )
     assert not flask.enabled and flask.version == "3.1"
-    assert (disabled.enabled, disabled.version, disabled.checked_at) == (
-        True,
-        "0.45",
-        flask.checked_at,
+    assert disabled.enabled
+    assert (disabled.version, disabled.checked_at, disabled.error) == (
+        "",
+        None,
+        "Release lookup failed",
     )
     created = InventoryRelease.objects.get(pk="pypi:example")
     assert created.enabled and created.definition == added
@@ -922,6 +955,40 @@ def test_identity_release_response_is_accepted(monkeypatch, padding):
     assert result == "6.1"
 
 
+@pytest.mark.parametrize(
+    "status, headers",
+    [
+        (206, {}),
+        (200, {"Content-Range": "bytes 0-99/200"}),
+    ],
+    ids=["partial-status", "content-range"],
+)
+def test_partial_release_response_preserves_cache_before_read(
+    monkeypatch, status, headers
+):
+    row = cache()
+    checked = row.checked_at
+    stream = RecordingStream(VALID_PYPI)
+
+    def handler(request):
+        return httpx.Response(status, stream=stream, headers=headers)
+
+    factory = httpx.Client
+    monkeypatch.setattr(
+        releases.httpx,
+        "Client",
+        lambda **kw: factory(transport=httpx.MockTransport(handler), **kw),
+    )
+
+    result = releases.refresh([definition()], force=True)
+
+    assert result == releases.RefreshResult(failures=1)
+    assert stream.read == []
+    row.refresh_from_db()
+    assert row.version == "6.0" and row.checked_at == checked
+    assert row.error == "Release lookup failed"
+
+
 @pytest.mark.parametrize("length_delta", [-1, 1])
 def test_release_length_mismatch_preserves_cache(monkeypatch, length_delta):
     row = cache()
@@ -1244,7 +1311,68 @@ def test_whole_refresh_budget_bounds_200_sources_and_preserves_unattempted(monke
         assert row.attempted_at == previous and row.error == ""
 
 
-@pytest.mark.parametrize(("force", "skipped"), [(False, 4), (True, 6)])
+@pytest.mark.parametrize("expired", [False, True], ids=["inside", "at-deadline"])
+def test_release_refresh_rechecks_budget_after_publication_fence(monkeypatch, expired):
+    now = timezone.now()
+    previous = now - releases.REFRESH_AFTER
+    monkeypatch.setattr(releases.timezone, "now", lambda: now)
+    rows = [
+        InventoryRelease.objects.create(
+            source_id=f"pypi:{project}",
+            definition=definition(project=project),
+            version="1.0",
+            checked_at=checked,
+            attempted_at=checked,
+        )
+        for project, checked in [("first", previous), ("fresh", now), ("due", previous)]
+    ]
+    clock = [0.0]
+    monkeypatch.setattr(releases, "monotonic", lambda: clock[0])
+    budget = releases.REFRESH_BUDGET_SECONDS
+
+    def lookup(client, item, *, deadline):
+        clock[0] = budget - 1
+        return "2.0"
+
+    fetch = Mock(side_effect=lookup)
+    monkeypatch.setattr(releases, "fetch", fetch)
+    registry_table = connection.ops.quote_name(
+        releases.InventoryReleaseRegistry._meta.db_table
+    )
+    fence_crossings = []
+
+    def wait_for_publication_fence(execute, sql, params, many, context):
+        result = execute(sql, params, many, context)
+        if fetch.called and sql.startswith(f"UPDATE {registry_table} "):
+            fence_crossings.append(clock[0])
+            if expired:
+                clock[0] = budget
+        return result
+
+    with connection.execute_wrapper(wait_for_publication_fence):
+        result = releases.refresh([row.definition for row in rows])
+
+    assert fence_crossings == [budget - 1] * (1 if expired else 2)
+    assert result == releases.RefreshResult(skipped=2 if expired else 0)
+    assert [call.args[1]["project"] for call in fetch.call_args_list] == (
+        ["first"] if expired else ["first", "due"]
+    )
+    for row in rows:
+        row.refresh_from_db()
+        if row.source_id == "pypi:fresh":
+            assert (row.version, row.checked_at, row.attempted_at) == ("1.0", now, now)
+        elif expired:
+            assert (row.version, row.checked_at, row.attempted_at) == (
+                "1.0",
+                previous,
+                previous,
+            )
+        else:
+            assert (row.version, row.checked_at, row.attempted_at) == ("2.0", now, now)
+        assert row.error == ""
+
+
+@pytest.mark.parametrize(("force", "skipped"), [(False, 5), (True, 7)])
 def test_expired_refresh_batches_remaining_freshness_reads(monkeypatch, force, skipped):
     started = timezone.now()
     stale = started - releases.REFRESH_AFTER
@@ -1362,9 +1490,10 @@ def test_command_reports_incomplete_refresh(tmp_path, settings, monkeypatch, cap
     monkeypatch.setattr(releases, "fetch", lookup)
     with pytest.raises(CommandError, match="budget"):
         call_command("refresh_inventory_releases", file=policy, force=True)
-    assert "1 skipped sources" in capsys.readouterr().out
-    row = InventoryRelease.objects.get(pk="pypi:flask")
-    assert row.attempted_at is None and row.checked_at is None
+    assert "2 skipped sources" in capsys.readouterr().out
+    for row in InventoryRelease.objects.all():
+        assert row.version == ""
+        assert row.attempted_at is None and row.checked_at is None
 
 
 def test_fetch_uses_remaining_refresh_budget(monkeypatch):

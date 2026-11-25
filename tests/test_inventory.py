@@ -657,6 +657,46 @@ def test_application_view_shows_observed_versions_dependencies_and_cached_update
     assert data["snapshot_id"] in html
 
 
+@pytest.mark.parametrize("offset", [0, 10], ids=["current", "future"])
+def test_application_and_version_pages_agree_on_future_observations(
+    client, enrolled, django_user_model, monkeypatch, offset
+):
+    from graphyard.models import InventoryRelease
+
+    now = timezone.now()
+    monkeypatch.setattr(timezone, "now", lambda: now)
+    InventoryRelease.objects.create(
+        source_id="github:example/media-service",
+        definition={
+            "kind": "github",
+            "project": "example/media-service",
+            "targets": [{"kind": "application", "name": "media-service"}],
+        },
+        version="2.0",
+        checked_at=now,
+    )
+    data = report(observed_at=(now + timedelta(seconds=offset)).isoformat())
+    data["categories"]["applications"]["items"] = [
+        {
+            "id": "media-service",
+            "status": "ok",
+            "items": {"installed_version": "1.0"},
+        }
+    ]
+    assert send(client, enrolled, data).status_code == 200
+
+    application = application_page(client, django_user_model)
+    versions = client.get(reverse("graphyard:inventory_versions"))
+    assert application.status_code == versions.status_code == 200
+    assert application.context["observation_stale"] is bool(offset)
+    if offset:
+        assert b"dated in the future" in application.content
+        assert b"Installed-version observation missing or stale" in versions.content
+    else:
+        assert b"dated in the future" not in application.content
+        assert b"Newer upstream release" in versions.content
+
+
 @pytest.mark.parametrize("partial", [False, True])
 def test_application_view_distinguishes_partial_and_historical_sources(
     client, enrolled, django_user_model, partial

@@ -13,6 +13,7 @@ from django.db.models import F
 from django.utils import timezone
 from packaging.version import Version
 
+from .inventory import observation_is_fresh
 from .models import InventoryRelease, InventoryReleaseRegistry
 
 MAX_AGE = timedelta(days=8)
@@ -132,6 +133,8 @@ def fetch(client, definition, *, deadline=None):
     ) as response:
         check_deadline()
         response.raise_for_status()
+        if response.status_code != 200 or "Content-Range" in response.headers:
+            raise ValueError("Expected a complete release response")
         # Decompression would expand a chunk before any size check could run;
         # refuse encoded or over-declared bodies before reading them.
         encoding = response.headers.get("Content-Encoding", "").strip().lower()
@@ -233,8 +236,8 @@ def refresh(data, force=False):
             ).get_or_create(source_id=key, defaults={"definition": definition})
             if created:
                 continue
-            if row.definition != definition:
-                # Cached evidence belongs to the entire definition, including targets.
+            if not row.enabled or row.definition != definition:
+                # Evidence belongs to an unchanged, continuously enabled definition.
                 InventoryRelease.objects.filter(pk=key).update(
                     definition=definition,
                     enabled=True,
@@ -243,8 +246,6 @@ def refresh(data, force=False):
                     attempted_at=None,
                     error="",
                 )
-            elif not row.enabled:
-                InventoryRelease.objects.filter(pk=key).update(enabled=True)
     failures = skipped = 0
     superseded = False
     with httpx.Client(
@@ -290,13 +291,15 @@ def refresh(data, force=False):
                 values = {"error": "Release lookup failed"}
             # Failed attempts preserve the last success and never renew its timestamp.
             values["attempted_at"] = started
+            succeeded = "version" in values
             with transaction.atomic():
                 # Serialize with policy replacement, never across network work.
                 # Generation also fences removal/re-enable and A -> B -> A edits.
                 superseded = not InventoryReleaseRegistry.objects.filter(
                     pk=1, generation=generation
                 ).update(generation=F("generation"))
-                if not superseded:
+                expired = succeeded and monotonic() >= deadline
+                if not superseded and not expired:
                     # The owned generation orders publications, even if the
                     # wall clock has moved backwards since the previous attempt.
                     published = InventoryRelease.objects.filter(
@@ -304,12 +307,11 @@ def refresh(data, force=False):
                     ).update(**values)
                     if not published:
                         # A failed lookup already counts as failed, not also as skipped.
-                        skipped += "version" in values
-            if superseded:
-                # A newer refresh owns the registry: this result was discarded and
-                # the remaining sources needing a lookup are not looked up at all.
-                # A failed lookup already counts as failed, not also as skipped.
-                skipped += ("version" in values) + count_due(keys[index + 1 :])
+                        skipped += succeeded
+            if superseded or expired:
+                # An unaccepted success and any remaining due sources count as
+                # skipped. An already failed lookup counts only as a failure.
+                skipped += succeeded + count_due(keys[index + 1 :])
                 break
     if not superseded:
         # Fresh cache hits publish nothing, so a run that only skipped them would
@@ -436,11 +438,7 @@ def _compare(installed, release, observed_at, now, historical):
             "invalid": "Cached release version is invalid",
         }[release.state]
         return result
-    if (
-        historical
-        or not observed_at
-        or not timedelta(0) <= now - observed_at <= MAX_AGE
-    ):
+    if historical or not observation_is_fresh(observed_at, now, MAX_AGE):
         result["reason"] = "Installed-version observation missing or stale"
         return result
     try:

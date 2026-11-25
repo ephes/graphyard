@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- Count a successful release lookup as skipped if the run deadline has expired
+  when its publication fence is acquired.
+
+- Require a complete HTTP 200 response without Content-Range before reading public
+  release evidence.
+
+- Mark future-dated application observations as stale in application detail,
+  consistent with release comparisons.
+
+- Require a new successful lookup before using release evidence from a reactivated
+  inventory source.
+
 - Reject nonstandard JSON numeric literals in public releases, including in
   ignored metadata, while retaining the last successful lookup.
 
