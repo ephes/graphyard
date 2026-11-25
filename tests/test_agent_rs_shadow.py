@@ -17,6 +17,7 @@ import stat
 import sys
 import threading
 import time
+from contextlib import closing
 from pathlib import Path
 from types import ModuleType
 
@@ -228,6 +229,22 @@ def test_prepare_succeeds_on_a_clean_database(tmp_path, capsys):
     assert prepare.main(["--source", str(source), "--shadow-dir", str(shadow)]) == 0
     assert "look at" not in capsys.readouterr().out
     assert json.loads((shadow / "shadow.json").read_text())["findings"] == []
+
+
+def test_prepare_copies_the_exact_relative_source_path(tmp_path, monkeypatch):
+    source = tmp_path / "prod.sqlite3?mode=ro# café %3F"
+    decoy = tmp_path / "prod.sqlite3"
+    for path, marker in ((source, "literal source"), (decoy, "decoy")):
+        with closing(_database(path)) as connection, connection:
+            connection.execute("UPDATE host_registry SET display_name = ?", (marker,))
+    shadow = _shadow_dir(tmp_path)
+    monkeypatch.chdir(tmp_path)
+
+    assert prepare.main(["--source", source.name, "--shadow-dir", shadow.name]) == 0
+    with closing(sqlite3.connect(shadow / prepare.COPY_NAME)) as copy:
+        assert copy.execute("SELECT display_name FROM host_registry").fetchone() == (
+            "literal source",
+        )
 
 
 def test_prepare_checks_the_directory_and_the_spec_names(tmp_path, capsys):
@@ -1135,6 +1152,7 @@ time.sleep(30)
     script = f"""import sys
 sys.path.insert(0, {str(PARITY)!r})
 import shadow_record as r
+from contextlib import closing
 from pathlib import Path
 r.UNIT_TIMEOUT = 0.15
 sample = r.unit_sample('fake', {str(helper)!r}, Path('/nonexistent'))

@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Open the exact SQLite source path read-only when preparing a shadow copy,
+  including relative filenames with URI delimiters.
+
 - Report parity worker launch and output decoding failures with the affected
   agent's label after both workers finish.
 
