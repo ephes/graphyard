@@ -696,7 +696,7 @@ keep every fixture-tested function in `graphyard-core`.
 | --- | --- | --- |
 | async runtime | `tokio` (rt, time, signal, macros) | |
 | HTTP (InfluxDB) | `reqwest` 0.13 (no default features; `rustls-no-provider` with `rustls` + `ring` installed as the process provider, as in nyxmon; `gzip`, `deflate` for the query responses (S4b)) | the InfluxDB clients need plain requests with one timeout (S4a, S4b) |
-| HTTP (collectors, S6) | `hyper` 1 HTTP/1.1 client connection API (`hyper::client::conn::http1`) over tokio sockets wrapped with a per-operation timeout, `tokio-rustls`, `http-body-util`; as in the nyxmon port | reqwest was the first choice but its `read_timeout` bounds the whole wait for the response head with one timer (`Pending::poll`), where httpx bounds each socket read: a server dripping its headers must run into the total deadline, not a read timeout (`test_page_probe_deadline.py`). On hyper's connection API the connector is ours: httpcore's `create_connection` (lookup unbounded, every address with its own connect timeout), the TLS handshake under the timeout, every read and write under the timeout, httpx's exact request target and `Host`. One connection per request (httpx reuses keep-alive connections within a client; P2, timings only) |
+| HTTP (collectors, S6) | `hyper` 1 HTTP/1.1 client connection API (`hyper::client::conn::http1`) over tokio sockets wrapped with a per-operation timeout, `tokio-rustls`, `http-body-util`; as in the nyxmon port | reqwest was the first choice but its `read_timeout` bounds the whole wait for the response head with one timer (`Pending::poll`), where httpx bounds each socket read: a server dripping its headers must run into the total deadline, not a read timeout (`test_page_probe_deadline.py`). On hyper's connection API the connector is ours: ordered TCP dials sharing one connect timeout (DNS is bounded by the total collector deadline), the TLS handshake under the timeout, every read and write under the timeout, httpx's exact request target and `Host`. One connection per request (httpx reuses keep-alive connections within a client; P2, timings only) |
 | response decoding | `flate2` (streaming `GzDecoder`/`ZlibDecoder`/`DeflateDecoder`) | httpx's `GZipDecoder`/`DeflateDecoder` (zlib, raw deflate when the first chunk is not zlib), decoded bytes count towards `max_body_bytes`; D-14 |
 | cookies | `cookie_store` | the client's jar (UniFi session, cookies across manual redirects); D-14 |
 | name resolution | `dns-lookup` (libc `getaddrinfo`) on tokio's blocking pool inside the collectors' connector | `macmini.local` needs nss-mdns, so glibc resolution is mandatory (section 13.1 R2); each lookup is tracked so the deadline can count abandoned ones (D-3) |
@@ -1008,14 +1008,14 @@ holds all of the agent's SQL, for `ingest_token` and fails if found.
 - One client per spec execution (`httpx.Client(...)`), closed after it; its
   cookie jar lives for that execution (redirect chains, UniFi login session).
   Each request opens its own connection (no keep-alive reuse, P2).
-- Timeout `request_timeout_seconds` per operation as httpcore applies it
-  (S6, `graphyard-collect::http::connect`): `getaddrinfo` is not bounded
-  (only the total deadline bounds it), each resolved address gets its own
-  connect timeout (`socket.create_connection`; the last error wins:
-  `ConnectTimeout` `timed out` or `ConnectError` `[Errno N] …`), the TLS
-  handshake has the timeout, and every later socket read and write has it
-  separately (`ReadTimeout` `timed out`), so a response dripping one byte
-  per read never trips it. Pool timeouts do not exist.
+- The total deadline bounds `getaddrinfo`. All resolved addresses for one
+  TCP connection share a single `request_timeout_seconds` budget (S6,
+  `graphyard-collect::http::connect`). Addresses are tried in resolver order.
+  Exhausting that budget returns `ConnectTimeout` (`timed out`). If all
+  addresses fail before it expires, the last `ConnectError` is returned.
+  The TLS handshake and each later socket read or write have their own
+  operation timeout. A response dripping one byte per read can therefore
+  reach the total deadline. Pool timeouts do not exist.
 - URLs are httpx's (`HttpxUrl`, a port of `_urlparse.urlparse` pinned by
   the `urls` fixture cases): `InvalidURL` texts, `str()` (log line,
   `raise_for_status`), `UnsupportedProtocol` for a URL without scheme or host

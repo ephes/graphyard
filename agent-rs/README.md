@@ -664,6 +664,14 @@ checked after publishing on 2026-11-12: the downloaded archive matches its
 the extracted binary (newest symbol version `GLIBC_2.34`, libraries OK); the
 workflow's smoke test passed for `graphyard-agent 0.3.0 (eba6ea16af73c322232b28b1035876557e7d9871)`.
 
+### Collector TCP connection budget
+
+All resolved addresses for a single TCP connection share one
+`request_timeout_seconds` budget. A quick failure falls through
+to the next address in resolver order. If the budget expires, the agent
+reports `ConnectTimeout`. DNS runs under the collector's total deadline,
+and TLS and individual socket reads and writes have separate timeouts.
+
 ### Influx response budgets
 
 Flux exchanges have a 30 s total deadline and 10 MiB decoded response limit;

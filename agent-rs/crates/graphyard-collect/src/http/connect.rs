@@ -1,6 +1,6 @@
-//! Connections as httpcore opens them (PLAN.md 6.1): `socket.create_connection`
-//! (one `getaddrinfo`, then every address in turn, each bounded by the
-//! timeout), the TLS handshake bounded by the timeout, and every later
+//! Collector connections (PLAN.md 6.1): one `getaddrinfo`, then addresses
+//! tried in order within one connect budget, the TLS handshake bounded by
+//! its own timeout, and every later
 //! socket read and write bounded separately. A response that arrives in slow
 //! pieces is therefore fine as long as no single read waits longer than the
 //! timeout; only the total deadline stops it.
@@ -19,7 +19,7 @@ use rustls::pki_types::{CertificateDer, ServerName, UnixTime};
 use rustls::{ClientConfig, DigitallySignedStruct, RootCertStore, SignatureScheme};
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 use tokio::net::TcpStream;
-use tokio::time::Sleep;
+use tokio::time::{Instant, Sleep};
 
 use super::error::{EMPTY_TLS_TRUST_STORE, ErrorKind, HttpError, os_error_text};
 
@@ -157,22 +157,36 @@ fn timed_out(kind: ErrorKind) -> HttpError {
     HttpError::new(kind, "timed out")
 }
 
-/// `socket.create_connection((host, port), timeout)` after the lookup:
-/// each address in turn, each attempt bounded by `timeout`; the last
-/// attempt's error wins (`ConnectTimeout` or `ConnectError`).
+/// Try each resolved address in order within one TCP connect budget.
+/// When all addresses fail within the budget, return the last error.
 pub(crate) async fn connect_tcp(
     addresses: &[SocketAddr],
     timeout: Duration,
 ) -> Result<TcpStream, HttpError> {
+    let stream = dial_addresses(addresses, timeout, TcpStream::connect).await?;
+    let _ = stream.set_nodelay(true);
+    Ok(stream)
+}
+
+async fn dial_addresses<T, F>(
+    addresses: &[SocketAddr],
+    timeout: Duration,
+    mut connect: impl FnMut(SocketAddr) -> F,
+) -> Result<T, HttpError>
+where
+    F: Future<Output = io::Result<T>>,
+{
+    let start = Instant::now();
     let mut last = HttpError::new(ErrorKind::ConnectError, "getaddrinfo returns an empty list");
-    for address in addresses {
-        match tokio::time::timeout(timeout, TcpStream::connect(address)).await {
-            Ok(Ok(stream)) => {
-                let _ = stream.set_nodelay(true);
-                return Ok(stream);
-            }
+    for &address in addresses {
+        let remaining = timeout.saturating_sub(start.elapsed());
+        if remaining.is_zero() {
+            return Err(timed_out(ErrorKind::ConnectTimeout));
+        }
+        match tokio::time::timeout(remaining, connect(address)).await {
+            Ok(Ok(stream)) => return Ok(stream),
             Ok(Err(err)) => last = HttpError::new(ErrorKind::ConnectError, os_error_text(&err)),
-            Err(_) => last = timed_out(ErrorKind::ConnectTimeout),
+            Err(_) => return Err(timed_out(ErrorKind::ConnectTimeout)),
         }
     }
     Err(last)
@@ -298,5 +312,55 @@ impl ServerCertVerifier for NoVerifier {
 
     fn supported_verify_schemes(&self) -> Vec<SignatureScheme> {
         self.0.supported_schemes()
+    }
+}
+
+#[cfg(test)]
+mod dial_tests {
+    use super::*;
+    use tokio::time::sleep;
+
+    #[tokio::test(start_paused = true)]
+    async fn addresses_share_one_connect_budget() {
+        let addresses = [1, 2, 3].map(|port| SocketAddr::from(([127, 0, 0, 1], port)));
+        let budget = Duration::from_secs(10);
+        let start = Instant::now();
+        let mut attempts = Vec::new();
+
+        let result = dial_addresses(&addresses, budget, |address| {
+            attempts.push(address);
+            async move {
+                let delay = if address.port() == 1 { 6 } else { 30 };
+                sleep(Duration::from_secs(delay)).await;
+                Err::<(), _>(io::Error::from(io::ErrorKind::ConnectionRefused))
+            }
+        })
+        .await;
+
+        assert_eq!(result.unwrap_err().kind, ErrorKind::ConnectTimeout);
+        assert_eq!(start.elapsed(), budget);
+        assert_eq!(attempts, addresses[..2]);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn immediate_connect_failure_falls_back_to_next_address() {
+        let addresses = [1, 2, 3].map(|port| SocketAddr::from(([127, 0, 0, 1], port)));
+        let start = Instant::now();
+        let mut attempts = Vec::new();
+        let result = dial_addresses(&addresses, Duration::from_secs(10), |address| {
+            attempts.push(address);
+            async move {
+                if address.port() == 1 {
+                    Err(io::Error::from(io::ErrorKind::ConnectionRefused))
+                } else {
+                    Ok(address)
+                }
+            }
+        })
+        .await;
+
+        assert_eq!(result.unwrap(), addresses[1]);
+        assert_eq!(start.elapsed(), Duration::ZERO);
+        assert_eq!(attempts, addresses[..2]);
     }
 }

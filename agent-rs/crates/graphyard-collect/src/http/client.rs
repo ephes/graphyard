@@ -3,9 +3,9 @@
 //!
 //! One [`HttpClient`] per spec execution (`httpx.Client(...)`) with its own
 //! cookie jar. Each request opens its own connection like httpcore
-//! (`socket.create_connection`, then TLS), and the timeout bounds the
-//! connect, the TLS handshake and every single socket read and write
-//! separately ([`super::connect`]). No redirect is followed automatically:
+//! (TCP, then TLS), with separate timeouts for the TCP connection across
+//! all resolved addresses, the TLS handshake and each socket read and write
+//! ([`super::connect`]). No redirect is followed automatically:
 //! each hop is one [`HttpClient::send`], which logs httpx's `HTTP Request:`
 //! line and prepares the redirect request like
 //! `Client.send(follow_redirects=False)`.
@@ -611,9 +611,8 @@ impl HttpClient {
         request
     }
 
-    /// `socket.create_connection((host, port), timeout)` and, for https/wss,
-    /// `start_tls`. The lookup is not bounded by the timeout (httpcore's
-    /// `getaddrinfo` is not); the total deadline bounds it.
+    /// Resolve and dial within the request's total deadline. The TCP
+    /// address loop and the optional TLS handshake have separate timeouts.
     async fn connect(&self, url: &HttpxUrl, tls: bool) -> Result<Stream, HttpError> {
         let tls_config = match (tls, self.verify_tls) {
             (false, _) => None,

@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Share one Rust collector TCP connection timeout across all resolved addresses,
+  preserving immediate fallback after a quick connection failure.
+
 - Open the exact SQLite source path read-only when preparing a shadow copy,
   including relative filenames with URI delimiters.
 
