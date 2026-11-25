@@ -959,12 +959,12 @@ returns at once; otherwise, per call:
    the list of `(candidate host, point index)` where the candidate is the
    point's subject id for a host subject, else its `collector_host`.
 2. `now = timezone.now()` once.
-3. **Load** (`_load_registry_rows`, autocommit, no write lock), one query
-   per table in this order: hosts whose `host_id` is a batch host or a
-   non-empty service candidate; subjects by `subject_type IN (…) AND
-   subject_id IN (…)` (the cross product of the batch's types and ids: every
-   row it returns is converted, then the rows are narrowed to the batch's
-   pairs); services by `service_id`. An empty `__in` list runs no query
+3. **Load** (`_load_registry_rows`, autocommit, no write lock) in this
+   order: hosts whose `host_id` is a batch host or a non-empty service
+   candidate, subjects by exact type and ID pairs, then services by
+   `service_id`. Subject lookups group IDs by type within each bounded query
+   and only convert rows whose pairs were named in the batch.
+   An empty `__in` list runs no query
    (Django's `EmptyResultSet`), so a batch without hosts and services reads
    only subjects. Django loads whole rows: `last_seen_at` goes through the
    datetime conversion of 5.3 (unparseable text loads as NULL, so the row is

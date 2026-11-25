@@ -11283,7 +11283,7 @@
    }
   },
   {
-   "name": "every row of the subject cross product is converted",
+   "name": "unrelated subject pairs are not converted",
    "before": {
     "subject_registry": [
      {
@@ -11351,11 +11351,6 @@
      }
     ]
    },
-   "error": {
-    "class": "ValueError",
-    "message": "day is out of range for month",
-    "p2": true
-   },
    "statements": [
     {
      "verb": "SELECT",
@@ -11366,6 +11361,31 @@
      "verb": "SELECT",
      "table": "subject_registry",
      "in_transaction": false
+    },
+    {
+     "verb": "SELECT",
+     "table": "host_registry",
+     "in_transaction": true
+    },
+    {
+     "verb": "SELECT",
+     "table": "subject_registry",
+     "in_transaction": true
+    },
+    {
+     "verb": "SELECT",
+     "table": "subject_registry",
+     "in_transaction": true
+    },
+    {
+     "verb": "INSERT",
+     "table": "subject_registry",
+     "in_transaction": true
+    },
+    {
+     "verb": "UPDATE",
+     "table": "subject_registry",
+     "in_transaction": true
     }
    ],
    "after": {
@@ -11376,7 +11396,7 @@
       "subject_id": "alpha",
       "display_name": "alpha",
       "source_system": "vector",
-      "last_seen_at": "2026-10-21 08:10:30"
+      "last_seen_at": "2026-10-21 08:15:30.123456"
      },
      {
       "id": 2,
@@ -11385,6 +11405,14 @@
       "display_name": "beta",
       "source_system": "vector",
       "last_seen_at": "2026-02-30 00:00:00"
+     },
+     {
+      "id": 3,
+      "subject_type": "environment_sensor",
+      "subject_id": "beta",
+      "display_name": "beta",
+      "source_system": "homeassistant",
+      "last_seen_at": "2026-10-21 08:15:30.123456"
      }
     ],
     "host_registry": [

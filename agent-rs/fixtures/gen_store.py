@@ -1265,7 +1265,7 @@ def _registry_cases() -> list[dict[str, Any]]:
             hosts=[host_reg_row(1, "edge", last_seen_at="2026-13-01 00:00:00")],
         ),
         case(
-            "every row of the subject cross product is converted",
+            "unrelated subject pairs are not converted",
             [host_point("alpha"), sensor_point("beta", None, "alpha")],
             subjects=[
                 subject_row(1, "host", "alpha", last_seen_at=SEEN_OLD),

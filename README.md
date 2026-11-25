@@ -886,6 +886,12 @@ Security note: metric collection `config` values are stored in SQLite and may co
 (for example `access_token`, `bearer_token`, `basic_password`). Django admin masks known secret
 keys for existing specs, but secrets are still plaintext at rest in the DB for MVP.
 
+### Registry bookkeeping for metric batches
+
+The subject registry preflight and transactional reload query only the
+normalized (subject type, subject ID) pairs present in the batch. They split
+large queries to stay within the database's bind parameter limit.
+
 ## Response privacy
 
 Authenticated `GET /v1/conditions`, `GET /v1/conditions/<id>` and the owner

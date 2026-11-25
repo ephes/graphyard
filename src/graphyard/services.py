@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Collection
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from itertools import pairwise
+from itertools import batched, pairwise
 import json
 import logging
 import math
@@ -2728,9 +2728,31 @@ def _collect_registry_batch(points: list[influx.MetricPoint]) -> _RegistryBatch:
     return batch
 
 
+def _load_registry_subjects(
+    subjects: Collection[tuple[str, str]],
+) -> dict[tuple[str, str], SubjectRegistry]:
+    if not subjects:
+        return {}
+
+    rows = SubjectRegistry.objects.all()
+    database = rows.db
+    param_limit = connections[database].features.max_query_params or 1000
+    # Reserve one bind parameter for each possible type in a chunk.
+    type_count = len({subject_type for subject_type, _ in subjects})
+    result = {}
+    for pairs in batched(subjects, min(param_limit, 1000) - type_count):
+        ids_by_type: dict[str, list[str]] = {}
+        for subject_type, subject_id in pairs:
+            ids_by_type.setdefault(subject_type, []).append(subject_id)
+        predicate = Q()
+        for subject_type, ids in ids_by_type.items():
+            predicate |= Q(subject_type=subject_type, subject_id__in=ids)
+        for row in rows.using(database).filter(predicate):
+            result[(row.subject_type, row.subject_id)] = row
+    return result
+
+
 def _load_registry_rows(batch: _RegistryBatch) -> _RegistryRows:
-    subject_types = {subject_type for subject_type, _ in batch.subjects}
-    subject_ids = {subject_id for _, subject_id in batch.subjects}
     host_ids = set(batch.host_ids) | {
         host_id
         for candidates in batch.service_hosts.values()
@@ -2741,13 +2763,7 @@ def _load_registry_rows(batch: _RegistryBatch) -> _RegistryRows:
         row.host_id: row for row in HostRegistry.objects.filter(host_id__in=host_ids)
     }
     return _RegistryRows(
-        subjects={
-            (row.subject_type, row.subject_id): row
-            for row in SubjectRegistry.objects.filter(
-                subject_type__in=subject_types, subject_id__in=subject_ids
-            )
-            if (row.subject_type, row.subject_id) in batch.subjects
-        },
+        subjects=_load_registry_subjects(batch.subjects.keys()),
         hosts=hosts,
         services={
             row.service_id: row

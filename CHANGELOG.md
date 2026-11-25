@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Load only the exact subject type and ID pairs named by a metric batch in
+  both registry reads.
+
 - Page through Rust due candidates and load each config only while its
   observed schedule and definition still match.
 
