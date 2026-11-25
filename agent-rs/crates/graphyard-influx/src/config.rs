@@ -10,6 +10,8 @@ use graphyard_core::settings::{InfluxApiMode, Settings};
 use num_bigint::BigInt;
 use num_traits::Zero;
 
+pub(crate) const INVALID_AUTHORIZATION_HEADER: &str = "Invalid InfluxDB Authorization header value";
+
 /// `influx.py:InfluxConfigurationError`: a missing setting, raised at the
 /// first write or query that needs it, never at startup.
 #[derive(Clone, Debug, PartialEq, Eq)]

@@ -1,7 +1,7 @@
 //! Synthetic loopback regressions for transfer budgets and single submissions.
 mod common;
 use chrono::Utc;
-use common::FakeInflux;
+use common::{FakeInflux, capture_logs, take_logs};
 use graphyard_core::model::MetricPoint;
 use graphyard_core::settings::Settings;
 use graphyard_influx::{InfluxWriter, QueryClient, QueryRange};
@@ -39,6 +39,69 @@ fn point() -> MetricPoint {
 fn query_range() -> QueryRange {
     let stop = Utc::now();
     QueryRange::new("m", stop - chrono::Duration::seconds(1), stop)
+}
+
+#[tokio::test]
+async fn authorization_header_admission_redacts_credentials() {
+    const SENTINEL: &str = "synthetic-secret-marker";
+    let server =
+        FakeInflux::start(&[json!({"status": 200, "reason": "OK", "headers": [], "body": ""})])
+            .await;
+    let mut settings = settings(&server);
+    settings.influx_api_mode = "v2".into();
+    settings.influx_token = format!("{SENTINEL}\nrejected");
+    capture_logs();
+
+    let query_error = QueryClient::new(&settings)
+        .query_range(&query_range())
+        .await
+        .unwrap_err();
+    assert_eq!(query_error.python_class(), "ValueError");
+    assert!(!format!("{query_error} {query_error:?}").contains(SENTINEL));
+    assert_eq!(
+        query_error.to_string(),
+        "Invalid InfluxDB Authorization header value"
+    );
+
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("writes.lp");
+    for writer in [
+        InfluxWriter::new().unwrap(),
+        InfluxWriter::to_file(&path).unwrap(),
+    ] {
+        let write_error = writer
+            .write_points(&settings, &[point()])
+            .await
+            .unwrap_err();
+        assert_eq!(write_error.python_class(), "ValueError");
+        assert!(!format!("{write_error} {write_error:?}").contains(SENTINEL));
+        assert_eq!(
+            write_error.to_string(),
+            "Invalid InfluxDB Authorization header value"
+        );
+    }
+    assert_eq!(std::fs::metadata(path).unwrap().len(), 0);
+
+    settings.influx_token = format!("{SENTINEL}🦀");
+    let encoding_error = QueryClient::new(&settings)
+        .query_range(&query_range())
+        .await
+        .unwrap_err();
+    assert_eq!(encoding_error.python_class(), "UnicodeEncodeError");
+    assert!(!format!("{encoding_error:?}").contains(SENTINEL));
+    assert_eq!(
+        encoding_error.to_string(),
+        format!(
+            "InfluxDB Authorization header cannot be encoded as Latin-1 at position {}",
+            "Token ".len() + SENTINEL.len()
+        )
+    );
+    assert!(
+        take_logs()
+            .iter()
+            .all(|(_, message)| !message.contains(SENTINEL) && !message.contains('🦀'))
+    );
+    assert!(server.recorded().is_empty());
 }
 
 #[tokio::test]

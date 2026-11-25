@@ -325,6 +325,11 @@ retain the previous observed value. The parity corpus supplies matching filter
 dimensions explicitly; the selection regressions separately inject mismatched
 rows, including a valid prefix followed by invalid evidence.
 
+Rust Flux queries and v2-compatible writers return a fixed `ValueError` when an
+invalid `Authorization` header value is rejected. This applies to HTTP writes
+and shadow captures. Flux keeps the `UnicodeEncodeError` category for tokens
+outside Latin-1 and reports only the character position within the header value.
+
 ## Writer admission and timestamp compatibility
 
 The shared identity/dimension contract is documented in the root README under

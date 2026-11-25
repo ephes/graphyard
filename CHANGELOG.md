@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Redact credentials from Rust Influx authorization header errors for Flux
+  queries and v2-compatible writes, including shadow captures.
+
 - Reject empty or reversed Rust Influx query windows before contacting the
   backend in any API mode.
 

@@ -39,7 +39,9 @@ use reqwest::header::{
 };
 use reqwest::{StatusCode, Url};
 
-use crate::config::{InfluxClientConfig, InfluxConfigurationError, RequestTimeout};
+use crate::config::{
+    INVALID_AUTHORIZATION_HEADER, InfluxClientConfig, InfluxConfigurationError, RequestTimeout,
+};
 
 /// The `User-Agent` of `influxdb-client` 1.50.0, kept for a zero-change
 /// cutover like the collectors' `python-httpx/0.28.1` (PLAN.md 6.1).
@@ -462,11 +464,11 @@ pub(crate) async fn bounded_body(
 
 /// `Authorization: Token <token>` as the write request carries it. A value
 /// the HTTP stack refuses (a control character such as a line break) is the
-/// same `ValueError` in both write modes (P2 text).
+/// same credential-free `ValueError` in both write modes.
 fn authorization(token: &str) -> Result<HeaderValue, WriteError> {
-    HeaderValue::try_from(format!("Token {token}")).map_err(|err| WriteError::Transport {
+    HeaderValue::try_from(format!("Token {token}")).map_err(|_| WriteError::Transport {
         class: "ValueError",
-        message: format!("Invalid request: {err}"),
+        message: INVALID_AUTHORIZATION_HEADER.into(),
     })
 }
 
