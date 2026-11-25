@@ -1,6 +1,7 @@
 import asyncio
 import fcntl
 import json
+import time
 from contextlib import contextmanager
 from functools import partial
 from datetime import timedelta
@@ -843,14 +844,16 @@ def test_stalled_body_read_stops_at_source_deadline_and_next_source_publishes(
     monkeypatch,
 ):
     events = []
-    monkeypatch.setattr(releases, "FETCH_BUDGET_SECONDS", 0.2)
+    # Generous margins keep the first chunk inside the budget on a loaded
+    # runner; the stall is far longer than the budget, so only cancellation at
+    # the source deadline can end it in time.
+    monkeypatch.setattr(releases, "FETCH_BUDGET_SECONDS", 1.0)
 
     class StalledStream(httpx.AsyncByteStream):
         async def __aiter__(self):
-            await asyncio.sleep(0.12)
             yield b" "
             events.append("stall started")
-            await asyncio.sleep(0.4)
+            await asyncio.sleep(10)
             events.append("stall finished")
             yield b" "
 
@@ -876,7 +879,9 @@ def test_stalled_body_read_stops_at_source_deadline_and_next_source_publishes(
         lambda **kw: factory(transport=httpx.MockTransport(handler), **kw),
     )
 
+    started = time.monotonic()
     result = releases.refresh([definition(), definition(project="flask")])
+    assert time.monotonic() - started < 5
     assert result == releases.RefreshResult(failures=1)
     assert (
         InventoryRelease.objects.get(pk="pypi:django").error == "Release lookup failed"
