@@ -3,7 +3,8 @@
 ## Unreleased
 
 - Share one Rust collector TCP connection timeout across all resolved addresses,
-  preserving immediate fallback after a quick connection failure.
+  preserving immediate fallback after a quick connection failure. The Python
+  agent keeps httpcore's per-address timeout (intentional divergence D-14).
 
 - Open the exact SQLite source path read-only when preparing a shadow copy,
   including relative filenames with URI delimiters.

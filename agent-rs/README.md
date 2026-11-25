@@ -86,9 +86,11 @@ Slice S10a adds the release pipeline (PLAN.md 8.2): the workflow
 Slice S6 adds the collectors' HTTP layer in `graphyard-collect::http`
 (PLAN.md 6.1, 6.2): httpx 0.28.1 as `services.py` configures it, on hyper's
 HTTP/1.1 connection API. One `HttpClient` per spec execution with httpx's
-request headers, auth and a cookie jar; connections as httpcore opens them
-(`getaddrinfo` through libc on the blocking pool, every address in turn, the
-timeout per connect, TLS handshake and socket read/write); httpx's URL model
+request headers, auth and a cookie jar; connections opened like httpcore
+(`getaddrinfo` through libc on the blocking pool, every address in turn)
+except that all addresses share one connect timeout (see
+[Collector TCP connection budget](#collector-tcp-connection-budget), PLAN.md
+D-14), with the timeout per TLS handshake and socket read/write; httpx's URL model
 (`HttpxUrl`: `urlparse`, the redirect join, request target and `Host`), its
 `raise_for_status` texts internally, decoders and exception classes; the total deadline
 with the abandoned-lookup cap (`run_with_deadline`), the JSON reader, the
@@ -671,6 +673,8 @@ All resolved addresses for a single TCP connection share one
 to the next address in resolver order. If the budget expires, the agent
 reports `ConnectTimeout`. DNS runs under the collector's total deadline,
 and TLS and individual socket reads and writes have separate timeouts.
+The retained Python agent (httpcore) gives every address its own connect
+timeout; this intentional divergence is listed under D-14 in PLAN.md.
 
 ### Influx response budgets
 

@@ -337,7 +337,16 @@ that differs is a bug.
   average, such as `a:` and a bare LF) fails with the same error, where
   h11 accepts it. The production unit sets none of these variables, and
   the 32 production endpoints use ASCII host names, gzip from regular
-  servers and (UniFi) plain session cookies.
+  servers and (UniFi) plain session cookies. Connect budget (2026-11-25):
+  httpcore's `socket.create_connection` gives every resolved address its
+  own connect timeout, so a host with N black-holed addresses can hold a
+  collector slot for N timeouts. Rust shares one `request_timeout_seconds`
+  budget across all addresses of a connection and returns `ConnectTimeout`
+  once it is used up (a fast failure still falls through to the next
+  address). For a multi-address host whose first address black-holes,
+  Python can still connect to a later address within the total deadline
+  where Rust fails the spec with `ConnectTimeout`. Single-address hosts
+  and addresses that fail fast behave the same in both.
 - **D-15 Agent runtime corner cases** (S8). A panicking executor (a Rust
   bug; Python has no counterpart) is isolated like a raising one: the spec
   turns `critical` with `collector failure: panic`, the run goes
@@ -696,7 +705,7 @@ keep every fixture-tested function in `graphyard-core`.
 | --- | --- | --- |
 | async runtime | `tokio` (rt, time, signal, macros) | |
 | HTTP (InfluxDB) | `reqwest` 0.13 (no default features; `rustls-no-provider` with `rustls` + `ring` installed as the process provider, as in nyxmon; `gzip`, `deflate` for the query responses (S4b)) | the InfluxDB clients need plain requests with one timeout (S4a, S4b) |
-| HTTP (collectors, S6) | `hyper` 1 HTTP/1.1 client connection API (`hyper::client::conn::http1`) over tokio sockets wrapped with a per-operation timeout, `tokio-rustls`, `http-body-util`; as in the nyxmon port | reqwest was the first choice but its `read_timeout` bounds the whole wait for the response head with one timer (`Pending::poll`), where httpx bounds each socket read: a server dripping its headers must run into the total deadline, not a read timeout (`test_page_probe_deadline.py`). On hyper's connection API the connector is ours: ordered TCP dials sharing one connect timeout (DNS is bounded by the total collector deadline), the TLS handshake under the timeout, every read and write under the timeout, httpx's exact request target and `Host`. One connection per request (httpx reuses keep-alive connections within a client; P2, timings only) |
+| HTTP (collectors, S6) | `hyper` 1 HTTP/1.1 client connection API (`hyper::client::conn::http1`) over tokio sockets wrapped with a per-operation timeout, `tokio-rustls`, `http-body-util`; as in the nyxmon port | reqwest was the first choice but its `read_timeout` bounds the whole wait for the response head with one timer (`Pending::poll`), where httpx bounds each socket read: a server dripping its headers must run into the total deadline, not a read timeout (`test_page_probe_deadline.py`). On hyper's connection API the connector is ours: ordered TCP dials sharing one connect timeout, where httpcore gives each address its own (D-14; DNS is bounded by the total collector deadline), the TLS handshake under the timeout, every read and write under the timeout, httpx's exact request target and `Host`. One connection per request (httpx reuses keep-alive connections within a client; P2, timings only) |
 | response decoding | `flate2` (streaming `GzDecoder`/`ZlibDecoder`/`DeflateDecoder`) | httpx's `GZipDecoder`/`DeflateDecoder` (zlib, raw deflate when the first chunk is not zlib), decoded bytes count towards `max_body_bytes`; D-14 |
 | cookies | `cookie_store` | the client's jar (UniFi session, cookies across manual redirects); D-14 |
 | name resolution | `dns-lookup` (libc `getaddrinfo`) on tokio's blocking pool inside the collectors' connector | `macmini.local` needs nss-mdns, so glibc resolution is mandatory (section 13.1 R2); each lookup is tracked so the deadline can count abandoned ones (D-3) |
@@ -1010,7 +1019,8 @@ holds all of the agent's SQL, for `ingest_token` and fails if found.
   Each request opens its own connection (no keep-alive reuse, P2).
 - The total deadline bounds `getaddrinfo`. All resolved addresses for one
   TCP connection share a single `request_timeout_seconds` budget (S6,
-  `graphyard-collect::http::connect`). Addresses are tried in resolver order.
+  `graphyard-collect::http::connect`; httpcore gives each address its own
+  connect timeout, an intentional divergence listed under D-14). Addresses are tried in resolver order.
   Exhausting that budget returns `ConnectTimeout` (`timed out`). If all
   addresses fail before it expires, the last `ConnectError` is returned.
   The TLS handshake and each later socket read or write have their own

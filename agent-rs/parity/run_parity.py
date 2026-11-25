@@ -1503,7 +1503,7 @@ def run(args: argparse.Namespace) -> int:
         if args.keep:
             resources.callback(print, f"work directory kept: {workdir}")
         else:
-            resources.callback(shutil.rmtree, workdir)
+            resources.callback(shutil.rmtree, workdir, ignore_errors=True)
         tls = _openssl_context(workdir)
         python = PythonAgent("python", workdir, tls, resources)
         rust = RustAgent("rust", workdir, tls, resources)
