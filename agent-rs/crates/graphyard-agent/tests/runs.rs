@@ -334,13 +334,18 @@ async fn overflowing_next_run_time_never_claims_or_collects() {
         let executor = RecordingCollector::default();
         let clock = FixedClock("2026-10-21T08:15:30Z".parse().unwrap());
 
-        let result = run_metric_specs(&store, &executor, &clock, due_only).await;
-        assert!(matches!(result, Err(RunError::NextRunTimeOverflow)));
+        let run = run_metric_specs(&store, &executor, &clock, due_only)
+            .await
+            .unwrap();
+        assert_eq!((run.total, run.failed, run.ingested), (1, 1, 0));
         store.close();
 
         assert_eq!(executor.0.get(), 0, "collector calls (due_only={due_only})");
         assert_eq!(db.rows(table), before, "spec rows (due_only={due_only})");
-        assert_eq!(db.count("pipeline_heartbeat"), 0);
+        assert_eq!(
+            db.text("pipeline_heartbeat", "metric_collectors", "status"),
+            "critical"
+        );
     }
 }
 
@@ -379,30 +384,35 @@ async fn stored_json_python_cannot_load_fails_only_its_spec_or_condition() {
 }
 
 #[tokio::test]
-async fn a_next_run_time_beyond_sqlite_integers_aborts_the_run() {
+async fn overflowing_schedule_does_not_starve_later_due_specs() {
     let db = TestDb::new();
-    common::insert_spec(
-        &db,
-        "huge interval",
-        "http_json_metric",
-        &serde_json::json!({}),
-    );
+    for name in ["a huge interval", "b healthy"] {
+        common::insert_spec(&db, name, "http_json_metric", &serde_json::json!({}));
+    }
     db.execute(&format!(
-        "UPDATE metric_collection_spec SET interval_seconds = {}",
+        "UPDATE metric_collection_spec SET interval_seconds = {} WHERE name = 'a huge interval'",
         i64::MAX
     ));
     let store = Store::open(db.path(), &settings(&[])).unwrap();
     let clock = FixedClock("2026-10-21T08:15:30Z".parse().unwrap());
-    let err = run_metric_specs(&store, &Faulty, &clock, false)
+    let executor = RecordingCollector::default();
+    let run = run_metric_specs(&store, &executor, &clock, true)
         .await
-        .unwrap_err();
+        .unwrap();
     store.close();
-    assert_eq!(err.python_class(), "OverflowError");
+
+    assert_eq!((run.total, run.failed, run.ingested), (2, 1, 1));
+    assert_eq!(executor.0.get(), 1);
     assert_eq!(
-        err.to_string(),
-        "Python int too large to convert to SQLite INTEGER"
+        db.text("metric_collection_spec", "b healthy", "last_status"),
+        "ok"
     );
-    assert_eq!(db.count("pipeline_heartbeat"), 0);
+    let heartbeat = |column| db.text("pipeline_heartbeat", "metric_collectors", column);
+    assert_eq!(heartbeat("status"), "warning");
+    assert_eq!(
+        heartbeat("last_error"),
+        "spec_id=1: next run time exceeds SQLite INTEGER range"
+    );
 }
 
 struct DeferredCollector {

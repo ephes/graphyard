@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Isolate Rust collector schedule overflows so later specs still run and the
+  collector heartbeat reports the failed spec.
+
 - Rust agent (`agent-rs/`): version 0.4.4, released as `agent-rs-v0.4.4`
   (built and published locally by `agent-rs/scripts/local_release.py`). It
   carries the Rust agent fixes merged since `agent-rs-v0.4.3` (entries below):

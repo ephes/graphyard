@@ -355,7 +355,8 @@ that differs is a bug.
   the float range and raises `OverflowError` after the first run beyond it.
   Unique prefixes of long flags are matched among all flags, the Rust-only
   ones included, so `--c` is ambiguous in Rust (`--condition-interval`,
-  `--check-schema`) where argparse expands it.
+  `--check-schema`) where argparse expands it. A collector schedule beyond
+  SQLite’s INTEGER range fails only its spec (section 3.4).
 
 ---
 
@@ -541,8 +542,8 @@ publication/completion after a lost renewal; never run both schedulers on the
 same specs.
 Non-due manual runs retain unconditional execution and the shared run-start
 timestamp, with completion fenced by the originally observed schedule and
-captured definition. Superseded completions are not counted, and a run with no
-accepted completions leaves the heartbeat untouched.
+captured definition. Superseded completions are not counted. A run with no
+accepted completions or schedule failures leaves the heartbeat untouched.
 
 A store failure outside a spec (including claim, renewal or completion storage
 errors) aborts the run: error log `Metric collection failed`, stderr
@@ -557,8 +558,9 @@ the spec's `critical` message (the CPython digit-limit text, or `config is
 not valid JSON: <err>`), and a condition's `tags_filter` likewise its
 `evaluation error: ...`. The Rust agent computes `next_run_time` from the same
 clock reading it uses for `last_run_at`, before claiming or executing the spec.
-A result beyond SQLite's INTEGER range aborts the run with sqlite3's
-`OverflowError` text `Python int too large to convert to SQLite INTEGER`.
+A result beyond SQLite's INTEGER range counts as a failed spec and leaves
+its row untouched. Rust continues to later specs and includes the failure in the
+heartbeat totals, with a fixed spec-ID diagnostic subject to the five-sample cap.
 A panicking executor is isolated (D-15).
 
 ### 3.5 Conditions run (`services.py:evaluate_conditions_once`, P1)
