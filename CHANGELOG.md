@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Refuse orphan commit trailers in Rust shadow captures and report the last
+  complete offset for recovery.
+
+- Stop Rust shadow validation when a framed row exceeds the batch's declared
+  remaining bytes.
+
 - Redact credentials from Rust Influx authorization header errors for Flux
   queries and v2-compatible writes, including shadow captures.
 
