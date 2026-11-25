@@ -7,7 +7,7 @@ import pytest
 from django.urls import reverse
 
 from graphyard import services
-from graphyard.models import MetricCollectionSpec, PipelineHeartbeat
+from graphyard.models import MetricCollectionSpec, PipelineHeartbeat, StatusLevel
 
 
 SENTINEL = "invented-credential-body-marker"
@@ -113,3 +113,51 @@ def test_escaping_collector_exception_does_not_log_traceback(monkeypatch, caplog
     assert SENTINEL not in spec.last_error + caplog.text
     assert "RuntimeError" in spec.last_error
     assert all(r.exc_info is None for r in caplog.records)
+
+
+@pytest.mark.django_db
+def test_collector_heartbeat_formats_only_its_first_five_diagnostics(monkeypatch):
+    spec_type = "http_json_metric"
+    MetricCollectionSpec.objects.bulk_create(
+        [
+            MetricCollectionSpec(name=f"spec-{index:02}", spec_type=spec_type)
+            for index in range(48)
+        ]
+    )
+    formatted = []
+
+    class Diagnostic(str):
+        def __format__(self, format_spec):
+            formatted.append(str(self))
+            return super().__format__(format_spec)
+
+    def collect(spec):
+        index = int(spec.name.removeprefix("spec-"))
+        if index % 3 == 0:
+            return StatusLevel.WARNING, 1, 2, Diagnostic("")
+        if index % 3 == 1:
+            error = "" if index == 1 else f"failure-{index}"
+            return StatusLevel.CRITICAL, 0, 0, Diagnostic(error)
+        return StatusLevel.WARNING, 1, 2, Diagnostic(f"warning-{index}")
+
+    monkeypatch.setitem(services._SPEC_EXECUTORS, spec_type, collect)
+    run = services.run_metric_collection_specs_once()
+
+    assert run == services.MetricCollectionSpecRun(
+        total=48, failed=16, warning=32, ingested=32, skipped=64
+    )
+    heartbeat = PipelineHeartbeat.objects.get(name="metric_collectors")
+    assert heartbeat.status == StatusLevel.WARNING
+    assert heartbeat.details == {
+        "total": 48,
+        "failed": 16,
+        "warning": 32,
+        "ingested": 32,
+        "skipped": 64,
+    }
+    assert heartbeat.last_error == (
+        "spec-01: ; spec-02: warning-2; spec-04: failure-4; "
+        "spec-05: warning-5; spec-07: failure-7"
+    )
+    assert MetricCollectionSpec.objects.get(name="spec-47").last_error == "warning-47"
+    assert formatted == ["", "warning-2", "failure-4", "warning-5", "failure-7"]

@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Format only the five Python collector diagnostics shown in the run heartbeat
+  while preserving totals and per-spec results.
+
 - Continue Python condition evaluation and publish its run heartbeat when a
   logging handler fails to report a condition error.
 

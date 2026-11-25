@@ -481,6 +481,9 @@ was saved before validation existed, it gets `last_status=critical` with the
 error category in `last_error`. Its `next_run_time` still advances and the remaining specs
 keep running. The run is reflected in the `metric_collectors` heartbeat on
 `/v1/health`: `warning` when some specs failed, `critical` only when all did.
+The Python heartbeat counts every accepted result and includes the first five
+eligible diagnostics in scan order. Critical results always qualify, and
+warnings qualify when they have an error message.
 
 Collector exception messages are normalized before persistence in both runtimes:
 `collector failure: <allowlisted type>` (unknown types become `Exception`), or
