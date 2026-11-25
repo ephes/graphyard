@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Rust agent: update `cookie` to 0.18.3 and `url` to 2.5.9 for
+  RUSTSEC-2026-0594 and RUSTSEC-2026-0592, which failed `cargo deny`.
+
 - Format only the five Python collector diagnostics shown in the run heartbeat
   while preserving totals and per-spec results.
 
