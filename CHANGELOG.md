@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Check never-attempted and least recently attempted release sources first so
+  a retry can reach sources left waiting by an exhausted refresh budget.
+
 - Cancel in-progress public release reads at the remaining source or refresh
   deadline, allowing later lookups while refresh time remains.
 

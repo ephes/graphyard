@@ -1370,6 +1370,57 @@ def test_whole_refresh_budget_bounds_200_sources_and_preserves_unattempted(monke
         assert row.attempted_at == previous and row.error == ""
 
 
+def test_refresh_resumes_with_unattempted_then_least_recently_attempted_sources(
+    monkeypatch,
+):
+    started = timezone.now()
+    items = [
+        definition(project=project)
+        for project in ("first", "second", "fresh", "newer", "older", "waiting")
+    ]
+    fresh = InventoryRelease.objects.create(
+        source_id="pypi:fresh",
+        definition=items[2],
+        checked_at=started,
+        version="1.0",
+    )
+    for index, days_ago in ((3, 1), (4, 2)):
+        InventoryRelease.objects.create(
+            source_id="pypi:" + items[index]["project"],
+            definition=items[index],
+            attempted_at=started - timedelta(days=days_ago),
+            error="Release lookup failed",
+        )
+    clock = [0.0]
+    monkeypatch.setattr(releases, "monotonic", lambda: clock[0])
+    monkeypatch.setattr(releases.timezone, "now", lambda: started)
+    monkeypatch.setattr(
+        releases, "REFRESH_BUDGET_SECONDS", 2 * releases.FETCH_BUDGET_SECONDS
+    )
+    attempted = []
+
+    def lookup(client, item, **kwargs):
+        attempted.append(item["project"])
+        if item["project"] in ("first", "second"):
+            clock[0] += releases.FETCH_BUDGET_SECONDS
+            raise httpx.ReadTimeout("synthetic timeout")
+        return "2.0"
+
+    monkeypatch.setattr(releases, "fetch", lookup)
+    assert releases.refresh(items) == releases.RefreshResult(failures=2, skipped=3)
+    assert attempted == ["first", "second"]
+    assert InventoryRelease.objects.get(pk="pypi:waiting").attempted_at is None
+
+    attempted.clear()
+    started += timedelta(hours=1)
+    assert releases.refresh(items) == releases.RefreshResult(failures=2)
+    assert attempted == ["waiting", "older", "newer", "first", "second"]
+    assert InventoryRelease.objects.get(pk="pypi:waiting").version == "2.0"
+    fresh.refresh_from_db()
+    assert fresh.checked_at == started - timedelta(hours=1)
+    assert fresh.attempted_at is None
+
+
 @pytest.mark.parametrize("expired", [False, True], ids=["inside", "at-deadline"])
 def test_release_refresh_rechecks_budget_after_publication_fence(monkeypatch, expired):
     now = timezone.now()

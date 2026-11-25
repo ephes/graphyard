@@ -239,6 +239,7 @@ def refresh(data, force=False):
         )
         generation = InventoryReleaseRegistry.objects.get(pk=1).generation
     started = timezone.now()
+    attempts: dict[str, datetime | None] = {}
     with transaction.atomic():
         # UPDATE both checks ownership and locks policy replacement on SQLite
         # and row-locking databases. No wall-clock ordering is required.
@@ -251,8 +252,9 @@ def refresh(data, force=False):
         ).update(enabled=False)
         for key, definition in registry.items():
             row, created = InventoryRelease.objects.only(
-                "definition", "enabled"
+                "definition", "enabled", "attempted_at"
             ).get_or_create(source_id=key, defaults={"definition": definition})
+            attempts[key] = None
             if created:
                 continue
             if not row.enabled or row.definition != definition:
@@ -265,6 +267,8 @@ def refresh(data, force=False):
                     attempted_at=None,
                     error="",
                 )
+            else:
+                attempts[key] = row.attempted_at
     failures = skipped = 0
     superseded = False
     with asyncio.Runner() as runner, ExitStack() as cleanup:
@@ -293,8 +297,12 @@ def refresh(data, force=False):
             )
             return sum(not fresh(row) for row in rows)
 
-        keys = list(registry)
-        for index, (key, definition) in enumerate(registry.items()):
+        # Sorting is stable, so equal attempt timestamps keep registry order.
+        keys = sorted(
+            registry, key=lambda key: (attempts[key] is not None, attempts[key])
+        )
+        for index, key in enumerate(keys):
+            definition = registry[key]
             if monotonic() >= deadline:
                 skipped += count_due(keys[index:])
                 break

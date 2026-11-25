@@ -501,8 +501,11 @@ remain invalidated even if their new lookup is skipped. After expiry, the
 command reads the remaining cache statuses together to distinguish fresh hits
 from skipped lookups. Output reports failed and skipped counts; any skipped sources
 make the command incomplete with a nonzero exit status. Rerun normally to resume
-(still-fresh successes are skipped without network requests); `--force` also
-rechecks fresh sources and remains subject to the same budget.
+(still-fresh successes are skipped without network requests). The refresh tries
+never-attempted sources first, then sources with the oldest attempt timestamps,
+using configuration order for ties. This gives due sources left waiting by an
+incomplete run priority over recent attempts. `--force` also rechecks fresh
+sources and uses the same ordering and deadlines.
 HTTP redirects, proxy environment settings, prereleases/dev/local versions, yanked
 PyPI releases, disabled formulae and oversized responses are refused. No GitHub
 credential is used; rate limits appear as failed checks. A PyPI response must
