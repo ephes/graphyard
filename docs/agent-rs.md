@@ -571,11 +571,12 @@ unscannable for peers or a later reopen.
 Over-budget evidence is refused, never accepted as empty. Errors report the
 budget and last complete offset; neither the capture bytes nor the writer's
 previously qualified offset change. Repeated refusals do not incrementally
-qualify an oversized history. A writer's own synced batches advance its offset,
-so a capture can grow past the reopen envelope while it runs. Batches from
-cooperating peers do not: if peers add more than one envelope between two
-appends of a slower writer, that writer's suffix scan stays over budget and it
-refuses every later append until restart, where the reopen scan applies again.
+qualify an oversized history. Each successful suffix scan advances the writer's
+offset, even if the new append fails. The next attempt checks from that offset,
+including any bytes left by the failed append. A writer's own synced batches
+also advance its offset, so a capture can grow past the reopen envelope while
+it runs. If peers add more than one envelope between appends of a slower writer,
+that writer refuses later appends until restart, where the reopen scan applies again.
 Plan rotation before those limits: stop all writers, preserve the full private capture,
 and start a separate file. Qualify larger historical captures offline with
 explicit operator-controlled resources; the agent never trims or resets them

@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Keep the last validated Rust shadow offset when an append fails so retries
+  check any partial write without rescanning the admitted peer batches.
+
 - Count a successful release lookup as skipped if the run deadline has expired
   when its publication fence is acquired.
 

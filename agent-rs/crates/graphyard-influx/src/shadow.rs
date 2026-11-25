@@ -235,13 +235,20 @@ fn record_budget(kind: &str) -> io::Error {
 }
 
 pub(crate) async fn append(file: &Arc<Mutex<ShadowFile>>, record: &[u8]) -> io::Result<()> {
-    append_with(file, record, || {}).await
+    append_with(file, record, write_and_sync).await
+}
+
+fn write_and_sync(file: &File, record: &[u8]) -> io::Result<()> {
+    let mut output = file;
+    output.write_all(record)?;
+    output.flush()?;
+    file.sync_data()
 }
 
 async fn append_with(
     file: &Arc<Mutex<ShadowFile>>,
     record: &[u8],
-    before_write: impl FnOnce() + Send + 'static,
+    write: impl FnOnce(&File, &[u8]) -> io::Result<()> + Send + 'static,
 ) -> io::Result<()> {
     // One running/queued blocking job per writer. The job owns this guard,
     // descriptor and record even if the async caller stops waiting.
@@ -270,17 +277,15 @@ async fn append_with(
                 Err(std::fs::TryLockError::Error(err)) => return Err(err),
             }
         }
-        let end = {
-            let _locked = Locked(&state.file);
-            validate(&state.file, state.validated_end, state.validation_limits)?;
-            before_write();
-            let mut output = &state.file;
-            output.write_all(&record)?;
-            output.flush()?;
-            state.file.sync_data()?;
-            state.file.metadata()?.len()
-        };
-        state.validated_end = end;
+        let ShadowFile {
+            file,
+            validated_end,
+            validation_limits,
+        } = &mut *state;
+        let _locked = Locked(file);
+        *validated_end = validate(file, *validated_end, *validation_limits)?;
+        write(file, &record)?;
+        *validated_end = file.metadata()?.len();
         Ok(())
     })
     .await
@@ -323,9 +328,10 @@ mod tests {
             release.send(()).unwrap();
             observed
         });
-        append_with(&state, record(1).as_bytes(), move || {
+        append_with(&state, record(1).as_bytes(), move |file, record| {
             entered.send(()).unwrap();
             gate.recv_timeout(Duration::from_secs(3)).unwrap();
+            write_and_sync(file, record)
         })
         .await
         .unwrap();
@@ -352,9 +358,10 @@ mod tests {
         let waiter = tokio::spawn({
             let state = state.clone();
             async move {
-                append_with(&state, record(1).as_bytes(), move || {
+                append_with(&state, record(1).as_bytes(), move |file, record| {
                     entered.send(()).unwrap();
                     gate.recv_timeout(Duration::from_secs(3)).unwrap();
+                    write_and_sync(file, record)
                 })
                 .await
             }
@@ -392,6 +399,51 @@ mod tests {
             lines,
             elapsed: Duration::from_secs(5),
         }
+    }
+
+    #[tokio::test]
+    async fn failed_write_retains_admitted_peer_suffix_and_rechecks_partial_record() {
+        let capture = tempfile::NamedTempFile::new().unwrap();
+        let open_writer = || {
+            let file = std::fs::OpenOptions::new()
+                .read(true)
+                .append(true)
+                .open(capture.path())
+                .unwrap();
+            Arc::new(Mutex::new(ShadowFile::with_limits(
+                file,
+                tiny_limits(100_000, 30),
+            )))
+        };
+        let state = open_writer();
+        let peer = open_writer();
+        let peer_suffix = record(1).repeat(10);
+        append(&peer, peer_suffix.as_bytes()).await.unwrap();
+
+        let next = record(2);
+        let partial = next.find("# commit").unwrap();
+        let failure = append_with(&state, next.as_bytes(), move |mut file, record| {
+            file.write_all(&record[..partial])?;
+            Err(io::Error::other("injected write failure"))
+        })
+        .await
+        .unwrap_err();
+        assert_eq!(failure.to_string(), "injected write failure");
+
+        // Rescanning the peer suffix would exhaust the line budget before the tail.
+        let retry = append(&state, next.as_bytes()).await.unwrap_err();
+        assert_eq!(retry.kind(), io::ErrorKind::InvalidData, "{retry}");
+        let peer_end = peer_suffix.len();
+        assert!(
+            retry
+                .to_string()
+                .contains(&format!("last complete offset={peer_end}"))
+        );
+        assert_eq!(state.lock().await.validated_end, peer_end as u64);
+        assert_eq!(
+            std::fs::read_to_string(capture.path()).unwrap(),
+            format!("{peer_suffix}{}", &next[..partial]),
+        );
     }
 
     #[tokio::test]
