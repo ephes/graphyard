@@ -6,6 +6,9 @@
   check when closing the HTTP client fails. Log the close failure separately
   and retain any original refresh error.
 
+- Include Rust collector schedule overflows in partial heartbeats when a later
+  store error stops the batch, even before the first committed completion.
+
 - Rust agent: replace the unmaintained `chrono` crate (RUSTSEC-2026-0543) with
   `jiff` 1.x and remove the advisory exception from `agent-rs/deny.toml`. The
   agent's instants are now `graphyard_core::utc::UtcDateTime`, microseconds
