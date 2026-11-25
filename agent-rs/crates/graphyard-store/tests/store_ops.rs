@@ -41,7 +41,7 @@ fn spec_values(spec: &SpecRow) -> Value {
 }
 
 /// The definition a runner loaded before claiming (`op.definition`).
-fn captured_spec(id: i64, definition: &Value) -> SpecRow {
+fn captured_spec(id: i64, definition: &Value, stored: &Value) -> SpecRow {
     SpecRow {
         id,
         name: definition["name"].as_str().unwrap().to_owned(),
@@ -55,6 +55,7 @@ fn captured_spec(id: i64, definition: &Value) -> SpecRow {
         last_error: String::new(),
         created_at: None,
         updated_at: None,
+        updated_at_raw: stored["updated_at"].as_str().map(str::to_owned),
     }
 }
 
@@ -224,7 +225,12 @@ async fn run_case(case: &Value) {
             .map(|()| None),
         "claim_spec" => store
             .claim_due_spec(
-                captured_spec(op["id"].as_i64().unwrap(), &op["definition"]).claim_identity(),
+                captured_spec(
+                    op["id"].as_i64().unwrap(),
+                    &op["definition"],
+                    &case["before"][0],
+                )
+                .claim_identity(),
                 op["expected_due"].as_i64().unwrap(),
                 op["now_ts"].as_i64().unwrap(),
                 op["claim_until"].as_i64().unwrap(),
@@ -406,7 +412,12 @@ async fn independent_stores_race_for_one_due_slot() {
     db.seed("metric_collection_spec", row["before"].as_array().unwrap());
     let first = db.store();
     let second = db.store();
-    let spec = captured_spec(1, &row["op"]["definition"]).claim_identity();
+    let spec = first
+        .load_specs(None)
+        .await
+        .unwrap()
+        .remove(0)
+        .claim_identity();
     let (a, b) = tokio::join!(
         first.claim_due_spec(spec.clone(), 100, 100, 400),
         second.claim_due_spec(spec.clone(), 100, 100, 400),

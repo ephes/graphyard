@@ -125,10 +125,11 @@ class Round:
     #: condition named ``condition`` when that is set.
     evaluate: bool = False
     condition: str | None = None
-    #: The exit code both commands must end with.
+    #: The shared exit code unless Rust has an explicit diagnostic below.
     expect_code: int = 0
     #: The Python command's stdout (checked for the ``evaluate`` rounds).
     expect_stdout: str | None = None
+    rust_command_error: str | None = None
 
 
 ROUNDS = (
@@ -163,6 +164,7 @@ ROUNDS = (
         evaluate=True,
         condition="disabled condition",
         expect_stdout="Condition evaluation completed (0).\n",
+        rust_command_error="CommandError: No matching enabled condition.",
     ),
 )
 #: Rounds of the agents' ``--run-once`` (the spec expectations cover these).
@@ -1428,20 +1430,25 @@ def compare_round(
     prefix = f"round {round_no} ({round_.name})"
     # Taken first, so the next round compares only its own requests.
     requests_a, requests_b = python.new_requests(), rust.new_requests()
-    if (a.code, b.code) != (round_.expect_code, round_.expect_code):
+    expected_rust_code = 1 if round_.rust_command_error else round_.expect_code
+    if (a.code, b.code) != (round_.expect_code, expected_rust_code):
         return [
             f"{prefix}: exit codes python={a.code} rust={b.code}\n"
             f"--- python stderr (tail)\n{a.stderr[-3000:]}\n"
             f"--- rust stderr (tail)\n{b.stderr[-3000:]}"
         ]
+    expected_stdout = () if round_.rust_command_error else a.stdout.splitlines()
+    expected_logs = operator_lines(a.stderr, python.tokens)
+    if round_.rust_command_error:
+        expected_logs.append(round_.rust_command_error)
     differences += diff_lists(
         f"{prefix} stdout",
-        [normalise(line, python.tokens) for line in a.stdout.splitlines()],
+        [normalise(line, python.tokens) for line in expected_stdout],
         [normalise(line, rust.tokens) for line in b.stdout.splitlines()],
     )
     differences += diff_lists(
         f"{prefix} operator log lines",
-        operator_lines(a.stderr, python.tokens),
+        expected_logs,
         operator_lines(b.stderr, rust.tokens),
     )
     for table in TABLES:

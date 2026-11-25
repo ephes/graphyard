@@ -13,7 +13,8 @@
 //! (load, failure update, heartbeat) exits 1 with one stderr line where
 //! Python prints a traceback (P2). The database is opened and its schema
 //! verified as at the agent's startup (D-2): a missing database exits 1 and
-//! is never created.
+//! is never created. A selected ID that matches no enabled row exits 1
+//! with `CommandError: No matching enabled condition.`
 //!
 //! The command installs no signal handlers: SIGINT and SIGTERM end it by
 //! their default action, as they end the Python command (SIGTERM by the
@@ -74,6 +75,10 @@ async fn evaluate(
     // Every statement has completed; close the connection before reporting.
     store.close();
     match run {
+        Ok(run) if condition_id.is_some() && run.total == 0 => {
+            print_stderr("CommandError: No matching enabled condition.");
+            ExitCode::FAILURE
+        }
         Ok(run) => {
             let (summary, failure) = report(&run);
             print_stdout(&summary);

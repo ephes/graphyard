@@ -63,8 +63,13 @@ def test_definition_edit_preserves_concurrent_runtime_publication(kind):
         )
         fields = ("status", "message", "last_value", "last_evaluated")
     expected = type(row).objects.values(*fields).get(pk=row.pk)
+    if kind == "spec":
+        assert type(row).objects.get(pk=row.pk).updated_at == row.updated_at
+        before_edit = row.updated_at
     assert form.is_valid(), form.errors
     form.save()
+    if kind == "spec":
+        assert type(row).objects.get(pk=row.pk).updated_at != before_edit
     assert type(row).objects.values(*fields).get(pk=row.pk) == expected
 
 

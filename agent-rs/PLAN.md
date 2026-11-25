@@ -167,8 +167,13 @@ that differs is a bug.
 ### 2.4 Intentional divergences (P3, exhaustive)
 
 - **D-1 Signals.** SIGTERM: Python dies by the default signal action at any
-  point; Rust stops at the next await point (an in-flight SQLite statement
-  completes first), prints nothing and exits 0. systemd reports both as
+  point; Rust stops starting new work, gives a metric attempt already in
+  progress up to 500 ms to finish and persist its outcome, and otherwise
+  stops at the next await point (an in-flight SQLite statement completes
+  first), prints nothing and exits 0. A metric sweep stopped this way with
+  counted outcomes and unstarted specs publishes a partial
+  `metric_collectors` heartbeat (`partial: 1`, `partial run: agent
+  shutdown`, section 3.4); Python writes no heartbeat for a killed sweep. systemd reports both as
   "Deactivated successfully". SIGINT behaves like Python's
   `KeyboardInterrupt` handler: stdout `graphyard-agent interrupted, exiting`,
   exit 0. Rust does the same during `--run-once`, where Python's handler is
@@ -358,7 +363,16 @@ that differs is a bug.
   `--check-schema`) where argparse expands it. A collector schedule beyond
   SQLite’s INTEGER range fails only its spec. A collector store error after a
   committed completion or a schedule overflow can publish a partial heartbeat
-  (section 3.4).
+  (section 3.4). Rust collector claims, renewals and completions also compare
+  the exact stored `updated_at` text, so a definition edited and reverted
+  during an attempt rejects that attempt; Python compares only the captured
+  business fields (section 3.4). An empty full condition sweep writes its
+  heartbeat with `no_work: 1` and without success, preserving
+  `last_success`; Python marks it successful (section 3.5).
+  `evaluate-conditions --condition-id` selecting no enabled row (missing,
+  disabled or outside the 64-bit range) exits 1 with stderr
+  `CommandError: No matching enabled condition.`; Python prints
+  `Condition evaluation completed (0).` and exits 0 (section 11.4).
 
 ---
 
@@ -528,6 +542,10 @@ Due-only runs now atomically claim each observed scheduling timestamp before
 execution (`WHERE enabled AND next_run_time = observed AND next_run_time <= now`
 plus the captured name, type, interval and config since round 85, so an edit
 between load and claim reaches no external I/O and leaves the spec due).
+Rust also captures the exact stored `updated_at` text
+(`CAST(updated_at AS TEXT) IS ?`) for the claim, every renewal and the
+completion, so an edit reverted to the same business fields still rejects the
+older attempt (D-15); Python does not compare `updated_at`.
 Use the per-spec claim start time and advance the Rust claim by
 `min(max(3, interval_seconds), 300)` seconds. Renew it every one third of that
 lease while the collector/sink/registry future is live. Each renewal compares the
@@ -551,7 +569,10 @@ A load, claim, renewal or completion store error stops the batch: error log
 `Metric collection failed`, stderr `Metric collection failed: <err>`, and the
 scheduler loop continues. After a committed completion or a schedule overflow,
 Rust tries to publish a partial `metric_collectors` heartbeat. It marks `partial: 1`
-in details, counts the prefix, and preserves `last_success`. Its status is
+in details, counts the prefix, and preserves `last_success`. A sweep stopped
+by SIGTERM/SIGINT after counted outcomes, with specs left unstarted, publishes
+the same partial heartbeat with the first message `partial run: agent
+shutdown` instead of `partial run: collector store failure` (D-1). Its status is
 `warning`, or `critical` when all counted outcomes failed. If the heartbeat
 write also fails, the run still returns the original store error. A deleted
 spec is a superseded claim/completion. The run skips it and can still publish
@@ -586,8 +607,10 @@ stage (`evaluation` or `publication`), allowlisted category and `failure_publish
 No raw exception/query text enters that event or failure message. Heartbeat
 `condition_evaluator`: `ok`/`""`/success when nothing failed, else
 `warning`/`"<n> condition(s) failed"`/no success; details
-`{"evaluated": <total>, "failed": <failed>}`. stdout
-`Condition eval: evaluated=<total> failed=<failed>`.
+`{"evaluated": <total>, "failed": <failed>}`. Rust adds `"no_work": 1`
+on an empty sweep, writes it without success and so refreshes liveness while
+preserving `last_success` (D-15; Python marks the empty sweep successful).
+stdout `Condition eval: evaluated=<total> failed=<failed>`.
 
 ### 3.6 Output and logging
 
@@ -667,20 +690,23 @@ One tokio runtime, `current_thread`, plus tokio's blocking pool for
 `getaddrinfo` and one dedicated thread for SQLite (below). The two loops stay sequential in one task,
 exactly like Python; nothing in the agent needs concurrency, and sequential
 execution is what keeps the P1 ordering (single `now` per run, spec order,
-heartbeat after the last spec). A second task handles SIGTERM/SIGINT and
-cancels the main task.
+heartbeat after the last spec). A signal future beside the scheduler
+handles SIGTERM/SIGINT and stops new work.
 
 Shutdown must not wait for blocking work that cannot be cancelled: a
 `getaddrinfo` stuck in tokio's blocking pool would otherwise hold
 `Runtime::drop` until systemd's SIGKILL. SQLite therefore does not run on
 the blocking pool but on one dedicated DB thread owning the connection
 (callers send a closure and await the reply, as in nyxmon `nyxmon-store`).
-On a signal the main task is cancelled, `main` waits for the DB thread to
-finish its current statement (bounded by `busy_timeout`), drops the
-connection, prints the SIGINT line if applicable, and ends the runtime with
-`Runtime::shutdown_timeout(Duration::from_millis(500))`, abandoning resolver
-threads; the process then exits 0. S8 tests SIGTERM with a resolver stub that
-never returns and with a DB thread that holds a statement for a few seconds.
+On a signal, the active metric attempt gets a 500 ms deadline to finish and
+persist its outcome. A stopped sweep with counted outcomes and remaining
+specs can publish a partial heartbeat during that grace. The rest of the
+scheduler is cancelled, and `main` waits for the DB thread to finish its
+current statement (bounded by `busy_timeout`). It closes the connection,
+prints the SIGINT line if applicable and gives blocking runtime work the
+remaining grace before exiting 0. Shutdown tests cover a resolver that
+never returns, an attempt that finishes within the grace and a DB thread
+holding a statement for a few seconds.
 
 ### 4.2 Workspace
 
@@ -2063,8 +2089,9 @@ As implemented in S15a (`graphyard-agent::evaluate`, version 0.2.0, release
 (`runs::run_conditions` with the id), so its writes are the ones `runs.json`
 pins, including new `condition_id` scenarios; an id outside the 64-bit range
 of the `BigAutoField` selects nothing without a query (Django's empty
-result). Targeted runs return their own counts and leave the global
-heartbeat untouched. The database is opened and its schema verified as at the agent's startup (D-2;
+result). Targeted runs leave the global heartbeat untouched. A targeted run
+with zero matching rows exits 1 with `CommandError: No matching enabled
+condition.`. The database is opened and its schema verified as at the agent's startup (D-2;
 a missing database exits 1 and is never created); the agent's three INFO
 lines are not printed. The failure line outside a condition is stderr
 `Condition evaluation failed: <class>: <err>`. The settings are read before
@@ -2078,7 +2105,8 @@ SQLite transactions keep the rows consistent). The parity harness runs both
 commands in three extra rounds after the five agent rounds (all enabled
 conditions with two failures, one condition by id in `v3` mode, the
 disabled condition's id) and compares exit codes, stdout, the
-`CommandError` and operator lines, rows and requests.
+`CommandError` and operator lines, rows and requests. The disabled-ID round
+expects a Rust command error and Python's zero-row summary.
 
 **S15b** (ops-library, ops-deploy, ops-control; ≥ 30 days after T1;
 production): pin the release containing `evaluate-conditions` in macmini

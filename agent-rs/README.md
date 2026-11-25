@@ -369,8 +369,10 @@ The port of `manage.py evaluate_conditions` (PLAN.md 11.4): one conditions
 run evaluates the enabled conditions in primary key order, or only the enabled
 condition with the given id, and publishes each condition result.
 Only full runs update the global `condition_evaluator` heartbeat. Targeted
-runs leave it untouched even when the id selects nothing. stdout `Condition evaluation completed (<total>).` and
-exit 0, or `Condition evaluation completed with failures
+runs leave it untouched. A missing, disabled or out-of-range ID prints
+`CommandError: No matching enabled condition.` to stderr and exits 1.
+A matching run reports `Condition evaluation completed (<total>).` on stdout and
+exits 0, or reports `Condition evaluation completed with failures
 (<failed>/<total>).`, stderr `CommandError: <failed> condition evaluation(s)
 failed.` and exit 1. A failure outside a condition (loading the conditions,
 the heartbeat) exits 1 with one stderr line `Condition

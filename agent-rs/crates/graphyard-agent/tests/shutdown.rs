@@ -78,6 +78,82 @@ fn sigterm_does_not_wait_for_a_blocked_lookup() {
     assert_eq!(db.count("pipeline_heartbeat"), 0);
 }
 
+struct PausedLookup {
+    started: std::sync::Mutex<Option<tokio::sync::oneshot::Sender<()>>>,
+    release: std::sync::Mutex<std::sync::mpsc::Receiver<()>>,
+}
+
+impl Lookup for PausedLookup {
+    fn lookup(&self, _host: &str) -> Result<Vec<IpAddr>, LookupError> {
+        self.started
+            .lock()
+            .unwrap()
+            .take()
+            .unwrap()
+            .send(())
+            .unwrap();
+        let _ = self
+            .release
+            .lock()
+            .unwrap()
+            .recv_timeout(Duration::from_secs(2));
+        Err(LookupError("synthetic DNS failure".to_owned()))
+    }
+}
+
+#[test]
+fn shutdown_finishes_the_current_claim_without_starting_the_next_spec() {
+    let db = TestDb::new();
+    common::insert_spec(
+        &db,
+        "paused lookup",
+        "http_json_metric",
+        &json!({"url": "http://paused.invalid/value", "metric_path": "value", "metric_name": "x.y"}),
+    );
+    common::insert_spec(&db, "second spec", "legacy_type", &json!({}));
+    let (started, waiting) = tokio::sync::oneshot::channel();
+    let (release, paused) = std::sync::mpsc::channel();
+    let http = HttpContext::new().with_lookup(Arc::new(PausedLookup {
+        started: std::sync::Mutex::new(Some(started)),
+        release: std::sync::Mutex::new(paused),
+    }));
+    let mut agent = config(&db, http, "1000");
+    agent.loops.run_once = false;
+    agent.loops.run_conditions = true;
+    let code = run_agent(agent, || {
+        Ok(async move {
+            tokio::time::timeout(Duration::from_secs(2), waiting)
+                .await
+                .unwrap()
+                .unwrap();
+            tokio::spawn(async move {
+                // The supervisor observes the signal before this task runs.
+                let _ = release.send(());
+            });
+            Shutdown::Terminate
+        })
+    });
+
+    assert_eq!(code, ExitCode::SUCCESS);
+    assert_ne!(
+        db.value("metric_collection_spec", "paused lookup", "last_run_at"),
+        SqlValue::Null
+    );
+    assert_eq!(
+        db.value("metric_collection_spec", "second spec", "last_run_at"),
+        SqlValue::Null
+    );
+    assert_eq!(db.count("pipeline_heartbeat"), 1);
+    assert!(
+        db.text("pipeline_heartbeat", "metric_collectors", "last_error")
+            .starts_with("partial run: agent shutdown"),
+    );
+    assert!(
+        db.text("pipeline_heartbeat", "metric_collectors", "details")
+            .contains(r#""partial": 1"#),
+    );
+}
+
 #[test]
 fn shutdown_waits_for_the_statement_the_db_thread_is_running() {
     let db = TestDb::new();

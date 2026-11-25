@@ -7,6 +7,7 @@
 //! the run rules are tested with fakes; [`crate::collectors`] has the real
 //! ones.
 
+use std::cell::Cell;
 use std::fmt;
 use std::future::Future;
 use std::panic::AssertUnwindSafe;
@@ -190,6 +191,16 @@ pub async fn run_metric_specs<E: SpecExecutors, C: Clock>(
     clock: &C,
     due_only: bool,
 ) -> Result<MetricCollectionSpecRun, RunError> {
+    run_metric_specs_until_shutdown(store, executors, clock, due_only, &Cell::new(false)).await
+}
+
+pub(crate) async fn run_metric_specs_until_shutdown<E: SpecExecutors, C: Clock>(
+    store: &Store,
+    executors: &E,
+    clock: &C,
+    due_only: bool,
+    stopping: &Cell<bool>,
+) -> Result<MetricCollectionSpecRun, RunError> {
     // `_subject_mapping_warning_keys.clear()`: a new state per run.
     let mut state = RunState::new();
     let now = clock.now();
@@ -205,7 +216,12 @@ pub async fn run_metric_specs<E: SpecExecutors, C: Clock>(
     let mut run = MetricCollectionSpecRun::default();
     let mut errors: Vec<String> = Vec::new();
     let mut store_error = None;
+    let mut interrupted = false;
     for spec in &specs {
+        if stopping.get() {
+            interrupted = true;
+            break;
+        }
         let run_at = if due_only { clock.now() } else { now };
         let outcome = match run_metric_spec(
             store, executors, clock, &mut state, spec, run_at, due_only,
@@ -246,7 +262,7 @@ pub async fn run_metric_specs<E: SpecExecutors, C: Clock>(
     if run.total == 0 {
         return Ok(run);
     }
-    let partial = store_error.is_some();
+    let partial = store_error.is_some() || interrupted;
     let status = if run.failed == run.total {
         StatusLevel::Critical
     } else if partial || run.failed > 0 || run.warning > 0 {
@@ -266,7 +282,12 @@ pub async fn run_metric_specs<E: SpecExecutors, C: Clock>(
     .collect();
     if partial {
         details.push(("partial".to_owned(), 1));
-        errors.insert(0, "partial run: collector store failure".to_owned());
+        let reason = if interrupted {
+            "agent shutdown"
+        } else {
+            "collector store failure"
+        };
+        errors.insert(0, format!("partial run: {reason}"));
     }
     let heartbeat = store
         .record_heartbeat(
@@ -468,6 +489,14 @@ pub async fn run_conditions<S: ConditionSamples, C: Clock>(
     }
     if condition_id.is_none() {
         let ok = run.failed == 0;
+        let no_work = run.total == 0;
+        let mut details = vec![
+            ("evaluated".to_owned(), count(run.total)),
+            ("failed".to_owned(), count(run.failed)),
+        ];
+        if no_work {
+            details.push(("no_work".to_owned(), 1));
+        }
         store
             .record_heartbeat(
                 HeartbeatRecord {
@@ -482,11 +511,8 @@ pub async fn run_conditions<S: ConditionSamples, C: Clock>(
                     } else {
                         format!("{} condition(s) failed", run.failed)
                     },
-                    details: vec![
-                        ("evaluated".to_owned(), count(run.total)),
-                        ("failed".to_owned(), count(run.failed)),
-                    ],
-                    success: ok,
+                    details,
+                    success: ok && !no_work,
                 },
                 clock.now(),
             )

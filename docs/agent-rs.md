@@ -91,8 +91,12 @@ Every difference between the two implementations has a class (PLAN.md 2.3):
   other log lines. Persisted collector/condition failures now use the P1 bounded
   type/status contract in README; raw exception text is not persisted.
 - **P3 intentional divergence**: the exhaustive list D-1 to D-15 in PLAN.md
-  2.4. The operationally visible ones: SIGTERM ends the agent at the next
-  await point with exit 0 (D-1); a database without the required schema stops
+  2.4. The operationally visible ones: SIGTERM stops new work, gives an
+  in-flight metric attempt up to 500 ms to persist its outcome and ends the
+  agent with exit 0 (D-1); an empty condition sweep does not advance
+  `last_success`, an explicit `--condition-id` without a matching enabled
+  row exits 1, and collector attempts are fenced by the stored `updated_at`
+  (D-15); a database without the required schema stops
   the agent at startup instead of failing every run (D-2); non-standard JSON
   (`NaN`, UTF-16 bodies) from a collector endpoint is a decode error (D-4);
   user regexes run on `fancy-regex` (D-5); stdout/stderr go through bounded,
@@ -126,11 +130,20 @@ after failures. Metrics and conditions run sequentially. The scheduler
 checks the clock again after metrics, so a condition run that became due
 during metrics starts before the next sleep. Between passes, the agent sleeps
 until the earliest enabled-loop deadline, with a minimum 200 ms backoff.
-SIGINT and SIGTERM still cancel the wait immediately.
+SIGINT and SIGTERM cancel the scheduler wait and stop new work. A metric
+attempt already in progress has up to 500 ms to finish and record its outcome.
+A sweep that leaves collectors unstarted reports a partial heartbeat if it
+has recorded outcomes. Submitted SQLite statements still finish before the
+database closes, even if they outlast the grace period.
 `--influx-write-file PATH` is the shadow mode: every batch the agent
 would write to InfluxDB is appended to `PATH` as a framed batch: a
 `# write <utc> points=<n> bytes=<b>` header, line-protocol body and matching
 commit trailer. Queries still go to InfluxDB.
+
+An empty Rust condition sweep writes an OK liveness heartbeat with
+`evaluated=0`, `failed=0` and `no_work=1` in its details. It refreshes
+`updated_at` and preserves the last successful evaluation time, leaving it
+unset on a fresh database. The sweep exits successfully.
 
 ### Evaluating conditions by hand
 
@@ -139,6 +152,8 @@ commit trailer. Queries still go to InfluxDB.
 the enabled conditions (or the one with the given id) once, writes their
 rows, and updates the global `condition_evaluator` heartbeat only on a full
 run. Targeted checks leave the global status, counts and timestamps untouched.
+A missing, disabled or out-of-range ID prints
+`CommandError: No matching enabled condition.` and exits 1.
 A result can replace an observation only if its attempt started after the
 stored timestamp and the evaluated definition still matches. The agent
 compares timestamps as UTC instants at microsecond precision, including
@@ -298,10 +313,19 @@ replacement fencing are checked separately by `tests/lease.rs`; renewed-lease
 process-death coverage is not claimed. The initial claim also binds the loaded
 definition, so an edit between load and claim never reaches external I/O
 (`tests/lease.rs::claim_refuses_a_definition_edited_after_load`).
-Rust lease operations share one captured definition per spec. Renewal
-reuses that identity regardless of the size of the previous diagnostics. The
+Rust claims, renewals and local completions share one captured definition
+per spec, including the exact stored `updated_at` value. Django admin and
+`apply_metric_collection_specs` write this timestamp on definition edits, so
+an edit followed by a revert still invalidates the older attempt. Claims,
+renewals and result writes leave the timestamp alone. Comparing the stored
+value also supports unchanged legacy timestamp formats. A rejected local
+completion leaves the next attempt to collect again, and any previous remote
+sink acceptance stands. Renewal reuses the captured identity regardless of
+the size of the previous diagnostics. The
 retained Python agent follows the same due-lease and renewal contract
-(`tests/test_due_collection_claim.py`).
+(`tests/test_due_collection_claim.py`), but compares only the captured
+business fields: the `updated_at` fence against edit-and-revert is
+Rust-only (PLAN.md D-15).
 
 ## Condition duration admission
 
