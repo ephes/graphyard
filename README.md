@@ -498,8 +498,9 @@ with `failure_published` true only when the fallback critical result was actuall
 saved. Deleted, disabled, reconfigured or newer/tied condition results report
 false, as do storage errors.
 Python also exposes ID/stage/category as log record fields. Raw query/SQL text,
-exception messages and model representations are excluded. Failed fallback writes
-do not stop later conditions; a heartbeat write failure still fails the whole run.
+exception messages and model representations are excluded. The Python scan
+continues to later conditions if a fallback write or failure log handler raises
+an ordinary exception. A heartbeat write failure still fails the whole run.
 Persisted condition failure messages use the same safe category.
 
 Due-only scheduler runs claim each selected slot with a conditional

@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Continue Python condition evaluation and publish its run heartbeat when a
+  logging handler fails to report a condition error.
+
 - Check never-attempted and least recently attempted release sources first so
   a retry can reach sources left waiting by an exhausted refresh budget.
 
