@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Reject empty or reversed Rust Influx query windows before contacting the
+  backend in any API mode.
+
 - Format only the five Python collector diagnostics shown in the run heartbeat
   while preserving totals and per-spec results.
 

@@ -36,6 +36,11 @@ fn point() -> MetricPoint {
     }
 }
 
+fn query_range() -> QueryRange {
+    let stop = Utc::now();
+    QueryRange::new("m", stop - chrono::Duration::seconds(1), stop)
+}
+
 #[tokio::test]
 async fn caps_success_and_error_bodies_without_fallback_or_replay() {
     for write in [false, true] {
@@ -56,7 +61,7 @@ async fn caps_success_and_error_bodies_without_fallback_or_replay() {
             } else {
                 let err = QueryClient::new(&settings)
                     .with_flux_limits(Duration::from_secs(2), 2048)
-                    .query_range(&QueryRange::new("m", Utc::now(), Utc::now()))
+                    .query_range(&query_range())
                     .await
                     .unwrap_err();
                 assert!(!err.is_v2_query_missing());
@@ -90,7 +95,7 @@ async fn deadlines_stop_continuous_trickle_including_error_bodies() {
             } else {
                 QueryClient::new(&settings)
                     .with_flux_limits(Duration::from_millis(100), 1000)
-                    .query_range(&QueryRange::new("m", Utc::now(), Utc::now()))
+                    .query_range(&query_range())
                     .await
                     .unwrap_err()
                     .to_string()

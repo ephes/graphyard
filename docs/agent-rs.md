@@ -314,6 +314,9 @@ response storage policy.
 
 ### Query selection admission
 
+`QueryClient::query_range` requires `start < stop` before dispatch in `v2`,
+`v3` and `auto`. Empty and reversed windows return `InfluxConfigurationError`.
+
 Python and Rust admit an Influx response only when every decoded sample matches
 its issued metric, dimension/tag filters and half-open time range (`start <= ts < stop`).
 Missing metrics and missing filtered dimensions also fail the entire query; empty

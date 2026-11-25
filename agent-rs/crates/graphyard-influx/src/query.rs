@@ -101,16 +101,17 @@ impl QueryClient {
         self.query_range(&range).await
     }
 
-    /// `influx.query_range` in the configured mode.
-    ///
-    /// Unlike Python, this does not reject an empty or reversed window before
-    /// the request; it only checks the returned samples. Condition windows
-    /// always have start < stop, so evaluation results agree.
+    /// `influx.query_range` in the configured mode, with a half-open window.
     ///
     /// # Errors
-    /// The exception the Python query raises (configuration, HTTP, decoding,
-    /// non-finite samples).
+    /// Returns a configuration error when `start >= stop`, before choosing a
+    /// transport. Other errors include HTTP failures and invalid results.
     pub async fn query_range(&self, range: &QueryRange) -> Result<Vec<MetricSample>, QueryError> {
+        if range.start >= range.stop {
+            return Err(QueryError::config(
+                "Invalid InfluxDB query window: start must precede stop",
+            ));
+        }
         let samples = match self.mode {
             InfluxApiMode::V3 => self.query_v3(range).await,
             InfluxApiMode::Auto => match self.query_v2(range).await {
