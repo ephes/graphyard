@@ -357,7 +357,8 @@ that differs is a bug.
   ones included, so `--c` is ambiguous in Rust (`--condition-interval`,
   `--check-schema`) where argparse expands it. A collector schedule beyond
   SQLite’s INTEGER range fails only its spec. A collector store error after a
-  committed completion can publish a partial heartbeat (section 3.4).
+  committed completion or a schedule overflow can publish a partial heartbeat
+  (section 3.4).
 
 ---
 
@@ -548,9 +549,9 @@ accepted completions or schedule failures leaves the heartbeat untouched.
 
 A load, claim, renewal or completion store error stops the batch: error log
 `Metric collection failed`, stderr `Metric collection failed: <err>`, and the
-scheduler loop continues. After at least one committed completion, Rust tries
-to publish a partial `metric_collectors` heartbeat. It marks `partial: 1` in
-details, counts the prefix, and preserves `last_success`. Its status is
+scheduler loop continues. After a committed completion or a schedule overflow,
+Rust tries to publish a partial `metric_collectors` heartbeat. It marks `partial: 1`
+in details, counts the prefix, and preserves `last_success`. Its status is
 `warning`, or `critical` when all counted outcomes failed. If the heartbeat
 write also fails, the run still returns the original store error. A deleted
 spec is a superseded claim/completion. The run skips it and can still publish

@@ -12,7 +12,7 @@ import httpx
 import pytest
 from django.core.management import call_command
 from django.core.management.base import CommandError
-from django.db import connection
+from django.db import OperationalError, connection
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from django.utils import timezone
@@ -920,6 +920,55 @@ def test_delayed_policy_cannot_replace_newer_registry(monkeypatch, replacement):
 
 
 VALID_PYPI = b'{"info":{"name":"django","version":"6.1","yanked":false},"urls":[{"yanked":false}]}'
+
+
+@pytest.mark.django_db(transaction=True)
+@pytest.mark.parametrize("settlement_fails", [False, True])
+def test_refresh_preserves_outcome_when_client_close_fails(
+    monkeypatch, caplog, settlement_fails
+):
+    # Earlier migration regression tests intentionally leave an older schema.
+    call_command("migrate", verbosity=0)
+
+    def handler(request):
+        if request.url.path == "/pypi/django/json":
+            return httpx.Response(200, content=VALID_PYPI)
+        return httpx.Response(503)
+
+    class Transport(httpx.MockTransport):
+        async def aclose(self):
+            raise RuntimeError("synthetic close failure")
+
+    factory = httpx.AsyncClient
+    monkeypatch.setattr(
+        releases.httpx,
+        "AsyncClient",
+        lambda **kw: factory(transport=Transport(handler), **kw),
+    )
+    source_table = connection.ops.quote_name(InventoryRelease._meta.db_table)
+    settlement_error = OperationalError("synthetic settlement failure")
+
+    def fail_settlement(execute, sql, params, many, context):
+        if sql.startswith(f"UPDATE {source_table} ") and "Release lookup failed" in (
+            params or ()
+        ):
+            raise settlement_error
+        return execute(sql, params, many, context)
+
+    payload = [definition(), definition(project="flask")]
+    if settlement_fails:
+        with connection.execute_wrapper(fail_settlement):
+            with pytest.raises(OperationalError) as exc:
+                releases.refresh(payload)
+        assert exc.value is settlement_error
+    else:
+        assert releases.refresh(payload) == releases.RefreshResult(failures=1)
+
+    first = InventoryRelease.objects.get(pk="pypi:django")
+    assert first.version == "6.1" and first.checked_at is not None
+    second = InventoryRelease.objects.get(pk="pypi:flask")
+    assert second.error == ("" if settlement_fails else "Release lookup failed")
+    assert caplog.messages.count("Inventory release HTTP client close failed") == 1
 
 
 class RecordingStream(httpx.AsyncByteStream):

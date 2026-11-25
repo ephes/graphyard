@@ -479,7 +479,7 @@ async fn later_claim_failure_marks_committed_prefix_as_partial() {
 }
 
 #[tokio::test]
-async fn claim_failure_without_a_completion_leaves_heartbeat_untouched() {
+async fn later_claim_failure_keeps_schedule_overflow_evidence() {
     let db = TestDb::new();
     for name in ["a unrepresentable", "b blocked"] {
         common::insert_spec(&db, name, "http_json_metric", &serde_json::json!({}));
@@ -498,6 +498,38 @@ async fn claim_failure_without_a_completion_leaves_heartbeat_untouched() {
         .unwrap_err();
     store.close();
 
+    assert!(matches!(err, RunError::Store(_)));
+    assert!(err.to_string().contains("synthetic claim failure"));
+    assert_eq!(executor.0.get(), 0);
+    let heartbeat = |column| db.text("pipeline_heartbeat", "metric_collectors", column);
+    assert_eq!(heartbeat("status"), "critical");
+    assert_eq!(
+        heartbeat("last_error"),
+        "partial run: collector store failure; spec_id=1: next run time exceeds SQLite INTEGER range"
+    );
+    assert_eq!(
+        serde_json::from_str::<Value>(&heartbeat("details")).unwrap(),
+        serde_json::json!({"total": 1, "failed": 1, "warning": 0, "ingested": 0, "skipped": 0, "partial": 1})
+    );
+}
+
+#[tokio::test]
+async fn claim_failure_without_any_outcome_leaves_heartbeat_untouched() {
+    let db = TestDb::new();
+    common::insert_spec(&db, "blocked", "http_json_metric", &serde_json::json!({}));
+    db.execute(
+        "CREATE TRIGGER reject_claim BEFORE UPDATE OF next_run_time ON metric_collection_spec
+         BEGIN SELECT RAISE(ABORT, 'synthetic claim failure'); END;",
+    );
+    let store = Store::open(db.path(), &settings(&[])).unwrap();
+    let clock = FixedClock("2026-10-21T08:15:30Z".parse().unwrap());
+    let executor = RecordingCollector::default();
+    let err = run_metric_specs(&store, &executor, &clock, true)
+        .await
+        .unwrap_err();
+    store.close();
+
+    assert!(matches!(err, RunError::Store(_)));
     assert!(err.to_string().contains("synthetic claim failure"));
     assert_eq!(executor.0.get(), 0);
     assert_eq!(db.count("pipeline_heartbeat"), 0);

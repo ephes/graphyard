@@ -181,8 +181,9 @@ fn retain_heartbeat_error(errors: &mut Vec<String>, name: &str, outcome: &SpecOu
 ///
 /// # Errors
 /// See [`RunError`]. A store error stops the batch and leaves earlier
-/// completions committed. If any spec completed, try to publish a partial
-/// heartbeat before returning the original store error.
+/// completions committed. If any outcome was counted, including a schedule
+/// overflow, try to publish a partial heartbeat before returning the original
+/// store error.
 pub async fn run_metric_specs<E: SpecExecutors, C: Clock>(
     store: &Store,
     executors: &E,
@@ -203,7 +204,6 @@ pub async fn run_metric_specs<E: SpecExecutors, C: Clock>(
 
     let mut run = MetricCollectionSpecRun::default();
     let mut errors: Vec<String> = Vec::new();
-    let mut has_completion = false;
     let mut store_error = None;
     for spec in &specs {
         let run_at = if due_only { clock.now() } else { now };
@@ -226,13 +226,12 @@ pub async fn run_metric_specs<E: SpecExecutors, C: Clock>(
                 }
                 continue;
             }
-            Err(RunError::Store(err)) if has_completion => {
+            Err(RunError::Store(err)) if run.total > 0 => {
                 store_error = Some(err);
                 break;
             }
             Err(err) => return Err(err),
         };
-        has_completion = true;
         run.total += 1;
         run.ingested += outcome.ingested;
         run.skipped += outcome.skipped;
