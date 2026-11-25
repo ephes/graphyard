@@ -268,3 +268,89 @@ async fn claim_refuses_a_definition_edited_after_load() {
     );
     store.close();
 }
+
+fn edit_and_revert(db: &TestDb) {
+    // Django saves updated_at with each definition edit while the admin
+    // preserves the runner's schedule.
+    db.execute(
+        "UPDATE metric_collection_spec SET config = '{\"changed\": true}',          updated_at = '2026-10-21 08:15:30.000001'",
+    );
+    db.execute(
+        "UPDATE metric_collection_spec SET config = '{}',          updated_at = '2026-10-21 08:15:30.000002'",
+    );
+}
+
+#[tokio::test]
+async fn edits_and_reverts_fence_claim_and_renewal() {
+    let db = TestDb::new();
+    short_spec(&db);
+    db.execute("UPDATE metric_collection_spec SET updated_at = '2026-01-02T04:04:05+01:00'");
+    let store = Store::open(db.path(), &settings(&[])).unwrap();
+    let before = store
+        .load_specs(None)
+        .await
+        .unwrap()
+        .remove(0)
+        .claim_identity();
+    assert!(
+        store
+            .claim_due_spec(before.clone(), 0, 100, 103)
+            .await
+            .unwrap()
+    );
+    edit_and_revert(&db);
+    assert!(
+        !store
+            .renew_spec_claim(before.clone(), 103, 104)
+            .await
+            .unwrap()
+    );
+    assert!(!store.claim_due_spec(before, 103, 103, 106).await.unwrap());
+    let current = store
+        .load_specs(None)
+        .await
+        .unwrap()
+        .remove(0)
+        .claim_identity();
+    assert!(store.claim_due_spec(current, 103, 103, 106).await.unwrap());
+    store.close();
+}
+
+#[tokio::test]
+async fn edits_and_reverts_fence_inflight_completion() {
+    for due_only in [true, false] {
+        let db = TestDb::new();
+        short_spec(&db);
+        let store = Store::open(db.path(), &settings(&[])).unwrap();
+        let collector = Deferred::new();
+        let clock = Fixed(UtcDateTime::from_seconds(100));
+        let (run, ()) = tokio::time::timeout(Duration::from_secs(5), async {
+            tokio::join!(
+                run_metric_specs(&store, &collector, &clock, due_only),
+                async {
+                    collector.entered.notified().await;
+                    edit_and_revert(&db);
+                    collector.finish.notify_one();
+                }
+            )
+        })
+        .await
+        .unwrap();
+        assert_eq!(run.unwrap().total, 0);
+        assert_eq!(db.count("pipeline_heartbeat"), 0);
+        assert_eq!(
+            db.value("metric_collection_spec", "synthetic", "last_run_at"),
+            rusqlite::types::Value::Null
+        );
+        let due = Fixed(UtcDateTime::from_seconds(schedule(&db).max(101)));
+        assert_eq!(
+            run_metric_specs(&store, &collector, &due, due_only)
+                .await
+                .unwrap()
+                .total,
+            1
+        );
+        assert_eq!(db.count("pipeline_heartbeat"), 1);
+        store.close();
+    }
+}

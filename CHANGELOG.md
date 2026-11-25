@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Fence Rust collector claims, renewals and local results by the definition's
+  update timestamp, including after edits that restore the previous settings.
+
 - Record empty Rust condition sweeps as liveness without advancing the last
   successful evaluation timestamp.
 

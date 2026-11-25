@@ -309,8 +309,15 @@ replacement fencing are checked separately by `tests/lease.rs`; renewed-lease
 process-death coverage is not claimed. The initial claim also binds the loaded
 definition, so an edit between load and claim never reaches external I/O
 (`tests/lease.rs::claim_refuses_a_definition_edited_after_load`).
-Rust lease operations share one captured definition per spec. Renewal
-reuses that identity regardless of the size of the previous diagnostics. The
+Rust claims, renewals and local completions share one captured definition
+per spec, including the exact stored `updated_at` value. Django admin and
+`apply_metric_collection_specs` write this timestamp on definition edits, so
+an edit followed by a revert still invalidates the older attempt. Claims,
+renewals and result writes leave the timestamp alone. Comparing the stored
+value also supports unchanged legacy timestamp formats. A rejected local
+completion leaves the next attempt to collect again, and any previous remote
+sink acceptance stands. Renewal reuses the captured identity regardless of
+the size of the previous diagnostics. The
 retained Python agent follows the same due-lease and renewal contract
 (`tests/test_due_collection_claim.py`).
 

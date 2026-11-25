@@ -30,6 +30,8 @@ pub struct SpecRow {
     pub last_error: String,
     pub created_at: Option<DbDateTime>,
     pub updated_at: Option<DbDateTime>,
+    /// Exact SQLite text of `updated_at`, including legacy timestamp formats.
+    pub updated_at_raw: Option<String>,
 }
 
 /// The spec identity shared by the claim, renewal and completion CAS.
@@ -39,6 +41,7 @@ pub struct SpecClaimIdentity {
     spec_type: String,
     interval_seconds: i64,
     config: String,
+    updated_at_raw: Option<String>,
 }
 
 impl SpecRow {
@@ -50,6 +53,7 @@ impl SpecRow {
             spec_type: self.spec_type.clone(),
             interval_seconds: self.interval_seconds,
             config: self.config.clone(),
+            updated_at_raw: self.updated_at_raw.clone(),
         })
     }
 }
@@ -67,7 +71,7 @@ pub struct SpecRunUpdate {
 }
 
 fn decode_spec(row: &rusqlite::Row<'_>) -> Result<SpecRow, StoreError> {
-    Ok(SpecRow {
+    let mut spec = SpecRow {
         id: row.get(0)?,
         name: row.get(1)?,
         enabled: bool_column(row, 2)?,
@@ -79,8 +83,11 @@ fn decode_spec(row: &rusqlite::Row<'_>) -> Result<SpecRow, StoreError> {
         last_status: row.get(8)?,
         last_error: row.get(9)?,
         created_at: datetime_column(row.get::<_, Option<String>>(10)?.as_deref())?,
-        updated_at: datetime_column(row.get::<_, Option<String>>(11)?.as_deref())?,
-    })
+        updated_at: None,
+        updated_at_raw: row.get(11)?,
+    };
+    spec.updated_at = datetime_column(spec.updated_at_raw.as_deref())?;
+    Ok(spec)
 }
 
 const SELECT_SPECS: &str = "SELECT id, name, CAST(enabled AS TEXT), spec_type, interval_seconds, \
@@ -141,7 +148,8 @@ fn claim_due_spec(
     Ok(connection.execute(
         "UPDATE metric_collection_spec SET next_run_time = ? \
          WHERE id = ? AND enabled AND next_run_time = ? AND next_run_time <= ? \
-         AND name = ? AND spec_type = ? AND interval_seconds = ? AND config = ?",
+         AND name = ? AND spec_type = ? AND interval_seconds = ? AND config = ? \
+         AND CAST(updated_at AS TEXT) IS ?",
         params![
             until,
             definition.id,
@@ -150,14 +158,15 @@ fn claim_due_spec(
             definition.name,
             definition.spec_type,
             definition.interval_seconds,
-            definition.config
+            definition.config,
+            definition.updated_at_raw,
         ],
     )? == 1)
 }
 
 impl Store {
     /// Claim one due slot before collection, only for the captured
-    /// definition (name, type, interval, config) the caller will execute.
+    /// definition and its update timestamp.
     /// Only the winning caller may execute; an edit since the load leaves the
     /// slot due for a run with the current definition.
     ///
@@ -191,7 +200,8 @@ impl Store {
             Ok(connection.execute(
                 "UPDATE metric_collection_spec SET next_run_time = ? \
                  WHERE id = ? AND enabled AND next_run_time = ? \
-                 AND name = ? AND spec_type = ? AND interval_seconds = ? AND config = ?",
+                 AND name = ? AND spec_type = ? AND interval_seconds = ? AND config = ? \
+                 AND CAST(updated_at AS TEXT) IS ?",
                 params![
                     until,
                     definition.id,
@@ -199,7 +209,8 @@ impl Store {
                     definition.name,
                     definition.spec_type,
                     definition.interval_seconds,
-                    definition.config
+                    definition.config,
+                    definition.updated_at_raw,
                 ],
             )? == 1)
         })
@@ -225,12 +236,13 @@ impl Store {
                 "UPDATE metric_collection_spec SET last_run_at = ?, last_status = ?, last_error = ?, \
                  next_run_time = ? WHERE id = ? AND enabled AND next_run_time = ? \
                  AND name = ? AND spec_type = ? \
-                 AND interval_seconds = ? AND config = ?",
+                 AND interval_seconds = ? AND config = ? AND CAST(updated_at AS TEXT) IS ?",
                 params![
                     now_text(update.last_run_at)?, update.last_status.as_str(),
                     update.last_error, update.next_run_time, update.id, expected_schedule,
                     definition.name,
                     definition.spec_type, definition.interval_seconds, definition.config,
+                    definition.updated_at_raw,
                 ],
             )? == 1)
         }).await

@@ -73,8 +73,8 @@ def test_second_definition_validation_rolls_back_writer(tmp_path, monkeypatch, f
 
 def test_valid_apply_reads_updates_and_prunes_only_writer(tmp_path, monkeypatch):
     writer = MetricCollectionSpec.objects.using("spec_writer")
-    writer.create(**desired("updated", interval=300), next_run_time=123)
-    writer.create(**desired("unchanged"), next_run_time=456)
+    updated = writer.create(**desired("updated", interval=300), next_run_time=123)
+    unchanged = writer.create(**desired("unchanged"), next_run_time=456)
     writer.create(**desired("writer-stale"))
     MetricCollectionSpec.objects.using("secondary").create(
         **desired("updated", interval=120)
@@ -99,9 +99,13 @@ def test_valid_apply_reads_updates_and_prunes_only_writer(tmp_path, monkeypatch)
         "updated",
         "unchanged",
     }
-    assert writer.get(name="updated").interval_seconds == 60
-    assert writer.get(name="updated").next_run_time == 0
-    assert writer.get(name="unchanged").next_run_time == 456
+    applied = writer.get(name="updated")
+    kept = writer.get(name="unchanged")
+    assert applied.interval_seconds == 60
+    assert applied.next_run_time == 0
+    assert applied.updated_at != updated.updated_at
+    assert kept.next_run_time == 456
+    assert kept.updated_at == unchanged.updated_at
     assert (
         "summary total=3 created=1 updated=1 unchanged=1 deleted=1 changed=3"
         in output.getvalue()
