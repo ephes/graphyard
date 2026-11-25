@@ -202,8 +202,10 @@ agreed with the coordinator first (PLAN.md 8.4).
        --shadow-dir /var/lib/graphyard-shadow
    ```
 
-   It copies through SQLite's backup API (consistent while both production
-   processes write), checks the copy, writes `shadow.json` (T0, enabled specs
+   It opens `--source` read-only as a literal filesystem path. Relative paths
+   are interpreted from the current directory, and URI characters in filenames
+   are preserved. It copies through SQLite's backup API (consistent while both
+   production processes write), checks the copy, writes `shadow.json` (T0, enabled specs
    and conditions) and lists rows on which the two implementations would
    disagree (D-11 documents, D-13 storage classes); exit 2 means "look at
    them before starting". `--disable-spec NAME` disables a spec in the copy

@@ -86,9 +86,11 @@ Slice S10a adds the release pipeline (PLAN.md 8.2): the workflow
 Slice S6 adds the collectors' HTTP layer in `graphyard-collect::http`
 (PLAN.md 6.1, 6.2): httpx 0.28.1 as `services.py` configures it, on hyper's
 HTTP/1.1 connection API. One `HttpClient` per spec execution with httpx's
-request headers, auth and a cookie jar; connections as httpcore opens them
-(`getaddrinfo` through libc on the blocking pool, every address in turn, the
-timeout per connect, TLS handshake and socket read/write); httpx's URL model
+request headers, auth and a cookie jar; connections opened like httpcore
+(`getaddrinfo` through libc on the blocking pool, every address in turn)
+except that all addresses share one connect timeout (see
+[Collector TCP connection budget](#collector-tcp-connection-budget), PLAN.md
+D-14), with the timeout per TLS handshake and socket read/write; httpx's URL model
 (`HttpxUrl`: `urlparse`, the redirect join, request target and `Host`), its
 `raise_for_status` texts internally, decoders and exception classes; the total deadline
 with the abandoned-lookup cap (`run_with_deadline`), the JSON reader, the
@@ -417,8 +419,12 @@ query bounds (the window length is compared) and the fakes' port numbers.
 The Python results must also match the statuses the corpus was written for
 (and, in the `evaluate_conditions` rounds, the exit code and summary line),
 so a corpus that stops exercising its branches fails too. A failing run
-prints every difference per round and exits 1. The helpers are tested in
-`tests/test_agent_rs_parity.py`.
+prints every difference per round and exits 1. Fake listeners close even if
+setup fails partway through. The temporary directory is removed by default.
+Use `--keep` to retain any files created before a failure. If a worker cannot
+launch an agent or decode its output, the harness waits for both workers,
+reports the affected agent and exception, and exits 2. The helpers are tested
+in `tests/test_agent_rs_parity.py`.
 
 ## Shadow run
 
@@ -659,6 +665,16 @@ checked after publishing on 2026-11-12: the downloaded archive matches its
 (0644), owned by root; `release_checks.py glibc-floor --max 2.35` passes on
 the extracted binary (newest symbol version `GLIBC_2.34`, libraries OK); the
 workflow's smoke test passed for `graphyard-agent 0.3.0 (eba6ea16af73c322232b28b1035876557e7d9871)`.
+
+### Collector TCP connection budget
+
+All resolved addresses for a single TCP connection share one
+`request_timeout_seconds` budget. A quick failure falls through
+to the next address in resolver order. If the budget expires, the agent
+reports `ConnectTimeout`. DNS runs under the collector's total deadline,
+and TLS and individual socket reads and writes have separate timeouts.
+The retained Python agent (httpcore) gives every address its own connect
+timeout; this intentional divergence is listed under D-14 in PLAN.md.
 
 ### Influx response budgets
 

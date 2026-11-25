@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+- Share one Rust collector TCP connection timeout across all resolved addresses,
+  preserving immediate fallback after a quick connection failure. The Python
+  agent keeps httpcore's per-address timeout (intentional divergence D-14).
+
+- Open the exact SQLite source path read-only when preparing a shadow copy,
+  including relative filenames with URI delimiters.
+
+- Report parity worker launch and output decoding failures with the affected
+  agent's label after both workers finish.
+
+- Close parity fakes and clean up temporary files when setup fails partway
+  through, honoring `--keep` for the work directory.
+
 - Refuse orphan commit trailers in Rust shadow captures and report the last
   complete offset for recovery.
 

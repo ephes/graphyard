@@ -35,7 +35,7 @@ url.workspace = true
 [dev-dependencies]
 rcgen.workspace = true
 time.workspace = true
-tokio = { workspace = true, features = ["rt", "time", "sync", "net", "macros", "io-util"] }
+tokio = { workspace = true, features = ["rt", "time", "sync", "net", "macros", "io-util", "test-util"] }
 
 [lints]
 workspace = true

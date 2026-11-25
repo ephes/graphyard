@@ -58,8 +58,9 @@ import ssl
 import subprocess
 import sys
 import tempfile
-import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
+from contextlib import ExitStack
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
@@ -1272,11 +1273,16 @@ class Run:
 class Agent:
     """One implementation: its fakes, corpus, database and runs."""
 
-    def __init__(self, label: str, workdir: Path, tls: ssl.SSLContext) -> None:
+    def __init__(
+        self, label: str, workdir: Path, tls: ssl.SSLContext, resources: ExitStack
+    ) -> None:
         self.label = label
         self.http = HttpFake()
+        resources.callback(self.http.close)
         self.https = HttpFake(tls)
+        resources.callback(self.https.close)
         self.influx = InfluxFake(MEASUREMENT)
+        resources.callback(self.influx.close)
         self.corpus = build_corpus(self.http, self.https, self.influx)
         self.db = workdir / f"{label}.sqlite3"
         seed(self.db, self.corpus)
@@ -1336,10 +1342,6 @@ class Agent:
     ) -> tuple[list[str], dict[str, str], Path]:
         raise NotImplementedError
 
-    def close(self) -> None:
-        for fake in self.fakes().values():
-            fake.close()
-
 
 class PythonAgent(Agent):
     def command(
@@ -1373,10 +1375,12 @@ class RustAgent(Agent):
         return ([str(rust_binary), *command], {}, self.db.parent)
 
 
-def run_round(agents: list[Agent], round_: Round, rust_binary: Path) -> dict[str, Run]:
-    runs: dict[str, Run] = {}
+class WorkerError(RuntimeError):
+    """A parity worker failed before it could return a run result."""
 
-    def run(agent: Agent) -> None:
+
+def run_round(agents: list[Agent], round_: Round, rust_binary: Path) -> dict[str, Run]:
+    def run(agent: Agent) -> Run:
         agent.influx.v2_missing = round_.v2_missing
         argv, extra, cwd = agent.command(rust_binary, round_)
         env = {**agent.env(round_), **extra}
@@ -1400,13 +1404,18 @@ def run_round(agents: list[Agent], round_: Round, rust_binary: Path) -> dict[str
             )
             stderr = f"timed out after {PROCESS_TIMEOUT}s"
         end = time.time_ns()
-        runs[agent.label] = Run(code, stdout, stderr, (start - 10**9, end + 10**9))
+        return Run(code, stdout, stderr, (start - 10**9, end + 10**9))
 
-    threads = [threading.Thread(target=run, args=(agent,)) for agent in agents]
-    for thread in threads:
-        thread.start()
-    for thread in threads:
-        thread.join()
+    runs: dict[str, Run] = {}
+    with ThreadPoolExecutor(max_workers=2) as workers:
+        pending = [(agent.label, workers.submit(run, agent)) for agent in agents]
+        for label, future in pending:
+            try:
+                runs[label] = future.result()
+            except Exception as err:
+                raise WorkerError(
+                    f"{round_.name}: {label} worker failed ({type(err).__name__}): {err}"
+                ) from err
     return runs
 
 
@@ -1486,14 +1495,18 @@ def run(args: argparse.Namespace) -> int:
     if not os.access(rust_binary, os.X_OK):
         print(f"not an executable: {rust_binary}", file=sys.stderr)
         return 2
-    workdir = Path(tempfile.mkdtemp(prefix="graphyard-parity-"))
-    tls = _openssl_context(workdir)
-    python = PythonAgent("python", workdir, tls)
-    rust = RustAgent("rust", workdir, tls)
     differences: list[str] = []
     problems: list[str] = []
     totals = {"requests": 0, "writes": 0, "queries": 0}
-    try:
+    with ExitStack() as resources:
+        workdir = Path(tempfile.mkdtemp(prefix="graphyard-parity-"))
+        if args.keep:
+            resources.callback(print, f"work directory kept: {workdir}")
+        else:
+            resources.callback(shutil.rmtree, workdir, ignore_errors=True)
+        tls = _openssl_context(workdir)
+        python = PythonAgent("python", workdir, tls, resources)
+        rust = RustAgent("rust", workdir, tls, resources)
         for round_no, round_ in enumerate(ROUNDS, start=1):
             started = time.monotonic()
             runs = run_round([python, rust], round_, rust_binary)
@@ -1532,13 +1545,6 @@ def run(args: argparse.Namespace) -> int:
         totals["requests"] = counts["http"] + counts["https"]
         if not (totals["requests"] and totals["writes"] and totals["queries"]):
             problems.append(f"the corpus reached too few endpoints: {totals}")
-    finally:
-        python.close()
-        rust.close()
-    if args.keep:
-        print(f"work directory kept: {workdir}")
-    else:
-        shutil.rmtree(workdir, ignore_errors=True)
     if problems:
         print(f"{len(problems)} corpus expectation(s) not met by the Python agent:")
         for problem in problems:
@@ -1569,7 +1575,11 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="keep the work directory (databases, per-round stdout/stderr)",
     )
-    return run(parser.parse_args(argv))
+    try:
+        return run(parser.parse_args(argv))
+    except WorkerError as err:
+        print(err, file=sys.stderr)
+        return 2
 
 
 if __name__ == "__main__":

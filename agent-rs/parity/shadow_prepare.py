@@ -268,7 +268,8 @@ def backup(source: Path, dest: Path) -> None:
     deadline = time.monotonic() + BACKUP_TIMEOUT
     owned = False
     try:
-        src = sqlite3.connect(f"file:{source}?mode=ro", uri=True, timeout=0.05)
+        source_uri = source.absolute().as_uri()
+        src = sqlite3.connect(f"{source_uri}?mode=ro", uri=True, timeout=0.05)
         try:
             fd = os.open(dest, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
             owned = True
