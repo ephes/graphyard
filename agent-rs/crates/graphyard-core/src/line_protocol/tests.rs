@@ -2,7 +2,7 @@
 //! `fixtures/gen_line_protocol.py`). The request side of the `writes` cases
 //! (URL, headers, errors) is tested in `graphyard-influx`.
 
-use chrono::{DateTime, Utc};
+use crate::utc::UtcDateTime;
 use serde_json::Value;
 
 use super::*;
@@ -15,10 +15,8 @@ fn fixture() -> Value {
     load(include_str!("../../../../fixtures/line_protocol.json"))
 }
 
-fn ts_of(text: &str) -> DateTime<Utc> {
-    DateTime::parse_from_rfc3339(text)
-        .expect("fixture timestamp")
-        .with_timezone(&Utc)
+fn ts_of(text: &str) -> UtcDateTime {
+    UtcDateTime::parse_rfc3339(text).expect("fixture timestamp")
 }
 
 #[test]

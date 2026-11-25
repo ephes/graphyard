@@ -4,9 +4,9 @@ mod common;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
 
-use chrono::{DateTime, Utc};
 use graphyard_agent::runs::{Clock, SpecExecutors, SystemClock, run_metric_specs};
 use graphyard_collect::executors::{ExecutorResult, RunState};
+use graphyard_core::utc::UtcDateTime;
 use graphyard_core::{SpecOutcome, SpecType, StatusLevel};
 use graphyard_store::Store;
 use serde_json::{Value, json};
@@ -37,9 +37,9 @@ impl SpecExecutors for Deferred {
         Ok(SpecOutcome::new(StatusLevel::Ok, 1, 0, ""))
     }
 }
-struct Fixed(DateTime<Utc>);
+struct Fixed(UtcDateTime);
 impl Clock for Fixed {
-    fn now(&self) -> DateTime<Utc> {
+    fn now(&self) -> UtcDateTime {
         self.0
     }
 }
@@ -106,8 +106,8 @@ async fn abandoned_collection_is_claimable_only_after_its_persisted_lease() {
         // Dropping the run stops renewals; only its persisted lease remains.
     }
     let until = schedule(&db);
-    let before = Fixed(DateTime::from_timestamp(until - 1, 0).unwrap());
-    let expired = Fixed(DateTime::from_timestamp(until, 0).unwrap());
+    let before = Fixed(UtcDateTime::from_seconds(until - 1));
+    let expired = Fixed(UtcDateTime::from_seconds(until));
     assert_eq!(
         run_metric_specs(&b, &collector, &before, true)
             .await
@@ -177,7 +177,7 @@ async fn renewal_and_completion_cannot_extend_or_publish_a_replacement_claim() {
                 claim.clone(),
                 graphyard_store::SpecRunUpdate {
                     id,
-                    last_run_at: DateTime::from_timestamp(100, 0).unwrap(),
+                    last_run_at: UtcDateTime::from_seconds(100),
                     last_status: StatusLevel::Ok,
                     last_error: String::new(),
                     next_run_time: 101,
@@ -216,14 +216,14 @@ struct EditBeforeClaim<'a> {
     calls: AtomicUsize,
 }
 impl Clock for EditBeforeClaim<'_> {
-    fn now(&self) -> DateTime<Utc> {
+    fn now(&self) -> UtcDateTime {
         if self.calls.fetch_add(1, Ordering::SeqCst) == 1 {
             self.db.execute(
                 "UPDATE metric_collection_spec SET \
                  config='{\"url\": \"http://127.0.0.1:9/new\", \"bearer_token\": \"new-token\"}'",
             );
         }
-        DateTime::from_timestamp(100, 0).unwrap()
+        UtcDateTime::from_seconds(100)
     }
 }
 
@@ -256,7 +256,7 @@ async fn claim_refuses_a_definition_edited_after_load() {
     let fresh = run_metric_specs(
         &store,
         &collector,
-        &Fixed(DateTime::from_timestamp(100, 0).unwrap()),
+        &Fixed(UtcDateTime::from_seconds(100)),
         true,
     )
     .await

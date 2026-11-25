@@ -15,7 +15,7 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
-use chrono::{DateTime, Utc};
+use crate::utc::UtcDateTime;
 use fancy_regex::{Regex, RegexBuilder};
 use serde_json::{Map, Value};
 
@@ -679,10 +679,7 @@ fn truthy(value: &Value) -> bool {
 /// # Errors
 /// The `OverflowError` of the UTC conversion (an aware time whose UTC value
 /// leaves years 1..9999), which Python does not catch.
-fn state_timestamp(
-    payload: &Map<String, Value>,
-    now: DateTime<Utc>,
-) -> Result<DateTime<Utc>, PyError> {
+fn state_timestamp(payload: &Map<String, Value>, now: UtcDateTime) -> Result<UtcDateTime, PyError> {
     let updated_raw = match payload.get("last_updated") {
         Some(Value::Array(_) | Value::Object(_)) => return Ok(now),
         Some(value) if truthy(value) => py_str(value),
@@ -708,7 +705,7 @@ pub fn normalize_state(
     spec: HaSpec<'_>,
     metric_name_override: &str,
     extra_tags: &Tags,
-    now: DateTime<Utc>,
+    now: UtcDateTime,
     state: &mut MappingState,
 ) -> Result<Option<MetricPoint>, PyError> {
     let entity_id = py_strip(&get_str(payload, "entity_id", "")).to_owned();

@@ -22,7 +22,6 @@ graphyard-core.workspace = true
 graphyard-store.workspace = true
 graphyard-influx.workspace = true
 graphyard-collect.workspace = true
-chrono = { workspace = true, features = ["now"] }
 clap.workspace = true
 futures-util.workspace = true
 log.workspace = true

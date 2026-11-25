@@ -27,12 +27,12 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use chrono::Utc;
 use graphyard_core::line_protocol::{PreparedWrite, prepare_auto_write, prepare_write};
 use graphyard_core::logline::{LogEvent, LogLevel};
 use graphyard_core::model::MetricPoint;
 use graphyard_core::pycompat::{PyError, py_float_repr, py_str_repr};
 use graphyard_core::settings::{InfluxApiMode, Settings};
+use graphyard_core::utc::UtcDateTime;
 use percent_encoding::{AsciiSet, NON_ALPHANUMERIC, utf8_percent_encode};
 use reqwest::header::{
     ACCEPT, ACCEPT_ENCODING, AUTHORIZATION, CONTENT_TYPE, HeaderMap, HeaderValue, USER_AGENT,
@@ -497,7 +497,7 @@ async fn append_batch(
     let bytes = body.len() + 1;
     let record = format!(
         "# write {} points={} bytes={bytes}\n{}\n# commit points={} bytes={bytes}\n",
-        Utc::now().format("%Y-%m-%dT%H:%M:%S%.6fZ"),
+        UtcDateTime::now().rfc3339_micros(),
         prepared.written(),
         body,
         prepared.written()

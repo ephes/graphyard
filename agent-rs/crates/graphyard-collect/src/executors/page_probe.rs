@@ -6,8 +6,8 @@
 //! Pinned by `fixtures/page_probe.json` (`gen_page_probe_unifi.py`) and the
 //! deadline tests in `executors/tests`.
 
-use chrono::{DateTime, Utc};
 use graphyard_core::diagnostics::collector_failure;
+use graphyard_core::utc::UtcDateTime;
 use serde_json::Value;
 
 use graphyard_core::model::{MetricPoint, SpecOutcome, StatusLevel, SubjectType, Tags};
@@ -43,7 +43,7 @@ struct ProbePoints {
 }
 
 impl ProbePoints {
-    fn point(&self, ts: DateTime<Utc>, metric: &str, value: f64) -> MetricPoint {
+    fn point(&self, ts: UtcDateTime, metric: &str, value: f64) -> MetricPoint {
         let mut point = MetricPoint::new(
             ts,
             metric,

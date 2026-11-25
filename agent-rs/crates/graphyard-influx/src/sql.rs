@@ -1,8 +1,8 @@
 //! InfluxDB v3: the SQL text of `influx.py:_query_range_v3_sql` and the
 //! decoding of the JSON rows it reads (PLAN.md 6.5).
 
-use chrono::{DateTime, Utc};
 use graphyard_core::pycompat::{PyErrorKind, py_fromisoformat, py_str};
+use graphyard_core::utc::UtcDateTime;
 use graphyard_core::{MetricSample, Tags};
 use serde_json::Value;
 
@@ -64,7 +64,7 @@ pub fn sql_query(range: &QueryRange, measurement: &str) -> Result<String, QueryE
 /// `datetime.fromisoformat`, naive taken as UTC, converted to UTC.
 ///
 /// Invalid timestamps are rejected by the row loop.
-fn parse_influx_ts(raw: &str) -> Result<Option<DateTime<Utc>>, QueryError> {
+fn parse_influx_ts(raw: &str) -> Result<Option<UtcDateTime>, QueryError> {
     match py_fromisoformat(&raw.replace('Z', "+00:00")) {
         Err(err) if err.kind == PyErrorKind::ValueError => Ok(None),
         Err(err) => Err(err.into()),

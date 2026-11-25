@@ -7,12 +7,12 @@ mod common;
 use std::cell::Cell;
 use std::path::PathBuf;
 
-use chrono::{DateTime, Utc};
 use graphyard_agent::runs::{
     Clock, ConditionSamples, RunError, SpecExecutors, run_conditions, run_metric_specs,
 };
 use graphyard_collect::executors::{ExecutorError, ExecutorResult, RunState};
 use graphyard_core::spec_config::SpecConfigError;
+use graphyard_core::utc::UtcDateTime;
 use graphyard_core::{MetricSample, SpecOutcome, SpecType, StatusLevel};
 use graphyard_influx::{ConditionQuery, QueryError};
 use graphyard_store::Store;
@@ -27,10 +27,10 @@ const TABLES: [&str; 3] = [
     "pipeline_heartbeat",
 ];
 
-struct FixedClock(DateTime<Utc>);
+struct FixedClock(UtcDateTime);
 
 impl Clock for FixedClock {
-    fn now(&self) -> DateTime<Utc> {
+    fn now(&self) -> UtcDateTime {
         self.0
     }
 }
@@ -40,7 +40,7 @@ impl Clock for FixedClock {
 struct Scripted {
     scripts: Value,
     db: PathBuf,
-    now: DateTime<Utc>,
+    now: UtcDateTime,
 }
 
 impl Scripted {
@@ -104,7 +104,7 @@ impl ConditionSamples for Scripted {
     async fn query_condition_window(
         &self,
         condition: &ConditionQuery<'_>,
-        now: DateTime<Utc>,
+        now: UtcDateTime,
     ) -> Result<Vec<MetricSample>, QueryError> {
         assert_eq!(now, self.now);
         let script = self.script(condition.name);
@@ -141,7 +141,7 @@ fn check_error(err: &RunError, expected: &Value, name: &str) {
 #[tokio::test]
 async fn every_run_scenario_matches_python() {
     let fixture: Value = serde_json::from_str(RUNS_JSON).unwrap();
-    let now: DateTime<Utc> = fixture["now"].as_str().unwrap().parse().unwrap();
+    let now: UtcDateTime = fixture["now"].as_str().unwrap().parse().unwrap();
     assert_eq!(now.timestamp(), fixture["now_ts"].as_i64().unwrap());
     let scenarios = fixture["scenarios"].as_array().unwrap();
     assert_eq!(scenarios.len(), 15);
@@ -469,7 +469,7 @@ async fn later_claim_failure_marks_committed_prefix_as_partial() {
         "CREATE TRIGGER reject_heartbeat BEFORE UPDATE ON pipeline_heartbeat
          BEGIN SELECT RAISE(ABORT, 'synthetic heartbeat failure'); END;",
     );
-    let next_clock = FixedClock(clock.now() + chrono::TimeDelta::minutes(2));
+    let next_clock = FixedClock(clock.now() + std::time::Duration::from_secs(120));
     let err = run_metric_specs(&store, &executor, &next_clock, true)
         .await
         .unwrap_err();
@@ -571,12 +571,12 @@ async fn two_due_runners_execute_one_collector() {
 
 struct ClaimAfterLoadClock {
     db: PathBuf,
-    now: DateTime<Utc>,
+    now: UtcDateTime,
     calls: std::sync::atomic::AtomicUsize,
 }
 
 impl Clock for ClaimAfterLoadClock {
-    fn now(&self) -> DateTime<Utc> {
+    fn now(&self) -> UtcDateTime {
         if self.calls.fetch_add(1, std::sync::atomic::Ordering::SeqCst) == 1 {
             // Another owner claims after load_specs, before this runner's CAS.
             rusqlite::Connection::open(&self.db)
@@ -669,7 +669,7 @@ async fn definition_edits_and_deletion_reject_collection_completion() {
 struct ReclaimedCollector<'a> {
     store: &'a Store,
     old_failed: bool,
-    now: DateTime<Utc>,
+    now: UtcDateTime,
 }
 impl SpecExecutors for ReclaimedCollector<'_> {
     async fn execute(&self, _: SpecType, _: &str, _: &Value, _: &mut RunState) -> ExecutorResult {
@@ -694,7 +694,7 @@ impl SpecExecutors for ReclaimedCollector<'_> {
                 ))
             }
         }
-        let newer = FixedClock(self.now + chrono::Duration::seconds(300));
+        let newer = FixedClock(self.now + std::time::Duration::from_secs(300));
         let run = run_metric_specs(self.store, &Fresh(self.old_failed), &newer, true)
             .await
             .unwrap();

@@ -5,13 +5,13 @@ mod common;
 
 use std::time::{Duration, Instant};
 
-use chrono::{DateTime, Utc};
 use common::{TestDb, settings};
 use graphyard_core::StatusLevel;
+use graphyard_core::utc::UtcDateTime;
 use graphyard_store::{HeartbeatRecord, Store, StoreError};
 
-fn at() -> DateTime<Utc> {
-    DateTime::from_timestamp(1_792_829_730, 123_456_000).unwrap()
+fn at() -> UtcDateTime {
+    UtcDateTime::from_micros(1_792_829_730_123_456)
 }
 
 fn record() -> HeartbeatRecord {

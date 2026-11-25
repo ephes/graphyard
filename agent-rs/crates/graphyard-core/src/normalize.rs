@@ -13,7 +13,7 @@
 //! points, P2) and `str.strip()`/regex `\s` are [`py_isspace`], so the
 //! ASCII-only results of the patterns below are the same as Python's.
 
-use chrono::{DateTime, Utc};
+use crate::utc::UtcDateTime;
 use serde_json::Value;
 
 use crate::model::{MetricPoint, SubjectType, Tags};
@@ -46,7 +46,7 @@ pub fn is_reserved_tag_key(key: &str) -> bool {
 /// (`{str(k): str(v)}`, empty when the point had none).
 #[derive(Clone, Debug, PartialEq)]
 pub struct NormalizedPoint {
-    pub ts: DateTime<Utc>,
+    pub ts: UtcDateTime,
     pub metric: String,
     pub value: f64,
     pub subject_type: SubjectType,

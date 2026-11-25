@@ -23,7 +23,6 @@ graphyard-core = { path = "crates/graphyard-core" }
 graphyard-store = { path = "crates/graphyard-store" }
 graphyard-influx = { path = "crates/graphyard-influx" }
 graphyard-collect = { path = "crates/graphyard-collect" }
-chrono = { version = "0.4", default-features = false, features = ["std"] }
 # The agent's CLI (PLAN.md 3.1, 4.3).
 clap = { version = "4", default-features = false, features = ["std", "derive", "help", "usage", "error-context"] }
 csv = "1"
@@ -34,6 +33,9 @@ futures-util = { version = "0.3", default-features = false, features = ["std"] }
 # as lookaround and backreferences.
 fancy-regex = "0.19"
 indexmap = "2"
+# Clock and calendar arithmetic (graphyard-core `utc`); no time zone database,
+# the agent computes in UTC.
+jiff = { version = "1", default-features = false, features = ["std"] }
 log = "0.4"
 libc = "0.2"
 num-bigint = "0.4"

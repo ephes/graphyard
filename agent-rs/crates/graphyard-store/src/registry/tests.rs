@@ -234,7 +234,7 @@ fn the_batch_keeps_first_seen_order_and_the_last_source_system() {
 
 #[test]
 fn staleness_is_sixty_seconds_or_null() {
-    let at = now("2026-10-21 08:15:30.5").naive_utc();
+    let at = now("2026-10-21 08:15:30.5");
     let seen = |text: &str| Some(DbDateTime::from_utc(now(text)));
     assert!(is_stale(None, at));
     assert!(is_stale(seen("2026-10-21 08:14:30.5"), at));
