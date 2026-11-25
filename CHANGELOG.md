@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- Format only the five Python collector diagnostics shown in the run heartbeat
+  while preserving totals and per-spec results.
+
+- Continue Python condition evaluation and publish its run heartbeat when a
+  logging handler fails to report a condition error.
+
+- Check never-attempted and least recently attempted release sources first so
+  a retry can reach sources left waiting by an exhausted refresh budget.
+
+- Cancel in-progress public release reads at the remaining source or refresh
+  deadline, allowing later lookups while refresh time remains.
+
 - Normalize Python Influx query bounds once and reject empty or reversed windows
   before contacting the backend. Prepare dimension filters once per result scan.
 

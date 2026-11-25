@@ -470,18 +470,22 @@ def evaluate_conditions_once(
             except Exception:  # noqa: BLE001
                 # A failed fallback publication must not stop later conditions.
                 pass
-            logger.error(
-                "Condition failure condition_id=%s stage=%s category=%s failure_published=%s",
-                condition.pk,
-                stage,
-                category,
-                str(failure_published).lower(),
-                extra={
-                    "condition_id": condition.pk,
-                    "stage": stage,
-                    "category": category,
-                },
-            )
+            try:
+                logger.error(
+                    "Condition failure condition_id=%s stage=%s category=%s failure_published=%s",
+                    condition.pk,
+                    stage,
+                    category,
+                    str(failure_published).lower(),
+                    extra={
+                        "condition_id": condition.pk,
+                        "stage": stage,
+                        "category": category,
+                    },
+                )
+            except Exception:  # noqa: BLE001
+                # A broken logging handler must not suppress later results or the heartbeat.
+                pass
 
     if condition_id is None:
         heartbeat_status = StatusLevel.OK if failed == 0 else StatusLevel.WARNING
@@ -2461,11 +2465,13 @@ def run_metric_collection_specs_once(
 
         if status == StatusLevel.CRITICAL:
             failed += 1
-            error_messages.append(f"{spec.name}: {error_msg}")
         elif status == StatusLevel.WARNING:
             warning += 1
-            if error_msg:
-                error_messages.append(f"{spec.name}: {error_msg}")
+        if len(error_messages) < 5 and (
+            status == StatusLevel.CRITICAL
+            or (status == StatusLevel.WARNING and error_msg)
+        ):
+            error_messages.append(f"{spec.name}: {error_msg}")
 
     if total == 0:
         return MetricCollectionSpecRun(
@@ -2485,7 +2491,7 @@ def run_metric_collection_specs_once(
     record_heartbeat(
         "metric_collectors",
         status=heartbeat_status,
-        last_error="; ".join(error_messages[:5]),
+        last_error="; ".join(error_messages),
         details={
             "total": total,
             "failed": failed,

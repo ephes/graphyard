@@ -1,7 +1,9 @@
 """Explicit public source registry and cached release comparisons. No host access."""
 
+import asyncio
 import json
 import re
+from contextlib import ExitStack
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from functools import cache, partial
@@ -112,25 +114,21 @@ def _reject_release_constant(_constant):
     raise ValueError("Invalid release response")
 
 
-def fetch(client, definition, *, deadline=None):
-    now = monotonic()
-    deadline = (
-        min(deadline, now + FETCH_BUDGET_SECONDS)
-        if deadline is not None
-        else now + FETCH_BUDGET_SECONDS
-    )
-
-    def check_deadline():
-        if monotonic() >= deadline:
-            raise ValueError("Release lookup elapsed budget exceeded")
-
-    check_deadline()
-    with client.stream(
-        "GET",
-        url(definition),
-        headers={"Accept-Encoding": "identity"},
-        timeout=min(20, deadline - monotonic()),
-    ) as response:
+async def _read_body(client, definition, deadline, check_deadline):
+    remaining = deadline - monotonic()
+    if remaining <= 0:
+        raise ValueError("Release lookup elapsed budget exceeded")
+    # The elapsed deadline can cancel an in-progress read before its
+    # transport inactivity timeout expires.
+    async with (
+        asyncio.timeout(remaining),
+        client.stream(
+            "GET",
+            url(definition),
+            headers={"Accept-Encoding": "identity"},
+            timeout=min(20, remaining),
+        ) as response,
+    ):
         check_deadline()
         response.raise_for_status()
         if response.status_code != 200 or "Content-Range" in response.headers:
@@ -153,11 +151,32 @@ def fetch(client, definition, *, deadline=None):
                 raise ValueError("Release response too large")
             length = int(digits)
         raw = bytearray()
-        for chunk in response.iter_bytes():
+        async for chunk in response.aiter_bytes():
             check_deadline()
             if len(chunk) > MAX_BODY - len(raw):
                 raise ValueError("Release response too large")
             raw.extend(chunk)
+    return raw, length
+
+
+def fetch(client, definition, *, runner, deadline=None):
+    now = monotonic()
+    deadline = (
+        min(deadline, now + FETCH_BUDGET_SECONDS)
+        if deadline is not None
+        else now + FETCH_BUDGET_SECONDS
+    )
+
+    def check_deadline():
+        if monotonic() >= deadline:
+            raise ValueError("Release lookup elapsed budget exceeded")
+
+    try:
+        raw, length = runner.run(
+            _read_body(client, definition, deadline, check_deadline)
+        )
+    except TimeoutError as exc:
+        raise ValueError("Release lookup elapsed budget exceeded") from exc
     check_deadline()
     if length is not None and len(raw) != length:
         raise ValueError("Invalid release response length")
@@ -220,6 +239,7 @@ def refresh(data, force=False):
         )
         generation = InventoryReleaseRegistry.objects.get(pk=1).generation
     started = timezone.now()
+    attempts: dict[str, datetime | None] = {}
     with transaction.atomic():
         # UPDATE both checks ownership and locks policy replacement on SQLite
         # and row-locking databases. No wall-clock ordering is required.
@@ -232,8 +252,9 @@ def refresh(data, force=False):
         ).update(enabled=False)
         for key, definition in registry.items():
             row, created = InventoryRelease.objects.only(
-                "definition", "enabled"
+                "definition", "enabled", "attempted_at"
             ).get_or_create(source_id=key, defaults={"definition": definition})
+            attempts[key] = None
             if created:
                 continue
             if not row.enabled or row.definition != definition:
@@ -246,17 +267,21 @@ def refresh(data, force=False):
                     attempted_at=None,
                     error="",
                 )
+            else:
+                attempts[key] = row.attempted_at
     failures = skipped = 0
     superseded = False
-    with httpx.Client(
-        timeout=20,
-        follow_redirects=False,
-        trust_env=False,
-        headers={
-            "Accept": "application/json",
-            "User-Agent": "Graphyard-inventory-release-check/1",
-        },
-    ) as client:
+    with asyncio.Runner() as runner, ExitStack() as cleanup:
+        client = httpx.AsyncClient(
+            timeout=20,
+            follow_redirects=False,
+            trust_env=False,
+            headers={
+                "Accept": "application/json",
+                "User-Agent": "Graphyard-inventory-release-check/1",
+            },
+        )
+        cleanup.callback(lambda: runner.run(client.aclose()))
 
         def fresh(row):
             return (
@@ -272,8 +297,12 @@ def refresh(data, force=False):
             )
             return sum(not fresh(row) for row in rows)
 
-        keys = list(registry)
-        for index, (key, definition) in enumerate(registry.items()):
+        # Sorting is stable, so equal attempt timestamps keep registry order.
+        keys = sorted(
+            registry, key=lambda key: (attempts[key] is not None, attempts[key])
+        )
+        for index, key in enumerate(keys):
+            definition = registry[key]
             if monotonic() >= deadline:
                 skipped += count_due(keys[index:])
                 break
@@ -284,7 +313,7 @@ def refresh(data, force=False):
                 skipped += 1 + count_due(keys[index + 1 :])
                 break
             try:
-                version = fetch(client, definition, deadline=deadline)
+                version = fetch(client, definition, runner=runner, deadline=deadline)
                 values = {"version": version, "checked_at": timezone.now(), "error": ""}
             except (httpx.HTTPError, ValueError, TypeError, KeyError, AttributeError):
                 failures += 1

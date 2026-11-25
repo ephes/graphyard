@@ -1,7 +1,9 @@
+import logging
+
 import pytest
 
 from graphyard import services
-from graphyard.models import ConditionDefinition
+from graphyard.models import ConditionDefinition, PipelineHeartbeat, StatusLevel
 
 
 @pytest.mark.django_db
@@ -70,3 +72,43 @@ def test_failure_published_reports_actual_write(monkeypatch, caplog, change):
     monkeypatch.setattr(services, "evaluate_condition", evaluate)
     assert services.evaluate_conditions_once().failed == 1
     assert f"failure_published={str(change == 'unchanged').lower()}" in caplog.text
+
+
+@pytest.mark.django_db
+def test_condition_scan_publishes_results_and_heartbeat_when_log_handler_fails(
+    monkeypatch,
+):
+    first = ConditionDefinition.objects.create(name="first", metric_name="test.value")
+    second = ConditionDefinition.objects.create(name="second", metric_name="test.value")
+    logged = []
+
+    class FailingHandler(logging.Handler):
+        def emit(self, record):
+            logged.append(record.getMessage())
+            raise OSError("synthetic log failure")
+
+    def evaluate(condition, now):
+        if condition.pk == first.pk:
+            raise RuntimeError("synthetic evaluation failure")
+        return services.ConditionEvaluation(StatusLevel.OK, "ok", 1.0, now)
+
+    monkeypatch.setattr(services, "evaluate_condition", evaluate)
+    handler = FailingHandler(level=logging.ERROR)
+    services.logger.addHandler(handler)
+    try:
+        result = services.evaluate_conditions_once()
+    finally:
+        services.logger.removeHandler(handler)
+
+    assert result == services.ConditionEvaluationRun(total=2, failed=1)
+    assert len(logged) == 1 and f"condition_id={first.pk}" in logged[0]
+    first.refresh_from_db()
+    second.refresh_from_db()
+    assert first.status == StatusLevel.CRITICAL
+    assert first.message == "evaluation error: RuntimeError"
+    assert second.status == StatusLevel.OK
+    assert second.last_value == 1.0
+    heartbeat = PipelineHeartbeat.objects.get(name="condition_evaluator")
+    assert heartbeat.status == StatusLevel.WARNING
+    assert heartbeat.last_error == "1 condition(s) failed"
+    assert heartbeat.details == {"evaluated": 2, "failed": 1}
