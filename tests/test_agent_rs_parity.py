@@ -19,7 +19,7 @@ import urllib.request
 from contextlib import ExitStack
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from types import ModuleType
+from types import ModuleType, SimpleNamespace
 
 import pytest
 
@@ -400,3 +400,33 @@ def test_setup_failure_closes_all_created_fakes(tmp_path, monkeypatch, capsys, k
     if keep:
         assert (workdir / "python.sqlite3").is_file()
         assert str(workdir) in capsys.readouterr().out
+
+
+def test_round_reports_launch_failure_after_other_worker_finishes(tmp_path):
+    completed = tmp_path / "completed"
+
+    def agent(label, argv):
+        return SimpleNamespace(
+            label=label,
+            influx=SimpleNamespace(),
+            env=lambda round_: {},
+            command=lambda binary, round_: (argv, {}, tmp_path),
+        )
+
+    workers = [
+        agent("rust", [str(tmp_path / "missing-agent")]),
+        agent(
+            "python",
+            [
+                sys.executable,
+                "-c",
+                "from pathlib import Path; import sys; Path(sys.argv[1]).touch()",
+                str(completed),
+            ],
+        ),
+    ]
+    with pytest.raises(RuntimeError, match="rust.*FileNotFoundError") as error:
+        run_parity.run_round(workers, run_parity.ROUNDS[0], Path("unused"))
+
+    assert isinstance(error.value.__cause__, FileNotFoundError)
+    assert completed.is_file()

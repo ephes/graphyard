@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Report parity worker launch and output decoding failures with the affected
+  agent's label after both workers finish.
+
 - Close parity fakes and clean up temporary files when setup fails partway
   through, honoring `--keep` for the work directory.
 

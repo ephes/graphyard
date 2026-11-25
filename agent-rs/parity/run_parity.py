@@ -58,8 +58,8 @@ import ssl
 import subprocess
 import sys
 import tempfile
-import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import ExitStack
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -1375,10 +1375,12 @@ class RustAgent(Agent):
         return ([str(rust_binary), *command], {}, self.db.parent)
 
 
-def run_round(agents: list[Agent], round_: Round, rust_binary: Path) -> dict[str, Run]:
-    runs: dict[str, Run] = {}
+class WorkerError(RuntimeError):
+    """A parity worker failed before it could return a run result."""
 
-    def run(agent: Agent) -> None:
+
+def run_round(agents: list[Agent], round_: Round, rust_binary: Path) -> dict[str, Run]:
+    def run(agent: Agent) -> Run:
         agent.influx.v2_missing = round_.v2_missing
         argv, extra, cwd = agent.command(rust_binary, round_)
         env = {**agent.env(round_), **extra}
@@ -1402,13 +1404,18 @@ def run_round(agents: list[Agent], round_: Round, rust_binary: Path) -> dict[str
             )
             stderr = f"timed out after {PROCESS_TIMEOUT}s"
         end = time.time_ns()
-        runs[agent.label] = Run(code, stdout, stderr, (start - 10**9, end + 10**9))
+        return Run(code, stdout, stderr, (start - 10**9, end + 10**9))
 
-    threads = [threading.Thread(target=run, args=(agent,)) for agent in agents]
-    for thread in threads:
-        thread.start()
-    for thread in threads:
-        thread.join()
+    runs: dict[str, Run] = {}
+    with ThreadPoolExecutor(max_workers=2) as workers:
+        pending = [(agent.label, workers.submit(run, agent)) for agent in agents]
+        for label, future in pending:
+            try:
+                runs[label] = future.result()
+            except Exception as err:
+                raise WorkerError(
+                    f"{round_.name}: {label} worker failed ({type(err).__name__}): {err}"
+                ) from err
     return runs
 
 
@@ -1568,7 +1575,11 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="keep the work directory (databases, per-round stdout/stderr)",
     )
-    return run(parser.parse_args(argv))
+    try:
+        return run(parser.parse_args(argv))
+    except WorkerError as err:
+        print(err, file=sys.stderr)
+        return 2
 
 
 if __name__ == "__main__":
