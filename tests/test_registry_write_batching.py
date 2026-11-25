@@ -12,6 +12,7 @@ from types import SimpleNamespace
 
 import pytest
 from django.db import connection
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from django.utils import timezone
 
@@ -275,18 +276,29 @@ def test_registry_reads_hydrate_only_normalized_subject_pairs(
     monkeypatch.setattr(
         type(connection.features), "max_query_params", query_param_limit
     )
-    services.touch_registry_from_points(
-        [
-            replace(host_point("edge"), subject_id=" Edge "),
-            sensor_point(None, "edge"),
-            replace(
-                sensor_point(None, "edge"), subject_type="service", subject_id="mail"
-            ),
-        ]
-    )
+    with CaptureQueriesContext(connection) as queries:
+        services.touch_registry_from_points(
+            [
+                replace(host_point("edge"), subject_id=" Edge "),
+                sensor_point(None, "edge"),
+                replace(
+                    sensor_point(None, "edge"),
+                    subject_type="service",
+                    subject_id="mail",
+                ),
+            ]
+        )
 
     # Every wanted row is loaded once in preflight and once under the write lock.
     assert Counter(hydrated) == Counter({key: 2 for key in wanted})
+    subject_selects = [
+        query["sql"]
+        for query in queries.captured_queries
+        if query["sql"].startswith("SELECT")
+        and 'FROM "subject_registry"' in query["sql"]
+    ]
+    # A 4-parameter limit less one bind per type leaves one pair per query.
+    assert len(subject_selects) == (2 if query_param_limit == 999 else 6)
     sources = {
         (kind, subject_id): source
         for kind, subject_id, source in SubjectRegistry.objects.values_list(
