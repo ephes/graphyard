@@ -417,7 +417,9 @@ query bounds (the window length is compared) and the fakes' port numbers.
 The Python results must also match the statuses the corpus was written for
 (and, in the `evaluate_conditions` rounds, the exit code and summary line),
 so a corpus that stops exercising its branches fails too. A failing run
-prints every difference per round and exits 1. The helpers are tested in
+prints every difference per round and exits 1. Fake listeners close even if
+setup fails partway through. The temporary directory is removed by default.
+Use `--keep` to retain any files created before a failure. The helpers are tested in
 `tests/test_agent_rs_parity.py`.
 
 ## Shadow run

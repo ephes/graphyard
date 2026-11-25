@@ -169,13 +169,17 @@ class _Fake:
         self._log: list[Request] = []
         self._log_lock = threading.Lock()
         server = _Server(("127.0.0.1", 0), _Handler)
-        if tls is not None:
-            server.socket = tls.wrap_socket(server.socket, server_side=True)
-        server.fake = self
-        self._server = server
-        self.port = server.server_address[1]
-        self._thread = threading.Thread(target=server.serve_forever, daemon=True)
-        self._thread.start()
+        try:
+            if tls is not None:
+                server.socket = tls.wrap_socket(server.socket, server_side=True)
+            server.fake = self
+            self._server = server
+            self.port = server.server_address[1]
+            self._thread = threading.Thread(target=server.serve_forever, daemon=True)
+            self._thread.start()
+        except BaseException:
+            server.server_close()
+            raise
 
     def record(self, request: Request) -> None:
         with self._log_lock:
@@ -190,8 +194,10 @@ class _Fake:
 
     def close(self) -> None:
         self.closing.set()
-        self._server.shutdown()
-        self._server.server_close()
+        try:
+            self._server.shutdown()
+        finally:
+            self._server.server_close()
 
 
 class HttpFake(_Fake):

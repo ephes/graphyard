@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Close parity fakes and clean up temporary files when setup fails partway
+  through, honoring `--keep` for the work directory.
+
 - Refuse orphan commit trailers in Rust shadow captures and report the last
   complete offset for recovery.
 

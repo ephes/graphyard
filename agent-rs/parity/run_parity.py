@@ -60,6 +60,7 @@ import sys
 import tempfile
 import threading
 import time
+from contextlib import ExitStack
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
@@ -1272,11 +1273,16 @@ class Run:
 class Agent:
     """One implementation: its fakes, corpus, database and runs."""
 
-    def __init__(self, label: str, workdir: Path, tls: ssl.SSLContext) -> None:
+    def __init__(
+        self, label: str, workdir: Path, tls: ssl.SSLContext, resources: ExitStack
+    ) -> None:
         self.label = label
         self.http = HttpFake()
+        resources.callback(self.http.close)
         self.https = HttpFake(tls)
+        resources.callback(self.https.close)
         self.influx = InfluxFake(MEASUREMENT)
+        resources.callback(self.influx.close)
         self.corpus = build_corpus(self.http, self.https, self.influx)
         self.db = workdir / f"{label}.sqlite3"
         seed(self.db, self.corpus)
@@ -1335,10 +1341,6 @@ class Agent:
         self, rust_binary: Path, round_: Round
     ) -> tuple[list[str], dict[str, str], Path]:
         raise NotImplementedError
-
-    def close(self) -> None:
-        for fake in self.fakes().values():
-            fake.close()
 
 
 class PythonAgent(Agent):
@@ -1486,14 +1488,18 @@ def run(args: argparse.Namespace) -> int:
     if not os.access(rust_binary, os.X_OK):
         print(f"not an executable: {rust_binary}", file=sys.stderr)
         return 2
-    workdir = Path(tempfile.mkdtemp(prefix="graphyard-parity-"))
-    tls = _openssl_context(workdir)
-    python = PythonAgent("python", workdir, tls)
-    rust = RustAgent("rust", workdir, tls)
     differences: list[str] = []
     problems: list[str] = []
     totals = {"requests": 0, "writes": 0, "queries": 0}
-    try:
+    with ExitStack() as resources:
+        workdir = Path(tempfile.mkdtemp(prefix="graphyard-parity-"))
+        if args.keep:
+            resources.callback(print, f"work directory kept: {workdir}")
+        else:
+            resources.callback(shutil.rmtree, workdir)
+        tls = _openssl_context(workdir)
+        python = PythonAgent("python", workdir, tls, resources)
+        rust = RustAgent("rust", workdir, tls, resources)
         for round_no, round_ in enumerate(ROUNDS, start=1):
             started = time.monotonic()
             runs = run_round([python, rust], round_, rust_binary)
@@ -1532,13 +1538,6 @@ def run(args: argparse.Namespace) -> int:
         totals["requests"] = counts["http"] + counts["https"]
         if not (totals["requests"] and totals["writes"] and totals["queries"]):
             problems.append(f"the corpus reached too few endpoints: {totals}")
-    finally:
-        python.close()
-        rust.close()
-    if args.keep:
-        print(f"work directory kept: {workdir}")
-    else:
-        shutil.rmtree(workdir, ignore_errors=True)
     if problems:
         print(f"{len(problems)} corpus expectation(s) not met by the Python agent:")
         for problem in problems:

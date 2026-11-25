@@ -16,6 +16,7 @@ import sqlite3
 import sys
 import urllib.error
 import urllib.request
+from contextlib import ExitStack
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from types import ModuleType
@@ -302,12 +303,9 @@ def test_every_spec_type_and_corpus_case_is_covered():
 
 
 def test_evaluate_rounds_run_both_commands_on_their_database(tmp_path):
-    agents = [
-        run_parity.PythonAgent("python", tmp_path, None),  # type: ignore[arg-type]
-        run_parity.RustAgent("rust", tmp_path, None),  # type: ignore[arg-type]
-    ]
-    try:
-        python, rust = agents
+    with ExitStack() as resources:
+        python = run_parity.PythonAgent("python", tmp_path, None, resources)  # type: ignore[arg-type]
+        rust = run_parity.RustAgent("rust", tmp_path, None, resources)  # type: ignore[arg-type]
         binary = Path("/bin/graphyard-agent")
         agent_round, all_round, one_round = (
             run_parity.ROUNDS[0],
@@ -355,6 +353,50 @@ def test_evaluate_rounds_run_both_commands_on_their_database(tmp_path):
         finally:
             connection.close()
         assert row == (one_round.condition,)
-    finally:
-        for agent in agents:
-            agent.close()
+
+
+@pytest.mark.parametrize("keep", [False, True])
+def test_setup_failure_closes_all_created_fakes(tmp_path, monkeypatch, capsys, keep):
+    workdir = tmp_path / "parity"
+    closed = []
+
+    def make_workdir(**kwargs):
+        workdir.mkdir()
+        return str(workdir)
+
+    class Fake:
+        port = 1234
+
+        def close(self):
+            closed.append(self)
+
+    fakes_created = []
+
+    def make_fake(*args):
+        fake = Fake()
+        fakes_created.append(fake)
+        return fake
+
+    def seed(db, corpus):
+        db.touch()
+        if db.stem == "rust":
+            raise RuntimeError("second seed failed")
+
+    monkeypatch.setattr(run_parity.tempfile, "mkdtemp", make_workdir)
+    monkeypatch.setattr(run_parity, "_openssl_context", lambda path: None)
+    monkeypatch.setattr(run_parity, "HttpFake", make_fake)
+    monkeypatch.setattr(run_parity, "InfluxFake", make_fake)
+    monkeypatch.setattr(run_parity, "build_corpus", lambda *args: None)
+    monkeypatch.setattr(run_parity, "seed", seed)
+
+    with pytest.raises(RuntimeError, match="second seed failed"):
+        run_parity.main(
+            ["--rust-binary", sys.executable, *(["--keep"] if keep else [])]
+        )
+
+    assert len(fakes_created) == 6
+    assert closed == fakes_created[::-1]
+    assert workdir.exists() == keep
+    if keep:
+        assert (workdir / "python.sqlite3").is_file()
+        assert str(workdir) in capsys.readouterr().out
