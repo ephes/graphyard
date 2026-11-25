@@ -14,7 +14,8 @@ fixes of scout rounds 79 to 85, release `agent-rs-v0.4.0` those of scout
 rounds 87 to 99, release `agent-rs-v0.4.1` (the first one built locally) the
 later agent fixes, release `agent-rs-v0.4.2` the agent fixes merged after it,
 release `agent-rs-v0.4.3` the Home Assistant entity metadata and climate
-attributes of the env scan (CHANGELOG). S1: the workspace, the toolchain pin,
+attributes of the env scan, release `agent-rs-v0.4.4` the agent fixes merged
+after it (CHANGELOG). S1: the workspace, the toolchain pin,
 the cargo-deny policy, the CI `rust` job, the `just rs-*` recipes, the shared
 model types (`graphyard_core::model`) and the fixture pipeline with its drift
 test. S2: the CPython compatibility helpers (`graphyard_core::pycompat`), the

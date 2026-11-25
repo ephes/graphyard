@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+- Rust agent (`agent-rs/`): version 0.4.4, released as `agent-rs-v0.4.4`
+  (built and published locally by `agent-rs/scripts/local_release.py`). It
+  carries the Rust agent fixes merged since `agent-rs-v0.4.3` (entries below):
+  one TCP connect budget shared across resolved addresses (divergence D-14),
+  shadow captures that open the literal SQLite source path, refuse orphan
+  commit trailers and declared-bound overruns, keep the last validated offset
+  after an append failure and credit a synced batch at its calculated end;
+  Influx query windows rejected before transport and authorization header
+  errors without credentials; Flux base64 output buffers that grow with the
+  decoded bytes; structured Home Assistant `last_updated` values that use the
+  current time without rendering; and the store's legacy datetime fallback
+  with Django's Unicode decimal digits behind a bounded ISO minimum-length
+  check. No new schema: `--check-schema` still needs graphyard migration
+  `0015_alter_conditiondefinition_breach_minutes_and_more`.
+
 - Share one Rust collector TCP connection timeout across all resolved addresses,
   preserving immediate fallback after a quick connection failure. The Python
   agent keeps httpcore's per-address timeout (intentional divergence D-14).
