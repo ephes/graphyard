@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Credit synced Rust shadow appends at their calculated end, avoiding a
+  post-sync metadata failure for a batch already on disk.
+
 - Keep the last validated Rust shadow offset when an append fails so retries
   check any partial write without rescanning the admitted peer batches.
 

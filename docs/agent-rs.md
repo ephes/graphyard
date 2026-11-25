@@ -529,8 +529,10 @@ descriptor. Parent directories must be trusted and remain operator-controlled.
 
 New captures frame each batch as `# write <utc> points=<n> bytes=<b>`, exactly
 `n` line-protocol lines totaling `b` UTF-8 bytes (including final newline), then
-`# commit points=<n> bytes=<b>`. The writer syncs each completed batch before
-crediting it. The comparison tool refuses incomplete framed evidence, publishing
+`# commit points=<n> bytes=<b>`. Under the lock, the writer checks that the
+validated end plus the framed batch's byte length fits the file offset. It
+credits the batch at that calculated end after sync, without querying file
+metadata again. The comparison tool refuses incomplete framed evidence, publishing
 no partial report. Earlier unframed captures remain readable; their historical
 format has no commit-trailer guarantee. The writer verifies their declared point
 count before reuse; comment-only preambles remain supported.
