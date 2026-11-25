@@ -473,7 +473,9 @@ with the attempt-time fence retained. A newer refresh fences older in-flight
 successes and failures, including removal/re-enable and A → B → A edits, even
 with equal wall-clock timestamps. Network I/O stays outside database transactions.
 
-Release requests ask for `Accept-Encoding: identity`; a compressed reply, or one
+Release endpoints must return HTTP 200 without a `Content-Range` header.
+Graphyard refuses other statuses and range-marked responses before reading the
+body. Requests ask for `Accept-Encoding: identity`; a compressed reply, or one
 declaring a `Content-Length` above 16 MiB (or an invalid one), is refused before its
 body is read. A declared length uses ASCII decimal digits, with leading zeroes
 allowed. Before decoding, Graphyard requires the received byte count to match
@@ -490,9 +492,11 @@ The normal HTTP operation timeout is 20 seconds; cooperative budget detection
 can lag until an in-progress operation returns, and database work/cleanup is not
 forcibly interrupted. This is an elapsed admission budget, not process termination.
 A source that exhausts its allowance records a bounded lookup failure and retains
-last-good evidence for the unchanged definition. Later sources needing a lookup
-are counted as skipped once the run allowance is exhausted; unchanged definitions'
-version, error, attempt and success timestamps are untouched. Changed definitions
+last-good evidence for the unchanged definition. After acquiring the publication
+fence, the refresh checks the run deadline before accepting a successful result.
+A success at or beyond that deadline and later sources needing a lookup count as
+skipped. Skipping leaves the version, error and timestamps of unchanged,
+continuously enabled definitions untouched. Changed or reactivated definitions
 remain invalidated even if their new lookup is skipped. After expiry, the
 command reads the remaining cache statuses together to distinguish fresh hits
 from skipped lookups. Output reports failed and skipped counts; any skipped sources
