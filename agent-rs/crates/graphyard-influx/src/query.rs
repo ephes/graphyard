@@ -103,6 +103,10 @@ impl QueryClient {
 
     /// `influx.query_range` in the configured mode.
     ///
+    /// Unlike Python, this does not reject an empty or reversed window before
+    /// the request; it only checks the returned samples. Condition windows
+    /// always have start < stop, so evaluation results agree.
+    ///
     /// # Errors
     /// The exception the Python query raises (configuration, HTTP, decoding,
     /// non-finite samples).

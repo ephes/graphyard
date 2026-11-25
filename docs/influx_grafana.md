@@ -281,4 +281,6 @@ charges their bytes for every applicable cell.
 Python normalizes query bounds to UTC before contacting either backend. A naive
 bound is interpreted as UTC. The start must precede the stop. Returned samples
 must match the requested metric and dimensions and fall at or after the start
-and strictly before the stop.
+and strictly before the stop. The Rust agent does not reject an empty or
+reversed window before the request; condition windows always have start before
+stop, so condition evaluation agrees.
