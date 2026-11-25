@@ -27,7 +27,10 @@ use graphyard_core::{
     StatusLevel,
 };
 use graphyard_influx::{ConditionQuery, QueryError};
-use graphyard_store::{ConditionRow, HeartbeatRecord, SpecRow, SpecRunUpdate, Store, StoreError};
+use graphyard_store::{
+    ConditionRow, DueSpecScan, HeartbeatRecord, PendingSpecIssue, SpecRow, SpecRunUpdate, Store,
+    StoreError,
+};
 
 /// The UTC wall clock (`timezone.now()`, `datetime.now(UTC)`).
 pub trait Clock {
@@ -204,67 +207,79 @@ pub(crate) async fn run_metric_specs_until_shutdown<E: SpecExecutors, C: Clock>(
     // `_subject_mapping_warning_keys.clear()`: a new state per run.
     let mut state = RunState::new();
     let now = clock.now();
-    let now_ts = now.timestamp();
-    let specs = if due_only {
-        store.load_due_specs(now_ts).await?
+    let mut due_scan = DueSpecScan::new(now.timestamp());
+    let mut manual_specs = if due_only {
+        Vec::new().into_iter()
     } else {
         let specs = store.load_specs(None).await?;
         if specs.is_empty() {
             return Err(RunError::NoMatchingSpecs);
         }
-        specs.into_iter().map(Ok).collect()
+        specs.into_iter()
     };
 
     let mut run = MetricCollectionSpecRun::default();
     let mut errors: Vec<String> = Vec::new();
     let mut store_error = None;
     let mut interrupted = false;
-    for spec in &specs {
+    while !manual_specs.as_slice().is_empty() || (due_only && due_scan.has_pending()) {
         if stopping.get() {
             interrupted = true;
             break;
         }
-        let spec = match spec {
-            Ok(spec) => spec,
-            Err(row) => {
-                log::error!("Invalid stored collector metadata spec_id={}", row.id);
-                run.total += 1;
-                run.failed += 1;
-                if errors.len() < MAX_HEARTBEAT_ERRORS {
-                    errors.push(format!(
-                        "spec_id={}: invalid stored collector metadata",
-                        row.id
-                    ));
-                }
-                continue;
-            }
+        let next = if due_only {
+            due_scan.next(store).await
+        } else {
+            Ok(manual_specs.next().map(Ok))
         };
-        let run_at = if due_only { clock.now() } else { now };
-        let outcome = match run_metric_spec(
-            store, executors, clock, &mut state, spec, run_at, due_only,
-        )
-        .await
-        {
-            Ok(Some(outcome)) => outcome,
-            Ok(None) => continue,
-            Err(RunError::NextRunTimeOverflow) => {
-                log::error!("Collection schedule overflow spec_id={}", spec.id);
+        let spec = match next {
+            Ok(Some(Ok(spec))) => spec,
+            Ok(Some(Err(PendingSpecIssue::Superseded))) => continue,
+            Ok(Some(Err(PendingSpecIssue::Invalid { id }))) => {
+                log::error!("Invalid stored collector metadata spec_id={id}");
                 run.total += 1;
                 run.failed += 1;
                 if errors.len() < MAX_HEARTBEAT_ERRORS {
-                    errors.push(format!(
-                        "spec_id={}: next run time exceeds SQLite INTEGER range",
-                        spec.id
-                    ));
+                    errors.push(format!("spec_id={id}: invalid stored collector metadata"));
                 }
                 continue;
             }
-            Err(RunError::Store(err)) if run.total > 0 => {
+            Ok(None) => break,
+            Err(err) if run.total > 0 => {
                 store_error = Some(err);
                 break;
             }
-            Err(err) => return Err(err),
+            Err(err) => return Err(err.into()),
         };
+        if stopping.get() {
+            interrupted = true;
+            break;
+        }
+        let run_at = if due_only { clock.now() } else { now };
+        let outcome =
+            match run_metric_spec(store, executors, clock, &mut state, &spec, run_at, due_only)
+                .await
+            {
+                Ok(Some(outcome)) => outcome,
+                Ok(None) => continue,
+                Err(RunError::NextRunTimeOverflow) => {
+                    log::error!("Collection schedule overflow spec_id={}", spec.id);
+                    run.total += 1;
+                    run.failed += 1;
+                    if errors.len() < MAX_HEARTBEAT_ERRORS {
+                        errors.push(format!(
+                            "spec_id={}: next run time exceeds SQLite INTEGER range",
+                            spec.id
+                        ));
+                    }
+                    continue;
+                }
+                Err(RunError::Store(err)) if run.total > 0 => {
+                    store_error = Some(err);
+                    break;
+                }
+                Err(err) => return Err(err),
+            };
         run.total += 1;
         run.ingested += outcome.ingested;
         run.skipped += outcome.skipped;

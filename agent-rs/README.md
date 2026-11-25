@@ -324,8 +324,11 @@ counts as a failed spec and leaves its row untouched. Later specs still run.
 The heartbeat includes the failure in its totals and can show a fixed
 diagnostic with the spec ID among its five samples.
 
-Due-only metric runs claim the observed `next_run_time` before invoking a
-collector. Claims use a 3–300 second lease (the clamped interval), renewed every one third
+Rust due-only metric runs page through lightweight candidates in name order
+using the sweep's starting time as the due cutoff. Each candidate's schedule
+and definition revision must still match before Rust loads its config. The
+claim then compares the loaded definition, including the config, before
+invoking the collector. Claims use a 3–300 second lease (the clamped interval), renewed every one third
 of that duration until the complete collector/sink/registry future returns.
 Renewal and completion compare the exact persisted claim and captured name,
 enabled state, type, interval and stored config. Lost ownership cancels the

@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Page through Rust due candidates and load each config only while its
+  observed schedule and definition still match.
+
 - Keep Rust due sweeps running when a collector row has unreadable stored
   metadata. Report the row ID in diagnostics and leave it due for repair.
 

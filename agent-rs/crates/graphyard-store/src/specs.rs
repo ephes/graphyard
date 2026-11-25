@@ -2,9 +2,11 @@
 //! (`services.py:run_metric_collection_specs_once`; PLAN.md 3.4, 5.4).
 
 use std::sync::Arc;
+use std::vec::IntoIter;
 
 use graphyard_core::StatusLevel;
 use graphyard_core::utc::UtcDateTime;
+use rusqlite::types::Value;
 use rusqlite::{Connection, params};
 
 use crate::actor::Store;
@@ -90,13 +92,18 @@ fn decode_spec(row: &rusqlite::Row<'_>) -> Result<SpecRow, StoreError> {
     Ok(spec)
 }
 
-/// A due row that cannot be decoded. Report only the key, never stored values.
-#[derive(Debug)]
-pub struct InvalidSpecRow {
-    pub id: i64,
+/// Why a candidate cannot be executed by this sweep.
+pub enum PendingSpecIssue {
+    /// Carry only the key so diagnostics cannot expose stored values.
+    Invalid {
+        id: i64,
+    },
+    Superseded,
 }
 
-fn decode_due_spec(row: &rusqlite::Row<'_>) -> Result<Result<SpecRow, InvalidSpecRow>, StoreError> {
+pub type PendingSpec = Result<SpecRow, PendingSpecIssue>;
+
+fn decode_due_spec(row: &rusqlite::Row<'_>) -> Result<PendingSpec, StoreError> {
     match decode_spec(row) {
         Ok(spec) => Ok(Ok(spec)),
         Err(
@@ -106,7 +113,7 @@ fn decode_due_spec(row: &rusqlite::Row<'_>) -> Result<Result<SpecRow, InvalidSpe
                 | rusqlite::Error::FromSqlConversionFailure(..)
                 | rusqlite::Error::IntegralValueOutOfRange(..),
             ),
-        ) => Ok(Err(InvalidSpecRow { id: row.get(0)? })),
+        ) => Ok(Err(PendingSpecIssue::Invalid { id: row.get(0)? })),
         Err(error) => Err(error),
     }
 }
@@ -114,6 +121,132 @@ fn decode_due_spec(row: &rusqlite::Row<'_>) -> Result<Result<SpecRow, InvalidSpe
 const SELECT_SPECS: &str = "SELECT id, name, CAST(enabled AS TEXT), spec_type, interval_seconds, \
      next_run_time, config, CAST(last_run_at AS TEXT), last_status, last_error, \
      CAST(created_at AS TEXT), CAST(updated_at AS TEXT) FROM metric_collection_spec";
+
+const DUE_PAGE_SIZE: usize = 128;
+
+struct DueCandidate {
+    id: i64,
+    name: Vec<u8>,
+    name_is_text: bool,
+    due: Value,
+    spec_type: Vec<u8>,
+    interval: Vec<u8>,
+    revision: Option<Vec<u8>>,
+}
+
+/// A paged name-ordered due sweep with a fixed time horizon.
+pub struct DueSpecScan {
+    due_before: i64,
+    page: IntoIter<DueCandidate>,
+    after: Option<(Vec<u8>, bool)>,
+    last_page: bool,
+}
+
+impl DueSpecScan {
+    pub fn new(due_before: i64) -> Self {
+        Self {
+            due_before,
+            page: Vec::new().into_iter(),
+            after: None,
+            last_page: false,
+        }
+    }
+
+    /// Whether the sweep can have another candidate.
+    pub fn has_pending(&self) -> bool {
+        !self.page.as_slice().is_empty() || !self.last_page
+    }
+
+    /// Advance by one candidate, returning None at the end of the sweep.
+    ///
+    /// # Errors
+    /// Store and query failures. Unreadable rows are returned separately.
+    pub async fn next(&mut self, store: &Store) -> Result<Option<PendingSpec>, StoreError> {
+        if self.page.as_slice().is_empty() && !self.last_page {
+            let due_before = self.due_before;
+            let after = self.after.clone();
+            let mut page = store
+                .call(move |connection| load_due_page(connection, due_before, after))
+                .await?;
+            self.last_page = page.len() <= DUE_PAGE_SIZE;
+            page.truncate(DUE_PAGE_SIZE);
+            self.after = page.last().map(|row| (row.name.clone(), row.name_is_text));
+            self.page = page.into_iter();
+        }
+        let Some(candidate) = self.page.next() else {
+            return Ok(None);
+        };
+        store
+            .call(move |connection| load_pending_spec(connection, candidate))
+            .await
+            .map(Some)
+    }
+}
+
+fn load_due_page(
+    connection: &Connection,
+    due_before: i64,
+    after: Option<(Vec<u8>, bool)>,
+) -> Result<Vec<DueCandidate>, StoreError> {
+    // Carry raw bytes so even a malformed TEXT value can serve as a cursor.
+    // name is unique and its index can satisfy the keyset lookup and ordering.
+    const SELECT: &str = "SELECT id, CAST(name AS BLOB), typeof(name) = 'text', next_run_time, \
+        CAST(spec_type AS BLOB), CAST(interval_seconds AS BLOB), CAST(updated_at AS BLOB) \
+        FROM metric_collection_spec WHERE enabled AND next_run_time <= ?1";
+    let pagination = if after.is_some() {
+        "AND name > CASE WHEN ?3 THEN CAST(?4 AS TEXT) ELSE ?4 END"
+    } else {
+        ""
+    };
+    let mut statement =
+        connection.prepare_cached(&format!("{SELECT} {pagination} ORDER BY name ASC LIMIT ?2"))?;
+    // Look ahead one key to distinguish a full final page from more work.
+    let limit = (DUE_PAGE_SIZE + 1) as i64;
+    let mut rows = match after {
+        Some((name, is_text)) => statement.query(params![due_before, limit, is_text, name])?,
+        None => statement.query(params![due_before, limit])?,
+    };
+    let mut page = Vec::new();
+    while let Some(row) = rows.next()? {
+        page.push(DueCandidate {
+            id: row.get(0)?,
+            name: row.get(1)?,
+            name_is_text: row.get(2)?,
+            due: row.get(3)?,
+            spec_type: row.get(4)?,
+            interval: row.get(5)?,
+            revision: row.get(6)?,
+        });
+    }
+    Ok(page)
+}
+
+fn load_pending_spec(
+    connection: &Connection,
+    candidate: DueCandidate,
+) -> Result<PendingSpec, StoreError> {
+    // Only materialize config if the slot and definition seen on this page
+    // still match. The later claim CAS also fences edits to the loaded config.
+    let mut statement = connection.prepare_cached(&format!(
+        "{SELECT_SPECS} WHERE id = ? AND enabled AND next_run_time = ? \
+         AND CAST(name AS BLOB) = ? AND (typeof(name) = 'text') = ? \
+         AND CAST(spec_type AS BLOB) = ? AND CAST(interval_seconds AS BLOB) = ? \
+         AND CAST(updated_at AS BLOB) IS ?"
+    ))?;
+    let mut rows = statement.query(params![
+        candidate.id,
+        candidate.due,
+        candidate.name,
+        candidate.name_is_text,
+        candidate.spec_type,
+        candidate.interval,
+        candidate.revision,
+    ])?;
+    match rows.next()? {
+        Some(row) => decode_due_spec(row),
+        None => Ok(Err(PendingSpecIssue::Superseded)),
+    }
+}
 
 /// `MetricCollectionSpec.objects.filter(enabled=True)` (plus
 /// `next_run_time__lte=due_before`) ordered by name, every row converted.
@@ -278,25 +411,6 @@ impl Store {
     pub async fn load_specs(&self, due_before: Option<i64>) -> Result<Vec<SpecRow>, StoreError> {
         self.call(move |connection| load_specs(connection, due_before))
             .await
-    }
-
-    /// Read due specs in name order, preserving row conversion failures separately.
-    ///
-    /// # Errors
-    /// Query preparation and iteration errors.
-    pub async fn load_due_specs(
-        &self,
-        due_before: i64,
-    ) -> Result<Vec<Result<SpecRow, InvalidSpecRow>>, StoreError> {
-        self.call(move |connection| {
-            let mut statement = connection.prepare(&format!(
-                "{SELECT_SPECS} WHERE enabled AND next_run_time <= ? ORDER BY name ASC"
-            ))?;
-            statement
-                .query_and_then([due_before], decode_due_spec)?
-                .collect()
-        })
-        .await
     }
 
     /// Write one spec's run result.

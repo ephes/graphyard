@@ -366,8 +366,10 @@ that differs is a bug.
   and leaves its schedule untouched. Python's bulk load can fail the sweep. A
   collector store error after a counted outcome can publish a partial heartbeat
   (section 3.4). Rust collector claims, renewals and completions also compare
-  the exact stored `updated_at` text, so a definition edited and reverted
-  during an attempt rejects that attempt; Python compares only the captured
+  the exact stored `updated_at` text. Rust due sweeps page through candidate
+  metadata at a fixed due cutoff and require the observed schedule and
+  revision before loading each config. A definition edited and reverted
+  during an attempt rejects that attempt. Python compares only the captured
   business fields (section 3.4). An empty full condition sweep writes its
   heartbeat with `no_work: 1` and without success, preserving
   `last_success`; Python marks it successful (section 3.5).

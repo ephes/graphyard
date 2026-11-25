@@ -42,4 +42,6 @@ pub use error::{NOT_UPDATED_MESSAGE, StoreError};
 pub use heartbeat::{HeartbeatRecord, details_json};
 pub use registry::REGISTRY_LAST_SEEN_UPDATE_INTERVAL;
 pub use schema::{MIN_GRAPHYARD_MIGRATION, REQUIRED_COLUMNS, SchemaReport, check_schema};
-pub use specs::{InvalidSpecRow, SpecClaimIdentity, SpecRow, SpecRunUpdate};
+pub use specs::{
+    DueSpecScan, PendingSpec, PendingSpecIssue, SpecClaimIdentity, SpecRow, SpecRunUpdate,
+};
