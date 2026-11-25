@@ -10,12 +10,7 @@ all-features = false
 [advisories]
 version = 2
 yanked = "deny"
-ignore = [
-    # chrono is unmaintained (no known vulnerability, no safe upgrade); the
-    # agent uses it for timestamps. Its replacement (jiff or time) is the work
-    # item rust-chrono-replacement.
-    { id = "RUSTSEC-2026-0543", reason = "unmaintained, no known vulnerability; replacement is work item rust-chrono-replacement" },
-]
+ignore = []
 
 [licenses]
 version = 2

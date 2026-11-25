@@ -11,8 +11,8 @@
 //! InfluxDB condition query in the agent, a stub in tests), `now` and the
 //! global staleness setting are passed in. Time is computed on Python's
 //! microsecond timeline: `now` and every sample timestamp are read with
-//! [`DateTime::timestamp_micros`] (sub-microsecond parts are dropped, a
-//! Python `datetime` has none), and the `timedelta` arithmetic raises where
+//! [`UtcDateTime::micros`] (the type has no sub-microsecond part, like a
+//! Python `datetime`), and the `timedelta` arithmetic raises where
 //! CPython raises ([`crate::pycompat::py_timedelta_minutes`],
 //! [`crate::pycompat::py_datetime_add`]).
 //!
@@ -26,7 +26,7 @@ use std::collections::BTreeMap;
 use std::fmt;
 use std::future::Future;
 
-use chrono::{DateTime, Utc};
+use crate::utc::UtcDateTime;
 use indexmap::IndexMap;
 use num_bigint::BigInt;
 
@@ -83,20 +83,20 @@ pub trait SampleSource {
     /// the query returned them.
     fn query_condition_window(
         &mut self,
-        now: DateTime<Utc>,
+        now: UtcDateTime,
     ) -> impl Future<Output = Result<Vec<MetricSample>, Self::Error>>;
 }
 
 impl<F, Fut, E> SampleSource for F
 where
-    F: FnMut(DateTime<Utc>) -> Fut,
+    F: FnMut(UtcDateTime) -> Fut,
     Fut: Future<Output = Result<Vec<MetricSample>, E>>,
 {
     type Error = E;
 
     fn query_condition_window(
         &mut self,
-        now: DateTime<Utc>,
+        now: UtcDateTime,
     ) -> impl Future<Output = Result<Vec<MetricSample>, E>> {
         self(now)
     }
@@ -130,12 +130,10 @@ impl<E: fmt::Debug + fmt::Display> std::error::Error for EvaluationError<E> {}
 pub async fn evaluate_condition<S: SampleSource>(
     rule: &ConditionRule,
     stale_warning_seconds: &BigInt,
-    now: DateTime<Utc>,
+    now: UtcDateTime,
     source: &mut S,
 ) -> Result<ConditionEvaluation, EvaluationError<S::Error>> {
     validate_condition_duration(rule.breach_minutes).map_err(EvaluationError::Evaluation)?;
-    let now_micros = now.timestamp_micros();
-    let now = micros_to_datetime(now_micros);
     let samples = source
         .query_condition_window(now)
         .await
@@ -149,12 +147,12 @@ pub async fn evaluate_condition<S: SampleSource>(
 pub fn evaluate_samples(
     rule: &ConditionRule,
     samples: &[MetricSample],
-    now: DateTime<Utc>,
+    now: UtcDateTime,
     stale_warning_seconds: &BigInt,
 ) -> Result<ConditionEvaluation, PyError> {
     validate_condition_duration(rule.breach_minutes)?;
-    let now_micros = now.timestamp_micros();
-    let evaluated_at = micros_to_datetime(now_micros);
+    let now_micros = now.micros();
+    let evaluated_at = now;
     let evaluation = |status, message, last_value| ConditionEvaluation {
         status,
         message,
@@ -302,7 +300,7 @@ fn group_samples_by_series(
     let mut grouped: IndexMap<SeriesKey, Vec<Point>> = IndexMap::new();
     for sample in samples {
         grouped.entry(series_key(sample)).or_default().push(Point {
-            ts: sample.ts.timestamp_micros(),
+            ts: sample.ts.micros(),
             value: sample.value,
         });
     }
@@ -510,7 +508,7 @@ fn is_breached_for_duration(
 }
 
 /// `later - earlier` in microseconds. Both come from Python-range datetimes
-/// in practice; out-of-range chrono values saturate instead of overflowing.
+/// in practice; other instants saturate instead of overflowing.
 fn micros_between(later: i64, earlier: i64) -> i64 {
     later.saturating_sub(earlier)
 }
@@ -521,11 +519,6 @@ fn micros_between(later: i64, earlier: i64) -> i64 {
 fn total_seconds_at_most(micros: i64, limit: &BigInt) -> bool {
     // |total_seconds| < 2**63 / 10**6, so the ceiling fits an i64.
     BigInt::from(py_total_seconds(micros).ceil() as i64) <= *limit
-}
-
-fn micros_to_datetime(micros: i64) -> DateTime<Utc> {
-    // The count comes from `timestamp_micros` of a chrono value.
-    DateTime::from_timestamp_micros(micros).unwrap_or_default()
 }
 
 #[cfg(test)]

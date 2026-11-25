@@ -1,7 +1,7 @@
 //! `condition_definition`: the conditions run's load and per-condition
 //! updates (`services.py:evaluate_conditions_once`; PLAN.md 3.5, 5.4).
 
-use chrono::{DateTime, Utc};
+use graphyard_core::utc::UtcDateTime;
 use graphyard_core::{ConditionEvaluation, StatusLevel};
 use rusqlite::{Connection, params};
 
@@ -143,7 +143,7 @@ fn update_condition_failure(
     id: i64,
     status: StatusLevel,
     message: &str,
-    attempted_at: DateTime<Utc>,
+    attempted_at: UtcDateTime,
 ) -> Result<bool, StoreError> {
     Ok(connection.execute(
         "UPDATE condition_definition SET status = ?, message = ?, last_evaluated = ? \
@@ -174,7 +174,7 @@ fn same_definition(a: &ConditionRow, b: &ConditionRow) -> bool {
 fn can_publish(
     current: &ConditionRow,
     definition: &ConditionRow,
-    attempted_at: DateTime<Utc>,
+    attempted_at: UtcDateTime,
 ) -> bool {
     same_definition(current, definition)
         && current
@@ -232,7 +232,7 @@ impl Store {
         definition: ConditionRow,
         status: StatusLevel,
         message: String,
-        attempted_at: DateTime<Utc>,
+        attempted_at: UtcDateTime,
     ) -> Result<bool, StoreError> {
         self.call(move |connection| {
             let tx =

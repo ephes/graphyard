@@ -1,9 +1,9 @@
 //! Synthetic loopback regressions for transfer budgets and single submissions.
 mod common;
-use chrono::Utc;
 use common::FakeInflux;
 use graphyard_core::model::MetricPoint;
 use graphyard_core::settings::Settings;
+use graphyard_core::utc::UtcDateTime;
 use graphyard_influx::{InfluxWriter, QueryClient, QueryRange};
 use serde_json::json;
 use std::time::{Duration, Instant};
@@ -20,7 +20,7 @@ fn settings(server: &FakeInflux) -> Settings {
 }
 fn point() -> MetricPoint {
     MetricPoint {
-        ts: Utc::now(),
+        ts: UtcDateTime::now(),
         metric: "m".into(),
         value: 2.0,
         subject_type: "host".into(),
@@ -56,7 +56,11 @@ async fn caps_success_and_error_bodies_without_fallback_or_replay() {
             } else {
                 let err = QueryClient::new(&settings)
                     .with_flux_limits(Duration::from_secs(2), 2048)
-                    .query_range(&QueryRange::new("m", Utc::now(), Utc::now()))
+                    .query_range(&QueryRange::new(
+                        "m",
+                        UtcDateTime::now(),
+                        UtcDateTime::now(),
+                    ))
                     .await
                     .unwrap_err();
                 assert!(!err.is_v2_query_missing());
@@ -90,7 +94,11 @@ async fn deadlines_stop_continuous_trickle_including_error_bodies() {
             } else {
                 QueryClient::new(&settings)
                     .with_flux_limits(Duration::from_millis(100), 1000)
-                    .query_range(&QueryRange::new("m", Utc::now(), Utc::now()))
+                    .query_range(&QueryRange::new(
+                        "m",
+                        UtcDateTime::now(),
+                        UtcDateTime::now(),
+                    ))
                     .await
                     .unwrap_err()
                     .to_string()

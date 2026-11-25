@@ -496,7 +496,7 @@ async fn condition_definition_edits_fence_successes_and_failures() {
 #[tokio::test]
 async fn condition_watermark_orders_legacy_text_by_utc_at_microsecond_precision() {
     let at = now("2026-10-21 08:15:30.123456");
-    let microsecond = chrono::TimeDelta::microseconds(1);
+    let microsecond = std::time::Duration::from_micros(1);
     for legacy in [
         "2026-10-21 07:15:30.123456-01:00",
         "2026-10-21T08:15:30.123456Z",
@@ -556,7 +556,7 @@ async fn condition_watermark_orders_legacy_text_by_utc_at_microsecond_precision(
                         .await
                         .unwrap()
                 };
-                assert_eq!(published, accepted, "{legacy}, {failure}, {attempted_at}");
+                assert_eq!(published, accepted, "{legacy}, {failure}, {attempted_at:?}");
                 let expected = if accepted {
                     (
                         "critical".to_owned(),

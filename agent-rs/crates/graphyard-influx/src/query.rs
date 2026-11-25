@@ -11,12 +11,12 @@
 
 use std::time::Duration;
 
-use chrono::{DateTime, Utc};
 use graphyard_core::MetricSample;
 use graphyard_core::pycompat::{
     int_digit_limit_error, json_loads, py_int_true_divide, py_str_repr,
 };
 use graphyard_core::settings::{InfluxApiMode, Settings};
+use graphyard_core::utc::UtcDateTime;
 use reqwest::header::{
     ACCEPT, ACCEPT_ENCODING, AUTHORIZATION, CONTENT_TYPE, HeaderMap, HeaderValue, USER_AGENT,
 };
@@ -91,7 +91,7 @@ impl QueryClient {
     pub async fn query_condition_window(
         &self,
         condition: &ConditionQuery<'_>,
-        now: DateTime<Utc>,
+        now: UtcDateTime,
     ) -> Result<Vec<MetricSample>, QueryError> {
         let range = condition_window(
             condition,

@@ -18,7 +18,7 @@ use std::process::{Command, Output, Stdio};
 use std::sync::{Arc, Mutex, mpsc};
 use std::time::{Duration, Instant};
 
-use chrono::{SubsecRound as _, Utc};
+use graphyard_core::utc::UtcDateTime;
 use rusqlite::types::Value as SqlValue;
 use serde_json::{Value, json};
 
@@ -160,12 +160,12 @@ fn flux_csv(metric: &str, value: f64, subject_type: &str) -> String {
          #default,_result,,,,,,,,\r\n\
          ,result,table,_time,_value,_field,_measurement,metric,host,subject_type\r\n",
     );
-    let now = Utc::now().trunc_subsecs(0);
+    let now = UtcDateTime::from_seconds(UtcDateTime::now().timestamp());
     for minute in (1..=20).rev() {
-        let ts = now - chrono::Duration::minutes(minute);
+        let ts = now - Duration::from_secs(60 * minute);
         csv.push_str(&format!(
             ",,0,{},{value},value,graphyard_metrics,{metric},macmini,{subject_type}\r\n",
-            ts.format("%Y-%m-%dT%H:%M:%SZ")
+            ts.civil().unwrap().strftime("%Y-%m-%dT%H:%M:%SZ")
         ));
     }
     csv.push_str("\r\n");
@@ -315,7 +315,7 @@ fn run_once_writes_the_rows_and_lines_of_every_collector_family() {
     condition(&db, "disk", "host.disk_ratio", "macmini", "");
     condition(&db, "svc", "host.disk_ratio", "macmini", "service");
     let writes = db.dir.path().join("points.lp");
-    let before = Utc::now().timestamp();
+    let before = UtcDateTime::now().timestamp();
 
     let output = run(
         &[
@@ -328,7 +328,7 @@ fn run_once_writes_the_rows_and_lines_of_every_collector_family() {
         &influx_env(&fake),
     );
 
-    let after = Utc::now().timestamp();
+    let after = UtcDateTime::now().timestamp();
     assert_eq!(output.status.code(), Some(1), "{output:?}");
     assert_eq!(
         text(&output.stdout),
@@ -561,7 +561,7 @@ fn evaluate_conditions_writes_the_condition_rows_and_the_heartbeat() {
     );
     condition(&db, "disk", "host.disk_ratio", "macmini", "");
     condition(&db, "svc", "host.disk_ratio", "macmini", "service");
-    let before = Utc::now();
+    let before = UtcDateTime::now();
     let db_arg = db.path().to_str().unwrap();
 
     let output = run(&["evaluate-conditions", "--db", db_arg], &influx_env(&fake));
@@ -584,7 +584,13 @@ fn evaluate_conditions_writes_the_condition_rows_and_the_heartbeat() {
         );
         let evaluated = db.text("condition_definition", name, "last_evaluated");
         assert!(
-            evaluated.as_str() >= before.format("%Y-%m-%d %H:%M:%S").to_string().as_str(),
+            evaluated.as_str()
+                >= before
+                    .civil()
+                    .unwrap()
+                    .strftime("%Y-%m-%d %H:%M:%S")
+                    .to_string()
+                    .as_str(),
             "{evaluated}"
         );
         assert_eq!(

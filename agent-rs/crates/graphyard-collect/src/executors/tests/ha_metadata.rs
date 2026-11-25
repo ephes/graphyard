@@ -186,7 +186,7 @@ async fn metadata_tags_and_climate_attributes() {
     assert_eq!(tag(setpoint, "device_role"), Some("thermostat"));
     assert_eq!(setpoint.subject_type, "environment_sensor");
     assert_eq!(
-        setpoint.ts.to_rfc3339(),
+        graphyard_core::pycompat::py_isoformat_utc(&setpoint.ts),
         "2026-11-24T12:01:00+00:00",
         "the climate entity's last_updated"
     );

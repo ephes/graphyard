@@ -9,6 +9,7 @@ use graphyard_agent::runs::{
     ConditionSamples, SpecExecutors, SystemClock, run_conditions, run_metric_specs,
 };
 use graphyard_collect::executors::{ExecutorError, ExecutorResult, RunState};
+use graphyard_core::utc::UtcDateTime;
 use graphyard_core::{MetricSample, SpecOutcome, SpecType, StatusLevel};
 use graphyard_influx::{ConditionQuery, QueryError};
 use graphyard_store::Store;
@@ -91,7 +92,7 @@ impl ConditionSamples for Samples {
     async fn query_condition_window(
         &self,
         query: &ConditionQuery<'_>,
-        _: chrono::DateTime<chrono::Utc>,
+        _: UtcDateTime,
     ) -> Result<Vec<MetricSample>, QueryError> {
         if self.fail && query.id == 1 {
             Err(QueryError::Config(MARKER.into()))
@@ -258,7 +259,7 @@ impl ConditionSamples for EditedFailure<'_> {
     async fn query_condition_window(
         &self,
         query: &ConditionQuery<'_>,
-        now: chrono::DateTime<chrono::Utc>,
+        now: UtcDateTime,
     ) -> Result<Vec<MetricSample>, QueryError> {
         if query.id != 1 {
             return Ok(Vec::new());
@@ -278,7 +279,10 @@ impl ConditionSamples for EditedFailure<'_> {
                     .raw()
                     .execute(
                         "UPDATE condition_definition SET last_evaluated = ? WHERE id = 1",
-                        [now.format("%Y-%m-%d %H:%M:%S%.6f").to_string()],
+                        [now.civil()
+                            .unwrap()
+                            .strftime("%Y-%m-%d %H:%M:%S%.6f")
+                            .to_string()],
                     )
                     .unwrap();
             }

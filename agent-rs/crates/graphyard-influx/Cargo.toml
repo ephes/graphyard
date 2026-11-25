@@ -10,7 +10,6 @@ publish.workspace = true
 
 [dependencies]
 graphyard-core.workspace = true
-chrono = { workspace = true, features = ["now"] }
 csv.workspace = true
 hyper = { workspace = true, features = ["http1", "client"] }
 indexmap.workspace = true
@@ -27,7 +26,6 @@ url.workspace = true
 
 [dev-dependencies]
 bytes.workspace = true
-chrono = { workspace = true, features = ["now"] }
 flate2.workspace = true
 http-body-util.workspace = true
 hyper = { workspace = true, features = ["server", "http1"] }

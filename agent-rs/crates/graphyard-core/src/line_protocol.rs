@@ -19,7 +19,7 @@
 //! - the timestamp is the UTC time in nanoseconds (microseconds × 1000,
 //!   like Python's `datetime`).
 
-use chrono::{DateTime, Utc};
+use crate::utc::UtcDateTime;
 
 use crate::logline::{LogEvent, escape_log_value};
 use crate::model::{MetricPoint, Tags};
@@ -80,8 +80,8 @@ pub fn format_float_field(value: f64) -> Option<String> {
 /// from the microseconds of a Python `datetime` (sub-microsecond parts of a
 /// Rust timestamp are dropped). `i128`, because Python's `datetime` range
 /// (years 1 to 9999) exceeds `i64` nanoseconds.
-pub fn timestamp_ns(ts: &DateTime<Utc>) -> i128 {
-    i128::from(ts.timestamp_micros()) * 1000
+pub fn timestamp_ns(ts: &UtcDateTime) -> i128 {
+    i128::from(ts.micros()) * 1000
 }
 
 /// A `Point(measurement)` with tags, the field `value` and a time, as
@@ -92,11 +92,11 @@ pub struct LinePoint {
     /// `Point._tags`: setting a key again replaces its value.
     pub tags: Tags,
     pub value: f64,
-    pub ts: DateTime<Utc>,
+    pub ts: UtcDateTime,
 }
 
 impl LinePoint {
-    pub fn new(measurement: impl Into<String>, value: f64, ts: DateTime<Utc>) -> Self {
+    pub fn new(measurement: impl Into<String>, value: f64, ts: UtcDateTime) -> Self {
         Self {
             measurement: measurement.into(),
             tags: Tags::new(),
@@ -283,8 +283,7 @@ fn prepare_write_inner(
             // Inclusive endpoints: 1677-09-21T00:12:43.145225Z and
             // 2262-04-11T23:39:59.999999Z (the narrower v3 upper bound).
             if common_timestamp_domain
-                && !(-9_223_372_036_854_775..=9_223_371_599_999_999)
-                    .contains(&point.ts.timestamp_micros())
+                && !(-9_223_372_036_854_775..=9_223_371_599_999_999).contains(&point.ts.micros())
             {
                 return Err(PyError::value_error(
                     "timestamp outside common InfluxDB v2/v3 domain",

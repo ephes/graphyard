@@ -1,14 +1,12 @@
 //! Opt-in oracle against disposable local InfluxDB 2.7.12 or 3.12.2.
 //! See docs/agent-rs.md. Never points at an owner database.
-use chrono::{DateTime, Utc};
+use graphyard_core::utc::UtcDateTime;
 use graphyard_core::{model::MetricPoint, settings::Settings};
 use graphyard_influx::InfluxWriter;
 
 fn point(ts: &str) -> MetricPoint {
     MetricPoint::new(
-        DateTime::parse_from_rfc3339(ts)
-            .unwrap()
-            .with_timezone(&Utc),
+        UtcDateTime::parse_rfc3339(ts).unwrap(),
         "timestamp_oracle",
         1.0,
         "host",

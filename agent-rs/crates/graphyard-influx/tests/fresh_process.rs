@@ -3,6 +3,7 @@
 
 use graphyard_core::model::MetricPoint;
 use graphyard_core::settings::Settings;
+use graphyard_core::utc::UtcDateTime;
 use graphyard_influx::InfluxWriter;
 
 #[tokio::test]
@@ -28,7 +29,7 @@ async fn writer_works_without_a_preinstalled_crypto_provider() {
     })
     .expect("settings");
     let point = MetricPoint::new(
-        chrono::DateTime::UNIX_EPOCH,
+        UtcDateTime::UNIX_EPOCH,
         "host.cpu_usage",
         0.5,
         "host",

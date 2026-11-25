@@ -1687,6 +1687,69 @@ def _random_datetimes() -> list[str]:
     return corpus
 
 
+# The ends of the calendar, appended after the random corpus. The Rust agent
+# computes with jiff, whose instant type ends at 9999-12-30T22:00:00Z and
+# whose civil dates end with year 9999: Python's datetime.max lies in between,
+# an offset can move a stored value into year 0 or 10000, and an ISO week date
+# of year 9999 can name a day of year 10000.
+CALENDAR_EDGE_DATETIMES = [
+    "9999-12-30 21:59:59.999999",
+    "9999-12-30 22:00:00",
+    "9999-12-30 22:00:00.000001",
+    "9999-12-30T23:00:00+01:00",
+    "9999-12-31 00:00:00",
+    "9999-12-31T23:59:59.999999+00:00",
+    "9999-12-31T23:59:59.999999+23:59",
+    "9999-12-31T00:00:00-23:59",
+    "9999-12-31T00:01:00-23:59",
+    "9999-12-31T23:59:59.999999-00:00:00.000001",
+    "9999-12-31T23:59:59.999999-23:59:59.999999",
+    "0001-01-01 00:00:00.000001",
+    "0001-01-01T00:00:00+00:00:00.000001",
+    "0001-01-01T23:59:00+23:59",
+    "0001-01-01T23:58:59.999999+23:59",
+    "0001-01-01T00:00:00+23:59:59.999999",
+    "0001-01-01T00:00:00-23:59:59.999999",
+    # Django's datetime_re fallback (one-digit fields, a space before the
+    # offset, Unicode decimal digits) at the same ends.
+    "9999-12-31 23:59:59.999999 -0001",
+    "9999-12-31 23:59:59.999999 +0001",
+    "9999-12-30 22:0",
+    "9999-12-31 0:1-23:59",
+    "0001-1-1 0:0+0001",
+    "0001-1-1 0:1+0001",
+    "\u0669\u0669\u0669\u0669-\u0661\u0662-\u0663\u0661 "
+    "\u0662\u0663:\u0665\u0669:\u0665\u0669.\u0669\u0669\u0669\u0669\u0669\u0669",
+    "\u0669\u0669\u0669\u0669-\u0661\u0662-\u0663\u0661 "
+    "\u0662\u0663:\u0665\u0669:\u0665\u0669-\u0660\u0661:\u0660\u0660",
+    "\u0969\u0969\u0969\u0969-12-30 22:00:00.\u0966\u0966\u0966\u0966\u0966\u0967Z",
+    "\uff10\uff10\uff10\uff11-1-1 0:0+\uff10\uff10\uff10\uff11",
+    "1\u0660000-01-01 00:00:00",
+    "0000-12-31 23:59:59-0001",
+    # ISO week dates around the turn of the year.
+    "9999-W52-5",
+    "9999-W52-5T23:59:59.999999",
+    "9999-W52-5T23:59:59-00:01",
+    "9999-W52-7",
+    "9999-W53-1",
+    "9998-W52-7",
+    "0002-W01-1",
+    "0002-W01-1T00:00:00+00:01",
+    "2015-W01-1",
+    "2019-W01-1",
+    "2020-W01-1",
+    "2021-W01-1",
+    "2022-W01-1",
+    "2023-W01-1",
+    "2024-W01-1",
+    "2020-W53-5",
+    "2021-W52-7",
+    "2026-W53-7",
+    "2024-W09-4",
+    "2023-W09-3",
+]
+
+
 def _offset_micros(value: datetime) -> int:
     offset = value.utcoffset()
     assert offset is not None
@@ -1726,6 +1789,17 @@ def _format_cases() -> list[dict[str, Any]]:
         datetime(2026, 10, 21, 8, 15, 30, 1, tzinfo=UTC),
         datetime(2026, 10, 21, 8, 15, 30, 100000, tzinfo=UTC),
         NOW + timedelta(days=365),
+        # Around the last instant jiff's Timestamp can hold, and before 1970.
+        datetime(9999, 12, 30, 21, 59, 59, 999999, tzinfo=UTC),
+        datetime(9999, 12, 30, 22, 0, 0, tzinfo=UTC),
+        datetime(9999, 12, 30, 22, 0, 0, 1, tzinfo=UTC),
+        datetime(9999, 12, 31, tzinfo=UTC),
+        datetime(1, 1, 1, 0, 0, 0, 1, tzinfo=UTC),
+        datetime(1969, 12, 31, 23, 59, 59, 999999, tzinfo=UTC),
+        datetime(1969, 12, 31, 23, 59, 59, tzinfo=UTC),
+        datetime(1970, 1, 1, tzinfo=UTC),
+        datetime(1900, 2, 28, 23, 59, 59, 500000, tzinfo=UTC),
+        datetime(2000, 2, 29, 12, 0, 0, 123000, tzinfo=UTC),
     ]
     return [
         {
@@ -1740,7 +1814,10 @@ def _format_cases() -> list[dict[str, Any]]:
 def build_datetime_codec() -> dict[str, Any]:
     return {
         "parse": [
-            _codec_case(text) for text in CURATED_DATETIMES + _random_datetimes()
+            _codec_case(text)
+            for text in CURATED_DATETIMES
+            + _random_datetimes()
+            + CALENDAR_EDGE_DATETIMES
         ],
         "format": _format_cases(),
     }

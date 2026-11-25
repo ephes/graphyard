@@ -41,7 +41,8 @@ use std::fmt;
 pub use bytes::{py_b64decode, py_bytes_repr};
 pub use datetime::{
     PY_DATETIME_MAX_MICROS, PY_DATETIME_MIN_MICROS, PyDateTime, date_out_of_range, py_datetime_add,
-    py_fromisoformat, py_isoformat_utc, py_timedelta_minutes, py_timedelta_repr, py_total_seconds,
+    py_fromisoformat, py_iso_to_ymd, py_isoformat_utc, py_timedelta_minutes, py_timedelta_repr,
+    py_total_seconds,
 };
 pub use json::{BOUNDED_MAX_ARRAY_ITEMS, BOUNDED_MAX_NODES, json_loads, json_loads_bounded};
 pub(crate) use num::int_limit_error;

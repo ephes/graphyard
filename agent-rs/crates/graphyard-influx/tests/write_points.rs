@@ -10,10 +10,10 @@ use std::net::SocketAddr;
 use std::sync::{Arc, Mutex, Once};
 
 use bytes::Bytes;
-use chrono::{DateTime, Utc};
 use graphyard_core::model::{MetricPoint, Tags};
 use graphyard_core::pycompat::py_float;
 use graphyard_core::settings::Settings;
+use graphyard_core::utc::UtcDateTime;
 use graphyard_influx::{InfluxWriter, WriteError};
 use http_body_util::{BodyExt, Full};
 use hyper::body::Incoming;
@@ -314,9 +314,7 @@ async fn closed() -> SocketAddr {
 fn point_of(value: &Value) -> MetricPoint {
     let optional = |key: &str| value[key].as_str().map(str::to_owned);
     MetricPoint {
-        ts: DateTime::parse_from_rfc3339(s(value, "ts"))
-            .expect("ts")
-            .with_timezone(&Utc),
+        ts: UtcDateTime::parse_rfc3339(s(value, "ts")).expect("ts"),
         metric: s(value, "metric").to_owned(),
         value: py_float(s(value, "value")).expect("float repr"),
         subject_type: s(value, "subject_type").to_owned(),
@@ -745,9 +743,7 @@ async fn auto_writer_timestamp_admission() {
         ("2262-04-12T00:40:00+01:00", false),
     ] {
         let mut candidate = base.clone();
-        candidate.ts = DateTime::parse_from_rfc3339(ts)
-            .unwrap()
-            .with_timezone(&Utc);
+        candidate.ts = UtcDateTime::parse_rfc3339(ts).unwrap();
         recorder.requests.lock().unwrap().clear();
         assert_eq!(
             writer

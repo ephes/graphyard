@@ -373,12 +373,10 @@ pub fn client_for(case: &Value, server: &FakeInflux) -> QueryClient {
 pub fn e2e_range(case: &Value) -> QueryRange {
     let call = case.get("call").cloned().unwrap_or(Value::Null);
     let string = |key: &str| call.get(key).and_then(Value::as_str).map(str::to_owned);
-    let start = chrono::DateTime::parse_from_rfc3339("2026-10-21T11:00:00Z")
-        .expect("start")
-        .to_utc();
-    let stop = chrono::DateTime::parse_from_rfc3339("2026-10-21T12:00:00.5Z")
-        .expect("stop")
-        .to_utc();
+    let start =
+        graphyard_core::utc::UtcDateTime::parse_rfc3339("2026-10-21T11:00:00Z").expect("start");
+    let stop =
+        graphyard_core::utc::UtcDateTime::parse_rfc3339("2026-10-21T12:00:00.5Z").expect("stop");
     let mut range = QueryRange::new(
         string("metric").unwrap_or_else(|| "host.disk_usage".to_owned()),
         start,

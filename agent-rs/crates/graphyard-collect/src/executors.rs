@@ -25,7 +25,7 @@ use graphyard_core::diagnostics::collector_failure;
 use std::fmt;
 use std::future::Future;
 
-use chrono::{DateTime, SubsecRound, Utc};
+use graphyard_core::utc::UtcDateTime;
 use serde_json::Value;
 
 use graphyard_core::home_assistant::MappingState;
@@ -51,7 +51,7 @@ pub use unifi::execute_unifi_device_traffic;
 pub trait MetricSink {
     /// `datetime.now(UTC)` as the S7a executors read it (the HA fallback
     /// timestamp, the `http_json_metric` point); tests pin it.
-    fn now(&self) -> DateTime<Utc> {
+    fn now(&self) -> UtcDateTime {
         now_utc()
     }
 
@@ -151,8 +151,8 @@ pub(crate) fn config_text(config: &Config, key: &str, default: &str) -> String {
 }
 
 /// `datetime.now(UTC)`: the wall clock at Python's microsecond precision.
-pub(crate) fn now_utc() -> DateTime<Utc> {
-    Utc::now().trunc_subsecs(6)
+pub(crate) fn now_utc() -> UtcDateTime {
+    UtcDateTime::now()
 }
 
 /// The state of one metrics run: the HA mappings' warn-once keys and

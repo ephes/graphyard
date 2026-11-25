@@ -7,7 +7,7 @@
 //! (SQLite renders INTEGER and REAL values exactly as `sqlite3_column_blob`
 //! hands them to Python's converter).
 
-use chrono::{DateTime, Utc};
+use graphyard_core::utc::UtcDateTime;
 use rusqlite::types::ValueRef;
 
 use crate::datetime::{DbDateTime, parse_column};
@@ -33,6 +33,6 @@ pub(crate) fn datetime_column(text: Option<&str>) -> Result<Option<DbDateTime>, 
 
 /// A clock value as Django writes it (`str()` of the naive UTC datetime,
 /// microsecond precision).
-pub(crate) fn now_text(now: DateTime<Utc>) -> Result<String, StoreError> {
+pub(crate) fn now_text(now: UtcDateTime) -> Result<String, StoreError> {
     Ok(DbDateTime::from_utc(now).to_db_text()?)
 }

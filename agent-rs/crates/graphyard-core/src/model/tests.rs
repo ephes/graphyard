@@ -1,6 +1,5 @@
 //! `model` against `fixtures/model.json` (built by `fixtures/gen_model.py`).
 
-use chrono::{TimeZone, Utc};
 use serde_json::Value;
 
 use super::*;
@@ -147,7 +146,7 @@ fn metric_point_matches_the_python_dataclass() {
             ("tags", false),
         ],
     );
-    let ts = Utc.with_ymd_and_hms(2026, 10, 21, 12, 0, 0).unwrap();
+    let ts = UtcDateTime::from_ymd_hms(2026, 10, 21, 12, 0, 0).unwrap();
     let point = MetricPoint::new(ts, "m", 1.5, "host", "macmini", "s", "c", "h");
     assert_eq!(
         default_of(&fixture, "MetricPoint", "source_instance").as_str(),
@@ -217,7 +216,7 @@ fn metric_sample_matches_the_python_dataclass() {
     let tags_default = default_of(&fixture, "MetricSample", "tags");
     assert_eq!(tags_default.as_object().map(|tags| tags.len()), Some(0));
 
-    let ts = Utc.with_ymd_and_hms(2026, 10, 21, 12, 0, 0).unwrap();
+    let ts = UtcDateTime::from_ymd_hms(2026, 10, 21, 12, 0, 0).unwrap();
     let sample = MetricSample::new(ts, 2.0, "macmini", "m", None);
     assert_eq!(sample.subject_type, None);
     assert_eq!(sample.collector_host, None);
