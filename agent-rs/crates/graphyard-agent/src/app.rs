@@ -2,18 +2,18 @@
 //! D-2, D-8).
 //!
 //! One `current_thread` tokio runtime; the scheduler runs in the main task
-//! and a signal future beside it. On SIGTERM or SIGINT the main task is
-//! dropped (it stops at its next await point; an SQLite statement that was
-//! sent completes on the DB thread), `main` waits for the DB thread to
-//! finish and close the connection, prints the SIGINT line, and ends the
-//! runtime with a 500 ms grace, abandoning `getaddrinfo` calls stuck in the
-//! blocking pool. Exit 0 either way.
+//! and a signal future beside it. On SIGTERM or SIGINT, stop scheduling
+//! and give the active metric attempt up to 500 ms to finish. An SQLite
+//! statement already sent to the DB thread completes before it closes.
+//! The remaining grace is available to blocking runtime work. Exit 0 on
+//! either signal.
 
+use std::cell::Cell;
 use std::future::Future;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use clap::Parser as _;
 use num_bigint::BigInt;
@@ -27,7 +27,8 @@ use graphyard_store::{Store, check_schema};
 use crate::cli::{Cli, Command, Loops};
 use crate::collectors::{AgentSink, Collectors, InfluxSamples};
 use crate::runs::{
-    Clock, ConditionSamples, SpecExecutors, SystemClock, run_conditions, run_metric_specs,
+    Clock, ConditionSamples, SpecExecutors, SystemClock, run_conditions,
+    run_metric_specs_until_shutdown,
 };
 use crate::scheduler::{self, Runner};
 
@@ -100,7 +101,9 @@ pub fn signals() -> std::io::Result<impl Future<Output = Shutdown>> {
 /// The command's runs with their report lines (`_run_metric_specs`,
 /// `_run_condition_eval`): the summary on stdout, or an error record and
 /// the stderr line; a failed run never stops the loop.
-pub struct Agent<E, S, C> {
+struct Agent<'a, E, S, C> {
+    stopping: &'a Cell<bool>,
+    metrics_active: &'a Cell<bool>,
     pub store: Store,
     pub executors: E,
     pub samples: S,
@@ -109,9 +112,23 @@ pub struct Agent<E, S, C> {
     pub stale_warning_seconds: BigInt,
 }
 
-impl<E: SpecExecutors, S: ConditionSamples, C: Clock> Runner for Agent<E, S, C> {
+impl<E: SpecExecutors, S: ConditionSamples, C: Clock> Runner for Agent<'_, E, S, C> {
+    fn stopping(&self) -> bool {
+        self.stopping.get()
+    }
+
     async fn metrics(&mut self, due_only: bool) -> bool {
-        match run_metric_specs(&self.store, &self.executors, &self.clock, due_only).await {
+        self.metrics_active.set(true);
+        let run = run_metric_specs_until_shutdown(
+            &self.store,
+            &self.executors,
+            &self.clock,
+            due_only,
+            self.stopping,
+        )
+        .await;
+        self.metrics_active.set(false);
+        match run {
             Ok(run) => {
                 print_stdout(format_args!(
                     "Metric specs: total={} failed={} warning={} ingested={} skipped={}",
@@ -244,11 +261,16 @@ async fn open_and_verify(db: &Path, settings: &Settings, loops: &Loops) -> Resul
 }
 
 /// End the runtime with the grace for blocking work and report the signal.
-fn finish(runtime: tokio::runtime::Runtime, signal: Option<Shutdown>, code: ExitCode) -> ExitCode {
+fn finish(
+    runtime: tokio::runtime::Runtime,
+    signal: Option<Shutdown>,
+    code: ExitCode,
+    grace: Duration,
+) -> ExitCode {
     if signal == Some(Shutdown::Interrupt) {
         print_stdout(INTERRUPTED_LINE);
     }
-    runtime.shutdown_timeout(SHUTDOWN_GRACE);
+    runtime.shutdown_timeout(grace);
     code
 }
 
@@ -300,12 +322,16 @@ where
     });
     let store = match started {
         Ok(Ok(store)) => store,
-        Ok(Err(code)) => return finish(runtime, None, code),
-        Err(signal) => return finish(runtime, Some(signal), ExitCode::SUCCESS),
+        Ok(Err(code)) => return finish(runtime, None, code, SHUTDOWN_GRACE),
+        Err(signal) => return finish(runtime, Some(signal), ExitCode::SUCCESS, SHUTDOWN_GRACE),
     };
 
     let settings = Arc::new(settings);
+    let stopping = Cell::new(false);
+    let metrics_active = Cell::new(false);
     let mut agent = Agent {
+        stopping: &stopping,
+        metrics_active: &metrics_active,
         store: store.clone(),
         executors: Collectors {
             http,
@@ -319,7 +345,7 @@ where
         clock: SystemClock,
         stale_warning_seconds: settings.condition_data_stale_warning_seconds.clone(),
     };
-    let ended = runtime.block_on(async move {
+    let ended = runtime.block_on(async {
         let work = async {
             if loops.run_once {
                 let succeeded = scheduler::run_once(&mut agent, &loops).await;
@@ -332,10 +358,18 @@ where
                 true
             }
         };
+        tokio::pin!(work);
         tokio::select! {
             biased;
-            signal = &mut shutdown => (Some(signal), true),
-            succeeded = work => (None, succeeded),
+            signal = &mut shutdown => {
+                let deadline = Instant::now() + SHUTDOWN_GRACE;
+                stopping.set(true);
+                if metrics_active.get() {
+                    let _ = tokio::time::timeout_at(deadline.into(), &mut work).await;
+                }
+                (Some(signal), true, Some(deadline))
+            },
+            succeeded = &mut work => (None, succeeded, None),
         }
     });
     // The main task is gone: wait for the statement the DB thread runs.
@@ -348,6 +382,9 @@ where
         } else {
             ExitCode::FAILURE
         },
+        ended.2.map_or(SHUTDOWN_GRACE, |deadline| {
+            deadline.saturating_duration_since(Instant::now())
+        }),
     )
 }
 

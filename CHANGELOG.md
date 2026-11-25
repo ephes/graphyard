@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Give an in-flight Rust metric attempt up to 500 ms to finish and persist its
+  outcome on shutdown, then leave the remaining collectors for the next run.
+
 - Preserve inventory release refresh results and the final registry generation
   check when closing the HTTP client fails. Log the close failure separately
   and retain any original refresh error.

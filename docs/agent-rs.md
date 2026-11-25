@@ -126,7 +126,11 @@ after failures. Metrics and conditions run sequentially. The scheduler
 checks the clock again after metrics, so a condition run that became due
 during metrics starts before the next sleep. Between passes, the agent sleeps
 until the earliest enabled-loop deadline, with a minimum 200 ms backoff.
-SIGINT and SIGTERM still cancel the wait immediately.
+SIGINT and SIGTERM cancel the scheduler wait and stop new work. A metric
+attempt already in progress has up to 500 ms to finish and record its outcome.
+A sweep that leaves collectors unstarted reports a partial heartbeat if it
+has recorded outcomes. Submitted SQLite statements still finish before the
+database closes, even if they outlast the grace period.
 `--influx-write-file PATH` is the shadow mode: every batch the agent
 would write to InfluxDB is appended to `PATH` as a framed batch: a
 `# write <utc> points=<n> bytes=<b>` header, line-protocol body and matching

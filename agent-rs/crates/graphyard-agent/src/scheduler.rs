@@ -17,6 +17,10 @@ use crate::cli::Loops;
 
 /// The two runs the loop schedules.
 pub trait Runner {
+    fn stopping(&self) -> bool {
+        false
+    }
+
     /// `_run_metric_specs(due_only=...)`.
     fn metrics(&mut self, due_only: bool) -> impl Future<Output = bool>;
     /// `_run_condition_eval()`.
@@ -49,7 +53,7 @@ pub async fn run_once<R: Runner>(runner: &mut R, loops: &Loops) -> bool {
     if loops.run_metrics {
         succeeded &= runner.metrics(false).await;
     }
-    if loops.run_conditions {
+    if loops.run_conditions && !runner.stopping() {
         succeeded &= runner.conditions().await;
     }
     succeeded
@@ -68,6 +72,9 @@ pub async fn run_forever<R: Runner>(runner: &mut R, loops: &Loops) {
         {
             runner.metrics(true).await;
             next_metrics = reschedule(next, metrics_interval);
+        }
+        if runner.stopping() {
+            return;
         }
         if let Some(next) = next_conditions
             && Instant::now() >= next
