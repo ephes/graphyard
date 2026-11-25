@@ -490,7 +490,10 @@ deadline and HTTP operation timeout to the remaining run allowance. The
 request deadline cancels an in-progress body read when the elapsed budget runs
 out and closes the response. The normal HTTP operation timeout is 20 seconds.
 Elapsed checks also cover response validation and JSON parsing. Database work and
-cleanup run to completion.
+cleanup run to completion. Failure to close the HTTP client logs
+`Inventory release HTTP client close failed`. Completed counts and the final
+registry generation check still determine the refresh result. A database error
+during refresh still propagates if closing the client also fails.
 A source that exhausts its allowance records a bounded lookup failure and retains
 last-good evidence for the unchanged definition. After acquiring the publication
 fence, the refresh checks the run deadline before accepting a successful result.

@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import logging
 import re
 from contextlib import ExitStack
 from dataclasses import dataclass
@@ -17,6 +18,8 @@ from packaging.version import Version
 
 from .inventory import observation_is_fresh
 from .models import InventoryRelease, InventoryReleaseRegistry
+
+logger = logging.getLogger(__name__)
 
 MAX_AGE = timedelta(days=8)
 REFRESH_AFTER = timedelta(days=6)
@@ -281,7 +284,14 @@ def refresh(data, force=False):
                 "User-Agent": "Graphyard-inventory-release-check/1",
             },
         )
-        cleanup.callback(lambda: runner.run(client.aclose()))
+
+        def close_client():
+            try:
+                runner.run(client.aclose())
+            except Exception:
+                logger.warning("Inventory release HTTP client close failed")
+
+        cleanup.callback(close_client)
 
         def fresh(row):
             return (
