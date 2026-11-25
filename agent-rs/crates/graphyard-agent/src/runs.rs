@@ -70,7 +70,8 @@ pub enum RunError {
     /// `ValueError("No matching enabled metric collection specs")`.
     NoMatchingSpecs,
     /// `next_run_time` beyond SQLite's INTEGER range: sqlite3's
-    /// `OverflowError`.
+    /// `OverflowError` text. Raised per spec only; [`run_metric_specs`]
+    /// counts it as a failed spec and never returns it.
     NextRunTimeOverflow,
     /// A load, update or heartbeat failure.
     Store(StoreError),
