@@ -489,6 +489,14 @@ pub async fn run_conditions<S: ConditionSamples, C: Clock>(
     }
     if condition_id.is_none() {
         let ok = run.failed == 0;
+        let no_work = run.total == 0;
+        let mut details = vec![
+            ("evaluated".to_owned(), count(run.total)),
+            ("failed".to_owned(), count(run.failed)),
+        ];
+        if no_work {
+            details.push(("no_work".to_owned(), 1));
+        }
         store
             .record_heartbeat(
                 HeartbeatRecord {
@@ -503,11 +511,8 @@ pub async fn run_conditions<S: ConditionSamples, C: Clock>(
                     } else {
                         format!("{} condition(s) failed", run.failed)
                     },
-                    details: vec![
-                        ("evaluated".to_owned(), count(run.total)),
-                        ("failed".to_owned(), count(run.failed)),
-                    ],
-                    success: ok,
+                    details,
+                    success: ok && !no_work,
                 },
                 clock.now(),
             )

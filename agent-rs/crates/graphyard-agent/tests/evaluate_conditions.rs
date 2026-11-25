@@ -187,6 +187,54 @@ fn condition_id_evaluates_only_that_condition() {
     assert_eq!(server.requests().len(), 1);
 }
 
+#[test]
+fn agent_records_empty_sweeps_as_liveness_without_advancing_success() {
+    let server = FakeServer::start();
+    let db = TestDb::new();
+    let env = influx_env(&server);
+    let sweep = || {
+        let output = agent(
+            &[
+                "--db",
+                db.path().to_str().unwrap(),
+                "--run-once",
+                "--disable-metrics",
+            ],
+            &pairs(&env),
+        );
+        assert_eq!(output.status.code(), Some(0), "{output:?}");
+    };
+    let last_success = || db.value("pipeline_heartbeat", "condition_evaluator", "last_success");
+    let last_update = || db.text("pipeline_heartbeat", "condition_evaluator", "updated_at");
+
+    sweep();
+    assert_eq!(last_success(), rusqlite::types::Value::Null);
+    assert_eq!(
+        heartbeat_details(&db),
+        r#"{"evaluated": 0, "failed": 0, "no_work": 1}"#
+    );
+    let empty_update = last_update();
+
+    condition(&db, 1, "synthetic", false);
+    sweep();
+    assert!(last_update() > empty_update);
+    assert_eq!(last_success(), rusqlite::types::Value::Null);
+    assert!(server.requests().is_empty());
+
+    db.execute("UPDATE condition_definition SET enabled = 1");
+    sweep();
+    assert_eq!(server.requests().len(), 1);
+    assert_eq!(heartbeat_details(&db), r#"{"evaluated": 1, "failed": 0}"#);
+    let success = last_success();
+    assert_ne!(success, rusqlite::types::Value::Null);
+    let successful_update = last_update();
+
+    db.execute("UPDATE condition_definition SET enabled = 0");
+    sweep();
+    assert!(last_update() > successful_update);
+    assert_eq!(last_success(), success);
+}
+
 /// A failure outside a condition (here a stored value of another storage
 /// class, D-13, failing the load): one stderr line, exit 1, no heartbeat.
 #[test]

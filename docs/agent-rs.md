@@ -136,6 +136,11 @@ would write to InfluxDB is appended to `PATH` as a framed batch: a
 `# write <utc> points=<n> bytes=<b>` header, line-protocol body and matching
 commit trailer. Queries still go to InfluxDB.
 
+An empty Rust condition sweep writes an OK liveness heartbeat with
+`evaluated=0`, `failed=0` and `no_work=1` in its details. It refreshes
+`updated_at` and preserves the last successful evaluation time, leaving it
+unset on a fresh database. The sweep exits successfully.
+
 ### Evaluating conditions by hand
 
 `graphyard-agent evaluate-conditions [--condition-id N]` (from release

@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Record empty Rust condition sweeps as liveness without advancing the last
+  successful evaluation timestamp.
+
 - Exit unsuccessfully when an explicit Rust condition ID matches no enabled
   row, including IDs outside the database key range.
 
