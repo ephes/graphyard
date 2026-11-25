@@ -277,3 +277,8 @@ Before parsing Flux tables, Python caps the expanded result at 100,000 records,
 label and value, including a default substituted for an empty or missing value.
 The admission check measures column labels and defaults once per table and
 charges their bytes for every applicable cell.
+
+Python normalizes query bounds to UTC before contacting either backend. A naive
+bound is interpreted as UTC. The start must precede the stop. Returned samples
+must match the requested metric and dimensions and fall at or after the start
+and strictly before the stop.

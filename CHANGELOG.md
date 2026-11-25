@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Normalize Python Influx query bounds once and reject empty or reversed windows
+  before contacting the backend. Prepare dimension filters once per result scan.
+
 - Measure Flux column labels and defaults once per table when checking expanded
   result limits.
 

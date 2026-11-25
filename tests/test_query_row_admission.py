@@ -95,7 +95,7 @@ def test_sql_nonobject_row_refuses_entire_response(monkeypatch, settings, row):
 
     monkeypatch.setattr(influx, "_read_v3_sql_rows", rows)
     with pytest.raises(influx.InfluxConfigurationError, match="Invalid.*row"):
-        influx.query_range("m", NOW, NOW)
+        influx.query_range("m", NOW, NOW + timedelta(minutes=1))
 
 
 @pytest.mark.parametrize("backend", ["v2", "v3"])
@@ -108,4 +108,4 @@ def test_genuinely_empty_response_remains_empty(monkeypatch, settings, backend):
 
     monkeypatch.setattr(influx, "_read_v3_sql_rows", rows)
     monkeypatch.setattr(influx, "_query_flux_tables", lambda _: [])
-    assert influx.query_range("m", NOW, NOW) == []
+    assert influx.query_range("m", NOW, NOW + timedelta(minutes=1)) == []

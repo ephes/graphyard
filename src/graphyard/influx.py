@@ -545,8 +545,8 @@ def _sql_identifier(name: str) -> str:
     return f'"{name}"'
 
 
-def _fmt_flux_ts(ts: datetime) -> str:
-    return _ensure_utc(ts).isoformat().replace("+00:00", "Z")
+def _fmt_utc_query_ts(ts: datetime) -> str:
+    return ts.isoformat().replace("+00:00", "Z")
 
 
 def write_points(points: list[MetricPoint]) -> int:
@@ -636,6 +636,15 @@ def query_range(
     subject_id: str | None = None,
     tags: dict[str, str] | None = None,
 ) -> list[MetricSample]:
+    try:
+        start, stop = _ensure_utc(start), _ensure_utc(stop)
+    except (ValueError, OverflowError):
+        raise InfluxConfigurationError("Invalid InfluxDB query window") from None
+    if start >= stop:
+        raise InfluxConfigurationError(
+            "Invalid InfluxDB query window: start must precede stop"
+        )
+
     mode = settings.INFLUX_API_MODE
     if mode == "v3":
         return _query_range_v3_sql(
@@ -699,25 +708,21 @@ def _validate_query_selection(
     subject_id: str | None,
     tags: dict[str, str] | None,
 ) -> list[MetricSample]:
-    filters = {
+    dimensions_requested = {
         "host": host,
         "service": service,
         "subject_type": subject_type,
         "subject_id": subject_id,
     }
+    filters = [(key, value) for key, value in dimensions_requested.items() if value]
+    filters.extend((str(key), str(value)) for key, value in (tags or {}).items())
     for sample in samples:
         dimensions = {name: getattr(sample, name) for name in _RESERVED_TAG_KEYS}
         dimensions.update(sample.tags)
         if (
             sample.metric != metric_name
-            or not (_ensure_utc(start) <= sample.ts < _ensure_utc(stop))
-            or any(
-                value and dimensions.get(key) != value for key, value in filters.items()
-            )
-            or any(
-                dimensions.get(str(key)) != str(value)
-                for key, value in (tags or {}).items()
-            )
+            or not (start <= sample.ts < stop)
+            or any(dimensions.get(key) != value for key, value in filters)
         ):
             raise InfluxConfigurationError(
                 "InfluxDB query result does not match selection"
@@ -742,6 +747,7 @@ def _query_range_v2_flux(
     subject_id: str | None = None,
     tags: dict[str, str] | None = None,
 ) -> list[MetricSample]:
+    """Query Flux with the UTC bounds prepared by query_range."""
     clauses = [
         f'r._measurement == "{_flux_escape(settings.INFLUX_MEASUREMENT)}"',
         'r._field == "value"',
@@ -768,7 +774,7 @@ def _query_range_v2_flux(
     filter_clause = " and ".join(clauses)
     flux = (
         f'from(bucket: "{_flux_escape(settings.INFLUX_BUCKET)}")\n'
-        f"  |> range(start: {_fmt_flux_ts(start)}, stop: {_fmt_flux_ts(stop)})\n"
+        f"  |> range(start: {_fmt_utc_query_ts(start)}, stop: {_fmt_utc_query_ts(stop)})\n"
         f"  |> filter(fn: (r) => {filter_clause})\n"
         '  |> sort(columns: ["_time"], desc: false)'
     )
@@ -974,9 +980,10 @@ def _query_range_v3_sql(
     subject_id: str | None = None,
     tags: dict[str, str] | None = None,
 ) -> list[MetricSample]:
+    """Query SQL with the UTC bounds prepared by query_range."""
     where_clauses = [
-        f"time >= '{_sql_escape(_fmt_flux_ts(start))}'",
-        f"time < '{_sql_escape(_fmt_flux_ts(stop))}'",
+        f"time >= '{_sql_escape(_fmt_utc_query_ts(start))}'",
+        f"time < '{_sql_escape(_fmt_utc_query_ts(stop))}'",
         f"metric = '{_sql_escape(metric_name)}'",
     ]
     if host:
