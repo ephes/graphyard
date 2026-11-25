@@ -356,7 +356,8 @@ that differs is a bug.
   Unique prefixes of long flags are matched among all flags, the Rust-only
   ones included, so `--c` is ambiguous in Rust (`--condition-interval`,
   `--check-schema`) where argparse expands it. A collector schedule beyond
-  SQLite’s INTEGER range fails only its spec (section 3.4).
+  SQLite’s INTEGER range fails only its spec. A collector store error after a
+  committed completion can publish a partial heartbeat (section 3.4).
 
 ---
 
@@ -545,11 +546,15 @@ timestamp, with completion fenced by the originally observed schedule and
 captured definition. Superseded completions are not counted. A run with no
 accepted completions or schedule failures leaves the heartbeat untouched.
 
-A store failure outside a spec (including claim, renewal or completion storage
-errors) aborts the run: error log `Metric collection failed`, stderr
-`Metric collection failed: <err>`, no heartbeat, the loop continues. A deleted
-spec is instead a superseded claim/completion: it is skipped, while accepted
-sibling outcomes can still contribute their heartbeat.
+A load, claim, renewal or completion store error stops the batch: error log
+`Metric collection failed`, stderr `Metric collection failed: <err>`, and the
+scheduler loop continues. After at least one committed completion, Rust tries
+to publish a partial `metric_collectors` heartbeat. It marks `partial: 1` in
+details, counts the prefix, and preserves `last_success`. Its status is
+`warning`, or `critical` when all counted outcomes failed. If the heartbeat
+write also fails, the run still returns the original store error. A deleted
+spec is a superseded claim/completion. The run skips it and can still publish
+a heartbeat for accepted sibling outcomes.
 
 As implemented in S8 (`graphyard-agent::runs`, pinned by `runs.json`): the
 executors receive the stored `config` decoded with

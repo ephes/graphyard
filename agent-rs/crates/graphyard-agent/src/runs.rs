@@ -179,8 +179,9 @@ fn retain_heartbeat_error(errors: &mut Vec<String>, name: &str, outcome: &SpecOu
 /// `run_metric_collection_specs_once(due_only=...)`.
 ///
 /// # Errors
-/// See [`RunError`]; the specs processed before the failure keep their
-/// rows, no heartbeat is written.
+/// See [`RunError`]. A store error stops the batch and leaves earlier
+/// completions committed. If any spec completed, try to publish a partial
+/// heartbeat before returning the original store error.
 pub async fn run_metric_specs<E: SpecExecutors, C: Clock>(
     store: &Store,
     executors: &E,
@@ -201,6 +202,8 @@ pub async fn run_metric_specs<E: SpecExecutors, C: Clock>(
 
     let mut run = MetricCollectionSpecRun::default();
     let mut errors: Vec<String> = Vec::new();
+    let mut has_completion = false;
+    let mut store_error = None;
     for spec in &specs {
         let run_at = if due_only { clock.now() } else { now };
         let outcome = match run_metric_spec(
@@ -222,8 +225,13 @@ pub async fn run_metric_specs<E: SpecExecutors, C: Clock>(
                 }
                 continue;
             }
+            Err(RunError::Store(err)) if has_completion => {
+                store_error = Some(err);
+                break;
+            }
             Err(err) => return Err(err),
         };
+        has_completion = true;
         run.total += 1;
         run.ingested += outcome.ingested;
         run.skipped += outcome.skipped;
@@ -238,35 +246,50 @@ pub async fn run_metric_specs<E: SpecExecutors, C: Clock>(
     if run.total == 0 {
         return Ok(run);
     }
-    let (status, success) = if run.failed > 0 && run.total == run.failed {
-        (StatusLevel::Critical, false)
-    } else if run.failed > 0 || run.warning > 0 {
-        (StatusLevel::Warning, true)
+    let partial = store_error.is_some();
+    let status = if run.failed == run.total {
+        StatusLevel::Critical
+    } else if partial || run.failed > 0 || run.warning > 0 {
+        StatusLevel::Warning
     } else {
-        (StatusLevel::Ok, true)
+        StatusLevel::Ok
     };
-    let details = [
+    let mut details: Vec<_> = [
         ("total", run.total),
         ("failed", run.failed),
         ("warning", run.warning),
         ("ingested", run.ingested),
         ("skipped", run.skipped),
-    ];
-    store
+    ]
+    .into_iter()
+    .map(|(key, value)| (key.to_owned(), count(value)))
+    .collect();
+    if partial {
+        details.push(("partial".to_owned(), 1));
+        errors.insert(0, "partial run: collector store failure".to_owned());
+    }
+    let heartbeat = store
         .record_heartbeat(
             HeartbeatRecord {
                 name: "metric_collectors".to_owned(),
                 status,
                 last_error: errors.join("; "),
-                details: details
-                    .iter()
-                    .map(|(key, value)| ((*key).to_owned(), count(*value)))
-                    .collect(),
-                success,
+                details,
+                success: status != StatusLevel::Critical && !partial,
             },
             clock.now(),
         )
-        .await?;
+        .await;
+    if let Some(err) = store_error {
+        if let Err(heartbeat_err) = heartbeat {
+            log::warn!(
+                "Partial collector heartbeat publication failed category={}",
+                heartbeat_err.python_class()
+            );
+        }
+        return Err(err.into());
+    }
+    heartbeat?;
     Ok(run)
 }
 
