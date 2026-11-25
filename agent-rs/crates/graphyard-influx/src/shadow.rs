@@ -129,9 +129,22 @@ impl ValidationWork {
     }
 }
 
+fn validate(file: &File, start: u64, limits: ValidationLimits) -> io::Result<u64> {
+    validate_with(file, start, limits, file_len)
+}
+
+fn file_len(file: &File) -> io::Result<u64> {
+    Ok(file.metadata()?.len())
+}
+
 /// Validate only the suffix added since this descriptor last admitted a batch.
 /// Legacy headers are checked by point count; v2 headers require a commit trailer.
-fn validate(file: &File, start: u64, limits: ValidationLimits) -> io::Result<u64> {
+fn validate_with(
+    file: &File,
+    start: u64,
+    limits: ValidationLimits,
+    read_len: impl FnOnce(&File) -> io::Result<u64>,
+) -> io::Result<u64> {
     let mut work = ValidationWork {
         limits,
         deadline: Instant::now() + limits.elapsed,
@@ -139,7 +152,7 @@ fn validate(file: &File, start: u64, limits: ValidationLimits) -> io::Result<u64
         lines: 0,
     };
     work.check_time(start)?;
-    let end = file.metadata()?.len();
+    let end = read_len(file)?;
     if end < start {
         return Err(incomplete(start));
     }
@@ -235,13 +248,21 @@ fn record_budget(kind: &str) -> io::Error {
 }
 
 pub(crate) async fn append(file: &Arc<Mutex<ShadowFile>>, record: &[u8]) -> io::Result<()> {
-    append_with(file, record, || {}).await
+    append_with(file, record, write_and_sync, file_len).await
+}
+
+fn write_and_sync(file: &File, record: &[u8]) -> io::Result<()> {
+    let mut output = file;
+    output.write_all(record)?;
+    output.flush()?;
+    file.sync_data()
 }
 
 async fn append_with(
     file: &Arc<Mutex<ShadowFile>>,
     record: &[u8],
-    before_write: impl FnOnce() + Send + 'static,
+    write: impl FnOnce(&File, &[u8]) -> io::Result<()> + Send + 'static,
+    read_len: impl Fn(&File) -> io::Result<u64> + Send + 'static,
 ) -> io::Result<()> {
     // One running/queued blocking job per writer. The job owns this guard,
     // descriptor and record even if the async caller stops waiting.
@@ -270,17 +291,18 @@ async fn append_with(
                 Err(std::fs::TryLockError::Error(err)) => return Err(err),
             }
         }
-        let end = {
-            let _locked = Locked(&state.file);
-            validate(&state.file, state.validated_end, state.validation_limits)?;
-            before_write();
-            let mut output = &state.file;
-            output.write_all(&record)?;
-            output.flush()?;
-            state.file.sync_data()?;
-            state.file.metadata()?.len()
-        };
-        state.validated_end = end;
+        let ShadowFile {
+            file,
+            validated_end,
+            validation_limits,
+        } = &mut *state;
+        let _locked = Locked(file);
+        *validated_end = validate_with(file, *validated_end, *validation_limits, &read_len)?;
+        let record_end = validated_end
+            .checked_add(record.len() as u64)
+            .ok_or_else(|| io::Error::other("shadow append offset overflow"))?;
+        write(file, &record)?;
+        *validated_end = record_end;
         Ok(())
     })
     .await
@@ -323,10 +345,16 @@ mod tests {
             release.send(()).unwrap();
             observed
         });
-        append_with(&state, record(1).as_bytes(), move || {
-            entered.send(()).unwrap();
-            gate.recv_timeout(Duration::from_secs(3)).unwrap();
-        })
+        append_with(
+            &state,
+            record(1).as_bytes(),
+            move |file, record| {
+                entered.send(()).unwrap();
+                gate.recv_timeout(Duration::from_secs(3)).unwrap();
+                write_and_sync(file, record)
+            },
+            file_len,
+        )
         .await
         .unwrap();
         heartbeat.abort();
@@ -352,10 +380,16 @@ mod tests {
         let waiter = tokio::spawn({
             let state = state.clone();
             async move {
-                append_with(&state, record(1).as_bytes(), move || {
-                    entered.send(()).unwrap();
-                    gate.recv_timeout(Duration::from_secs(3)).unwrap();
-                })
+                append_with(
+                    &state,
+                    record(1).as_bytes(),
+                    move |file, record| {
+                        entered.send(()).unwrap();
+                        gate.recv_timeout(Duration::from_secs(3)).unwrap();
+                        write_and_sync(file, record)
+                    },
+                    file_len,
+                )
                 .await
             }
         });
@@ -392,6 +426,96 @@ mod tests {
             lines,
             elapsed: Duration::from_secs(5),
         }
+    }
+
+    #[tokio::test]
+    async fn failed_write_retains_admitted_peer_suffix_and_rechecks_partial_record() {
+        let capture = tempfile::NamedTempFile::new().unwrap();
+        let open_writer = || {
+            let file = std::fs::OpenOptions::new()
+                .read(true)
+                .append(true)
+                .open(capture.path())
+                .unwrap();
+            Arc::new(Mutex::new(ShadowFile::with_limits(
+                file,
+                tiny_limits(100_000, 30),
+            )))
+        };
+        let state = open_writer();
+        let peer = open_writer();
+        let peer_suffix = record(1).repeat(10);
+        append(&peer, peer_suffix.as_bytes()).await.unwrap();
+
+        let next = record(2);
+        let partial = next.find("# commit").unwrap();
+        let failure = append_with(
+            &state,
+            next.as_bytes(),
+            move |mut file, record| {
+                file.write_all(&record[..partial])?;
+                Err(io::Error::other("injected write failure"))
+            },
+            file_len,
+        )
+        .await
+        .unwrap_err();
+        assert_eq!(failure.to_string(), "injected write failure");
+
+        // Rescanning the peer suffix would exhaust the line budget before the tail.
+        let retry = append(&state, next.as_bytes()).await.unwrap_err();
+        assert_eq!(retry.kind(), io::ErrorKind::InvalidData, "{retry}");
+        let peer_end = peer_suffix.len();
+        assert!(
+            retry
+                .to_string()
+                .contains(&format!("last complete offset={peer_end}"))
+        );
+        assert_eq!(state.lock().await.validated_end, peer_end as u64);
+        assert_eq!(
+            std::fs::read_to_string(capture.path()).unwrap(),
+            format!("{peer_suffix}{}", &next[..partial]),
+        );
+    }
+
+    #[tokio::test]
+    async fn synced_append_succeeds_without_a_second_length_query() {
+        let capture = tempfile::NamedTempFile::new().unwrap();
+        let open_writer = || {
+            let file = std::fs::OpenOptions::new()
+                .read(true)
+                .append(true)
+                .open(capture.path())
+                .unwrap();
+            Arc::new(Mutex::new(ShadowFile::new(file)))
+        };
+        let peer = open_writer();
+        let state = open_writer();
+        let prefix = record(1);
+        append(&peer, prefix.as_bytes()).await.unwrap();
+
+        let next = record(2);
+        let read = std::cell::Cell::new(false);
+        append_with(&state, next.as_bytes(), write_and_sync, move |file| {
+            if read.replace(true) {
+                return Err(io::Error::other("injected post-sync metadata failure"));
+            }
+            file_len(file)
+        })
+        .await
+        .unwrap();
+        assert_eq!(
+            state.lock().await.validated_end,
+            (prefix.len() + next.len()) as u64
+        );
+
+        let last = record(3);
+        // The peer has to validate the newly written suffix before its own append.
+        append(&peer, last.as_bytes()).await.unwrap();
+        assert_eq!(
+            std::fs::read_to_string(capture.path()).unwrap(),
+            format!("{prefix}{next}{last}"),
+        );
     }
 
     #[tokio::test]
