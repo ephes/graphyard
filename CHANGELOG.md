@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Rust agent: update `cookie` to 0.18.3 and `url` to 2.5.9 for
+  RUSTSEC-2026-0594 and RUSTSEC-2026-0592, which failed `cargo deny`.
+
 - Publish a partial Rust collector heartbeat when a later store error stops a
   batch after a committed completion. Keep the original error and the last
   successful heartbeat timestamp.
