@@ -211,7 +211,7 @@ pub(crate) async fn run_metric_specs_until_shutdown<E: SpecExecutors, C: Clock>(
     let mut manual_specs = if due_only {
         Vec::new().into_iter()
     } else {
-        let specs = store.load_specs(None).await?;
+        let specs = store.load_manual_specs().await?;
         if specs.is_empty() {
             return Err(RunError::NoMatchingSpecs);
         }

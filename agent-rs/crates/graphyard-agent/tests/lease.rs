@@ -313,6 +313,49 @@ async fn renewal_and_completion_cannot_extend_or_publish_a_replacement_claim() {
     other.close();
 }
 
+#[tokio::test]
+async fn a_truthy_but_decoded_disabled_flag_fences_lease_writes() {
+    let db = TestDb::new();
+    short_spec(&db);
+    let store = Store::open(db.path(), &settings(&[])).unwrap();
+    let spec = store.load_specs(None).await.unwrap().remove(0);
+    let claim = spec.claim_identity();
+    let update = graphyard_store::SpecRunUpdate {
+        id: spec.id,
+        last_run_at: UtcDateTime::from_seconds(100),
+        last_status: StatusLevel::Ok,
+        last_error: String::new(),
+        next_run_time: 101,
+    };
+
+    db.execute("UPDATE metric_collection_spec SET enabled = 2");
+    let admitted = store
+        .claim_due_spec(claim.clone(), 0, 100, 103)
+        .await
+        .unwrap();
+    db.execute("UPDATE metric_collection_spec SET enabled = 1, next_run_time = 0");
+    assert!(
+        store
+            .claim_due_spec(claim.clone(), 0, 100, 103)
+            .await
+            .unwrap()
+    );
+
+    // Simulate a legacy import which changes the flag without a new revision.
+    db.execute("UPDATE metric_collection_spec SET enabled = 2");
+    let renewed = store
+        .renew_spec_claim(claim.clone(), 103, 104)
+        .await
+        .unwrap();
+    let published = store
+        .finish_claimed_spec(claim, update, if renewed { 104 } else { 103 })
+        .await
+        .unwrap();
+    assert_eq!((admitted, renewed, published), (false, false, false));
+    assert_eq!(schedule(&db), 103);
+    store.close();
+}
+
 /// Records the config each execution received.
 struct Recording(std::sync::Mutex<Vec<Value>>);
 impl SpecExecutors for Recording {

@@ -345,6 +345,9 @@ background thread; it cannot interrupt a running collector, so a lost renewal
 refuses its sink/registry publication and completion instead. The initial claim
 of both agents also compares the captured definition. Do not run the two
 schedulers together for the same specs.
+Rust collector sweeps and lease writes accept an enable flag only when it
+decodes to true (SQLite renders it as the single byte `1`). An imported value
+such as `2` cannot start a collector or renew or complete its claim.
 Explicit non-due/manual runs still execute every enabled spec regardless of due
 time, with completion fenced by the captured definition and original schedule.
 Superseded completions contribute no run counts, errors or heartbeat evidence;

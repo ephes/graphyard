@@ -138,6 +138,9 @@ const MAX_COLLECTOR_CONFIG_BYTES: i64 = 1024 * 1024;
 const BOUNDED_CONFIG: &str =
     "CASE WHEN octet_length(config) > :config_limit THEN NULL ELSE config END";
 
+// Match bool_column's byte-for-byte interpretation, including restored rows.
+const COLLECTOR_ENABLED: &str = "CAST(enabled AS TEXT) COLLATE BINARY = '1'";
+
 const DUE_PAGE_SIZE: usize = 128;
 
 struct DueCandidate {
@@ -208,14 +211,16 @@ fn load_due_page(
     // name is unique and its index can satisfy the keyset lookup and ordering.
     const SELECT: &str = "SELECT id, CAST(name AS BLOB), typeof(name) = 'text', next_run_time, \
         CAST(spec_type AS BLOB), CAST(interval_seconds AS BLOB), CAST(updated_at AS BLOB) \
-        FROM metric_collection_spec WHERE enabled AND next_run_time <= ?1";
+        FROM metric_collection_spec";
     let pagination = if after.is_some() {
         "AND name > CASE WHEN ?3 THEN CAST(?4 AS TEXT) ELSE ?4 END"
     } else {
         ""
     };
-    let mut statement =
-        connection.prepare_cached(&format!("{SELECT} {pagination} ORDER BY name ASC LIMIT ?2"))?;
+    let mut statement = connection.prepare_cached(&format!(
+        "{SELECT} WHERE {COLLECTOR_ENABLED} AND next_run_time <= ?1 \
+             {pagination} ORDER BY name ASC LIMIT ?2"
+    ))?;
     // Look ahead one key to distinguish a full final page from more work.
     let limit = (DUE_PAGE_SIZE + 1) as i64;
     let mut rows = match after {
@@ -245,7 +250,7 @@ fn load_pending_spec(
     // still match. The later claim CAS also fences edits to the loaded config.
     let mut statement = connection.prepare_cached(&format!(
         "SELECT {SPEC_FIELDS}, {BOUNDED_CONFIG} FROM metric_collection_spec \
-         WHERE id = ? AND enabled AND next_run_time = ? \
+         WHERE id = ? AND {COLLECTOR_ENABLED} AND next_run_time = ? \
          AND CAST(name AS BLOB) = ? AND (typeof(name) = 'text') = ? \
          AND CAST(spec_type AS BLOB) = ? AND CAST(interval_seconds AS BLOB) = ? \
          AND CAST(updated_at AS BLOB) IS ?"
@@ -318,10 +323,12 @@ fn claim_due_spec(
     until: i64,
 ) -> Result<bool, StoreError> {
     Ok(connection.execute(
-        "UPDATE metric_collection_spec SET next_run_time = ? \
-         WHERE id = ? AND enabled AND next_run_time = ? AND next_run_time <= ? \
+        &format!(
+            "UPDATE metric_collection_spec SET next_run_time = ? \
+         WHERE id = ? AND {COLLECTOR_ENABLED} AND next_run_time = ? AND next_run_time <= ? \
          AND name = ? AND spec_type = ? AND interval_seconds = ? AND config = ? \
-         AND CAST(updated_at AS TEXT) IS ?",
+         AND CAST(updated_at AS TEXT) IS ?"
+        ),
         params![
             until,
             definition.id,
@@ -370,10 +377,12 @@ impl Store {
     ) -> Result<bool, StoreError> {
         self.call(move |connection| {
             Ok(connection.execute(
-                "UPDATE metric_collection_spec SET next_run_time = ? \
-                 WHERE id = ? AND enabled AND next_run_time = ? \
+                &format!(
+                    "UPDATE metric_collection_spec SET next_run_time = ? \
+                 WHERE id = ? AND {COLLECTOR_ENABLED} AND next_run_time = ? \
                  AND name = ? AND spec_type = ? AND interval_seconds = ? AND config = ? \
-                 AND CAST(updated_at AS TEXT) IS ?",
+                 AND CAST(updated_at AS TEXT) IS ?"
+                ),
                 params![
                     until,
                     definition.id,
@@ -405,10 +414,10 @@ impl Store {
         }
         self.call(move |connection| {
             Ok(connection.execute(
-                "UPDATE metric_collection_spec SET last_run_at = ?, last_status = ?, last_error = ?, \
-                 next_run_time = ? WHERE id = ? AND enabled AND next_run_time = ? \
+                &format!("UPDATE metric_collection_spec SET last_run_at = ?, last_status = ?, last_error = ?, \
+                 next_run_time = ? WHERE id = ? AND {COLLECTOR_ENABLED} AND next_run_time = ? \
                  AND name = ? AND spec_type = ? \
-                 AND interval_seconds = ? AND config = ? AND CAST(updated_at AS TEXT) IS ?",
+                 AND interval_seconds = ? AND config = ? AND CAST(updated_at AS TEXT) IS ?"),
                 params![
                     now_text(update.last_run_at)?, update.last_status.as_str(),
                     update.last_error, update.next_run_time, update.id, expected_schedule,
@@ -420,7 +429,23 @@ impl Store {
         }).await
     }
 
-    /// Load the enabled specs ordered by name; with `due_before`, only those
+    /// Load the collectors eligible for manual execution, in name order.
+    ///
+    /// # Errors
+    /// SQLite errors and unreadable rows.
+    pub async fn load_manual_specs(&self) -> Result<Vec<SpecRow>, StoreError> {
+        self.call(|connection| {
+            let mut statement = connection.prepare_cached(&format!(
+                "SELECT {SPEC_FIELDS}, config FROM metric_collection_spec
+                 WHERE {COLLECTOR_ENABLED} ORDER BY name ASC"
+            ))?;
+            statement.query_and_then([], decode_spec)?.collect()
+        })
+        .await
+    }
+
+    /// Load specs using Django’s SQL truthiness filter for ORM parity.
+    /// With `due_before`, return only those
     /// whose `next_run_time <= due_before` (`due_only=True` with `now_ts`).
     ///
     /// # Errors

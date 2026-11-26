@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Apply the decoded enable flag to Rust collector admission, claims,
+  renewals and result writes.
+
 - Refuse Rust due collector configs over 1 MiB before loading their contents.
   Count the refused row in the heartbeat and continue with later collectors.
 
