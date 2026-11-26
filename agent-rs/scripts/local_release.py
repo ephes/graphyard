@@ -41,6 +41,7 @@ release asset.
 from __future__ import annotations
 
 import argparse
+import errno
 import gzip
 import hashlib
 import json
@@ -1355,9 +1356,11 @@ def install_dir(staging: Path, out: Path) -> None:
     try:
         os.rename(staging, out)
     except OSError as error:
-        raise ReleaseError(
-            f"{out} was filled by another build meanwhile: {error}"
-        ) from None
+        if error.errno in {errno.EEXIST, errno.ENOTEMPTY}:
+            raise ReleaseError(
+                f"{out} was filled by another build meanwhile: {error}"
+            ) from error
+        raise ReleaseError(f"cannot install build at {out}: {error}") from error
 
 
 def check_sha256_file(directory: Path, archive: str) -> str:

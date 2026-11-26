@@ -8,6 +8,7 @@ network, no GitHub).
 
 from __future__ import annotations
 
+import errno
 import hashlib
 import importlib.util
 import io
@@ -1073,7 +1074,36 @@ def test_build_never_mixes_into_an_output_filled_meanwhile(
             log=lambda line: None,
         )
     assert [path.name for path in out.iterdir()] == ["build.json"]
+    assert (out / "build.json").read_text() == "other build"
     assert [path.name for path in tmp_path.iterdir()] == ["out"]
+
+
+@pytest.mark.parametrize("error_number", [errno.EACCES, errno.EXDEV])
+def test_install_dir_reports_filesystem_failure(
+    release: ModuleType,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    error_number: int,
+) -> None:
+    staging = tmp_path / "staging"
+    staging.mkdir()
+    out = tmp_path / "out"
+    error = OSError(error_number, os.strerror(error_number))
+
+    def fail_rename(src: Path, dst: Path) -> None:
+        assert (src, dst) == (staging, out)
+        raise error
+
+    with monkeypatch.context() as patch:
+        patch.setattr(release.os, "rename", fail_rename)
+        with pytest.raises(
+            release.ReleaseError, match="cannot install build at"
+        ) as exc:
+            release.install_dir(staging, out)
+
+    assert str(out) in str(exc.value)
+    assert exc.value.__cause__ is error
+    assert not out.exists()
 
 
 class FakeApi:
