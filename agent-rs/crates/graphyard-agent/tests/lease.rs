@@ -1,8 +1,10 @@
 //! A short schedule must not expire while a collector is still live.
 mod common;
 
+use std::future::{Future, poll_fn};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicI64, AtomicUsize, Ordering};
+use std::task::Poll;
 use std::time::Duration;
 
 use graphyard_agent::runs::{Clock, SpecExecutors, SystemClock, run_metric_specs};
@@ -309,6 +311,54 @@ async fn renewal_delayed_until_expiry_cancels_collection_and_leaves_the_slot_due
 }
 
 #[tokio::test]
+async fn completion_delayed_until_expiry_leaves_the_slot_due() {
+    let db = TestDb::new();
+    short_spec(&db);
+    let store = Store::open(db.path(), &settings(&[])).unwrap();
+    let collector = Deferred::new();
+    let clock = AdjustableClock::new(100);
+    let run = tokio::time::timeout(Duration::from_secs(9), async {
+        let pending = run_metric_specs(&store, &collector, &clock, true);
+        tokio::pin!(pending);
+        tokio::select! {
+            _ = collector.entered.notified() => {},
+            result = &mut pending => panic!("collector should be deferred: {result:?}"),
+        }
+        assert_eq!(schedule(&db), 103);
+        let writer = db.raw();
+        writer.execute_batch("BEGIN IMMEDIATE").unwrap();
+        collector.finish.notify_one();
+        // Poll the completion through submission to the blocked store.
+        assert!(
+            poll_fn(|cx| Poll::Ready(pending.as_mut().poll(cx)))
+                .await
+                .is_pending()
+        );
+        clock.seconds.store(103, Ordering::SeqCst);
+        writer.execute_batch("COMMIT").unwrap();
+        pending.await.unwrap()
+    })
+    .await
+    .unwrap();
+    assert_eq!(run.total, 0);
+    assert_eq!(schedule(&db), 103);
+    assert_eq!(
+        db.value("metric_collection_spec", "synthetic", "last_run_at"),
+        rusqlite::types::Value::Null
+    );
+    assert_eq!(db.count("pipeline_heartbeat"), 0);
+    assert_eq!(
+        run_metric_specs(&store, &collector, &clock, true)
+            .await
+            .unwrap()
+            .total,
+        1
+    );
+    assert_eq!(collector.calls.load(Ordering::SeqCst), 2);
+    store.close();
+}
+
+#[tokio::test]
 async fn renewal_and_completion_cannot_extend_or_publish_a_replacement_claim() {
     let db = TestDb::new();
     short_spec(&db);
@@ -363,7 +413,8 @@ async fn renewal_and_completion_cannot_extend_or_publish_a_replacement_claim() {
                     last_error: String::new(),
                     next_run_time: 101,
                 },
-                105
+                105,
+                || 104,
             )
             .await
             .unwrap()
@@ -415,7 +466,7 @@ async fn a_truthy_but_decoded_disabled_flag_fences_lease_writes() {
         .await
         .unwrap();
     let published = store
-        .finish_claimed_spec(claim, update, if renewed { 104 } else { 103 })
+        .finish_claimed_spec(claim, update, if renewed { 104 } else { 103 }, || 101)
         .await
         .unwrap();
     assert_eq!((admitted, renewed, published), (false, false, false));

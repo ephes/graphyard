@@ -337,8 +337,10 @@ interval, checks renewal with two stores, cancels an abandoned run and checks it
 persisted expiry, and refuses renewal/completion from a replaced or disabled
 claim. A synthetic clock reaches the deadline while a second SQLite connection
 holds the writer reservation. Renewal cancels the old attempt, and a fresh
-sweep claims the untouched slot. The shared Python-derived fixtures cover
-ordinary scheduling results.
+sweep claims the untouched slot. The same writer delay during due-run completion
+preserves `last_run_at`, leaves the heartbeat untouched and lets a fresh sweep
+claim the slot. The shared Python-derived fixtures cover ordinary scheduling
+results.
 
 ## Fresh-process scheduling and publication recovery
 

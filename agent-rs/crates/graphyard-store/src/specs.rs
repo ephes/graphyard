@@ -425,6 +425,38 @@ fn claim_due_spec(
     )? == 1)
 }
 
+fn write_spec_completion(
+    connection: &Connection,
+    definition: &SpecClaimIdentity,
+    update: SpecRunUpdate,
+    expected_schedule: i64,
+) -> Result<bool, StoreError> {
+    if definition.id != update.id {
+        return Ok(false);
+    }
+    Ok(connection.execute(
+        &format!(
+            "UPDATE metric_collection_spec SET last_run_at = ?, last_status = ?, last_error = ?, \
+             next_run_time = ? WHERE id = ? AND {COLLECTOR_ENABLED} AND next_run_time = ? \
+             AND name = ? AND spec_type = ? \
+             AND interval_seconds = ? AND config = ? AND CAST(updated_at AS TEXT) IS ?"
+        ),
+        params![
+            now_text(update.last_run_at)?,
+            update.last_status.as_str(),
+            update.last_error,
+            update.next_run_time,
+            update.id,
+            expected_schedule,
+            definition.name,
+            definition.spec_type,
+            definition.interval_seconds,
+            definition.config,
+            definition.updated_at_raw,
+        ],
+    )? == 1)
+}
+
 impl Store {
     /// Claim one due slot before collection, only for the captured
     /// definition and its update timestamp.
@@ -489,35 +521,47 @@ impl Store {
         .await
     }
 
-    /// Publish only for the captured definition and scheduling owner.
-    /// Manual runs use the originally observed schedule instead of a lease.
+    /// Publish a due run only for the captured definition and live claim.
+    /// Read `now` on the database thread after taking the writer reservation.
     ///
     /// # Errors
-    /// SQLite errors. Superseded or deleted rows return false.
+    /// SQLite errors. Expired, superseded or deleted claims return false.
     pub async fn finish_claimed_spec(
         &self,
         definition: Arc<SpecClaimIdentity>,
         update: SpecRunUpdate,
         expected_schedule: i64,
+        now: impl FnOnce() -> i64 + Send + 'static,
     ) -> Result<bool, StoreError> {
-        if definition.id != update.id {
-            return Ok(false);
-        }
         self.call(move |connection| {
-            Ok(connection.execute(
-                &format!("UPDATE metric_collection_spec SET last_run_at = ?, last_status = ?, last_error = ?, \
-                 next_run_time = ? WHERE id = ? AND {COLLECTOR_ENABLED} AND next_run_time = ? \
-                 AND name = ? AND spec_type = ? \
-                 AND interval_seconds = ? AND config = ? AND CAST(updated_at AS TEXT) IS ?"),
-                params![
-                    now_text(update.last_run_at)?, update.last_status.as_str(),
-                    update.last_error, update.next_run_time, update.id, expected_schedule,
-                    definition.name,
-                    definition.spec_type, definition.interval_seconds, definition.config,
-                    definition.updated_at_raw,
-                ],
-            )? == 1)
-        }).await
+            let transaction =
+                connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
+            if expected_schedule <= now() {
+                return Ok(false);
+            }
+            let published =
+                write_spec_completion(&transaction, &definition, update, expected_schedule)?;
+            transaction.commit()?;
+            Ok(published)
+        })
+        .await
+    }
+
+    /// Publish a manual run for its captured definition and observed schedule.
+    /// The schedule is a comparison value here and carries no lease deadline.
+    ///
+    /// # Errors
+    /// SQLite errors. Superseded or deleted rows return false.
+    pub async fn finish_manual_spec(
+        &self,
+        definition: Arc<SpecClaimIdentity>,
+        update: SpecRunUpdate,
+        expected_schedule: i64,
+    ) -> Result<bool, StoreError> {
+        self.call(move |connection| {
+            write_spec_completion(connection, &definition, update, expected_schedule)
+        })
+        .await
     }
 
     /// Load specs using Django’s SQL truthiness filter for ORM parity.

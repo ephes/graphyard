@@ -263,6 +263,11 @@ async fn run_case(case: &Value) {
                     next_run_time: op["next_run_time"].as_i64().unwrap(),
                 },
                 op["claim_until"].as_i64().unwrap(),
+                {
+                    // The lease and result timestamps are independent in this fixture.
+                    let live_now = op["claim_until"].as_i64().unwrap() - 1;
+                    move || live_now
+                },
             )
             .await
             .map(|_| None),

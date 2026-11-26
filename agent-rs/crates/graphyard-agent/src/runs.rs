@@ -413,10 +413,17 @@ async fn run_metric_spec<E: SpecExecutors, C: Clock>(
         last_error: outcome.message.clone(),
         next_run_time,
     };
-    if !store
-        .finish_claimed_spec(claim, update, claim_until.unwrap_or(spec.next_run_time))
-        .await?
-    {
+    let published = if let Some(until) = claim_until {
+        let lease_clock = clock.clone();
+        store
+            .finish_claimed_spec(claim, update, until, move || lease_clock.now().timestamp())
+            .await?
+    } else {
+        store
+            .finish_manual_spec(claim, update, spec.next_run_time)
+            .await?
+    };
+    if !published {
         log::info!("Collection superseded spec_id={}", spec.id);
         return Ok(None);
     }
