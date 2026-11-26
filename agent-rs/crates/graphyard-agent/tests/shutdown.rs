@@ -17,7 +17,7 @@ use num_bigint::BigInt;
 use rusqlite::types::Value as SqlValue;
 use serde_json::json;
 
-use common::{TestDb, settings};
+use common::{FakeServer, TestDb, settings};
 
 /// A resolver whose lookups never return (for the test's lifetime).
 struct Stuck;
@@ -152,6 +152,81 @@ fn shutdown_finishes_the_current_claim_without_starting_the_next_spec() {
         db.text("pipeline_heartbeat", "metric_collectors", "details")
             .contains(r#""partial": 1"#),
     );
+}
+
+#[test]
+fn shutdown_publishes_the_current_condition_without_querying_the_next() {
+    let db = TestDb::new();
+    db.execute(
+        "WITH names(name) AS (VALUES ('first'), ('second'))
+         INSERT INTO condition_definition (name, enabled, metric_name, host_filter,
+            service_filter, tags_filter, operator, warning_threshold, critical_threshold,
+            window_minutes, breach_minutes, status, message, created_at, updated_at,
+            subject_id_filter, subject_type_filter, alert_when_stale)
+         SELECT name, 1, 'host.synthetic', '', '', '{}', 'gte', 80, 90, 30, 5, 'ok', '',
+            '2026-01-01 00:00:00', '2026-01-01 00:00:00', '', '', 1 FROM names;
+         INSERT INTO pipeline_heartbeat (name, status, last_success, last_error, details, updated_at)
+         VALUES ('condition_evaluator', 'ok', '2026-01-01 00:00:00', '', '{}', '2026-01-01 00:00:00');",
+    );
+    let (started, waiting) = tokio::sync::oneshot::channel();
+    let mut started = Some(started);
+    let (release, paused) = std::sync::mpsc::channel();
+    let server = FakeServer::start_with_reply_hook(move || {
+        if let Some(started) = started.take() {
+            started.send(()).unwrap();
+            let _ = paused.recv_timeout(Duration::from_secs(2));
+        }
+    });
+    let mut agent = config(&db, HttpContext::new(), "1000");
+    agent.loops.run_once = false;
+    agent.loops.run_metrics = false;
+    agent.loops.run_conditions = true;
+    agent.settings = settings(&[
+        ("INFLUX_URL", &server.url("")),
+        ("INFLUX_TOKEN", "synthetic"),
+        ("INFLUX_ORG", "test"),
+        ("INFLUX_API_MODE", "v2"),
+    ]);
+    let code = run_agent(agent, || {
+        Ok(async move {
+            tokio::time::timeout(Duration::from_secs(5), waiting)
+                .await
+                .unwrap()
+                .unwrap();
+            tokio::spawn(async move {
+                // The supervisor observes the signal before this task runs.
+                let _ = release.send(());
+            });
+            Shutdown::Terminate
+        })
+    });
+
+    assert_eq!(code, ExitCode::SUCCESS);
+    assert_eq!(server.requests(), ["POST /api/v2/query?org=test"]);
+    assert_ne!(
+        db.value("condition_definition", "first", "last_evaluated"),
+        SqlValue::Null
+    );
+    assert_eq!(
+        db.value("condition_definition", "second", "last_evaluated"),
+        SqlValue::Null
+    );
+    let heartbeat = "condition_evaluator";
+    assert_eq!(
+        db.text("pipeline_heartbeat", heartbeat, "status"),
+        "warning"
+    );
+    assert_eq!(
+        db.text("pipeline_heartbeat", heartbeat, "last_success"),
+        "2026-01-01 00:00:00"
+    );
+    assert_eq!(
+        db.text("pipeline_heartbeat", heartbeat, "last_error"),
+        "partial run: agent shutdown"
+    );
+    let details: serde_json::Value =
+        serde_json::from_str(&db.text("pipeline_heartbeat", heartbeat, "details")).unwrap();
+    assert_eq!(details, json!({"evaluated": 1, "failed": 0, "partial": 1}));
 }
 
 #[test]

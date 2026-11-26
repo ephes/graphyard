@@ -314,6 +314,11 @@ publications (including failures) are ignored. A failure advances
 gap and the final carry against `CONDITION_DATA_STALE_WARNING_SECONDS`, matching
 Python and the shared condition/store fixtures.
 
+On SIGINT or SIGTERM, an in-flight condition in continuous mode has up to
+500 ms to finish and publish. The agent skips subsequent sample queries. If
+the sweep processed any conditions and left some unstarted, it records a
+warning heartbeat with `partial: 1` and preserves `last_success`.
+
 The Rust agent checks that each spec’s next run time fits in SQLite before
 claiming or executing it, even in manual mode. An overflowing schedule
 counts as a failed spec and leaves its row untouched. Later specs still run.

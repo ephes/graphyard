@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Stop continuous Rust condition sweeps between evaluations during shutdown.
+  Let the current evaluation finish during the existing grace period and
+  record a partial heartbeat for work completed before the stop.
+
 - Keep Rust manual collector runs going when one stored row is unreadable.
   Report the failed row by ID and run the remaining eligible specs.
 

@@ -186,6 +186,10 @@ pub struct FakeServer {
 
 impl FakeServer {
     pub fn start() -> FakeServer {
+        Self::start_with_reply_hook(|| {})
+    }
+
+    pub fn start_with_reply_hook(mut before_reply: impl FnMut() + Send + 'static) -> FakeServer {
         let listener = TcpListener::bind("127.0.0.1:0").unwrap();
         let addr = listener.local_addr().unwrap();
         let requests = Arc::new(Mutex::new(Vec::new()));
@@ -228,6 +232,7 @@ impl FakeServer {
                 } else {
                     ("204 No Content", "text/plain", "")
                 };
+                before_reply();
                 let _ = write!(
                     stream,
                     "HTTP/1.1 {status}\r\nContent-Type: {content_type}\r\nContent-Length: {}\r\n\

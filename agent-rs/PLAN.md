@@ -167,13 +167,17 @@ that differs is a bug.
 ### 2.4 Intentional divergences (P3, exhaustive)
 
 - **D-1 Signals.** SIGTERM: Python dies by the default signal action at any
-  point; Rust stops starting new work, gives a metric attempt already in
-  progress up to 500 ms to finish and persist its outcome, and otherwise
+  point; Rust stops starting new work, gives an active metric attempt or a
+  continuous condition evaluation up to 500 ms to finish and persist its
+  outcome, and otherwise
   stops at the next await point (an in-flight SQLite statement completes
   first), prints nothing and exits 0. A metric sweep stopped this way with
   counted outcomes and unstarted specs publishes a partial
   `metric_collectors` heartbeat (`partial: 1`, `partial run: agent
-  shutdown`, section 3.4); Python writes no heartbeat for a killed sweep. systemd reports both as
+  shutdown`, section 3.4). An interrupted continuous condition sweep with
+  evaluations to report publishes a partial `condition_evaluator` heartbeat as
+  a warning and preserves `last_success`. Python writes no heartbeat for a
+  killed sweep. systemd reports both as
   "Deactivated successfully". SIGINT behaves like Python's
   `KeyboardInterrupt` handler: stdout `graphyard-agent interrupted, exiting`,
   exit 0. Rust does the same during `--run-once`, where Python's handler is
@@ -706,9 +710,10 @@ Shutdown must not wait for blocking work that cannot be cancelled: a
 `Runtime::drop` until systemd's SIGKILL. SQLite therefore does not run on
 the blocking pool but on one dedicated DB thread owning the connection
 (callers send a closure and await the reply, as in nyxmon `nyxmon-store`).
-On a signal, the active metric attempt gets a 500 ms deadline to finish and
-persist its outcome. A stopped sweep with counted outcomes and remaining
-specs can publish a partial heartbeat during that grace. The rest of the
+On a signal, the active metric attempt or continuous condition evaluation
+gets a 500 ms deadline to finish and persist its outcome. A stopped sweep
+with counted outcomes and remaining rows can publish a partial heartbeat
+during that grace. The rest of the
 scheduler is cancelled, and `main` waits for the DB thread to finish its
 current statement (bounded by `busy_timeout`). It closes the connection,
 prints the SIGINT line if applicable and gives blocking runtime work the

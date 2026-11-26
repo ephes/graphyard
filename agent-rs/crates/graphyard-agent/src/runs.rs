@@ -476,6 +476,28 @@ pub async fn run_conditions<S: ConditionSamples, C: Clock>(
     stale_warning_seconds: &BigInt,
     condition_id: Option<&BigInt>,
 ) -> Result<ConditionEvaluationRun, RunError> {
+    run_conditions_until_shutdown(
+        store,
+        samples,
+        clock,
+        stale_warning_seconds,
+        condition_id,
+        &Cell::new(false),
+    )
+    .await
+}
+
+pub(crate) async fn run_conditions_until_shutdown<S: ConditionSamples, C: Clock>(
+    store: &Store,
+    samples: &S,
+    clock: &C,
+    stale_warning_seconds: &BigInt,
+    condition_id: Option<&BigInt>,
+    stopping: &Cell<bool>,
+) -> Result<ConditionEvaluationRun, RunError> {
+    if stopping.get() {
+        return Ok(ConditionEvaluationRun::default());
+    }
     let conditions = match condition_id.map(i64::try_from) {
         None => store.load_conditions(None).await?,
         Some(Ok(id)) => store.load_conditions(Some(id)).await?,
@@ -484,7 +506,12 @@ pub async fn run_conditions<S: ConditionSamples, C: Clock>(
         Some(Err(_)) => Vec::new(),
     };
     let mut run = ConditionEvaluationRun::default();
+    let mut partial = false;
     for condition in &conditions {
+        if stopping.get() {
+            partial = true;
+            break;
+        }
         run.total += 1;
         let attempted_at = clock.now();
         let (stage, saved) =
@@ -519,15 +546,18 @@ pub async fn run_conditions<S: ConditionSamples, C: Clock>(
             );
         }
     }
-    if condition_id.is_none() {
-        let ok = run.failed == 0;
-        let no_work = run.total == 0;
+    let no_work = run.total == 0;
+    if condition_id.is_none() && !(no_work && stopping.get()) {
+        let ok = run.failed == 0 && !partial;
         let mut details = vec![
             ("evaluated".to_owned(), count(run.total)),
             ("failed".to_owned(), count(run.failed)),
         ];
         if no_work {
             details.push(("no_work".to_owned(), 1));
+        }
+        if partial {
+            details.push(("partial".to_owned(), 1));
         }
         store
             .record_heartbeat(
@@ -538,7 +568,9 @@ pub async fn run_conditions<S: ConditionSamples, C: Clock>(
                     } else {
                         StatusLevel::Warning
                     },
-                    last_error: if ok {
+                    last_error: if partial {
+                        "partial run: agent shutdown".to_owned()
+                    } else if ok {
                         String::new()
                     } else {
                         format!("{} condition(s) failed", run.failed)
