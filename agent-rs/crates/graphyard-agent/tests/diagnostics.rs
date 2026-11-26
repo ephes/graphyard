@@ -194,6 +194,71 @@ impl ConditionSamples for Samples {
 fn conditions(db: &TestDb) {
     db.raw().execute_batch("INSERT INTO condition_definition (id, name, enabled, metric_name, host_filter, service_filter, tags_filter, operator, warning_threshold, critical_threshold, window_minutes, breach_minutes, status, message, created_at, updated_at, subject_id_filter, subject_type_filter, alert_when_stale) VALUES (1, 'a bad', 1, 'host.test', '', '', '{}', 'gte', 80, 90, 30, 5, 'ok', '', '2026-01-01 00:00:00', '2026-01-01 00:00:00', '', '', 1), (2, 'b good', 1, 'host.test', '', '', '{}', 'gte', 80, 90, 30, 5, 'ok', '', '2026-01-01 00:00:00', '2026-01-01 00:00:00', '', '', 1);").unwrap();
 }
+
+#[tokio::test]
+async fn oversized_condition_tags_fail_before_evaluation_and_keep_siblings_running() {
+    capture();
+    let db = TestDb::new();
+    conditions(&db);
+    let limit = 1024 * 1024;
+    // This is valid JSON at exactly 1 MiB, but has fewer than 1 MiB characters.
+    let at_limit = format!("{{\"tag\":\"{}\"}}", "é".repeat((limit - 10) / 2));
+    assert_eq!(at_limit.len(), limit);
+    db.raw()
+        .execute(
+            "UPDATE condition_definition SET tags_filter = CASE id WHEN 1 THEN ? || ' ' ELSE ? END",
+            [&at_limit, &at_limit],
+        )
+        .unwrap();
+
+    let store = Store::open(db.path(), &settings(&[])).unwrap();
+    let run = run_conditions(
+        &store,
+        &Samples { fail: false },
+        &SystemClock,
+        &BigInt::from(60),
+        None,
+    )
+    .await
+    .unwrap();
+    assert_eq!((run.total, run.failed), (2, 1));
+    assert_eq!(
+        db.value("condition_definition", "a bad", "last_evaluated"),
+        rusqlite::types::Value::Null
+    );
+    assert_ne!(
+        db.value("condition_definition", "b good", "last_evaluated"),
+        rusqlite::types::Value::Null
+    );
+    assert!(
+        lines()
+            .join("\n")
+            .contains("condition_id=1 stage=admission")
+    );
+    assert_eq!(
+        db.text("pipeline_heartbeat", "condition_evaluator", "details"),
+        r#"{"evaluated": 2, "failed": 1}"#
+    );
+
+    let heartbeat = db.rows("pipeline_heartbeat");
+    let error = run_conditions(
+        &store,
+        &Samples { fail: false },
+        &SystemClock,
+        &BigInt::from(60),
+        Some(&BigInt::from(1)),
+    )
+    .await
+    .unwrap_err();
+    assert!(
+        error
+            .to_string()
+            .contains("stored condition tags_filter exceeds 1 MiB")
+    );
+    assert_eq!(db.rows("pipeline_heartbeat"), heartbeat);
+    store.close();
+}
+
 async fn condition_fault(stage: &str, fallback_fails: bool) {
     capture();
     let db = TestDb::new();

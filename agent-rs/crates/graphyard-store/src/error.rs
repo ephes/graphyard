@@ -17,6 +17,8 @@ pub enum StoreError {
     /// A stored datetime that Django's loader rejects, or a value that
     /// cannot be written back (PLAN.md 5.3).
     DateTime(DateTimeError),
+    /// A stored condition tag filter exceeds the Rust agent's byte limit.
+    ConditionTagsTooLarge,
     /// `save(update_fields=...)` matched no row (the row was deleted after
     /// it was loaded): Django's `NotUpdated`.
     NotUpdated,
@@ -38,6 +40,9 @@ impl fmt::Display for StoreError {
         match self {
             StoreError::Sqlite(err) => write!(f, "{err}"),
             StoreError::DateTime(err) => write!(f, "{err}"),
+            StoreError::ConditionTagsTooLarge => {
+                f.write_str("stored condition tags_filter exceeds 1 MiB")
+            }
             StoreError::NotUpdated => f.write_str(NOT_UPDATED_MESSAGE),
             StoreError::ThreadGone => f.write_str("the database thread is gone"),
             StoreError::Io(err) => write!(f, "{err}"),
@@ -52,7 +57,10 @@ impl std::error::Error for StoreError {
             StoreError::Sqlite(err) => Some(err),
             StoreError::DateTime(err) => Some(err),
             StoreError::Io(err) => Some(err),
-            StoreError::NotUpdated | StoreError::ThreadGone | StoreError::Point(_) => None,
+            StoreError::ConditionTagsTooLarge
+            | StoreError::NotUpdated
+            | StoreError::ThreadGone
+            | StoreError::Point(_) => None,
         }
     }
 }
@@ -84,6 +92,7 @@ impl StoreError {
             }
             StoreError::Sqlite(_) | StoreError::ThreadGone => "OperationalError",
             StoreError::DateTime(err) => err.class,
+            StoreError::ConditionTagsTooLarge => "ValueError",
             StoreError::NotUpdated => "NotUpdated",
             StoreError::Io(_) => "OSError",
             StoreError::Point(err) => err.python_class(),

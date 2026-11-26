@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Refuse Rust condition tag filters over 1 MiB before loading their contents.
+  Count the failed row in the sweep heartbeat and continue evaluating siblings.
+
 - List conditions in the shadow-run preparation scan that Python evaluates
   and the Rust agent skips: an enable flag other than `1`.
 

@@ -388,8 +388,10 @@ that differs is a bug.
   Rust condition sweeps, targeted evaluations and publication also take
   only the stored enable flag `1`: a truthy `enabled = 2` that Python's
   `WHERE enabled` still evaluates is skipped by a sweep, and
-  `--condition-id` on it exits 1 like an id that selects nothing. In a
-  Rust condition sweep, a stored row that cannot be decoded counts as one
+  `--condition-id` on it exits 1 like an id that selects nothing. SQLite
+  checks the stored `tags_filter` byte length before loading its contents
+  and refuses filters over 1 MiB. In a Rust condition sweep, a refused
+  filter or a stored row that cannot be decoded counts as one
   failed condition (stage `admission`, ID-only log line, row left
   unchanged) and the other rows are still evaluated, ending in a warning
   heartbeat; Python's bulk load fails the whole sweep. A targeted

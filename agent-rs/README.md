@@ -397,7 +397,10 @@ exits 0, or reports `Condition evaluation completed with failures
 failed.` and exit 1. The Rust sweep counts each unreadable stored condition
 as one failure and continues evaluating readable rows. It logs the numeric
 ID and error category and leaves the unreadable row untouched. A targeted
-run returns the selected row's read error. A query, database or heartbeat
+run returns the selected row's read error. SQLite checks the stored `tags_filter`
+byte length before loading its contents. A filter over 1 MiB fails admission for
+that condition and contributes one failure to the full-run heartbeat.
+A query, database or heartbeat
 failure outside a condition exits 1 with one stderr line `Condition
 evaluation failed: <class>: <error>` where Python prints a traceback; a
 missing database or a failed schema check exits 1 as at the agent's startup
