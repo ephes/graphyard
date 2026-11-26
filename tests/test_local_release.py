@@ -8,6 +8,7 @@ network, no GitHub).
 
 from __future__ import annotations
 
+import errno
 import hashlib
 import importlib.util
 import io
@@ -1004,6 +1005,42 @@ def test_publish_checks_main_also_for_an_existing_tag(
         publish(release, built, github=github)
 
 
+def test_build_rejects_truncated_gzip_trailer_before_installing(
+    release: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    out = tmp_path / "out"
+    common = dict(
+        config=release.parse_config(linux_data()),
+        git=FakeGit(REPO),
+        github=FakeGitHub(),
+        docker=FakeDocker(),
+        version="1.2.3",
+        run_host_checks=no_host_checks,
+        log=lambda line: None,
+    )
+    write_valid_dist = write_dist
+
+    def write_truncated_dist(job_out: Path, archive: str) -> None:
+        write_valid_dist(job_out, archive)
+        dist = job_out / "dist"
+        path = dist / archive
+        data = path.read_bytes()[:-8]
+        path.write_bytes(data)
+        digest = hashlib.sha256(data).hexdigest()
+        (dist / f"{archive}.sha256").write_text(
+            f"{digest}  {archive}\n", encoding="utf-8"
+        )
+
+    with monkeypatch.context() as patch:
+        patch.setattr(sys.modules[__name__], "write_dist", write_truncated_dist)
+        with pytest.raises(release.ReleaseError, match="cannot validate build archive"):
+            release.build(False, out, **common)
+
+    assert list(tmp_path.iterdir()) == []
+    assert release.build(False, out, **common) == out
+    assert (out / "build.json").is_file()
+
+
 def test_build_never_mixes_into_an_output_filled_meanwhile(
     release: ModuleType, tmp_path: Path
 ) -> None:
@@ -1037,7 +1074,36 @@ def test_build_never_mixes_into_an_output_filled_meanwhile(
             log=lambda line: None,
         )
     assert [path.name for path in out.iterdir()] == ["build.json"]
+    assert (out / "build.json").read_text() == "other build"
     assert [path.name for path in tmp_path.iterdir()] == ["out"]
+
+
+@pytest.mark.parametrize("error_number", [errno.EACCES, errno.EXDEV])
+def test_install_dir_reports_filesystem_failure(
+    release: ModuleType,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    error_number: int,
+) -> None:
+    staging = tmp_path / "staging"
+    staging.mkdir()
+    out = tmp_path / "out"
+    error = OSError(error_number, os.strerror(error_number))
+
+    def fail_rename(src: Path, dst: Path) -> None:
+        assert (src, dst) == (staging, out)
+        raise error
+
+    with monkeypatch.context() as patch:
+        patch.setattr(release.os, "rename", fail_rename)
+        with pytest.raises(
+            release.ReleaseError, match="cannot install build at"
+        ) as exc:
+            release.install_dir(staging, out)
+
+    assert str(out) in str(exc.value)
+    assert exc.value.__cause__ is error
+    assert not out.exists()
 
 
 class FakeApi:

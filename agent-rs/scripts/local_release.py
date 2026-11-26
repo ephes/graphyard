@@ -41,6 +41,8 @@ release asset.
 from __future__ import annotations
 
 import argparse
+import errno
+import gzip
 import hashlib
 import json
 import os
@@ -54,6 +56,7 @@ import sys
 import tarfile
 import tempfile
 import tomllib
+import zlib
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -1300,6 +1303,7 @@ def build(
         shutil.rmtree(jobs, ignore_errors=True)
     try:
         digest = check_sha256_file(staging, archive)
+        members = validate_build_archive(staging / archive)
         record = {
             "binary": config.binary,
             "version": version,
@@ -1322,14 +1326,28 @@ def build(
     finally:
         shutil.rmtree(staging, ignore_errors=True)
     log(f"{digest}  {archive}")
-    with tarfile.open(out / archive, "r:gz") as tar:
-        for member in tar.getmembers():
-            log(f"    {member.name} ({oct(member.mode)}, {member.size} bytes)")
+    for member in members:
+        log(f"    {member.name} ({oct(member.mode)}, {member.size} bytes)")
     if compare_released:
         log(
             f"dry run of the released {config.binary} {version}: {out} cannot be published"
         )
     return out
+
+
+def validate_build_archive(path: Path) -> list[tarfile.TarInfo]:
+    try:
+        with gzip.open(path, "rb") as stream:
+            with tarfile.open(fileobj=stream, mode="r:") as tar:
+                members = tar.getmembers()
+            # Tar listing stops at the end marker, before gzip checks its trailer.
+            while stream.read(1 << 20):
+                pass
+    except (OSError, EOFError, tarfile.TarError, zlib.error) as error:
+        raise ReleaseError(
+            f"cannot validate build archive {path.name}: {error}"
+        ) from error
+    return members
 
 
 def install_dir(staging: Path, out: Path) -> None:
@@ -1338,9 +1356,11 @@ def install_dir(staging: Path, out: Path) -> None:
     try:
         os.rename(staging, out)
     except OSError as error:
-        raise ReleaseError(
-            f"{out} was filled by another build meanwhile: {error}"
-        ) from None
+        if error.errno in {errno.EEXIST, errno.ENOTEMPTY}:
+            raise ReleaseError(
+                f"{out} was filled by another build meanwhile: {error}"
+            ) from error
+        raise ReleaseError(f"cannot install build at {out}: {error}") from error
 
 
 def check_sha256_file(directory: Path, archive: str) -> str:

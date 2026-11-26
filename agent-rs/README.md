@@ -611,6 +611,13 @@ The archive, its `.sha256`, `build.json` (commit, sha256, image digest, package
 and toolchain versions) and `notes.md` (the release notes, naming the commit
 and the sha256 the deployment pins) land in
 `agent-rs/target/local-release/graphyard-agent-<version>/`.
+Before installing that directory, `build` verifies the staged archive's SHA-256,
+lists its tar members and reads the gzip stream through its trailer. An invalid
+archive leaves the destination available for a retry. The build output shows the
+verified member listing.
+If a concurrent build fills the destination during staging, `build` reports the
+collision and preserves that directory. Other rename failures report the
+destination and the underlying filesystem error.
 
 Remote facts (is the commit on `main`, does the tag exist) are read from
 GitHub, and the tag is created there, through `gh api --hostname github.com`
