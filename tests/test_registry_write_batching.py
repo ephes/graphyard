@@ -248,7 +248,7 @@ def host_point(host, service=None):
     )
 
 
-@pytest.mark.parametrize("query_param_limit", [999, 4])
+@pytest.mark.parametrize("query_param_limit", [999, 4, 2])
 def test_registry_reads_hydrate_only_normalized_subject_pairs(
     monkeypatch, query_param_limit
 ):
@@ -297,7 +297,7 @@ def test_registry_reads_hydrate_only_normalized_subject_pairs(
         if query["sql"].startswith("SELECT")
         and 'FROM "subject_registry"' in query["sql"]
     ]
-    # A 4-parameter limit less one bind per type leaves one pair per query.
+    # Small limits less one bind per type still leave one pair per query.
     assert len(subject_selects) == (2 if query_param_limit == 999 else 6)
     sources = {
         (kind, subject_id): source

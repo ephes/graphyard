@@ -567,12 +567,13 @@ same specs.
 Non-due manual runs retain unconditional execution and the shared run-start
 timestamp, with completion fenced by the originally observed schedule and
 captured definition. Superseded completions are not counted. A run with no
-accepted completions or schedule failures leaves the heartbeat untouched.
+accepted completions, schedule failures or unreadable due rows leaves the
+heartbeat untouched.
 
 A load, claim, renewal or completion store error stops the batch: error log
 `Metric collection failed`, stderr `Metric collection failed: <err>`, and the
-scheduler loop continues. After a committed completion or a schedule overflow,
-Rust tries to publish a partial `metric_collectors` heartbeat. It marks `partial: 1`
+scheduler loop continues. After a committed completion, a schedule overflow or
+an unreadable due row (D-15), Rust tries to publish a partial `metric_collectors` heartbeat. It marks `partial: 1`
 in details, counts the prefix, and preserves `last_success`. A sweep stopped
 by SIGTERM/SIGINT after counted outcomes, with specs left unstarted, publishes
 the same partial heartbeat with the first message `partial run: agent

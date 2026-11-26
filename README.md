@@ -891,8 +891,9 @@ keys for existing specs, but secrets are still plaintext at rest in the DB for M
 The subject registry preflight and transactional reload query only the
 normalized (subject type, subject ID) pairs present in the batch. They split
 large queries to stay within the database's bind parameter limit.
-For service ownership, each distinct service and host pair keeps its latest
-position in the batch. The latest candidate whose host already existed or was
+For service ownership in the Python ingest path, each distinct service and
+host pair keeps its latest position in the batch (the Rust agent walks every
+occurrence and reaches the same result). The latest candidate whose host already existed or was
 registered by that position wins. An unknown host can still fall back to an
 earlier eligible candidate.
 

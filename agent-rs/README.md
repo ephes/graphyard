@@ -358,10 +358,10 @@ identify the row by ID without exposing the stored value. The row stays due so
 an operator can repair it. SQLite query failures still fail the run.
 
 A claim, renewal or completion store error stops later specs in the batch.
-After a committed completion or a schedule overflow, the agent tries to write
-a degraded `metric_collectors` heartbeat with `partial: 1` in its details. The
-counters cover completions and schedule failures observed before the store
-error. A fixed batch error precedes the usual spec diagnostics. The partial
+After a committed completion, a schedule overflow or a due row with unreadable
+stored metadata, the agent tries to write a degraded `metric_collectors`
+heartbeat with `partial: 1` in its details. The counters cover completions and
+failures observed before the store error. A fixed batch error precedes the usual spec diagnostics. The partial
 heartbeat preserves `last_success`. If the store error occurs before any
 counted outcome, the heartbeat is untouched. The run reports the original
 store error even if the heartbeat write fails.

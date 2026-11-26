@@ -2740,7 +2740,7 @@ def _load_registry_subjects(
     # Reserve one bind parameter for each possible type in a chunk.
     type_count = len({subject_type for subject_type, _ in subjects})
     result = {}
-    for pairs in batched(subjects, min(param_limit, 1000) - type_count):
+    for pairs in batched(subjects, max(min(param_limit, 1000) - type_count, 1)):
         ids_by_type: dict[str, list[str]] = {}
         for subject_type, subject_id in pairs:
             ids_by_type.setdefault(subject_type, []).append(subject_id)
