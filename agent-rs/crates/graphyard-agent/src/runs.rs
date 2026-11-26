@@ -499,23 +499,40 @@ pub(crate) async fn run_conditions_until_shutdown<S: ConditionSamples, C: Clock>
         return Ok(ConditionEvaluationRun::default());
     }
     let conditions = match condition_id.map(i64::try_from) {
-        None => store.load_conditions(None).await?,
-        Some(Ok(id)) => store.load_conditions(Some(id)).await?,
+        None => store.load_condition_sweep().await?,
+        Some(Ok(id)) => store
+            .load_conditions(Some(id))
+            .await?
+            .into_iter()
+            .map(Ok)
+            .collect(),
         // `filter(id=...)` with a value outside the 64-bit range of the
         // `BigAutoField` is Django's empty result: no query, no rows.
         Some(Err(_)) => Vec::new(),
     };
     let mut run = ConditionEvaluationRun::default();
     let mut partial = false;
-    for condition in &conditions {
+    for condition in conditions {
         if stopping.get() {
             partial = true;
             break;
         }
         run.total += 1;
+        let condition = match condition {
+            Ok(condition) => condition,
+            Err(unreadable) => {
+                run.failed += 1;
+                log::error!(
+                    "Condition failure condition_id={} stage=admission category={} failure_published=false",
+                    unreadable.id,
+                    unreadable.error.python_class()
+                );
+                continue;
+            }
+        };
         let attempted_at = clock.now();
         let (stage, saved) =
-            match evaluate(condition, samples, attempted_at, stale_warning_seconds).await {
+            match evaluate(&condition, samples, attempted_at, stale_warning_seconds).await {
                 Ok(evaluation) => (
                     "publication",
                     store

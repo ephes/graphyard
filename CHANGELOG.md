@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+- List conditions in the shadow-run preparation scan that Python evaluates
+  and the Rust agent skips: an enable flag other than `1`.
+
+- Borrow dimension names and values from samples when grouping Rust
+  condition series.
+
+- Reuse one borrowed Rust breach window and continuity check for both
+  condition thresholds.
+
+- Require the exact stored enable flag `1` for Rust condition sweeps,
+  targeted evaluations and publication.
+
+- Continue Rust condition sweeps past unreadable stored rows and count them
+  in the heartbeat. Targeted runs report the selected row's read error.
+
 - List collectors in the shadow-run preparation scan that Python runs and the
   Rust agent refuses: an enable flag other than `1` or a config over 1 MiB.
 

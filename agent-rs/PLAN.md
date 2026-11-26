@@ -385,6 +385,16 @@ that differs is a bug.
   disabled or outside the 64-bit range) exits 1 with stderr
   `CommandError: No matching enabled condition.`; Python prints
   `Condition evaluation completed (0).` and exits 0 (section 11.4).
+  Rust condition sweeps, targeted evaluations and publication also take
+  only the stored enable flag `1`: a truthy `enabled = 2` that Python's
+  `WHERE enabled` still evaluates is skipped by a sweep, and
+  `--condition-id` on it exits 1 like an id that selects nothing. In a
+  Rust condition sweep, a stored row that cannot be decoded counts as one
+  failed condition (stage `admission`, ID-only log line, row left
+  unchanged) and the other rows are still evaluated, ending in a warning
+  heartbeat; Python's bulk load fails the whole sweep. A targeted
+  `--condition-id` on such a row still fails with one stderr line and no
+  heartbeat.
 
 ---
 
@@ -898,15 +908,17 @@ statement or transaction short) and closes the connection.
   seven scalars), then Django's `datetime_re`, then
   `convert_datetimefield_value` (naive is UTC). Text neither accepts loads as
   NULL; text `datetime_re` matches with out-of-range fields (`2026-13-01
-  00:00:00`) raises `ValueError`, which fails the whole load of specs or
-  conditions (P2 message) as in Python. Writing a loaded value back (the
+  00:00:00`) raises `ValueError` (P2 message). Rust condition sweeps count
+  unreadable rows individually; a targeted condition read returns the
+  conversion error. Writing a loaded value back (the
   heartbeat's `last_success`, 5.4) uses the UTC text and raises
   `OverflowError: date value out of range` outside Python's years 1–9999.
   Pinned by `datetime_codec.json` (curated plus a seeded random corpus).
 - Booleans: written `0/1`; read through Django's `bool` converter
   `b"1".__eq__` on the raw bytes of the value's text form (no UTF-8
-  decoding), so only a stored `1` loads as true. `WHERE enabled` still
-  selects any truthy value (a stored `2` is loaded, with `enabled` false).
+  decoding), so only a stored `1` loads as true. Rust uses that same check
+  for condition selection and publication. Django's `WHERE enabled` selects
+  any truthy value, including a stored `2` that decodes as false.
 - `pipeline_heartbeat.details`: `json.dumps` default separators and
   `ensure_ascii` (`{"evaluated": 2, "failed": 0}`), key order as in 3.4/3.5.
 - `last_value` REAL (NaN is stored as NULL by SQLite in both); `next_run_time`
@@ -1453,6 +1465,10 @@ carry allowance). One series → its result. Several → worst status, ties by
 oldest latest sample then lexicographically smallest structural series key;
 `ok` reports the newest series value (largest structural key at equal time) with
 ` (<n> series)`; otherwise ` [series: <label>] (<k> of <n> series not OK)`.
+Rust borrows dimension names and values from the samples when building the
+structural grouping keys. It also borrows the sorted breach window and checks
+its carry and continuity once per series before comparing the configured
+thresholds in severity order.
 Only the selected diagnostic label is built, visiting present dimensions once.
 Labels JSON-quote dimension/tag names and values, keep Unicode readable, and
 render missing values as `null` rather than the quoted empty string. Display

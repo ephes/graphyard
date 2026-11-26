@@ -45,78 +45,79 @@ const SELECT_CONDITIONS: &str = "SELECT id, name, CAST(enabled AS TEXT), metric_
      CAST(alert_when_stale AS TEXT), status, message, last_value, CAST(last_evaluated AS TEXT), \
      CAST(created_at AS TEXT), CAST(updated_at AS TEXT) FROM condition_definition";
 
-/// The raw row: the datetime columns follow as text, converted after the
-/// query (a conversion error fails the load).
-struct RawCondition {
-    row: ConditionRow,
-    last_evaluated: Option<String>,
-    created_at: Option<String>,
-    updated_at: Option<String>,
+// Match the stored value accepted by bool_column, including on publication.
+const CONDITION_ENABLED: &str = "CAST(enabled AS TEXT) COLLATE BINARY = '1'";
+
+/// A row whose stored fields could not be decoded.
+#[derive(Debug)]
+pub struct UnreadableCondition {
+    pub id: i64,
+    pub error: StoreError,
 }
 
-fn raw_condition(row: &rusqlite::Row<'_>) -> rusqlite::Result<RawCondition> {
-    Ok(RawCondition {
-        row: ConditionRow {
-            id: row.get(0)?,
-            name: row.get(1)?,
-            enabled: bool_column(row, 2)?,
-            metric_name: row.get(3)?,
-            host_filter: row.get(4)?,
-            service_filter: row.get(5)?,
-            subject_type_filter: row.get(6)?,
-            subject_id_filter: row.get(7)?,
-            tags_filter: row.get(8)?,
-            operator: row.get(9)?,
-            warning_threshold: row.get(10)?,
-            critical_threshold: row.get(11)?,
-            window_minutes: row.get(12)?,
-            breach_minutes: row.get(13)?,
-            stale_after_seconds: row.get(14)?,
-            alert_when_stale: bool_column(row, 15)?,
-            status: row.get(16)?,
-            message: row.get(17)?,
-            last_value: row.get(18)?,
-            last_evaluated: None,
-            created_at: None,
-            updated_at: None,
-        },
-        last_evaluated: row.get(19)?,
-        created_at: row.get(20)?,
-        updated_at: row.get(21)?,
+fn decode_condition(row: &rusqlite::Row<'_>, id: i64) -> Result<ConditionRow, StoreError> {
+    Ok(ConditionRow {
+        id,
+        name: row.get(1)?,
+        enabled: bool_column(row, 2)?,
+        metric_name: row.get(3)?,
+        host_filter: row.get(4)?,
+        service_filter: row.get(5)?,
+        subject_type_filter: row.get(6)?,
+        subject_id_filter: row.get(7)?,
+        tags_filter: row.get(8)?,
+        operator: row.get(9)?,
+        warning_threshold: row.get(10)?,
+        critical_threshold: row.get(11)?,
+        window_minutes: row.get(12)?,
+        breach_minutes: row.get(13)?,
+        stale_after_seconds: row.get(14)?,
+        alert_when_stale: bool_column(row, 15)?,
+        status: row.get(16)?,
+        message: row.get(17)?,
+        last_value: row.get(18)?,
+        last_evaluated: datetime_column(row.get::<_, Option<String>>(19)?.as_deref())?,
+        created_at: datetime_column(row.get::<_, Option<String>>(20)?.as_deref())?,
+        updated_at: datetime_column(row.get::<_, Option<String>>(21)?.as_deref())?,
     })
 }
 
-/// `ConditionDefinition.objects.filter(enabled=True)` (plus
-/// `id=condition_id`) in primary key order, every row converted.
-pub(crate) fn load_conditions(
+fn query_conditions(
+    connection: &Connection,
+    condition_id: Option<i64>,
+) -> Result<Vec<Result<ConditionRow, UnreadableCondition>>, StoreError> {
+    let mut statement;
+    let mut rows = match condition_id {
+        None => {
+            statement = connection.prepare(&format!(
+                "{SELECT_CONDITIONS} WHERE {CONDITION_ENABLED} ORDER BY id ASC"
+            ))?;
+            statement.query([])?
+        }
+        Some(id) => {
+            statement = connection.prepare(&format!(
+                "{SELECT_CONDITIONS} WHERE {CONDITION_ENABLED} AND id = ?"
+            ))?;
+            statement.query([id])?
+        }
+    };
+    let mut conditions = Vec::new();
+    // Stepping the statement can fail independently of decoding a stored row.
+    while let Some(row) = rows.next()? {
+        let id = row.get(0)?;
+        conditions
+            .push(decode_condition(row, id).map_err(|error| UnreadableCondition { id, error }));
+    }
+    Ok(conditions)
+}
+
+fn load_conditions(
     connection: &Connection,
     condition_id: Option<i64>,
 ) -> Result<Vec<ConditionRow>, StoreError> {
-    let raw: Vec<RawCondition> = match condition_id {
-        None => {
-            let mut statement = connection.prepare(&format!(
-                "{SELECT_CONDITIONS} WHERE enabled ORDER BY id ASC"
-            ))?;
-            statement
-                .query_map([], raw_condition)?
-                .collect::<rusqlite::Result<_>>()?
-        }
-        Some(id) => {
-            let mut statement =
-                connection.prepare(&format!("{SELECT_CONDITIONS} WHERE enabled AND id = ?"))?;
-            statement
-                .query_map([id], raw_condition)?
-                .collect::<rusqlite::Result<_>>()?
-        }
-    };
-    raw.into_iter()
-        .map(|raw| {
-            let mut row = raw.row;
-            row.last_evaluated = datetime_column(raw.last_evaluated.as_deref())?;
-            row.created_at = datetime_column(raw.created_at.as_deref())?;
-            row.updated_at = datetime_column(raw.updated_at.as_deref())?;
-            Ok(row)
-        })
+    query_conditions(connection, condition_id)?
+        .into_iter()
+        .map(|result| result.map_err(|unreadable| unreadable.error))
         .collect()
 }
 
@@ -183,6 +184,18 @@ fn can_publish(
 }
 
 impl Store {
+    /// Load eligible conditions in primary key order, with unreadable rows
+    /// reported individually.
+    ///
+    /// # Errors
+    /// Store and query failures.
+    pub async fn load_condition_sweep(
+        &self,
+    ) -> Result<Vec<Result<ConditionRow, UnreadableCondition>>, StoreError> {
+        self.call(|connection| query_conditions(connection, None))
+            .await
+    }
+
     /// Load the enabled conditions in primary key order; with `condition_id`,
     /// only that one (`evaluate_conditions_once(condition_id=...)`).
     ///

@@ -385,15 +385,20 @@ graphyard-agent evaluate-conditions --condition-id 7 --db db.sqlite3   # only co
 
 The port of `manage.py evaluate_conditions` (PLAN.md 11.4): one conditions
 run evaluates the enabled conditions in primary key order, or only the enabled
-condition with the given id, and publishes each condition result.
+condition with the given id, and publishes each condition result. Rust
+requires the stored enable flag to decode as true (the exact value `1`) when
+selecting conditions and when checking eligibility before publication.
 Only full runs update the global `condition_evaluator` heartbeat. Targeted
 runs leave it untouched. A missing, disabled or out-of-range ID prints
 `CommandError: No matching enabled condition.` to stderr and exits 1.
 A matching run reports `Condition evaluation completed (<total>).` on stdout and
 exits 0, or reports `Condition evaluation completed with failures
 (<failed>/<total>).`, stderr `CommandError: <failed> condition evaluation(s)
-failed.` and exit 1. A failure outside a condition (loading the conditions,
-the heartbeat) exits 1 with one stderr line `Condition
+failed.` and exit 1. The Rust sweep counts each unreadable stored condition
+as one failure and continues evaluating readable rows. It logs the numeric
+ID and error category and leaves the unreadable row untouched. A targeted
+run returns the selected row's read error. A query, database or heartbeat
+failure outside a condition exits 1 with one stderr line `Condition
 evaluation failed: <class>: <error>` where Python prints a traceback; a
 missing database or a failed schema check exits 1 as at the agent's startup
 (D-2); a usage error exits 2. `--condition-id` is Python's `int()` like the

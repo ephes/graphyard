@@ -276,6 +276,30 @@ fn fresh(value: f64) -> Vec<MetricSample> {
 }
 
 #[test]
+fn warning_fallback_checks_dense_window_continuity_once() {
+    let samples: Vec<_> = (0..=300)
+        .rev()
+        .map(|seconds| {
+            MetricSample::new(
+                now() - Duration::from_secs(seconds),
+                74.0,
+                "homeassistant",
+                "ha.sensor.office_humidity",
+                None,
+            )
+        })
+        .collect();
+    CARRY_CHECKS.with(|count| count.set(0));
+
+    let result = evaluate_samples(&humidity_rule(), &samples, now(), &BigInt::from(60)).unwrap();
+
+    assert_eq!(result.status, StatusLevel::Warning);
+    assert_eq!(result.last_value, Some(74.0));
+    // One check per adjacent gap, plus the carry from the final point to now.
+    assert_eq!(CARRY_CHECKS.with(|count| count.get()), samples.len());
+}
+
+#[test]
 fn invalid_durations_fail_before_source_entry() {
     for breach_minutes in [0, -1, 10081, 2_147_483_647, i64::MAX] {
         let rule = ConditionRule {
@@ -420,6 +444,45 @@ fn injective_series_ties_match_in_both_orders() {
     assert_eq!(cases.len(), 20);
     for case in cases {
         assert_case(case);
+    }
+}
+
+#[test]
+fn repeated_series_borrow_tag_storage_and_preserve_structural_ties() {
+    let mut samples = fresh(73.0);
+    let mut empty_zone = fresh(74.0);
+    for sample in &mut empty_zone {
+        sample.tags.insert("zone".into(), String::new());
+    }
+    samples.extend(empty_zone);
+    for (i, sample) in samples.iter_mut().enumerate() {
+        sample.tags.insert("host".into(), format!("ignored-{i}"));
+        sample.subject_id = Some(String::new());
+        sample.tags.insert("subject_id".into(), "legacy".into());
+    }
+
+    let result = evaluate_samples(&humidity_rule(), &samples, now(), &BigInt::from(60)).unwrap();
+    assert_eq!(result.status, StatusLevel::Warning);
+    assert_eq!(result.last_value, Some(73.0));
+    assert!(
+        result
+            .message
+            .ends_with(r#"[series: "zone"=null] (2 of 2 series not OK)"#)
+    );
+    samples.reverse();
+    assert_eq!(
+        result,
+        evaluate_samples(&humidity_rule(), &samples, now(), &BigInt::from(60)).unwrap()
+    );
+
+    for sample in &samples {
+        let key = series_key(sample);
+        assert_eq!(dimension(&key, "host"), Some("homeassistant"));
+        let (stored_name, stored_value) = sample.tags.get_key_value("subject_id").unwrap();
+        let (name, value) = key.iter().find(|(name, _)| *name == "subject_id").unwrap();
+        assert_eq!(dimension(&key, "subject_id"), Some("legacy"));
+        assert_eq!(name.as_ptr(), stored_name.as_ptr());
+        assert_eq!(value.as_ptr(), stored_value.as_ptr());
     }
 }
 

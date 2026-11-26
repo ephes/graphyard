@@ -264,6 +264,33 @@ def test_prepare_lists_collectors_that_only_python_runs(tmp_path, capsys):
     ]
 
 
+def test_prepare_lists_conditions_that_only_python_evaluates(tmp_path, capsys):
+    source = tmp_path / "prod.sqlite3"
+    connection = _database(source)
+    # D-15: raw SQL past Django's conversion (a legacy import).
+    connection.execute(
+        "UPDATE condition_definition SET enabled = 2 WHERE name = 'disk'"
+    )
+    connection.commit()
+    connection.close()
+    shadow = _shadow_dir(tmp_path)
+    assert prepare.main(["--source", str(source), "--shadow-dir", str(shadow)]) == 2
+    meta = json.loads((shadow / "shadow.json").read_text())
+    # Python's ``WHERE enabled`` still counts the row.
+    assert meta["enabled_conditions"] == 1
+    assert [
+        (f["table"], f["name"], f["column"], f["issue"]) for f in meta["findings"]
+    ] == [
+        (
+            "condition_definition",
+            "disk",
+            "enabled",
+            "enable flag '2': Python evaluates the condition, "
+            "Rust only the flag '1' (D-15)",
+        )
+    ]
+
+
 def test_prepare_succeeds_on_a_clean_database(tmp_path, capsys):
     source = tmp_path / "prod.sqlite3"
     _database(source).close()
