@@ -1,7 +1,10 @@
 //! A short schedule must not expire while a collector is still live.
 mod common;
 
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::future::{Future, poll_fn};
+use std::sync::Arc;
+use std::sync::atomic::{AtomicI64, AtomicUsize, Ordering};
+use std::task::Poll;
 use std::time::Duration;
 
 use graphyard_agent::runs::{Clock, SpecExecutors, SystemClock, run_metric_specs};
@@ -37,10 +40,34 @@ impl SpecExecutors for Deferred {
         Ok(SpecOutcome::new(StatusLevel::Ok, 1, 0, ""))
     }
 }
+#[derive(Clone, Copy)]
 struct Fixed(UtcDateTime);
 impl Clock for Fixed {
     fn now(&self) -> UtcDateTime {
         self.0
+    }
+}
+
+#[derive(Clone)]
+struct AdjustableClock {
+    seconds: Arc<AtomicI64>,
+    read: Arc<Notify>,
+}
+
+impl AdjustableClock {
+    fn new(seconds: i64) -> Self {
+        Self {
+            seconds: Arc::new(AtomicI64::new(seconds)),
+            read: Arc::new(Notify::new()),
+        }
+    }
+}
+
+impl Clock for AdjustableClock {
+    fn now(&self) -> UtcDateTime {
+        let seconds = self.seconds.load(Ordering::SeqCst);
+        self.read.notify_one();
+        UtcDateTime::from_seconds(seconds)
     }
 }
 fn short_spec(db: &TestDb) {
@@ -247,6 +274,91 @@ async fn abandoned_collection_is_claimable_only_after_its_persisted_lease() {
 }
 
 #[tokio::test]
+async fn renewal_delayed_until_expiry_cancels_collection_and_leaves_the_slot_due() {
+    let db = TestDb::new();
+    short_spec(&db);
+    let store = Store::open(db.path(), &settings(&[])).unwrap();
+    let collector = Deferred::new();
+    let clock = AdjustableClock::new(100);
+    let (run, ()) = tokio::time::timeout(Duration::from_secs(9), async {
+        tokio::join!(run_metric_specs(&store, &collector, &clock, true), async {
+            collector.entered.notified().await;
+            assert_eq!(schedule(&db), 103);
+            clock.read.notified().await; // Drain the scan/claim reads.
+            let writer = db.raw();
+            writer.execute_batch("BEGIN IMMEDIATE").unwrap();
+            clock.seconds.store(101, Ordering::SeqCst);
+            clock.read.notified().await; // Renewal starts while the claim is live.
+            clock.seconds.store(103, Ordering::SeqCst);
+            writer.execute_batch("COMMIT").unwrap();
+            collector.finish.notify_one();
+        })
+    })
+    .await
+    .unwrap();
+    assert_eq!(run.unwrap().total, 0);
+    assert_eq!(schedule(&db), 103);
+    assert_eq!(db.count("pipeline_heartbeat"), 0);
+    assert_eq!(
+        run_metric_specs(&store, &collector, &clock, true)
+            .await
+            .unwrap()
+            .total,
+        1
+    );
+    assert_eq!(collector.calls.load(Ordering::SeqCst), 2);
+    store.close();
+}
+
+#[tokio::test]
+async fn completion_delayed_until_expiry_leaves_the_slot_due() {
+    let db = TestDb::new();
+    short_spec(&db);
+    let store = Store::open(db.path(), &settings(&[])).unwrap();
+    let collector = Deferred::new();
+    let clock = AdjustableClock::new(100);
+    let run = tokio::time::timeout(Duration::from_secs(9), async {
+        let pending = run_metric_specs(&store, &collector, &clock, true);
+        tokio::pin!(pending);
+        tokio::select! {
+            _ = collector.entered.notified() => {},
+            result = &mut pending => panic!("collector should be deferred: {result:?}"),
+        }
+        assert_eq!(schedule(&db), 103);
+        let writer = db.raw();
+        writer.execute_batch("BEGIN IMMEDIATE").unwrap();
+        collector.finish.notify_one();
+        // Poll the completion through submission to the blocked store.
+        assert!(
+            poll_fn(|cx| Poll::Ready(pending.as_mut().poll(cx)))
+                .await
+                .is_pending()
+        );
+        clock.seconds.store(103, Ordering::SeqCst);
+        writer.execute_batch("COMMIT").unwrap();
+        pending.await.unwrap()
+    })
+    .await
+    .unwrap();
+    assert_eq!(run.total, 0);
+    assert_eq!(schedule(&db), 103);
+    assert_eq!(
+        db.value("metric_collection_spec", "synthetic", "last_run_at"),
+        rusqlite::types::Value::Null
+    );
+    assert_eq!(db.count("pipeline_heartbeat"), 0);
+    assert_eq!(
+        run_metric_specs(&store, &collector, &clock, true)
+            .await
+            .unwrap()
+            .total,
+        1
+    );
+    assert_eq!(collector.calls.load(Ordering::SeqCst), 2);
+    store.close();
+}
+
+#[tokio::test]
 async fn renewal_and_completion_cannot_extend_or_publish_a_replacement_claim() {
     let db = TestDb::new();
     short_spec(&db);
@@ -265,14 +377,14 @@ async fn renewal_and_completion_cannot_extend_or_publish_a_replacement_claim() {
     );
     assert!(
         store
-            .renew_spec_claim(claim.clone(), 103, 104)
+            .renew_spec_claim(claim.clone(), 103, 104, || 101)
             .await
             .unwrap()
     );
     db.execute("UPDATE metric_collection_spec SET last_status = 'warning', last_error = ''");
     assert!(
         store
-            .renew_spec_claim(claim.clone(), 104, 105)
+            .renew_spec_claim(claim.clone(), 104, 105, || 102)
             .await
             .unwrap()
     );
@@ -286,7 +398,7 @@ async fn renewal_and_completion_cannot_extend_or_publish_a_replacement_claim() {
     );
     assert!(
         !store
-            .renew_spec_claim(claim.clone(), 105, 109)
+            .renew_spec_claim(claim.clone(), 105, 109, || 104)
             .await
             .unwrap()
     );
@@ -301,14 +413,20 @@ async fn renewal_and_completion_cannot_extend_or_publish_a_replacement_claim() {
                     last_error: String::new(),
                     next_run_time: 101,
                 },
-                105
+                105,
+                || 104,
             )
             .await
             .unwrap()
     );
     assert_eq!(schedule(&db), 108);
     db.execute("UPDATE metric_collection_spec SET enabled=0");
-    assert!(!other.renew_spec_claim(claim, 108, 111).await.unwrap());
+    assert!(
+        !other
+            .renew_spec_claim(claim, 108, 111, || 106)
+            .await
+            .unwrap()
+    );
     store.close();
     other.close();
 }
@@ -344,11 +462,11 @@ async fn a_truthy_but_decoded_disabled_flag_fences_lease_writes() {
     // Simulate a legacy import which changes the flag without a new revision.
     db.execute("UPDATE metric_collection_spec SET enabled = 2");
     let renewed = store
-        .renew_spec_claim(claim.clone(), 103, 104)
+        .renew_spec_claim(claim.clone(), 103, 104, || 101)
         .await
         .unwrap();
     let published = store
-        .finish_claimed_spec(claim, update, if renewed { 104 } else { 103 })
+        .finish_claimed_spec(claim, update, if renewed { 104 } else { 103 }, || 101)
         .await
         .unwrap();
     assert_eq!((admitted, renewed, published), (false, false, false));
@@ -373,11 +491,12 @@ impl SpecExecutors for Recording {
 
 /// Replaces the config (keeping the schedule) on the per-spec clock read,
 /// i.e. after the load and before the claim.
-struct EditBeforeClaim<'a> {
-    db: &'a TestDb,
-    calls: AtomicUsize,
+#[derive(Clone)]
+struct EditBeforeClaim {
+    db: Arc<TestDb>,
+    calls: Arc<AtomicUsize>,
 }
-impl Clock for EditBeforeClaim<'_> {
+impl Clock for EditBeforeClaim {
     fn now(&self) -> UtcDateTime {
         if self.calls.fetch_add(1, Ordering::SeqCst) == 1 {
             self.db.execute(
@@ -391,7 +510,7 @@ impl Clock for EditBeforeClaim<'_> {
 
 #[tokio::test]
 async fn claim_refuses_a_definition_edited_after_load() {
-    let db = TestDb::new();
+    let db = Arc::new(TestDb::new());
     insert_spec(
         &db,
         "synthetic",
@@ -401,8 +520,8 @@ async fn claim_refuses_a_definition_edited_after_load() {
     let store = Store::open(db.path(), &settings(&[])).unwrap();
     let collector = Recording(std::sync::Mutex::new(Vec::new()));
     let clock = EditBeforeClaim {
-        db: &db,
-        calls: AtomicUsize::new(0),
+        db: db.clone(),
+        calls: Arc::new(AtomicUsize::new(0)),
     };
     let stale = run_metric_specs(&store, &collector, &clock, true)
         .await
@@ -463,7 +582,7 @@ async fn edits_and_reverts_fence_claim_and_renewal() {
     edit_and_revert(&db);
     assert!(
         !store
-            .renew_spec_claim(before.clone(), 103, 104)
+            .renew_spec_claim(before.clone(), 103, 104, || 101)
             .await
             .unwrap()
     );
@@ -513,6 +632,104 @@ async fn edits_and_reverts_fence_inflight_completion() {
             1
         );
         assert_eq!(db.count("pipeline_heartbeat"), 1);
+        store.close();
+    }
+}
+
+/// Hold a read transaction until the writer is blocked on it, then pass the
+/// lease deadline and release.
+///
+/// A fresh reader is refused (SQLITE_BUSY) once the writer holds SQLite's
+/// PENDING lock. An IMMEDIATE writer takes it only at COMMIT, after reading
+/// the clock; an EXCLUSIVE writer takes it at BEGIN, before reading the clock.
+/// Either way the writer is then waiting for `reader`.
+async fn release_reader_after_expiry(
+    path: std::path::PathBuf,
+    reader: rusqlite::Connection,
+    clock: Arc<AtomicI64>,
+) {
+    let probe = rusqlite::Connection::open(path).unwrap();
+    probe.busy_timeout(Duration::ZERO).unwrap();
+    loop {
+        match probe.query_row("SELECT count(*) FROM metric_collection_spec", [], |row| {
+            row.get::<_, i64>(0)
+        }) {
+            Ok(_) => tokio::time::sleep(Duration::from_millis(5)).await,
+            Err(rusqlite::Error::SqliteFailure(error, _))
+                if error.code == rusqlite::ErrorCode::DatabaseBusy =>
+            {
+                break;
+            }
+            Err(error) => panic!("probe read failed: {error}"),
+        }
+    }
+    clock.store(103, Ordering::SeqCst);
+    reader.execute_batch("COMMIT").unwrap();
+}
+
+#[tokio::test]
+async fn a_reader_held_through_expiry_cannot_delay_a_checked_lease_write_past_the_deadline() {
+    for publish in [false, true] {
+        let db = TestDb::new();
+        short_spec(&db);
+        // A rollback journal: there a writer's COMMIT waits for readers.
+        let store = Store::open(
+            db.path(),
+            &settings(&[("GRAPHYARD_SQLITE_JOURNAL_MODE", "DELETE")]),
+        )
+        .unwrap();
+        let spec = store.load_specs(None).await.unwrap().remove(0);
+        let claim = spec.claim_identity();
+        let id = spec.id;
+        drop(spec);
+        assert!(
+            store
+                .claim_due_spec(claim.clone(), 0, 100, 103)
+                .await
+                .unwrap()
+        );
+        let reader = db.raw();
+        reader.execute_batch("BEGIN").unwrap();
+        let rows: i64 = reader
+            .query_row("SELECT count(*) FROM metric_collection_spec", [], |row| {
+                row.get(0)
+            })
+            .unwrap();
+        assert_eq!(rows, 1);
+        let clock = Arc::new(AtomicI64::new(102));
+        let read = clock.clone();
+        let now = move || read.load(Ordering::SeqCst);
+        let wrote = tokio::time::timeout(Duration::from_secs(9), async {
+            if publish {
+                let update = graphyard_store::SpecRunUpdate {
+                    id,
+                    last_run_at: UtcDateTime::from_seconds(102),
+                    last_status: StatusLevel::Ok,
+                    last_error: String::new(),
+                    next_run_time: 104,
+                };
+                tokio::join!(
+                    store.finish_claimed_spec(claim, update, 103, now),
+                    release_reader_after_expiry(db.path().to_owned(), reader, clock),
+                )
+                .0
+            } else {
+                tokio::join!(
+                    store.renew_spec_claim(claim, 103, 106, now),
+                    release_reader_after_expiry(db.path().to_owned(), reader, clock),
+                )
+                .0
+            }
+        })
+        .await
+        .unwrap()
+        .unwrap();
+        assert!(!wrote, "publish={publish}");
+        assert_eq!(schedule(&db), 103);
+        assert_eq!(
+            db.value("metric_collection_spec", "synthetic", "last_run_at"),
+            rusqlite::types::Value::Null
+        );
         store.close();
     }
 }

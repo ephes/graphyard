@@ -32,8 +32,9 @@ use graphyard_store::{
     SpecRunUpdate, Store, StoreError,
 };
 
-/// The UTC wall clock (`timezone.now()`, `datetime.now(UTC)`).
-pub trait Clock {
+/// The UTC wall clock (`timezone.now()`, `datetime.now(UTC)`). Clones read the
+/// same clock, including when the database thread checks collector leases.
+pub trait Clock: Clone + Send + 'static {
     fn now(&self) -> UtcDateTime;
 }
 
@@ -388,7 +389,10 @@ async fn run_metric_spec<E: SpecExecutors, C: Clock>(
                         .checked_add(lease_seconds)
                         .ok_or(RunError::NextRunTimeOverflow)?
                         .max(until.checked_add(1).ok_or(RunError::NextRunTimeOverflow)?);
-                    if !store.renew_spec_claim(claim.clone(), *until, renewed).await? {
+                    let lease_clock = clock.clone();
+                    if !store.renew_spec_claim(claim.clone(), *until, renewed, move || {
+                        lease_clock.now().timestamp()
+                    }).await? {
                         break None;
                     }
                     *until = renewed;
@@ -409,10 +413,17 @@ async fn run_metric_spec<E: SpecExecutors, C: Clock>(
         last_error: outcome.message.clone(),
         next_run_time,
     };
-    if !store
-        .finish_claimed_spec(claim, update, claim_until.unwrap_or(spec.next_run_time))
-        .await?
-    {
+    let published = if let Some(until) = claim_until {
+        let lease_clock = clock.clone();
+        store
+            .finish_claimed_spec(claim, update, until, move || lease_clock.now().timestamp())
+            .await?
+    } else {
+        store
+            .finish_manual_spec(claim, update, spec.next_run_time)
+            .await?
+    };
+    if !published {
         log::info!("Collection superseded spec_id={}", spec.id);
         return Ok(None);
     }

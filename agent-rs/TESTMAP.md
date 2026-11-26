@@ -335,8 +335,14 @@ All endpoints and data are synthetic; no production Influx or host is needed.
 `graphyard-agent/tests/lease.rs` defers a synthetic collector beyond a one-second
 interval, checks renewal with two stores, cancels an abandoned run and checks its
 persisted expiry, and refuses renewal/completion from a replaced or disabled
-claim. Python's existing shared fixtures still cover ordinary scheduling results;
-renewal is Rust-specific.
+claim. A synthetic clock reaches the deadline while a second SQLite connection
+holds the writer reservation. Renewal cancels the old attempt, and a fresh
+sweep claims the untouched slot. The same writer delay during due-run completion
+preserves `last_run_at`, leaves the heartbeat untouched and lets a fresh sweep
+claim the slot. In DELETE journal mode a reader holding its transaction
+through the deadline cannot make a renewal or completion that passed an earlier
+check commit after expiry. The shared Python-derived fixtures cover ordinary scheduling
+results.
 
 ## Fresh-process scheduling and publication recovery
 

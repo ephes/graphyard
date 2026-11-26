@@ -22,6 +22,7 @@ use serde_json::{Value, json};
 use common::{FakeServer, TestDb, insert_spec, settings};
 
 const START: i64 = 1_800_000_000;
+#[derive(Clone, Copy)]
 struct Fixed(i64);
 impl Clock for Fixed {
     fn now(&self) -> UtcDateTime {

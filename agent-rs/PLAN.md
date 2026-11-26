@@ -378,7 +378,9 @@ that differs is a bug.
   metadata at a fixed due cutoff and require the observed schedule and
   revision before loading each config. A definition edited and reverted
   during an attempt rejects that attempt. Python compares only the captured
-  business fields (section 3.4). An empty full condition sweep writes its
+  business fields (section 3.4). Rust requires a live lease at renewal and
+  scheduled completion, measured under an exclusive SQLite lock. An empty
+  full condition sweep writes its
   heartbeat with `no_work: 1` and without success, preserving
   `last_success`; Python marks it successful (section 3.5).
   `evaluate-conditions --condition-id` selecting no enabled row (missing,
@@ -580,19 +582,25 @@ Use the per-spec claim start time and advance the Rust claim by
 `min(max(3, interval_seconds), 300)` seconds. Renew it every one third of that
 lease while the collector/sink/registry future is live. Each renewal compares the
 exact last claim timestamp and captured name, enabled state, type, interval and
-config. Completion uses the most recent renewed timestamp and the same captured
-definition. A lost renewal cancels collection; a renewal storage error aborts the
+config. Rust reads the clock after acquiring an exclusive SQLite lock (`BEGIN
+EXCLUSIVE`; with a rollback journal an IMMEDIATE commit would wait for readers)
+for renewal and scheduled completion, and refuses either write at or after the
+captured deadline. Completion uses the most recent renewed timestamp and the
+same captured definition. An expired completion leaves the result intact and the
+slot due.
+A lost renewal cancels collection; a renewal storage error aborts the
 run. Neither publishes a healthy outcome. No database lock spans collection.
 A crash or dropped run stops renewal and becomes eligible at its last persisted
 expiry; normal success/failure schedules the regular interval from claim start.
-A process suspension or database contention delaying renewal past expiry can lose
-ownership; cancellation cannot recall accepted external writes. Since round 85
-Python uses the same lease and renewal from a background thread and refuses
+A process suspension or database contention delaying renewal to expiry leaves
+the slot due. Cancellation cannot recall accepted external writes. Since round 85
+Python renews leases from a background thread and refuses
 publication/completion after a lost renewal; never run both schedulers on the
 same specs.
 Non-due manual runs retain unconditional execution and the shared run-start
 timestamp, with completion fenced by the originally observed schedule and
-captured definition. Superseded completions are not counted. A run with no
+captured definition. The manual schedule comparison carries no lease deadline.
+Superseded completions are not counted. A run with no
 accepted completions, schedule failures or unreadable rows leaves the
 heartbeat untouched.
 
