@@ -4,6 +4,9 @@
 
 - Refuse Rust collector lease renewals at or after the persisted deadline,
   including when a SQLite writer delays renewal. Leave the expired slot due.
+  Renewal and scheduled completion take an exclusive SQLite lock before reading
+  the clock, so a reader in a rollback-journal mode cannot hold back the commit
+  until after the deadline.
 - Refuse Rust scheduled collector results at or after the persisted lease
   deadline, leaving the slot eligible for a fresh run.
 

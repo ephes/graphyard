@@ -340,7 +340,8 @@ enabled state, type, interval and stored config. Lost ownership cancels the
 collector without publishing a result or heartbeat; renewal storage errors fail
 the run. Process death or a dropped run stops renewal; recovery waits until the
 last persisted claim expires. Rust checks the deadline after obtaining the SQLite
-writer reservation for each renewal and scheduled completion. An attempt delayed
+exclusive lock for each renewal and scheduled completion, so a reader holding
+a rollback-journal lock cannot delay the commit past the deadline. An attempt delayed
 until the deadline or later leaves the slot due without updating the result or
 contributing to the heartbeat. Cancellation cannot recall a remotely
 accepted write. The Python scheduler renews from a

@@ -339,7 +339,9 @@ claim. A synthetic clock reaches the deadline while a second SQLite connection
 holds the writer reservation. Renewal cancels the old attempt, and a fresh
 sweep claims the untouched slot. The same writer delay during due-run completion
 preserves `last_run_at`, leaves the heartbeat untouched and lets a fresh sweep
-claim the slot. The shared Python-derived fixtures cover ordinary scheduling
+claim the slot. In DELETE journal mode a reader holding its transaction
+through the deadline cannot make a renewal or completion that passed an earlier
+check commit after expiry. The shared Python-derived fixtures cover ordinary scheduling
 results.
 
 ## Fresh-process scheduling and publication recovery

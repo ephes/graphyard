@@ -635,3 +635,101 @@ async fn edits_and_reverts_fence_inflight_completion() {
         store.close();
     }
 }
+
+/// Hold a read transaction until the writer is blocked on it, then pass the
+/// lease deadline and release.
+///
+/// A fresh reader is refused (SQLITE_BUSY) once the writer holds SQLite's
+/// PENDING lock. An IMMEDIATE writer takes it only at COMMIT, after reading
+/// the clock; an EXCLUSIVE writer takes it at BEGIN, before reading the clock.
+/// Either way the writer is then waiting for `reader`.
+async fn release_reader_after_expiry(
+    path: std::path::PathBuf,
+    reader: rusqlite::Connection,
+    clock: Arc<AtomicI64>,
+) {
+    let probe = rusqlite::Connection::open(path).unwrap();
+    probe.busy_timeout(Duration::ZERO).unwrap();
+    loop {
+        match probe.query_row("SELECT count(*) FROM metric_collection_spec", [], |row| {
+            row.get::<_, i64>(0)
+        }) {
+            Ok(_) => tokio::time::sleep(Duration::from_millis(5)).await,
+            Err(rusqlite::Error::SqliteFailure(error, _))
+                if error.code == rusqlite::ErrorCode::DatabaseBusy =>
+            {
+                break;
+            }
+            Err(error) => panic!("probe read failed: {error}"),
+        }
+    }
+    clock.store(103, Ordering::SeqCst);
+    reader.execute_batch("COMMIT").unwrap();
+}
+
+#[tokio::test]
+async fn a_reader_held_through_expiry_cannot_delay_a_checked_lease_write_past_the_deadline() {
+    for publish in [false, true] {
+        let db = TestDb::new();
+        short_spec(&db);
+        // A rollback journal: there a writer's COMMIT waits for readers.
+        let store = Store::open(
+            db.path(),
+            &settings(&[("GRAPHYARD_SQLITE_JOURNAL_MODE", "DELETE")]),
+        )
+        .unwrap();
+        let spec = store.load_specs(None).await.unwrap().remove(0);
+        let claim = spec.claim_identity();
+        let id = spec.id;
+        drop(spec);
+        assert!(
+            store
+                .claim_due_spec(claim.clone(), 0, 100, 103)
+                .await
+                .unwrap()
+        );
+        let reader = db.raw();
+        reader.execute_batch("BEGIN").unwrap();
+        let rows: i64 = reader
+            .query_row("SELECT count(*) FROM metric_collection_spec", [], |row| {
+                row.get(0)
+            })
+            .unwrap();
+        assert_eq!(rows, 1);
+        let clock = Arc::new(AtomicI64::new(102));
+        let read = clock.clone();
+        let now = move || read.load(Ordering::SeqCst);
+        let wrote = tokio::time::timeout(Duration::from_secs(9), async {
+            if publish {
+                let update = graphyard_store::SpecRunUpdate {
+                    id,
+                    last_run_at: UtcDateTime::from_seconds(102),
+                    last_status: StatusLevel::Ok,
+                    last_error: String::new(),
+                    next_run_time: 104,
+                };
+                tokio::join!(
+                    store.finish_claimed_spec(claim, update, 103, now),
+                    release_reader_after_expiry(db.path().to_owned(), reader, clock),
+                )
+                .0
+            } else {
+                tokio::join!(
+                    store.renew_spec_claim(claim, 103, 106, now),
+                    release_reader_after_expiry(db.path().to_owned(), reader, clock),
+                )
+                .0
+            }
+        })
+        .await
+        .unwrap()
+        .unwrap();
+        assert!(!wrote, "publish={publish}");
+        assert_eq!(schedule(&db), 103);
+        assert_eq!(
+            db.value("metric_collection_spec", "synthetic", "last_run_at"),
+            rusqlite::types::Value::Null
+        );
+        store.close();
+    }
+}

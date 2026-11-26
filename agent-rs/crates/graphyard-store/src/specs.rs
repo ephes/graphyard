@@ -480,7 +480,7 @@ impl Store {
 
     /// Extend only the exact live claim and captured definition. A stale owner
     /// cannot extend a replacement or continue work after an edit/disable.
-    /// Read `now` on the database thread after taking the writer reservation.
+    /// Read `now` on the database thread after taking the exclusive lock.
     ///
     /// # Errors
     /// SQLite errors. Expired, superseded or deleted claims return false.
@@ -492,8 +492,12 @@ impl Store {
         now: impl FnOnce() -> i64 + Send + 'static,
     ) -> Result<bool, StoreError> {
         self.call(move |connection| {
+            // EXCLUSIVE, not IMMEDIATE: in a rollback-journal mode an
+            // IMMEDIATE commit waits for readers, so the expiry check could
+            // pass before a delayed commit lands after the deadline. With
+            // EXCLUSIVE the clock is read only once commit cannot block.
             let transaction =
-                connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
+                connection.transaction_with_behavior(TransactionBehavior::Exclusive)?;
             if expected_schedule <= now() {
                 return Ok(false);
             }
@@ -522,7 +526,7 @@ impl Store {
     }
 
     /// Publish a due run only for the captured definition and live claim.
-    /// Read `now` on the database thread after taking the writer reservation.
+    /// Read `now` on the database thread after taking the exclusive lock.
     ///
     /// # Errors
     /// SQLite errors. Expired, superseded or deleted claims return false.
@@ -534,8 +538,12 @@ impl Store {
         now: impl FnOnce() -> i64 + Send + 'static,
     ) -> Result<bool, StoreError> {
         self.call(move |connection| {
+            // EXCLUSIVE, not IMMEDIATE: in a rollback-journal mode an
+            // IMMEDIATE commit waits for readers, so the expiry check could
+            // pass before a delayed commit lands after the deadline. With
+            // EXCLUSIVE the clock is read only once commit cannot block.
             let transaction =
-                connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
+                connection.transaction_with_behavior(TransactionBehavior::Exclusive)?;
             if expected_schedule <= now() {
                 return Ok(false);
             }

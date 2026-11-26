@@ -379,7 +379,7 @@ that differs is a bug.
   revision before loading each config. A definition edited and reverted
   during an attempt rejects that attempt. Python compares only the captured
   business fields (section 3.4). Rust requires a live lease at renewal and
-  scheduled completion, measured under SQLite's writer reservation. An empty
+  scheduled completion, measured under an exclusive SQLite lock. An empty
   full condition sweep writes its
   heartbeat with `no_work: 1` and without success, preserving
   `last_success`; Python marks it successful (section 3.5).
@@ -582,8 +582,9 @@ Use the per-spec claim start time and advance the Rust claim by
 `min(max(3, interval_seconds), 300)` seconds. Renew it every one third of that
 lease while the collector/sink/registry future is live. Each renewal compares the
 exact last claim timestamp and captured name, enabled state, type, interval and
-config. Rust reads the clock after acquiring the SQLite writer reservation for
-renewal and scheduled completion, and refuses either write at or after the
+config. Rust reads the clock after acquiring an exclusive SQLite lock (`BEGIN
+EXCLUSIVE`; with a rollback journal an IMMEDIATE commit would wait for readers)
+for renewal and scheduled completion, and refuses either write at or after the
 captured deadline. Completion uses the most recent renewed timestamp and the
 same captured definition. An expired completion leaves the result intact and the
 slot due.
