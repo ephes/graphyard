@@ -235,12 +235,12 @@ pub(crate) async fn run_metric_specs_until_shutdown<E: SpecExecutors, C: Clock>(
         let spec = match next {
             Ok(Some(Ok(spec))) => spec,
             Ok(Some(Err(PendingSpecIssue::Superseded))) => continue,
-            Ok(Some(Err(PendingSpecIssue::Invalid { id }))) => {
-                log::error!("Invalid stored collector metadata spec_id={id}");
+            Ok(Some(Err(PendingSpecIssue::Invalid { id, reason }))) => {
+                log::error!("Collector admission failed spec_id={id}: {reason}");
                 run.total += 1;
                 run.failed += 1;
                 if errors.len() < MAX_HEARTBEAT_ERRORS {
-                    errors.push(format!("spec_id={id}: invalid stored collector metadata"));
+                    errors.push(format!("spec_id={id}: {reason}"));
                 }
                 continue;
             }

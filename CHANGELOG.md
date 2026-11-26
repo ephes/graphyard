@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Refuse Rust due collector configs over 1 MiB before loading their contents.
+  Count the refused row in the heartbeat and continue with later collectors.
+
 - Keep one candidate per service and host in Python registry planning,
   preserving last eligible host selection in metric batches.
 

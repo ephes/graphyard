@@ -326,7 +326,11 @@ diagnostic with the spec ID among its five samples.
 
 Rust due-only metric runs page through lightweight candidates in name order
 using the sweep's starting time as the due cutoff. Each candidate's schedule
-and definition revision must still match before Rust loads its config. The
+and definition revision must still match before Rust loads its config. SQLite
+refuses stored configs over 1 MiB before returning the value. The ceiling
+applies to collector settings such as selectors and tag mappings. It is separate
+from limits on collected response bodies. An oversized config counts as a
+failed spec, leaves the row due for repair and allows later specs to run. The
 claim then compares the loaded definition, including the config, before
 invoking the collector. Claims use a 3–300 second lease (the clamped interval), renewed every one third
 of that duration until the complete collector/sink/registry future returns.
