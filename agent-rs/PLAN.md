@@ -396,7 +396,10 @@ that differs is a bug.
   unchanged) and the other rows are still evaluated, ending in a warning
   heartbeat; Python's bulk load fails the whole sweep. A targeted
   `--condition-id` on such a row still fails with one stderr line and no
-  heartbeat.
+  heartbeat. Rust manual collector runs read enabled configs in pages of 16
+  in `(name, id)` order instead of Python's single load at the start, so a
+  spec renamed across the cursor during the run can be skipped or run twice
+  (section 3.4, step 3).
 
 ---
 

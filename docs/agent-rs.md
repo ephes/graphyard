@@ -224,7 +224,7 @@ agreed with the coordinator first (PLAN.md 8.4).
    and conditions) and lists rows on which the two implementations would
    disagree (D-11 documents, D-13 storage classes, D-15 collectors with an
    enable flag other than `1` or a config over 1 MiB and conditions with an
-   enable flag other than `1`); exit 2 means "look at
+   enable flag other than `1` or a tag filter over 1 MiB); exit 2 means "look at
    them before starting". `--disable-spec NAME` disables a spec in the copy
    only (for example UniFi when the controller limits logins, R6).
 
