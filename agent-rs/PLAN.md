@@ -906,8 +906,9 @@ statement or transaction short) and closes the connection.
   Pinned by `datetime_codec.json` (curated plus a seeded random corpus).
 - Booleans: written `0/1`; read through Django's `bool` converter
   `b"1".__eq__` on the raw bytes of the value's text form (no UTF-8
-  decoding), so only a stored `1` loads as true. `WHERE enabled` still
-  selects any truthy value (a stored `2` is loaded, with `enabled` false).
+  decoding), so only a stored `1` loads as true. Rust uses that same check
+  for condition selection and publication. Django's `WHERE enabled` selects
+  any truthy value, including a stored `2` that decodes as false.
 - `pipeline_heartbeat.details`: `json.dumps` default separators and
   `ensure_ascii` (`{"evaluated": 2, "failed": 0}`), key order as in 3.4/3.5.
 - `last_value` REAL (NaN is stored as NULL by SQLite in both); `next_run_time`

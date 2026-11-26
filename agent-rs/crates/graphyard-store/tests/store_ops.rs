@@ -1,7 +1,8 @@
 //! Store operations against `fixtures/store_ops.json` (built by
 //! `fixtures/gen_store.py` from the Django ORM calls; PLAN.md 5.3, 5.4,
 //! 5.5): the same starting rows, the same operation, identical row images
-//! afterwards and the same loaded values or exception. The registry
+//! afterwards and the same loaded values or exception. Rust condition
+//! selection also excludes truthy flags Django decodes as false. The registry
 //! statement sequences are checked by the unit tests of `src/registry`.
 
 mod common;
@@ -151,8 +152,15 @@ fn condition_values(condition: &ConditionRow) -> Value {
 
 /// Compare loaded values; numbers by value (Python writes `3.0` for a
 /// float, serde `3.0` too, but `0.8` may print differently).
-fn assert_loaded(actual: &[Value], expected: &Value, context: &str) {
-    let expected = expected.as_array().unwrap();
+fn assert_loaded(actual: &[Value], case: &Value, context: &str) {
+    let condition_load = case["op"]["kind"] == "load_conditions";
+    // Django's SQL truthiness can select conditions its converter marks disabled.
+    let expected: Vec<_> = case["loaded"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|row| !condition_load || row["enabled"] == true)
+        .collect();
     assert_eq!(actual.len(), expected.len(), "{context}: loaded rows");
     for (row, expected_row) in actual.iter().zip(expected) {
         let expected_row = expected_row.as_object().unwrap();
@@ -306,7 +314,7 @@ async fn run_case(case: &Value) {
     match (result, case.get("error")) {
         (Ok(loaded), None) => {
             if let Some(loaded) = loaded {
-                assert_loaded(&loaded, &case["loaded"], name);
+                assert_loaded(&loaded, case, name);
             } else {
                 assert!(case.get("loaded").is_none(), "{name}: expected loaded rows");
             }
@@ -454,6 +462,7 @@ async fn condition_definition_edits_fence_successes_and_failures() {
         "warning_threshold = 12345",
         "tags_filter = '{\"synthetic\": \"changed\"}'",
         "enabled = 0",
+        "enabled = 2, window_minutes = 'invalid'",
     ] {
         for failure in [false, true] {
             let db = TestDb::new();

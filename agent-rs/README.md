@@ -385,7 +385,9 @@ graphyard-agent evaluate-conditions --condition-id 7 --db db.sqlite3   # only co
 
 The port of `manage.py evaluate_conditions` (PLAN.md 11.4): one conditions
 run evaluates the enabled conditions in primary key order, or only the enabled
-condition with the given id, and publishes each condition result.
+condition with the given id, and publishes each condition result. Rust
+requires the stored enable flag to decode as true (the exact value `1`) when
+selecting conditions and when checking eligibility before publication.
 Only full runs update the global `condition_evaluator` heartbeat. Targeted
 runs leave it untouched. A missing, disabled or out-of-range ID prints
 `CommandError: No matching enabled condition.` to stderr and exits 1.

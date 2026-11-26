@@ -188,6 +188,36 @@ fn condition_id_evaluates_only_that_condition() {
 }
 
 #[test]
+fn only_the_exact_enabled_flag_admits_conditions() {
+    let server = FakeServer::start();
+    let db = TestDb::new();
+    condition(&db, 1, "legacy flag", true);
+    condition(&db, 2, "enabled", true);
+    db.execute("UPDATE condition_definition SET enabled = 2 WHERE id = 1");
+    let env = influx_env(&server);
+
+    let targeted = evaluate(&db, &["--condition-id", "1"], &pairs(&env));
+    let sweep = evaluate(&db, &[], &pairs(&env));
+    assert_eq!(targeted.status.code(), Some(1), "{targeted:?}");
+    assert_eq!(
+        text(&targeted.stderr),
+        "CommandError: No matching enabled condition.\n"
+    );
+    assert_eq!(sweep.status.code(), Some(0), "{sweep:?}");
+    assert_eq!(text(&sweep.stdout), "Condition evaluation completed (1).\n");
+    assert_eq!(server.requests(), ["POST /api/v2/query?org=o"]);
+    assert_eq!(
+        db.text("condition_definition", "legacy flag", "message"),
+        ""
+    );
+    assert_eq!(
+        db.text("condition_definition", "enabled", "message"),
+        "No samples available in condition window"
+    );
+    assert_eq!(heartbeat_details(&db), r#"{"evaluated": 1, "failed": 0}"#);
+}
+
+#[test]
 fn agent_records_empty_sweeps_as_liveness_without_advancing_success() {
     let server = FakeServer::start();
     let db = TestDb::new();

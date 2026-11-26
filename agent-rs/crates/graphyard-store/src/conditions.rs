@@ -45,6 +45,9 @@ const SELECT_CONDITIONS: &str = "SELECT id, name, CAST(enabled AS TEXT), metric_
      CAST(alert_when_stale AS TEXT), status, message, last_value, CAST(last_evaluated AS TEXT), \
      CAST(created_at AS TEXT), CAST(updated_at AS TEXT) FROM condition_definition";
 
+// Match the stored value accepted by bool_column, including on publication.
+const CONDITION_ENABLED: &str = "CAST(enabled AS TEXT) COLLATE BINARY = '1'";
+
 /// A row whose stored fields could not be decoded.
 #[derive(Debug)]
 pub struct UnreadableCondition {
@@ -87,13 +90,14 @@ fn query_conditions(
     let mut rows = match condition_id {
         None => {
             statement = connection.prepare(&format!(
-                "{SELECT_CONDITIONS} WHERE enabled ORDER BY id ASC"
+                "{SELECT_CONDITIONS} WHERE {CONDITION_ENABLED} ORDER BY id ASC"
             ))?;
             statement.query([])?
         }
         Some(id) => {
-            statement =
-                connection.prepare(&format!("{SELECT_CONDITIONS} WHERE enabled AND id = ?"))?;
+            statement = connection.prepare(&format!(
+                "{SELECT_CONDITIONS} WHERE {CONDITION_ENABLED} AND id = ?"
+            ))?;
             statement.query([id])?
         }
     };

@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Require the exact stored enable flag `1` for Rust condition sweeps,
+  targeted evaluations and publication.
+
 - Continue Rust condition sweeps past unreadable stored rows and count them
   in the heartbeat. Targeted runs report the selected row's read error.
 
