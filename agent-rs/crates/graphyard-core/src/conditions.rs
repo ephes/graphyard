@@ -395,32 +395,35 @@ fn evaluate_series(
         });
     }
 
-    for (status, threshold) in [
-        (StatusLevel::Critical, rule.critical_threshold),
-        (StatusLevel::Warning, rule.warning_threshold),
-    ] {
-        let Some(threshold) = threshold else {
-            continue;
-        };
-        if is_breached_for_duration(
-            series,
-            &rule.operator,
-            threshold,
-            rule.breach_minutes,
-            now,
-            stale_warning_seconds,
-        )? {
-            return Ok((
-                status,
-                format!(
-                    "{} {} {} for {}m",
-                    rule.metric_name,
-                    rule.operator,
-                    py_float_repr(threshold),
-                    rule.breach_minutes
-                ),
-                latest.value,
-            ));
+    if rule.critical_threshold.is_some() || rule.warning_threshold.is_some() {
+        let operator = ComparisonOperator::parse(&rule.operator)
+            .ok_or_else(|| PyError::key_error(&rule.operator))?;
+        let window =
+            continuous_breach_window(series, rule.breach_minutes, now, stale_warning_seconds)?;
+        for (status, threshold) in [
+            (StatusLevel::Critical, rule.critical_threshold),
+            (StatusLevel::Warning, rule.warning_threshold),
+        ] {
+            let Some(threshold) = threshold else {
+                continue;
+            };
+            if window.is_some_and(|points| {
+                points
+                    .iter()
+                    .all(|point| operator.compare(point.value, threshold))
+            }) {
+                return Ok((
+                    status,
+                    format!(
+                        "{} {} {} for {}m",
+                        rule.metric_name,
+                        rule.operator,
+                        py_float_repr(threshold),
+                        rule.breach_minutes
+                    ),
+                    latest.value,
+                ));
+            }
         }
     }
     Ok((
@@ -430,81 +433,47 @@ fn evaluate_series(
     ))
 }
 
-/// `_is_breached_for_duration(values, operator, threshold, breach_minutes,
-/// now, max_carry_seconds=settings.CONDITION_DATA_STALE_WARNING_SECONDS)`.
-///
-/// The breach window is `[now - breach_minutes, now]`. The last sample
-/// before it (the anchor) covers the window start if its carry lifetime
-/// reaches the first in-window sample (or now) and no sample lies exactly
-/// at the start. The anchor and every in-window sample must breach.
-/// Adjacent gaps and the final carry must fit `max_carry_seconds`.
-/// Without a usable anchor, the first in-window sample must lie within
-/// one minute of the window start.
-fn is_breached_for_duration(
-    values: &[Point],
-    operator: &str,
-    threshold: f64,
+/// Select a continuous slice of the sorted query result for threshold checks.
+/// A sample at the window start takes precedence over the last earlier
+/// sample (the anchor). Without a usable anchor, the first in-window
+/// sample must lie within one minute of the window start.
+fn continuous_breach_window<'a>(
+    values: &'a [Point],
     breach_minutes: i64,
     now: i64,
     max_carry_seconds: &BigInt,
-) -> Result<bool, PyError> {
-    if values.is_empty() {
-        return Ok(false);
-    }
-    let operator =
-        ComparisonOperator::parse(operator).ok_or_else(|| PyError::key_error(operator))?;
+) -> Result<Option<&'a [Point]>, PyError> {
     let window_start = py_datetime_add(now, -py_timedelta_minutes(breach_minutes)?)?;
-    let window_values: Vec<Point> = values
-        .iter()
-        .copied()
-        .filter(|point| point.ts >= window_start)
-        .collect();
-
-    let covers_start = window_values
-        .first()
-        .is_some_and(|point| point.ts == window_start);
-    let anchor = if covers_start {
-        None
-    } else {
-        values
-            .iter()
-            .rev()
-            .find(|point| point.ts < window_start)
-            .copied()
-            .filter(|candidate| {
-                total_seconds_at_most(
-                    micros_between(
-                        window_values.first().map_or(now, |point| point.ts),
-                        candidate.ts,
-                    ),
-                    max_carry_seconds,
-                )
-            })
-    };
-
-    let mut evaluated = window_values;
-    if let Some(anchor) = anchor {
-        evaluated.insert(0, anchor);
-    } else {
-        let Some(first) = evaluated.first() else {
-            return Ok(false);
+    let start = values.partition_point(|point| point.ts < window_start);
+    let (before, window) = values.split_at(start);
+    let covers_start = window.first().is_some_and(|point| point.ts == window_start);
+    let anchor = before.last().filter(|candidate| {
+        !covers_start
+            && total_seconds_at_most(
+                micros_between(window.first().map_or(now, |point| point.ts), candidate.ts),
+                max_carry_seconds,
+            )
+    });
+    if anchor.is_none() {
+        let Some(first) = window.first() else {
+            return Ok(None);
         };
         let grace_start = py_datetime_add(window_start, py_timedelta_minutes(1)?)?;
         if first.ts > grace_start {
-            return Ok(false);
+            return Ok(None);
         }
     }
-    if evaluated.windows(2).any(|pair| {
+
+    // Anchor admission already checked the carry to the first point (or now).
+    if window.windows(2).any(|pair| {
         !total_seconds_at_most(micros_between(pair[1].ts, pair[0].ts), max_carry_seconds)
-    }) || !total_seconds_at_most(
-        micros_between(now, evaluated.last().expect("nonempty window").ts),
-        max_carry_seconds,
-    ) {
-        return Ok(false);
+    }) || window
+        .last()
+        .is_some_and(|last| !total_seconds_at_most(micros_between(now, last.ts), max_carry_seconds))
+    {
+        return Ok(None);
     }
-    Ok(evaluated
-        .iter()
-        .all(|point| operator.compare(point.value, threshold)))
+    Ok(Some(&values[start - usize::from(anchor.is_some())..]))
 }
 
 /// `later - earlier` in microseconds. Both come from Python-range datetimes
@@ -513,10 +482,15 @@ fn micros_between(later: i64, earlier: i64) -> i64 {
     later.saturating_sub(earlier)
 }
 
+#[cfg(test)]
+thread_local! { static CARRY_CHECKS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) }; }
+
 /// `timedelta.total_seconds() <= limit` with Python's exact float/int
 /// comparison: for a float `x` and an integer `n`, `x <= n` exactly when
 /// `ceil(x) <= n`.
 fn total_seconds_at_most(micros: i64, limit: &BigInt) -> bool {
+    #[cfg(test)]
+    CARRY_CHECKS.with(|count| count.set(count.get() + 1));
     // |total_seconds| < 2**63 / 10**6, so the ceiling fits an i64.
     BigInt::from(py_total_seconds(micros).ceil() as i64) <= *limit
 }

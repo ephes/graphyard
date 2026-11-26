@@ -276,6 +276,30 @@ fn fresh(value: f64) -> Vec<MetricSample> {
 }
 
 #[test]
+fn warning_fallback_checks_dense_window_continuity_once() {
+    let samples: Vec<_> = (0..=300)
+        .rev()
+        .map(|seconds| {
+            MetricSample::new(
+                now() - Duration::from_secs(seconds),
+                74.0,
+                "homeassistant",
+                "ha.sensor.office_humidity",
+                None,
+            )
+        })
+        .collect();
+    CARRY_CHECKS.with(|count| count.set(0));
+
+    let result = evaluate_samples(&humidity_rule(), &samples, now(), &BigInt::from(60)).unwrap();
+
+    assert_eq!(result.status, StatusLevel::Warning);
+    assert_eq!(result.last_value, Some(74.0));
+    // One check per adjacent gap, plus the carry from the final point to now.
+    assert_eq!(CARRY_CHECKS.with(|count| count.get()), samples.len());
+}
+
+#[test]
 fn invalid_durations_fail_before_source_entry() {
     for breach_minutes in [0, -1, 10081, 2_147_483_647, i64::MAX] {
         let rule = ConditionRule {

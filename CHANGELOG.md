@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Reuse one borrowed Rust breach window and continuity check for both
+  condition thresholds.
+
 - Require the exact stored enable flag `1` for Rust condition sweeps,
   targeted evaluations and publication.
 

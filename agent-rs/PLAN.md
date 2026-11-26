@@ -1455,6 +1455,8 @@ carry allowance). One series → its result. Several → worst status, ties by
 oldest latest sample then lexicographically smallest structural series key;
 `ok` reports the newest series value (largest structural key at equal time) with
 ` (<n> series)`; otherwise ` [series: <label>] (<k> of <n> series not OK)`.
+Rust borrows the sorted breach window and checks its carry and continuity once
+per series before comparing the configured thresholds in severity order.
 Only the selected diagnostic label is built, visiting present dimensions once.
 Labels JSON-quote dimension/tag names and values, keep Unicode readable, and
 render missing values as `null` rather than the quoted empty string. Display
