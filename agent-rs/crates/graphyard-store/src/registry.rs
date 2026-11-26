@@ -228,10 +228,8 @@ fn distinct<'a>(values: impl Iterator<Item = &'a str>) -> Vec<&'a str> {
 }
 
 /// `_load_registry_rows`, in its query order: hosts (batch hosts and
-/// non-empty service candidates), subjects (`subject_type IN (...) AND
-/// subject_id IN (...)`: every row of that cross product is converted, then
-/// the rows are narrowed to the batch's pairs), services. Django runs no
-/// query for an empty `__in` list (`EmptyResultSet`).
+/// non-empty service candidates), subjects (exact type/ID pairs), services.
+/// An empty key set needs no query.
 fn load_rows(connection: &Connection, batch: &RegistryBatch) -> Result<RegistryRows, StoreError> {
     let limit = variable_limit(connection)?;
     let candidates = batch
@@ -258,24 +256,30 @@ fn load_rows(connection: &Connection, batch: &RegistryBatch) -> Result<RegistryR
         }
     }
 
-    let subject_types = distinct(batch.subjects.keys().map(|(kind, _)| kind.as_str()));
-    let subject_ids = distinct(batch.subjects.keys().map(|(_, id)| id.as_str()));
+    let type_count = distinct(batch.subjects.keys().map(|(kind, _)| kind.as_str())).len();
+    // As in Django, leave room for one bind parameter per type and cap the
+    // size of each lookup even when SQLite permits a larger statement.
+    let chunk_size = limit.min(1000).saturating_sub(type_count).max(1);
+    let mut pairs = batch.subjects.keys().peekable();
     let mut subjects = HashMap::new();
-    // Partition both axes: retain the original cross-type load/conversion
-    // semantics while sharing the connection's parameter budget.
-    for subject_types in subject_types.chunks((limit / 2).max(1)) {
-        for subject_ids in subject_ids.chunks(limit.saturating_sub(subject_types.len()).max(1)) {
-            let sql = format!(
-                "{SELECT_SUBJECTS} WHERE subject_type IN ({}) AND subject_id IN ({})",
-                marks(subject_types.len()),
-                marks(subject_ids.len())
-            );
-            let params = params_from_iter(subject_types.iter().chain(subject_ids));
-            for subject in query_rows(connection, &sql, params, read_subject)? {
-                if batch.subjects.contains_key(&subject.key) {
-                    subjects.insert(subject.key.clone(), subject);
-                }
-            }
+    while pairs.peek().is_some() {
+        let mut ids_by_type: IndexMap<&str, Vec<&str>> = IndexMap::new();
+        for (kind, id) in pairs.by_ref().take(chunk_size) {
+            ids_by_type.entry(kind).or_default().push(id);
+        }
+        let mut predicates = Vec::new();
+        let mut params = Vec::new();
+        for (kind, ids) in ids_by_type {
+            predicates.push(format!(
+                "(subject_type = ? AND subject_id IN ({}))",
+                marks(ids.len()),
+            ));
+            params.push(kind);
+            params.extend(ids);
+        }
+        let sql = format!("{SELECT_SUBJECTS} WHERE {}", predicates.join(" OR "));
+        for subject in query_rows(connection, &sql, params_from_iter(params), read_subject)? {
+            subjects.insert(subject.key.clone(), subject);
         }
     }
 

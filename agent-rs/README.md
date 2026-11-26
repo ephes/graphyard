@@ -324,8 +324,11 @@ counts as a failed spec and leaves its row untouched. Later specs still run.
 The heartbeat includes the failure in its totals and can show a fixed
 diagnostic with the spec ID among its five samples.
 
-Due-only metric runs claim the observed `next_run_time` before invoking a
-collector. Claims use a 3–300 second lease (the clamped interval), renewed every one third
+Rust due-only metric runs page through lightweight candidates in name order
+using the sweep's starting time as the due cutoff. Each candidate's schedule
+and definition revision must still match before Rust loads its config. The
+claim then compares the loaded definition, including the config, before
+invoking the collector. Claims use a 3–300 second lease (the clamped interval), renewed every one third
 of that duration until the complete collector/sink/registry future returns.
 Renewal and completion compare the exact persisted claim and captured name,
 enabled state, type, interval and stored config. Lost ownership cancels the
@@ -349,11 +352,16 @@ messages in spec order (critical outcomes and warnings with a message). A fixed
 already emitted during collection cannot be recalled. Python and Rust share
 claim/recovery/completion fixtures and run only synthetic collectors in tests.
 
+When a due row has unreadable stored metadata, Rust counts it as failed and
+continues with later collectors. The log and up to five heartbeat error samples
+identify the row by ID without exposing the stored value. The row stays due so
+an operator can repair it. SQLite query failures still fail the run.
+
 A claim, renewal or completion store error stops later specs in the batch.
-After a committed completion or a schedule overflow, the agent tries to write
-a degraded `metric_collectors` heartbeat with `partial: 1` in its details. The
-counters cover completions and schedule failures observed before the store
-error. A fixed batch error precedes the usual spec diagnostics. The partial
+After a committed completion, a schedule overflow or a due row with unreadable
+stored metadata, the agent tries to write a degraded `metric_collectors`
+heartbeat with `partial: 1` in its details. The counters cover completions and
+failures observed before the store error. A fixed batch error precedes the usual spec diagnostics. The partial
 heartbeat preserves `last_success`. If the store error occurs before any
 counted outcome, the heartbeat is untouched. The run reports the original
 store error even if the heartbeat write fails.

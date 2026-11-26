@@ -4,12 +4,15 @@ Regression for bound-token ingest issuing one ``UPDATE service_registry`` per
 point, each its own SQLite commit, which made a 50-point batch take seconds.
 """
 
+from collections import Counter
 from contextlib import contextmanager
+from dataclasses import replace
 from datetime import timedelta
 from types import SimpleNamespace
 
 import pytest
 from django.db import connection
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from django.utils import timezone
 
@@ -245,6 +248,66 @@ def host_point(host, service=None):
     )
 
 
+@pytest.mark.parametrize("query_param_limit", [999, 4, 2])
+def test_registry_reads_hydrate_only_normalized_subject_pairs(
+    monkeypatch, query_param_limit
+):
+    types = ("host", "environment_sensor", "service")
+    ids = ("edge", "office", "mail")
+    wanted = set(zip(types, ids, strict=True))
+    SubjectRegistry.objects.bulk_create(
+        [
+            SubjectRegistry(
+                subject_type=kind, subject_id=subject_id, source_system="old"
+            )
+            for kind in types
+            for subject_id in ids
+        ]
+    )
+    hydrated = []
+    original_from_db = SubjectRegistry.from_db
+
+    def from_db(cls, db, field_names, values):
+        row = original_from_db(db, field_names, values)
+        hydrated.append((row.subject_type, row.subject_id))
+        return row
+
+    monkeypatch.setattr(SubjectRegistry, "from_db", classmethod(from_db))
+    monkeypatch.setattr(
+        type(connection.features), "max_query_params", query_param_limit
+    )
+    with CaptureQueriesContext(connection) as queries:
+        services.touch_registry_from_points(
+            [
+                replace(host_point("edge"), subject_id=" Edge "),
+                sensor_point(None, "edge"),
+                replace(
+                    sensor_point(None, "edge"),
+                    subject_type="service",
+                    subject_id="mail",
+                ),
+            ]
+        )
+
+    # Every wanted row is loaded once in preflight and once under the write lock.
+    assert Counter(hydrated) == Counter({key: 2 for key in wanted})
+    subject_selects = [
+        query["sql"]
+        for query in queries.captured_queries
+        if query["sql"].startswith("SELECT")
+        and 'FROM "subject_registry"' in query["sql"]
+    ]
+    # Small limits less one bind per type still leave one pair per query.
+    assert len(subject_selects) == (2 if query_param_limit == 999 else 6)
+    sources = {
+        (kind, subject_id): source
+        for kind, subject_id, source in SubjectRegistry.objects.values_list(
+            "subject_type", "subject_id", "source_system"
+        )
+    }
+    assert {key for key, source in sources.items() if source != "old"} == wanted
+
+
 @pytest.mark.parametrize(
     "order,expected",
     [
@@ -270,3 +333,25 @@ def test_new_service_from_unknown_collector_host_has_no_host():
         [sensor_point("mail", "edge"), host_point("edge")]
     )
     assert ServiceRegistry.objects.get(service_id="mail").host is None
+
+
+@pytest.mark.parametrize(
+    "repeat_edge, expected_host", [(False, "other"), (True, "edge")]
+)
+def test_service_candidates_keep_only_last_positions_and_eligible_fallback(
+    repeat_edge, expected_host
+):
+    HostRegistry.objects.create(host_id="other")
+    edge = sensor_point("mail", "edge")
+    unknown = sensor_point("mail", "unknown")
+    points = [edge, sensor_point("mail", "other"), host_point("edge")]
+    if repeat_edge:
+        points.append(edge)
+    points.extend([unknown] * 1000)
+
+    batch = services._collect_registry_batch(points)
+    assert len(batch.service_hosts["mail"]) == 3
+
+    services.touch_registry_from_points(points)
+
+    assert ServiceRegistry.objects.get(service_id="mail").host.host_id == expected_host

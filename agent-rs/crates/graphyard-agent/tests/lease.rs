@@ -57,6 +57,125 @@ fn schedule(db: &TestDb) -> i64 {
         .unwrap()
 }
 
+struct Ordered {
+    entered: Notify,
+    resume: Notify,
+    names: std::sync::Mutex<Vec<String>>,
+}
+
+impl SpecExecutors for Ordered {
+    async fn execute(
+        &self,
+        _: SpecType,
+        name: &str,
+        _: &Value,
+        _: &mut RunState,
+    ) -> ExecutorResult {
+        self.names.lock().unwrap().push(name.to_owned());
+        if name == "a first" {
+            self.entered.notify_one();
+            self.resume.notified().await;
+        }
+        Ok(SpecOutcome::new(StatusLevel::Ok, 0, 0, ""))
+    }
+}
+
+#[tokio::test]
+async fn pending_sweep_skips_full_config_reads_for_an_intervening_lease() {
+    let db = TestDb::new();
+    for name in ["d last", "b leased", "bb edited", "c next", "a first"] {
+        insert_spec(&db, name, "http_json_metric", &json!({}));
+    }
+    db.execute(
+        "PRAGMA ignore_check_constraints = ON;
+         UPDATE metric_collection_spec SET next_run_time = 50 WHERE name != 'b leased';
+         UPDATE metric_collection_spec SET config = X'00' WHERE name = 'b leased';",
+    );
+    let a = Store::open(db.path(), &settings(&[])).unwrap();
+    let b = Store::open(db.path(), &settings(&[])).unwrap();
+    let first = Ordered {
+        entered: Notify::new(),
+        resume: Notify::new(),
+        names: std::sync::Mutex::new(Vec::new()),
+    };
+    let other = Deferred::new();
+    let now = Fixed(UtcDateTime::from_seconds(100));
+    let earlier = Fixed(UtcDateTime::from_seconds(45));
+    let completed = Notify::new();
+
+    let (result, second) = tokio::time::timeout(Duration::from_secs(5), async {
+        let first_run = async {
+            let result = run_metric_specs(&a, &first, &now, true).await;
+            completed.notify_one();
+            result
+        };
+        tokio::join!(first_run, async {
+            first.entered.notified().await;
+            // Runner A has seen the candidate. A full config read at scan
+            // time would have tried to decode its BLOB and counted a failure.
+            db.execute("UPDATE metric_collection_spec SET config = '{}' WHERE name = 'b leased'");
+            let pending = run_metric_specs(&b, &other, &earlier, true);
+            tokio::pin!(pending);
+            tokio::select! {
+                _ = other.entered.notified() => {},
+                result = &mut pending => panic!("second collector should be deferred: {result:?}"),
+            }
+            // Eager hydration at A's execution boundary would also fail.
+            db.execute(
+                "PRAGMA ignore_check_constraints = ON;
+                     UPDATE metric_collection_spec SET config = X'00' WHERE name = 'b leased';",
+            );
+            db.execute(
+                "UPDATE metric_collection_spec SET config = '{\"edited\": true}', \
+                 updated_at = '2026-02-01 00:00:00' WHERE name = 'bb edited'",
+            );
+            first.resume.notify_one();
+            // Keep the lease alive until runner A has passed the candidate.
+            completed.notified().await;
+            db.execute("UPDATE metric_collection_spec SET config = '{}' WHERE name = 'b leased'");
+            other.finish.notify_one();
+            pending.await
+        })
+    })
+    .await
+    .unwrap();
+
+    let result = result.unwrap();
+    assert_eq!((result.total, result.failed), (3, 0));
+    assert_eq!(
+        *first.names.lock().unwrap(),
+        ["a first", "c next", "d last"]
+    );
+    assert_eq!(second.unwrap().total, 1);
+    assert_eq!(other.calls.load(Ordering::SeqCst), 1);
+    a.close();
+    b.close();
+}
+
+#[tokio::test]
+async fn due_sweep_pages_in_name_order_with_one_horizon() {
+    let db = TestDb::new();
+    let names: Vec<_> = (0..130).map(|n| format!("spec {n:03}")).collect();
+    for name in names.iter().rev() {
+        insert_spec(&db, name, "http_json_metric", &json!({}));
+    }
+    insert_spec(&db, "zz future", "http_json_metric", &json!({}));
+    db.execute("UPDATE metric_collection_spec SET next_run_time = 101 WHERE name = 'zz future'");
+    let store = Store::open(db.path(), &settings(&[])).unwrap();
+    let collector = Ordered {
+        entered: Notify::new(),
+        resume: Notify::new(),
+        names: std::sync::Mutex::new(Vec::new()),
+    };
+    let clock = Fixed(UtcDateTime::from_seconds(100));
+    let run = run_metric_specs(&store, &collector, &clock, true)
+        .await
+        .unwrap();
+    assert_eq!(run.total, 130);
+    assert_eq!(*collector.names.lock().unwrap(), names);
+    store.close();
+}
+
 #[tokio::test]
 async fn live_collector_outlasts_short_interval_without_a_second_execution() {
     let db = TestDb::new();

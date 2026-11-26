@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- Keep one candidate per service and host in Python registry planning,
+  preserving last eligible host selection in metric batches.
+
+- Load only the exact subject type and ID pairs named by a metric batch in
+  both registry reads.
+
+- Page through Rust due candidates and load each config only while its
+  observed schedule and definition still match.
+
+- Keep Rust due sweeps running when a collector row has unreadable stored
+  metadata. Report the row ID in diagnostics and leave it due for repair.
+
 - Fence Rust collector claims, renewals and local results by the definition's
   update timestamp, including after edits that restore the previous settings.
 

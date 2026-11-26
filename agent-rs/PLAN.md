@@ -361,11 +361,15 @@ that differs is a bug.
   Unique prefixes of long flags are matched among all flags, the Rust-only
   ones included, so `--c` is ambiguous in Rust (`--condition-interval`,
   `--check-schema`) where argparse expands it. A collector schedule beyond
-  SQLite’s INTEGER range fails only its spec. A collector store error after a
-  committed completion or a schedule overflow can publish a partial heartbeat
+  SQLite’s INTEGER range fails only its spec. In a Rust due sweep, a stored
+  row conversion failure counts as a failed spec with an ID-only diagnostic
+  and leaves its schedule untouched. Python's bulk load can fail the sweep. A
+  collector store error after a counted outcome can publish a partial heartbeat
   (section 3.4). Rust collector claims, renewals and completions also compare
-  the exact stored `updated_at` text, so a definition edited and reverted
-  during an attempt rejects that attempt; Python compares only the captured
+  the exact stored `updated_at` text. Rust due sweeps page through candidate
+  metadata at a fixed due cutoff and require the observed schedule and
+  revision before loading each config. A definition edited and reverted
+  during an attempt rejects that attempt. Python compares only the captured
   business fields (section 3.4). An empty full condition sweep writes its
   heartbeat with `no_work: 1` and without success, preserving
   `last_success`; Python marks it successful (section 3.5).
@@ -563,12 +567,13 @@ same specs.
 Non-due manual runs retain unconditional execution and the shared run-start
 timestamp, with completion fenced by the originally observed schedule and
 captured definition. Superseded completions are not counted. A run with no
-accepted completions or schedule failures leaves the heartbeat untouched.
+accepted completions, schedule failures or unreadable due rows leaves the
+heartbeat untouched.
 
 A load, claim, renewal or completion store error stops the batch: error log
 `Metric collection failed`, stderr `Metric collection failed: <err>`, and the
-scheduler loop continues. After a committed completion or a schedule overflow,
-Rust tries to publish a partial `metric_collectors` heartbeat. It marks `partial: 1`
+scheduler loop continues. After a committed completion, a schedule overflow or
+an unreadable due row (D-15), Rust tries to publish a partial `metric_collectors` heartbeat. It marks `partial: 1`
 in details, counts the prefix, and preserves `last_success`. A sweep stopped
 by SIGTERM/SIGINT after counted outcomes, with specs left unstarted, publishes
 the same partial heartbeat with the first message `partial run: agent
@@ -955,12 +960,12 @@ returns at once; otherwise, per call:
    the list of `(candidate host, point index)` where the candidate is the
    point's subject id for a host subject, else its `collector_host`.
 2. `now = timezone.now()` once.
-3. **Load** (`_load_registry_rows`, autocommit, no write lock), one query
-   per table in this order: hosts whose `host_id` is a batch host or a
-   non-empty service candidate; subjects by `subject_type IN (…) AND
-   subject_id IN (…)` (the cross product of the batch's types and ids: every
-   row it returns is converted, then the rows are narrowed to the batch's
-   pairs); services by `service_id`. An empty `__in` list runs no query
+3. **Load** (`_load_registry_rows`, autocommit, no write lock) in this
+   order: hosts whose `host_id` is a batch host or a non-empty service
+   candidate, subjects by exact type and ID pairs, then services by
+   `service_id`. Subject lookups group IDs by type within each bounded query
+   and only convert rows whose pairs were named in the batch.
+   An empty `__in` list runs no query
    (Django's `EmptyResultSet`), so a batch without hosts and services reads
    only subjects. Django loads whole rows: `last_seen_at` goes through the
    datetime conversion of 5.3 (unparseable text loads as NULL, so the row is
