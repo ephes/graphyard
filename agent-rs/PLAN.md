@@ -385,6 +385,16 @@ that differs is a bug.
   disabled or outside the 64-bit range) exits 1 with stderr
   `CommandError: No matching enabled condition.`; Python prints
   `Condition evaluation completed (0).` and exits 0 (section 11.4).
+  Rust condition sweeps, targeted evaluations and publication also take
+  only the stored enable flag `1`: a truthy `enabled = 2` that Python's
+  `WHERE enabled` still evaluates is skipped by a sweep, and
+  `--condition-id` on it exits 1 like an id that selects nothing. In a
+  Rust condition sweep, a stored row that cannot be decoded counts as one
+  failed condition (stage `admission`, ID-only log line, row left
+  unchanged) and the other rows are still evaluated, ending in a warning
+  heartbeat; Python's bulk load fails the whole sweep. A targeted
+  `--condition-id` on such a row still fails with one stderr line and no
+  heartbeat.
 
 ---
 

@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- List conditions in the shadow-run preparation scan that Python evaluates
+  and the Rust agent skips: an enable flag other than `1`.
+
 - Borrow dimension names and values from samples when grouping Rust
   condition series.
 

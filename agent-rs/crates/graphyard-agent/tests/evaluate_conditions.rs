@@ -265,8 +265,10 @@ fn agent_records_empty_sweeps_as_liveness_without_advancing_success() {
     assert_eq!(last_success(), success);
 }
 
-/// A failure outside a condition (here a stored value of another storage
-/// class, D-13, failing the load): one stderr line, exit 1, no heartbeat.
+/// Unreadable stored rows (D-13, D-15): a sweep fails only those conditions
+/// (stage `admission`, rows unchanged), still publishes the healthy ones and
+/// writes a warning heartbeat; `--condition-id` on such a row fails with one
+/// stderr line, exit 1 and no heartbeat.
 #[test]
 fn unreadable_conditions_fail_locally_and_healthy_siblings_publish() {
     let server = FakeServer::start();

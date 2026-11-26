@@ -61,8 +61,8 @@ SERDE_MAX_DEPTH = 128
 
 #: The tables whose rows the agent loads (PLAN.md 5.1) and, for the spec and
 #: condition tables, the rows Python loads (``WHERE enabled``, any truthy
-#: value). Rust collector sweeps take only the flag ``1`` (D-15), see
-#: ``collector_issues``.
+#: value). Rust collector and condition sweeps take only the flag ``1``
+#: (D-15), see ``collector_issues`` and ``condition_issues``.
 AGENT_TABLES = {
     "metric_collection_spec": "enabled",
     "condition_definition": "enabled",
@@ -223,14 +223,43 @@ def collector_issues(connection: sqlite3.Connection) -> list[dict[str, Any]]:
     return findings
 
 
+def condition_issues(connection: sqlite3.Connection) -> list[dict[str, Any]]:
+    """Condition rows Python evaluates and the Rust agent skips (D-15): a
+    truthy enable flag other than ``1``."""
+    return [
+        {
+            "table": "condition_definition",
+            "id": row_id,
+            "name": row_name,
+            "column": "enabled",
+            "issue": f"enable flag {flag!r}: Python evaluates the condition, "
+            "Rust only the flag '1' (D-15)",
+        }
+        for row_id, row_name, flag in connection.execute(
+            "SELECT id, name, CAST(enabled AS TEXT) FROM condition_definition "
+            "WHERE enabled ORDER BY id"
+        )
+        if flag != "1"
+    ]
+
+
+def _has_table(connection: sqlite3.Connection, name: str) -> bool:
+    return (
+        connection.execute(
+            "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?",
+            (name,),
+        ).fetchone()
+        is not None
+    )
+
+
 def scan(connection: sqlite3.Connection) -> list[dict[str, Any]]:
     """The rows of the copy to look at before the shadow starts."""
     findings: list[dict[str, Any]] = []
-    if connection.execute(
-        "SELECT 1 FROM sqlite_master WHERE type = 'table' "
-        "AND name = 'metric_collection_spec'"
-    ).fetchone():
+    if _has_table(connection, "metric_collection_spec"):
         findings.extend(collector_issues(connection))
+    if _has_table(connection, "condition_definition"):
+        findings.extend(condition_issues(connection))
     for table, filter_column in AGENT_TABLES.items():
         columns = connection.execute(f'PRAGMA table_info("{table}")').fetchall()
         if not columns:
