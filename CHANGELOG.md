@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Validate the staged local Rust release archive through the gzip trailer before
+  installing it, so an invalid archive leaves the output path available for a retry.
+
 - Run Rust manual collectors in bounded pages ordered by name and ID.
   Later pages read current configs, and each completion compares the observed definition and schedule.
 
