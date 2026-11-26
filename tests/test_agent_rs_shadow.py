@@ -291,6 +291,55 @@ def test_prepare_lists_conditions_that_only_python_evaluates(tmp_path, capsys):
     ]
 
 
+def _tags(size: int) -> str:
+    # Valid JSON of exactly ``size`` UTF-8 bytes with fewer characters.
+    body = "é" * ((size - 11) // 2) + "x" * ((size - 11) % 2)
+    tags = '{"tag": "' + body + '"}'
+    assert len(tags.encode()) == size
+    return tags
+
+
+def test_prepare_lists_conditions_with_a_tag_filter_beyond_the_ceiling(
+    tmp_path, capsys
+):
+    source = tmp_path / "prod.sqlite3"
+    connection = _database(source)
+    limit = prepare.MAX_CONDITION_TAGS_BYTES
+    connection.execute(
+        "UPDATE condition_definition SET tags_filter = ? WHERE name = 'disk'",
+        (_tags(limit + 1),),
+    )
+    columns = (
+        "name, enabled, metric_name, host_filter, service_filter, tags_filter,"
+        " operator, warning_threshold, critical_threshold, window_minutes,"
+        " breach_minutes, status, message, created_at, updated_at,"
+        " subject_id_filter, subject_type_filter, alert_when_stale"
+    )
+    values = (
+        "?, ?, 'host.test', '', '', ?, 'gte', 80, 90, 30, 5, 'ok', '', ?, ?, '', '', 1"
+    )
+    # At the byte limit Rust still evaluates; a disabled row is not loaded.
+    for name, enabled, size in (("at limit", 1, limit), ("off", 0, limit + 1)):
+        connection.execute(
+            f"INSERT INTO condition_definition ({columns}) VALUES ({values})",
+            (name, enabled, _tags(size), CREATED, CREATED),
+        )
+    connection.commit()
+    connection.close()
+    shadow = _shadow_dir(tmp_path)
+    assert prepare.main(["--source", str(source), "--shadow-dir", str(shadow)]) == 2
+    findings = json.loads((shadow / "shadow.json").read_text())["findings"]
+    assert [(f["table"], f["name"], f["column"], f["issue"]) for f in findings] == [
+        (
+            "condition_definition",
+            "disk",
+            "tags_filter",
+            f"tag filter of {limit + 1} bytes beyond the Rust agent's "
+            "1 MiB ceiling (D-15)",
+        )
+    ]
+
+
 def test_prepare_succeeds_on_a_clean_database(tmp_path, capsys):
     source = tmp_path / "prod.sqlite3"
     _database(source).close()

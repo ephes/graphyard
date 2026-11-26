@@ -17,8 +17,10 @@
    beyond CPython's 4300-digit limit, lone UTF-16 surrogate escapes, nesting
    at or beyond ``serde_json``'s 128 levels, ``NaN``/``Infinity`` tokens,
    values of another SQLite storage class than the column's declared type,
-   and collectors with a truthy enable flag other than ``1`` or a config
-   over 1 MiB, which Python runs and Rust refuses.
+   collectors with a truthy enable flag other than ``1`` or a config
+   over 1 MiB, which Python runs and Rust refuses, and conditions with such
+   an enable flag or a tag filter over 1 MiB, which Python evaluates and
+   Rust skips or fails.
 4. Record T0 (UTC, before the copy started) and the summary in
    ``<shadow-dir>/shadow.json`` for ``shadow_record.py`` and
    ``shadow_compare.py``.
@@ -73,6 +75,8 @@ AGENT_TABLES = {
 }
 #: The Rust agent's ceiling for a stored collector ``config`` (D-15).
 MAX_COLLECTOR_CONFIG_BYTES = 1024 * 1024
+#: The Rust agent's ceiling for a stored condition ``tags_filter`` (D-15).
+MAX_CONDITION_TAGS_BYTES = 1024 * 1024
 #: Stored JSON columns of D-11.
 JSON_COLUMNS = {
     "metric_collection_spec": "config",
@@ -224,23 +228,37 @@ def collector_issues(connection: sqlite3.Connection) -> list[dict[str, Any]]:
 
 
 def condition_issues(connection: sqlite3.Connection) -> list[dict[str, Any]]:
-    """Condition rows Python evaluates and the Rust agent skips (D-15): a
-    truthy enable flag other than ``1``."""
-    return [
-        {
-            "table": "condition_definition",
-            "id": row_id,
-            "name": row_name,
-            "column": "enabled",
-            "issue": f"enable flag {flag!r}: Python evaluates the condition, "
-            "Rust only the flag '1' (D-15)",
-        }
-        for row_id, row_name, flag in connection.execute(
-            "SELECT id, name, CAST(enabled AS TEXT) FROM condition_definition "
-            "WHERE enabled ORDER BY id"
-        )
-        if flag != "1"
-    ]
+    """Condition rows Python evaluates and the Rust agent skips or fails
+    (D-15): a truthy enable flag other than ``1``, and a tag filter beyond
+    the 1 MiB ceiling."""
+    findings: list[dict[str, Any]] = []
+    for row_id, row_name, flag, size in connection.execute(
+        "SELECT id, name, CAST(enabled AS TEXT), length(CAST(tags_filter AS BLOB)) "
+        "FROM condition_definition WHERE enabled ORDER BY id"
+    ):
+        if flag != "1":
+            findings.append(
+                {
+                    "table": "condition_definition",
+                    "id": row_id,
+                    "name": row_name,
+                    "column": "enabled",
+                    "issue": f"enable flag {flag!r}: Python evaluates the condition, "
+                    "Rust only the flag '1' (D-15)",
+                }
+            )
+        if size is not None and size > MAX_CONDITION_TAGS_BYTES:
+            findings.append(
+                {
+                    "table": "condition_definition",
+                    "id": row_id,
+                    "name": row_name,
+                    "column": "tags_filter",
+                    "issue": f"tag filter of {size} bytes beyond the Rust agent's "
+                    "1 MiB ceiling (D-15)",
+                }
+            )
+    return findings
 
 
 def _has_table(connection: sqlite3.Connection, name: str) -> bool:

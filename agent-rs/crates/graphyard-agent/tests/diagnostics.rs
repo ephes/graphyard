@@ -175,6 +175,84 @@ async fn manual_collectors_isolate_malformed_metadata_and_run_future_siblings() 
     store.close();
 }
 
+struct EditingCollector<'a> {
+    db: &'a TestDb,
+    seen: RefCell<Vec<(String, Value)>>,
+}
+
+impl SpecExecutors for EditingCollector<'_> {
+    async fn execute(
+        &self,
+        _: SpecType,
+        name: &str,
+        config: &Value,
+        _: &mut RunState,
+    ) -> ExecutorResult {
+        self.seen
+            .borrow_mut()
+            .push((name.to_owned(), config.clone()));
+        if name == "spec-00" {
+            self.db.execute(
+                "UPDATE metric_collection_spec SET updated_at = '2026-01-03 00:00:00' WHERE name = 'spec-00';
+                 UPDATE metric_collection_spec SET config = '{\"changed\":true}' WHERE name = 'spec-39';",
+            );
+        }
+        Ok(SpecOutcome::new(StatusLevel::Ok, 0, 0, ""))
+    }
+}
+
+#[tokio::test]
+async fn manual_collectors_run_before_loading_later_pages() {
+    let db = TestDb::new();
+    // Names are unique in the Django schema. Insert in reverse name order so
+    // primary key order differs from sweep order.
+    for index in (0..40).rev() {
+        common::insert_spec(
+            &db,
+            &format!("spec-{index:02}"),
+            "http_json_metric",
+            &serde_json::json!({}),
+        );
+    }
+    db.execute(
+        "UPDATE metric_collection_spec SET next_run_time = 9223372036854775807;
+         UPDATE metric_collection_spec SET enabled = 2 WHERE name = 'spec-23';
+         UPDATE metric_collection_spec SET name = CAST(x'737065632d3135ff' AS TEXT) WHERE name = 'spec-15';",
+    );
+    let store = Store::open(db.path(), &settings(&[])).unwrap();
+    let collector = EditingCollector {
+        db: &db,
+        seen: RefCell::new(Vec::new()),
+    };
+    let run = run_metric_specs(&store, &collector, &SystemClock, false)
+        .await
+        .unwrap();
+    let seen = collector.seen.into_inner();
+    let expected: Vec<_> = (0..40)
+        .filter(|index| ![15, 23].contains(index))
+        .map(|index| format!("spec-{index:02}"))
+        .collect();
+    assert_eq!(
+        seen.iter().map(|(name, _)| name).collect::<Vec<_>>(),
+        expected.iter().collect::<Vec<_>>()
+    );
+    assert_eq!(seen.last().unwrap().1, serde_json::json!({"changed": true}));
+    assert_eq!((run.total, run.failed), (38, 1));
+    assert_eq!(
+        db.value("metric_collection_spec", "spec-00", "last_run_at"),
+        rusqlite::types::Value::Null
+    );
+    assert_eq!(
+        db.text("metric_collection_spec", "spec-39", "last_status"),
+        "ok"
+    );
+    assert_eq!(
+        db.text("pipeline_heartbeat", "metric_collectors", "last_error"),
+        "spec_id=25: invalid stored collector metadata"
+    );
+    store.close();
+}
+
 struct Samples {
     fail: bool,
 }
@@ -194,6 +272,71 @@ impl ConditionSamples for Samples {
 fn conditions(db: &TestDb) {
     db.raw().execute_batch("INSERT INTO condition_definition (id, name, enabled, metric_name, host_filter, service_filter, tags_filter, operator, warning_threshold, critical_threshold, window_minutes, breach_minutes, status, message, created_at, updated_at, subject_id_filter, subject_type_filter, alert_when_stale) VALUES (1, 'a bad', 1, 'host.test', '', '', '{}', 'gte', 80, 90, 30, 5, 'ok', '', '2026-01-01 00:00:00', '2026-01-01 00:00:00', '', '', 1), (2, 'b good', 1, 'host.test', '', '', '{}', 'gte', 80, 90, 30, 5, 'ok', '', '2026-01-01 00:00:00', '2026-01-01 00:00:00', '', '', 1);").unwrap();
 }
+
+#[tokio::test]
+async fn oversized_condition_tags_fail_before_evaluation_and_keep_siblings_running() {
+    capture();
+    let db = TestDb::new();
+    conditions(&db);
+    let limit = 1024 * 1024;
+    // This is valid JSON at exactly 1 MiB, but has fewer than 1 MiB characters.
+    let at_limit = format!("{{\"tag\":\"{}\"}}", "é".repeat((limit - 10) / 2));
+    assert_eq!(at_limit.len(), limit);
+    db.raw()
+        .execute(
+            "UPDATE condition_definition SET tags_filter = CASE id WHEN 1 THEN ? || ' ' ELSE ? END",
+            [&at_limit, &at_limit],
+        )
+        .unwrap();
+
+    let store = Store::open(db.path(), &settings(&[])).unwrap();
+    let run = run_conditions(
+        &store,
+        &Samples { fail: false },
+        &SystemClock,
+        &BigInt::from(60),
+        None,
+    )
+    .await
+    .unwrap();
+    assert_eq!((run.total, run.failed), (2, 1));
+    assert_eq!(
+        db.value("condition_definition", "a bad", "last_evaluated"),
+        rusqlite::types::Value::Null
+    );
+    assert_ne!(
+        db.value("condition_definition", "b good", "last_evaluated"),
+        rusqlite::types::Value::Null
+    );
+    assert!(
+        lines()
+            .join("\n")
+            .contains("condition_id=1 stage=admission")
+    );
+    assert_eq!(
+        db.text("pipeline_heartbeat", "condition_evaluator", "details"),
+        r#"{"evaluated": 2, "failed": 1}"#
+    );
+
+    let heartbeat = db.rows("pipeline_heartbeat");
+    let error = run_conditions(
+        &store,
+        &Samples { fail: false },
+        &SystemClock,
+        &BigInt::from(60),
+        Some(&BigInt::from(1)),
+    )
+    .await
+    .unwrap_err();
+    assert!(
+        error
+            .to_string()
+            .contains("stored condition tags_filter exceeds 1 MiB")
+    );
+    assert_eq!(db.rows("pipeline_heartbeat"), heartbeat);
+    store.close();
+}
+
 async fn condition_fault(stage: &str, fallback_fails: bool) {
     capture();
     let db = TestDb::new();

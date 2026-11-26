@@ -388,13 +388,18 @@ that differs is a bug.
   Rust condition sweeps, targeted evaluations and publication also take
   only the stored enable flag `1`: a truthy `enabled = 2` that Python's
   `WHERE enabled` still evaluates is skipped by a sweep, and
-  `--condition-id` on it exits 1 like an id that selects nothing. In a
-  Rust condition sweep, a stored row that cannot be decoded counts as one
+  `--condition-id` on it exits 1 like an id that selects nothing. SQLite
+  checks the stored `tags_filter` byte length before loading its contents
+  and refuses filters over 1 MiB. In a Rust condition sweep, a refused
+  filter or a stored row that cannot be decoded counts as one
   failed condition (stage `admission`, ID-only log line, row left
   unchanged) and the other rows are still evaluated, ending in a warning
   heartbeat; Python's bulk load fails the whole sweep. A targeted
   `--condition-id` on such a row still fails with one stderr line and no
-  heartbeat.
+  heartbeat. Rust manual collector runs read enabled configs in pages of 16
+  in `(name, id)` order instead of Python's single load at the start, so a
+  spec renamed across the cursor during the run can be skipped or run twice
+  (section 3.4, step 3).
 
 ---
 
@@ -535,11 +540,12 @@ InfluxDB configuration errors surface lazily, per write or query, as in
 2. `now` = current UTC time (µs), `now_ts = floor(now.timestamp())`, taken
    once for the whole run.
 3. Select `enabled = 1` (and `next_run_time <= now_ts` when `due_only`),
-   `ORDER BY name` (model `Meta.ordering`). Rows are loaded once at the start.
-   Rust manual sweeps load the snapshot in name order and retain a failure
-   for each unreadable row. Rust due sweeps page the candidate metadata before
-   loading each candidate’s config. SQLite refuses config values over 1 MiB
-   before returning their contents in either mode (D-15).
+   `ORDER BY name` (model `Meta.ordering`). Python loads the rows at the start.
+   Rust manual sweeps fetch up to 16 configs in ascending `(name, id)` order
+   and retain a failure for each unreadable row. Each page is a new read.
+   Rust due sweeps page the candidate metadata before loading each candidate’s
+   config. SQLite refuses config values over 1 MiB before returning their
+   contents in either mode (D-15).
 4. Empty: with `due_only` return all-zero counters without a heartbeat; else
    raise `No matching enabled metric collection specs` (stderr
    `Metric collection failed: …`, no heartbeat).
