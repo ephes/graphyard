@@ -167,13 +167,17 @@ that differs is a bug.
 ### 2.4 Intentional divergences (P3, exhaustive)
 
 - **D-1 Signals.** SIGTERM: Python dies by the default signal action at any
-  point; Rust stops starting new work, gives a metric attempt already in
-  progress up to 500 ms to finish and persist its outcome, and otherwise
+  point; Rust stops starting new work, gives an active metric attempt or a
+  continuous condition evaluation up to 500 ms to finish and persist its
+  outcome, and otherwise
   stops at the next await point (an in-flight SQLite statement completes
   first), prints nothing and exits 0. A metric sweep stopped this way with
   counted outcomes and unstarted specs publishes a partial
   `metric_collectors` heartbeat (`partial: 1`, `partial run: agent
-  shutdown`, section 3.4); Python writes no heartbeat for a killed sweep. systemd reports both as
+  shutdown`, section 3.4). An interrupted continuous condition sweep with
+  evaluations to report publishes a partial `condition_evaluator` heartbeat as
+  a warning and preserves `last_success`. Python writes no heartbeat for a
+  killed sweep. systemd reports both as
   "Deactivated successfully". SIGINT behaves like Python's
   `KeyboardInterrupt` handler: stdout `graphyard-agent interrupted, exiting`,
   exit 0. Rust does the same during `--run-once`, where Python's handler is
@@ -323,7 +327,10 @@ that differs is a bug.
   Django's field conversion; Rust fails the load (stderr `Metric collection
   failed: …` / `Condition eval failed: …`), where Python hands the value on
   and may coerce it or fail later. The `bool` and `datetime` columns follow
-  Python's converters exactly, whatever the storage class (5.3).
+  Python's converters exactly, whatever the storage class (5.3). Collector
+  selection is the exception: Python's `WHERE enabled` runs any truthy flag,
+  while Rust collector sweeps and lease writes require the decoded `1`
+  (D-15).
 - **D-14 HTTP client corner cases** (S6). The collectors' HTTP layer follows
   httpx 0.28.1 byte for byte where the fixtures pin it (section 6.1); it
   differs where reproducing httpx would mean re-implementing a library:
@@ -361,9 +368,10 @@ that differs is a bug.
   Unique prefixes of long flags are matched among all flags, the Rust-only
   ones included, so `--c` is ambiguous in Rust (`--condition-interval`,
   `--check-schema`) where argparse expands it. A collector schedule beyond
-  SQLite’s INTEGER range fails only its spec. In a Rust due sweep, a stored
-  row conversion failure counts as a failed spec with an ID-only diagnostic
-  and leaves its schedule untouched. Python's bulk load can fail the sweep. A
+  SQLite’s INTEGER range fails only its spec. In Rust collector sweeps, a
+  stored row conversion failure or a config over 1 MiB counts as a failed
+  spec with an ID-only diagnostic and leaves its schedule untouched.
+  Collector scheduling and lease writes require the decoded true value. Python's bulk load can fail the sweep. A
   collector store error after a counted outcome can publish a partial heartbeat
   (section 3.4). Rust collector claims, renewals and completions also compare
   the exact stored `updated_at` text. Rust due sweeps page through candidate
@@ -518,8 +526,10 @@ InfluxDB configuration errors surface lazily, per write or query, as in
    once for the whole run.
 3. Select `enabled = 1` (and `next_run_time <= now_ts` when `due_only`),
    `ORDER BY name` (model `Meta.ordering`). Rows are loaded once at the start.
-   The Rust store decodes each SQLite row as it reads it and returns the first
-   error in query order, with no partial result.
+   Rust manual sweeps load the snapshot in name order and retain a failure
+   for each unreadable row. Rust due sweeps page the candidate metadata before
+   loading each candidate’s config. SQLite refuses config values over 1 MiB
+   before returning their contents in either mode (D-15).
 4. Empty: with `due_only` return all-zero counters without a heartbeat; else
    raise `No matching enabled metric collection specs` (stderr
    `Metric collection failed: …`, no heartbeat).
@@ -567,13 +577,13 @@ same specs.
 Non-due manual runs retain unconditional execution and the shared run-start
 timestamp, with completion fenced by the originally observed schedule and
 captured definition. Superseded completions are not counted. A run with no
-accepted completions, schedule failures or unreadable due rows leaves the
+accepted completions, schedule failures or unreadable rows leaves the
 heartbeat untouched.
 
 A load, claim, renewal or completion store error stops the batch: error log
 `Metric collection failed`, stderr `Metric collection failed: <err>`, and the
 scheduler loop continues. After a committed completion, a schedule overflow or
-an unreadable due row (D-15), Rust tries to publish a partial `metric_collectors` heartbeat. It marks `partial: 1`
+an unreadable row (D-15), Rust tries to publish a partial `metric_collectors` heartbeat. It marks `partial: 1`
 in details, counts the prefix, and preserves `last_success`. A sweep stopped
 by SIGTERM/SIGINT after counted outcomes, with specs left unstarted, publishes
 the same partial heartbeat with the first message `partial run: agent
@@ -703,9 +713,10 @@ Shutdown must not wait for blocking work that cannot be cancelled: a
 `Runtime::drop` until systemd's SIGKILL. SQLite therefore does not run on
 the blocking pool but on one dedicated DB thread owning the connection
 (callers send a closure and await the reply, as in nyxmon `nyxmon-store`).
-On a signal, the active metric attempt gets a 500 ms deadline to finish and
-persist its outcome. A stopped sweep with counted outcomes and remaining
-specs can publish a partial heartbeat during that grace. The rest of the
+On a signal, the active metric attempt or continuous condition evaluation
+gets a 500 ms deadline to finish and persist its outcome. A stopped sweep
+with counted outcomes and remaining rows can publish a partial heartbeat
+during that grace. The rest of the
 scheduler is cancelled, and `main` waits for the DB thread to finish its
 current statement (bounded by `busy_timeout`). It closes the connection,
 prints the SIGINT line if applicable and gives blocking runtime work the

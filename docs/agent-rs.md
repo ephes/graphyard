@@ -222,7 +222,8 @@ agreed with the coordinator first (PLAN.md 8.4).
    are preserved. It copies through SQLite's backup API (consistent while both
    production processes write), checks the copy, writes `shadow.json` (T0, enabled specs
    and conditions) and lists rows on which the two implementations would
-   disagree (D-11 documents, D-13 storage classes); exit 2 means "look at
+   disagree (D-11 documents, D-13 storage classes, D-15 collectors with an
+   enable flag other than `1` or a config over 1 MiB); exit 2 means "look at
    them before starting". `--disable-spec NAME` disables a spec in the copy
    only (for example UniFi when the controller limits logins, R6).
 

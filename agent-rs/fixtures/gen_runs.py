@@ -161,7 +161,8 @@ def _metric_scenarios() -> list[dict[str, Any]]:
     return [
         {
             # Order by name (binary collation), isolation of every failure
-            # kind, the due filter, a truthy `enabled = 2`, interval 0.
+            # kind, the due filter and interval 0. Noncanonical enable flags
+            # have a Rust-specific runtime test.
             "name": "mixed_due_run",
             "kind": "metrics",
             "due_only": True,
@@ -177,7 +178,6 @@ def _metric_scenarios() -> list[dict[str, Any]]:
                     spec_row(8, "h not due", **later),
                     spec_row(9, "i interval zero", interval_seconds=0, **due),
                     spec_row(10, "Z upper", **due),
-                    spec_row(11, "j truthy enabled", enabled=2, **due),
                 ],
                 HEARTBEAT_TABLE: [heartbeat_row(1, "metric_collectors")],
             },
@@ -196,7 +196,6 @@ def _metric_scenarios() -> list[dict[str, Any]]:
                 "e quiet warning": {"outcome": ["warning", 1, 0, ""]},
                 "i interval zero": _ok(),
                 "Z upper": _ok(),
-                "j truthy enabled": _ok(4),
             },
         },
         {

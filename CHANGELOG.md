@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+- List collectors in the shadow-run preparation scan that Python runs and the
+  Rust agent refuses: an enable flag other than `1` or a config over 1 MiB.
+
+- Stop continuous Rust condition sweeps between evaluations during shutdown.
+  Let the current evaluation finish during the existing grace period and
+  record a partial heartbeat for work completed before the stop.
+
+- Keep Rust manual collector runs going when one stored row is unreadable.
+  Report the failed row by ID and run the remaining eligible specs.
+
+- Apply the decoded enable flag to Rust collector admission, claims,
+  renewals and result writes.
+
+- Refuse Rust due collector configs over 1 MiB before loading their contents.
+  Count the refused row in the heartbeat and continue with later collectors.
+
 - Keep one candidate per service and host in Python registry planning,
   preserving last eligible host selection in metric batches.
 

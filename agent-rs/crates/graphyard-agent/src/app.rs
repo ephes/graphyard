@@ -3,8 +3,8 @@
 //!
 //! One `current_thread` tokio runtime; the scheduler runs in the main task
 //! and a signal future beside it. On SIGTERM or SIGINT, stop scheduling
-//! and give the active metric attempt up to 500 ms to finish. An SQLite
-//! statement already sent to the DB thread completes before it closes.
+//! and give the active metric or continuous condition attempt up to 500 ms
+//! to finish. An SQLite statement sent to the DB thread completes before it closes.
 //! The remaining grace is available to blocking runtime work. Exit 0 on
 //! either signal.
 
@@ -27,7 +27,7 @@ use graphyard_store::{Store, check_schema};
 use crate::cli::{Cli, Command, Loops};
 use crate::collectors::{AgentSink, Collectors, InfluxSamples};
 use crate::runs::{
-    Clock, ConditionSamples, SpecExecutors, SystemClock, run_conditions,
+    Clock, ConditionSamples, SpecExecutors, SystemClock, run_conditions_until_shutdown,
     run_metric_specs_until_shutdown,
 };
 use crate::scheduler::{self, Runner};
@@ -103,7 +103,8 @@ pub fn signals() -> std::io::Result<impl Future<Output = Shutdown>> {
 /// the stderr line; a failed run never stops the loop.
 struct Agent<'a, E, S, C> {
     stopping: &'a Cell<bool>,
-    metrics_active: &'a Cell<bool>,
+    draining: &'a Cell<bool>,
+    drain_conditions: bool,
     pub store: Store,
     pub executors: E,
     pub samples: S,
@@ -118,7 +119,7 @@ impl<E: SpecExecutors, S: ConditionSamples, C: Clock> Runner for Agent<'_, E, S,
     }
 
     async fn metrics(&mut self, due_only: bool) -> bool {
-        self.metrics_active.set(true);
+        self.draining.set(true);
         let run = run_metric_specs_until_shutdown(
             &self.store,
             &self.executors,
@@ -127,7 +128,7 @@ impl<E: SpecExecutors, S: ConditionSamples, C: Clock> Runner for Agent<'_, E, S,
             self.stopping,
         )
         .await;
-        self.metrics_active.set(false);
+        self.draining.set(false);
         match run {
             Ok(run) => {
                 print_stdout(format_args!(
@@ -151,14 +152,17 @@ impl<E: SpecExecutors, S: ConditionSamples, C: Clock> Runner for Agent<'_, E, S,
     }
 
     async fn conditions(&mut self) -> bool {
-        let run = run_conditions(
+        self.draining.set(self.drain_conditions);
+        let run = run_conditions_until_shutdown(
             &self.store,
             &self.samples,
             &self.clock,
             &self.stale_warning_seconds,
             None,
+            self.stopping,
         )
         .await;
+        self.draining.set(false);
         match run {
             Ok(run) => {
                 print_stdout(format_args!(
@@ -328,10 +332,11 @@ where
 
     let settings = Arc::new(settings);
     let stopping = Cell::new(false);
-    let metrics_active = Cell::new(false);
+    let draining = Cell::new(false);
     let mut agent = Agent {
         stopping: &stopping,
-        metrics_active: &metrics_active,
+        draining: &draining,
+        drain_conditions: !loops.run_once,
         store: store.clone(),
         executors: Collectors {
             http,
@@ -364,7 +369,7 @@ where
             signal = &mut shutdown => {
                 let deadline = Instant::now() + SHUTDOWN_GRACE;
                 stopping.set(true);
-                if metrics_active.get() {
+                if draining.get() {
                     let _ = tokio::time::timeout_at(deadline.into(), &mut work).await;
                 }
                 (Some(signal), true, Some(deadline))

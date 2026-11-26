@@ -787,25 +787,42 @@ async fn superseded_collection_cannot_replace_newer_heartbeat() {
 }
 
 #[tokio::test]
-async fn unchanged_truthy_enabled_collection_settles() {
+async fn only_decoded_enabled_collectors_are_dispatched() {
     for due_only in [true, false] {
         let db = TestDb::new();
-        common::insert_spec(&db, "synthetic", "http_json_metric", &serde_json::json!({}));
-        db.execute("UPDATE metric_collection_spec SET enabled = 2, interval_seconds = 600");
+        for name in ["disabled", "enabled", "truthy"] {
+            common::insert_spec(&db, name, "http_json_metric", &serde_json::json!({}));
+        }
+        db.execute(
+            "UPDATE metric_collection_spec SET enabled = 0 WHERE name = 'disabled';
+             UPDATE metric_collection_spec SET enabled = 2 WHERE name = 'truthy';",
+        );
         let store = Store::open(db.path(), &settings(&[])).unwrap();
         let clock = FixedClock("2026-10-21T08:15:30Z".parse().unwrap());
-        let result = run_metric_specs(&store, &Faulty, &clock, due_only)
+        let collector = RecordingCollector(Cell::new(0));
+        let result = run_metric_specs(&store, &collector, &clock, due_only)
             .await
             .unwrap();
-        assert_eq!(result.total, 1);
+        assert_eq!(collector.0.get(), 1, "due_only={due_only}");
+        assert_eq!((result.total, result.failed), (1, 0));
         assert_eq!(
-            db.text("metric_collection_spec", "synthetic", "last_status"),
+            db.text("metric_collection_spec", "enabled", "last_status"),
             "ok"
         );
-        assert_eq!(
-            db.value("metric_collection_spec", "synthetic", "next_run_time"),
-            rusqlite::types::Value::Integer(clock.0.timestamp() + 600)
-        );
+        for name in ["disabled", "truthy"] {
+            assert_eq!(
+                db.value("metric_collection_spec", name, "last_run_at"),
+                rusqlite::types::Value::Null
+            );
+        }
+        db.execute("UPDATE metric_collection_spec SET enabled = 0 WHERE name = 'enabled'");
+        let result = run_metric_specs(&store, &collector, &clock, due_only).await;
+        if due_only {
+            assert_eq!(result.unwrap().total, 0);
+        } else {
+            assert!(matches!(result, Err(RunError::NoMatchingSpecs)));
+        }
+        assert_eq!(collector.0.get(), 1);
         store.close();
     }
 }

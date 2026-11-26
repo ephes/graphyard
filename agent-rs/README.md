@@ -216,7 +216,7 @@ agent-rs/
                         rounds, comparison
     fakes.py            scripted collector endpoints and fake InfluxDB
     settings_parity.py  Django settings of the Python agent in the harness
-    shadow_prepare.py   shadow run: database copy, T0, D-11/D-13 scan (stdlib only)
+    shadow_prepare.py   shadow run: database copy, T0, D-11/D-13/D-15 scan (stdlib only)
     shadow_record.py    shadow run: samples both databases and units (stdlib only)
     shadow_compare.py   shadow run: report against production (stdlib only)
   scripts/
@@ -314,9 +314,10 @@ publications (including failures) are ignored. A failure advances
 gap and the final carry against `CONDITION_DATA_STALE_WARNING_SECONDS`, matching
 Python and the shared condition/store fixtures.
 
-The Rust store decodes enabled metric specs directly from SQLite in name order.
-If a row cannot be decoded, the store returns the first error and discards the
-partial result.
+On SIGINT or SIGTERM, an in-flight condition in continuous mode has up to
+500 ms to finish and publish. The agent skips subsequent sample queries. If
+the sweep processed any conditions and left some unstarted, it records a
+warning heartbeat with `partial: 1` and preserves `last_success`.
 
 The Rust agent checks that each spec’s next run time fits in SQLite before
 claiming or executing it, even in manual mode. An overflowing schedule
@@ -326,7 +327,11 @@ diagnostic with the spec ID among its five samples.
 
 Rust due-only metric runs page through lightweight candidates in name order
 using the sweep's starting time as the due cutoff. Each candidate's schedule
-and definition revision must still match before Rust loads its config. The
+and definition revision must still match before Rust loads its config. SQLite
+refuses stored configs over 1 MiB before returning the value. The ceiling
+applies to collector settings such as selectors and tag mappings. It is separate
+from limits on collected response bodies. An oversized config counts as a
+failed spec, leaves the row due for repair and allows later specs to run. The
 claim then compares the loaded definition, including the config, before
 invoking the collector. Claims use a 3–300 second lease (the clamped interval), renewed every one third
 of that duration until the complete collector/sink/registry future returns.
@@ -341,8 +346,13 @@ background thread; it cannot interrupt a running collector, so a lost renewal
 refuses its sink/registry publication and completion instead. The initial claim
 of both agents also compares the captured definition. Do not run the two
 schedulers together for the same specs.
-Explicit non-due/manual runs still execute every enabled spec regardless of due
-time, with completion fenced by the captured definition and original schedule.
+Rust collector sweeps and lease writes accept an enable flag only when it
+decodes to true (SQLite renders it as the single byte `1`). An imported value
+such as `2` cannot start a collector or renew or complete its claim.
+Explicit non-due/manual runs take one snapshot in name order and execute
+eligible specs regardless of due time, with completion fenced by the captured
+definition and original schedule. They use the same config ceiling as due
+sweeps and report no matching specs when the snapshot is empty.
 Superseded completions contribute no run counts, errors or heartbeat evidence;
 when there are no accepted completions or schedule failures, the heartbeat is
 untouched. The Rust agent counts every
@@ -352,13 +362,13 @@ messages in spec order (critical outcomes and warnings with a message). A fixed
 already emitted during collection cannot be recalled. Python and Rust share
 claim/recovery/completion fixtures and run only synthetic collectors in tests.
 
-When a due row has unreadable stored metadata, Rust counts it as failed and
+When a due or manual row has unreadable stored metadata, Rust counts it as failed and
 continues with later collectors. The log and up to five heartbeat error samples
-identify the row by ID without exposing the stored value. The row stays due so
+identify the row by ID without exposing the stored value. The row keeps its existing schedule so
 an operator can repair it. SQLite query failures still fail the run.
 
 A claim, renewal or completion store error stops later specs in the batch.
-After a committed completion, a schedule overflow or a due row with unreadable
+After a committed completion, a schedule overflow or a row with unreadable
 stored metadata, the agent tries to write a degraded `metric_collectors`
 heartbeat with `partial: 1` in its details. The counters cover completions and
 failures observed before the store error. A fixed batch error precedes the usual spec diagnostics. The partial

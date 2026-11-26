@@ -112,6 +112,69 @@ async fn due_collectors_isolate_a_malformed_stored_timestamp() {
     store.close();
 }
 
+#[tokio::test]
+async fn due_collectors_refuse_an_oversized_config_before_decoding() {
+    let db = TestDb::new();
+    for name in ["a oversized", "b good"] {
+        common::insert_spec(&db, name, "http_json_metric", &serde_json::json!({}));
+    }
+    db.execute(
+        "PRAGMA ignore_check_constraints = ON;
+         UPDATE metric_collection_spec SET config = zeroblob(1048577)
+         WHERE name = 'a oversized';",
+    );
+
+    let store = Store::open(db.path(), &settings(&[])).unwrap();
+    let run = run_metric_specs(&store, &Faults, &SystemClock, true)
+        .await
+        .unwrap();
+    assert_eq!((run.total, run.failed), (2, 1));
+    assert_eq!(
+        db.text("pipeline_heartbeat", "metric_collectors", "last_error"),
+        "spec_id=1: stored collector config exceeds 1 MiB"
+    );
+    assert_eq!(
+        db.value("metric_collection_spec", "a oversized", "next_run_time"),
+        rusqlite::types::Value::Integer(0)
+    );
+    assert_eq!(
+        db.text("metric_collection_spec", "b good", "last_status"),
+        "ok"
+    );
+    store.close();
+}
+
+#[tokio::test]
+async fn manual_collectors_isolate_malformed_metadata_and_run_future_siblings() {
+    let db = TestDb::new();
+    for name in ["c later", "b corrupt", "a earlier"] {
+        common::insert_spec(&db, name, "http_json_metric", &serde_json::json!({}));
+    }
+    db.execute(
+        "UPDATE metric_collection_spec SET next_run_time = 9223372036854775807;
+         UPDATE metric_collection_spec SET updated_at = '2026-02-30 03:04:05'
+         WHERE name = 'b corrupt';",
+    );
+
+    let store = Store::open(db.path(), &settings(&[])).unwrap();
+    let run = run_metric_specs(&store, &Faults, &SystemClock, false)
+        .await
+        .unwrap();
+    assert_eq!((run.total, run.failed), (3, 1));
+    for name in ["a earlier", "c later"] {
+        assert_eq!(db.text("metric_collection_spec", name, "last_status"), "ok");
+    }
+    assert_eq!(
+        db.value("metric_collection_spec", "b corrupt", "next_run_time"),
+        rusqlite::types::Value::Integer(i64::MAX)
+    );
+    assert_eq!(
+        db.text("pipeline_heartbeat", "metric_collectors", "last_error"),
+        "spec_id=2: invalid stored collector metadata"
+    );
+    store.close();
+}
+
 struct Samples {
     fail: bool,
 }

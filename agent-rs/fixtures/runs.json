@@ -147,20 +147,6 @@
       "last_error": "",
       "created_at": "2026-01-02 03:04:05.678901",
       "updated_at": "2026-01-02 03:04:05.678901"
-     },
-     {
-      "id": 11,
-      "name": "j truthy enabled",
-      "enabled": 2,
-      "spec_type": "http_json_metric",
-      "interval_seconds": 300,
-      "next_run_time": 1792570530,
-      "config": "{\"url\": \"http://127.0.0.1:9/metrics\", \"metric_path\": \"$.value\"}",
-      "last_run_at": null,
-      "last_status": "warning",
-      "last_error": "",
-      "created_at": "2026-01-02 03:04:05.678901",
-      "updated_at": "2026-01-02 03:04:05.678901"
      }
     ],
     "pipeline_heartbeat": [
@@ -227,21 +213,13 @@
       0,
       ""
      ]
-    },
-    "j truthy enabled": {
-     "outcome": [
-      "ok",
-      4,
-      0,
-      ""
-     ]
     }
    },
    "result": {
-    "total": 9,
+    "total": 8,
     "failed": 3,
     "warning": 2,
-    "ingested": 9,
+    "ingested": 5,
     "skipped": 4
    },
    "after": {
@@ -385,20 +363,6 @@
       "last_error": "",
       "created_at": "2026-01-02 03:04:05.678901",
       "updated_at": "2026-01-02 03:04:05.678901"
-     },
-     {
-      "id": 11,
-      "name": "j truthy enabled",
-      "enabled": 2,
-      "spec_type": "http_json_metric",
-      "interval_seconds": 300,
-      "next_run_time": 1792570830,
-      "config": "{\"url\": \"http://127.0.0.1:9/metrics\", \"metric_path\": \"$.value\"}",
-      "last_run_at": "2026-10-21 08:15:30.123456",
-      "last_status": "ok",
-      "last_error": "",
-      "created_at": "2026-01-02 03:04:05.678901",
-      "updated_at": "2026-01-02 03:04:05.678901"
      }
     ],
     "condition_definition": [],
@@ -409,7 +373,7 @@
       "status": "warning",
       "last_success": "2026-10-21 08:15:30.123456",
       "last_error": "a bad timeout: config.request_timeout_seconds must be a positive number; b crashing: collector failure: RuntimeError; d warning: no numeric values found; f unknown: unsupported spec_type: legacy_type",
-      "details": "{\"total\": 9, \"failed\": 3, \"warning\": 2, \"ingested\": 9, \"skipped\": 4}",
+      "details": "{\"total\": 8, \"failed\": 3, \"warning\": 2, \"ingested\": 5, \"skipped\": 4}",
       "updated_at": "2026-10-21 08:15:30.123456"
      }
     ]

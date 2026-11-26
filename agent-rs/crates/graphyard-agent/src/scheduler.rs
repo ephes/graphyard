@@ -82,6 +82,9 @@ pub async fn run_forever<R: Runner>(runner: &mut R, loops: &Loops) {
             runner.conditions().await;
             next_conditions = reschedule(next, condition_interval);
         }
+        if runner.stopping() {
+            return;
+        }
         let until = match (next_metrics, next_conditions) {
             (Some(a), Some(b)) => Some(a.min(b)),
             (a, b) => a.or(b),
