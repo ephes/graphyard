@@ -216,7 +216,7 @@ agent-rs/
                         rounds, comparison
     fakes.py            scripted collector endpoints and fake InfluxDB
     settings_parity.py  Django settings of the Python agent in the harness
-    shadow_prepare.py   shadow run: database copy, T0, D-11/D-13 scan (stdlib only)
+    shadow_prepare.py   shadow run: database copy, T0, D-11/D-13/D-15 scan (stdlib only)
     shadow_record.py    shadow run: samples both databases and units (stdlib only)
     shadow_compare.py   shadow run: report against production (stdlib only)
   scripts/

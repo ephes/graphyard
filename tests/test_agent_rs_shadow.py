@@ -222,6 +222,48 @@ def test_prepare_copies_disables_and_lists_rows_to_look_at(tmp_path, capsys):
     assert "refusing to overwrite" in capsys.readouterr().err
 
 
+def test_prepare_lists_collectors_that_only_python_runs(tmp_path, capsys):
+    source = tmp_path / "prod.sqlite3"
+    connection = _database(source)
+    # D-15: raw SQL past Django's conversion (a legacy import).
+    connection.execute(
+        "UPDATE metric_collection_spec SET enabled = 2 WHERE name = 'unifi'"
+    )
+    connection.execute(
+        "UPDATE metric_collection_spec SET config = ? WHERE name = 'json temp'",
+        ('{"pad": "' + "x" * (prepare.MAX_COLLECTOR_CONFIG_BYTES - 10) + '"}',),
+    )
+    # A disabled oversized spec is not loaded, so not scanned.
+    connection.execute(
+        "INSERT INTO metric_collection_spec (name, enabled, spec_type, interval_seconds,"
+        " next_run_time, config, last_status, last_error, created_at, updated_at)"
+        " VALUES ('off', 0, 'http_json_metric', 60, 0, ?, 'ok', '', ?, ?)",
+        (
+            '{"pad": "' + "x" * prepare.MAX_COLLECTOR_CONFIG_BYTES + '"}',
+            CREATED,
+            CREATED,
+        ),
+    )
+    connection.commit()
+    connection.close()
+    shadow = _shadow_dir(tmp_path)
+    assert prepare.main(["--source", str(source), "--shadow-dir", str(shadow)]) == 2
+    findings = json.loads((shadow / "shadow.json").read_text())["findings"]
+    assert sorted((f["name"], f["column"], f["issue"]) for f in findings) == [
+        (
+            "json temp",
+            "config",
+            f"config of {prepare.MAX_COLLECTOR_CONFIG_BYTES + 1} bytes beyond "
+            "the Rust agent's 1 MiB ceiling (D-15)",
+        ),
+        (
+            "unifi",
+            "enabled",
+            "enable flag '2': Python runs the collector, Rust only the flag '1' (D-15)",
+        ),
+    ]
+
+
 def test_prepare_succeeds_on_a_clean_database(tmp_path, capsys):
     source = tmp_path / "prod.sqlite3"
     _database(source).close()

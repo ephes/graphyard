@@ -11,12 +11,14 @@
    specs in the copy only (PLAN.md 13.1 R6: the UniFi spec when the
    controller limits logins; it is then compared through one ``--run-once``).
 3. Scan the rows the agent loads from the copy for the documents and values
-   on which the Rust agent and Python disagree (PLAN.md D-11, D-13): stored
-   JSON (``config``, ``tags_filter``, heartbeat ``details``) that Python
-   cannot load, integer tokens
+   on which the Rust agent and Python disagree (PLAN.md D-11, D-13, D-15):
+   stored JSON (``config``, ``tags_filter``, heartbeat ``details``) that
+   Python cannot load, integer tokens
    beyond CPython's 4300-digit limit, lone UTF-16 surrogate escapes, nesting
-   at or beyond ``serde_json``'s 128 levels, ``NaN``/``Infinity`` tokens, and
-   values of another SQLite storage class than the column's declared type.
+   at or beyond ``serde_json``'s 128 levels, ``NaN``/``Infinity`` tokens,
+   values of another SQLite storage class than the column's declared type,
+   and collectors with a truthy enable flag other than ``1`` or a config
+   over 1 MiB, which Python runs and Rust refuses.
 4. Record T0 (UTC, before the copy started) and the summary in
    ``<shadow-dir>/shadow.json`` for ``shadow_record.py`` and
    ``shadow_compare.py``.
@@ -58,7 +60,9 @@ INT_MAX_STR_DIGITS = 4300
 SERDE_MAX_DEPTH = 128
 
 #: The tables whose rows the agent loads (PLAN.md 5.1) and, for the spec and
-#: condition tables, the rows it loads (``WHERE enabled``, any truthy value).
+#: condition tables, the rows Python loads (``WHERE enabled``, any truthy
+#: value). Rust collector sweeps take only the flag ``1`` (D-15), see
+#: ``collector_issues``.
 AGENT_TABLES = {
     "metric_collection_spec": "enabled",
     "condition_definition": "enabled",
@@ -67,6 +71,8 @@ AGENT_TABLES = {
     "host_registry": None,
     "service_registry": None,
 }
+#: The Rust agent's ceiling for a stored collector ``config`` (D-15).
+MAX_COLLECTOR_CONFIG_BYTES = 1024 * 1024
 #: Stored JSON columns of D-11.
 JSON_COLUMNS = {
     "metric_collection_spec": "config",
@@ -184,9 +190,47 @@ def _hex4(text: str, start: int) -> int | None:
         return None
 
 
+def collector_issues(connection: sqlite3.Connection) -> list[dict[str, Any]]:
+    """Collector rows Python runs and the Rust agent refuses (D-15): a truthy
+    enable flag other than ``1``, and a config beyond the 1 MiB ceiling."""
+    findings: list[dict[str, Any]] = []
+    for row_id, row_name, flag, size in connection.execute(
+        "SELECT id, name, CAST(enabled AS TEXT), length(CAST(config AS BLOB)) "
+        "FROM metric_collection_spec WHERE enabled ORDER BY id"
+    ):
+        if flag != "1":
+            findings.append(
+                {
+                    "table": "metric_collection_spec",
+                    "id": row_id,
+                    "name": row_name,
+                    "column": "enabled",
+                    "issue": f"enable flag {flag!r}: Python runs the collector, "
+                    "Rust only the flag '1' (D-15)",
+                }
+            )
+        if size is not None and size > MAX_COLLECTOR_CONFIG_BYTES:
+            findings.append(
+                {
+                    "table": "metric_collection_spec",
+                    "id": row_id,
+                    "name": row_name,
+                    "column": "config",
+                    "issue": f"config of {size} bytes beyond the Rust agent's "
+                    "1 MiB ceiling (D-15)",
+                }
+            )
+    return findings
+
+
 def scan(connection: sqlite3.Connection) -> list[dict[str, Any]]:
     """The rows of the copy to look at before the shadow starts."""
     findings: list[dict[str, Any]] = []
+    if connection.execute(
+        "SELECT 1 FROM sqlite_master WHERE type = 'table' "
+        "AND name = 'metric_collection_spec'"
+    ).fetchone():
+        findings.extend(collector_issues(connection))
     for table, filter_column in AGENT_TABLES.items():
         columns = connection.execute(f'PRAGMA table_info("{table}")').fetchall()
         if not columns:

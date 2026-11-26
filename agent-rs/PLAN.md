@@ -327,7 +327,10 @@ that differs is a bug.
   Django's field conversion; Rust fails the load (stderr `Metric collection
   failed: …` / `Condition eval failed: …`), where Python hands the value on
   and may coerce it or fail later. The `bool` and `datetime` columns follow
-  Python's converters exactly, whatever the storage class (5.3).
+  Python's converters exactly, whatever the storage class (5.3). Collector
+  selection is the exception: Python's `WHERE enabled` runs any truthy flag,
+  while Rust collector sweeps and lease writes require the decoded `1`
+  (D-15).
 - **D-14 HTTP client corner cases** (S6). The collectors' HTTP layer follows
   httpx 0.28.1 byte for byte where the fixtures pin it (section 6.1); it
   differs where reproducing httpx would mean re-implementing a library:

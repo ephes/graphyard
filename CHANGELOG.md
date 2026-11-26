@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- List collectors in the shadow-run preparation scan that Python runs and the
+  Rust agent refuses: an enable flag other than `1` or a config over 1 MiB.
+
 - Stop continuous Rust condition sweeps between evaluations during shutdown.
   Let the current evaluation finish during the existing grace period and
   record a partial heartbeat for work completed before the stop.
