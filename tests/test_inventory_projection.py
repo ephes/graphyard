@@ -132,6 +132,12 @@ def test_sqlite_status_reads_host_and_release_health_in_one_snapshot(tmp_path):
     _run_sqlite_probe(tmp_path, "status", "DEFERRED")
 
 
+@pytest.mark.parametrize("view", ["detail", "applications"])
+@pytest.mark.parametrize("mode", ["IMMEDIATE", "DEFERRED"])
+def test_host_pages_read_warning_policy_with_their_evidence(tmp_path, view, mode):
+    _run_sqlite_probe(tmp_path, f"page-{view}", mode)
+
+
 def _run_sqlite_probe(tmp_path, projection, mode):
     root = Path(__file__).resolve().parents[1]
     env = {
@@ -188,6 +194,10 @@ def _probe(db_path, projection, mode):
         assert cursor.fetchone()[0] == "wal"
     if projection == "status":
         _assert_status_snapshot()
+        connection.close()
+        return
+    if projection.startswith("page-"):
+        _assert_page_snapshot(projection.removeprefix("page-"), mode)
         connection.close()
         return
     host = InventoryHost.objects.create(
@@ -376,6 +386,109 @@ def _assert_status_snapshot():
     assert after["summary"]["attention"] == 0
     assert after["summary"]["release_attention"] == 1
     assert after["releases"]["sources"][0]["status"] == "failed"
+
+
+def _assert_page_snapshot(view, mode):
+    """A host page pairs its warning policy with the report generation it shows."""
+    from concurrent.futures import ThreadPoolExecutor
+    from datetime import timedelta
+    from uuid import uuid4
+    import hashlib
+    from django.contrib.auth import get_user_model
+    from django.db import OperationalError, connection, connections
+    from django.test import Client
+    from django.test.utils import setup_test_environment
+    from django.urls import reverse
+    from django.utils import timezone
+    from graphyard import inventory
+    from graphyard.models import HostRegistry, InventoryCredential, InventoryHost
+
+    setup_test_environment()  # Record template contexts outside pytest.
+    host = InventoryHost.objects.create(
+        host=HostRegistry.objects.create(host_id="synthetic"),
+        warning_after_seconds=600,
+    )
+    secret = "synthetic-inventory-secret-for-tests-only"
+    credential = InventoryCredential.objects.create(
+        host=host, digest=hashlib.sha256(secret.encode()).hexdigest()
+    )
+    auth = f"Bearer {credential.pk}.{secret}"
+    now = timezone.now()
+
+    def body(i):
+        return {
+            "schema_version": 1,
+            "snapshot_id": str(uuid4()),
+            "host": "synthetic",
+            "observed_at": (now + timedelta(seconds=i)).isoformat(),
+            "collector": "synthetic/1",
+            "categories": {
+                c: {"status": "ok", "items": [{"name": str(i)}]}
+                for c in inventory.CATEGORIES
+            },
+            "gaps": [],
+        }
+
+    def send(report):
+        return (
+            Client()
+            .post(
+                "/v1/inventory",
+                report,
+                content_type="application/json",
+                HTTP_AUTHORIZATION=auth,
+            )
+            .status_code
+        )
+
+    first, second = body(0), body(1)
+    assert send(first) == 200
+    reader = get_user_model().objects.create_user(username="reader")
+    fired = False
+    writer_codes = []
+
+    def writer():
+        try:
+            # Reconfigure the warning policy, then admit a newer generation.
+            InventoryHost.objects.filter(pk=host.pk).update(warning_after_seconds=1200)
+            writer_codes.append(send(second))
+        except OperationalError:
+            writer_codes.append("busy")
+        finally:
+            connections.close_all()
+
+    def pause(execute, sql, params, many, context):
+        nonlocal fired
+        result = execute(sql, params, many, context)
+        if (
+            not fired
+            and 'FROM "graphyard_inventoryhost"' in sql
+            and sql.lstrip().upper().startswith("SELECT")
+        ):
+            fired = True
+            with ThreadPoolExecutor(max_workers=1) as pool:
+                pool.submit(writer).result(timeout=15)
+        return result
+
+    client = Client()
+    client.force_login(reader)
+    route = "inventory_detail" if view == "detail" else "inventory_applications"
+    with connection.execute_wrapper(pause):
+        response = client.get(reverse(f"graphyard:{route}", args=["synthetic"]))
+    assert fired
+    assert response.status_code == 200
+    assert not connection.in_atomic_block
+    shown = response.context["host"]
+    pair = (shown["warning_after_seconds"], shown["observed_at"])
+    old = (600, first["observed_at"])
+    new = (1200, second["observed_at"])
+    if mode == "IMMEDIATE":
+        # The read snapshot holds the write lock; the writer waits out its timeout.
+        assert writer_codes == ["busy"], writer_codes
+        assert pair == old, pair
+    else:
+        assert writer_codes == [200], writer_codes
+        assert pair in (old, new), pair
 
 
 if __name__ == "__main__":

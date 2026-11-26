@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Render the inventory host detail page when the applications category has no
+  recorded attempt. The page shows "No attempt recorded" and no partial
+  application preview instead of failing.
+- Read the host's warning policy in the same database snapshot as the report
+  evidence on the host detail and application pages, so a concurrent
+  reconfiguration or newer report cannot mix generations on one page.
+
 - Refuse Rust collector lease renewals at or after the persisted deadline,
   including when a SQLite writer delays renewal. Leave the expired slot due.
   Renewal and scheduled completion take an exclusive SQLite lock before reading

@@ -165,6 +165,24 @@ def test_partial_applications_remain_failed_but_visible_and_do_not_erase_success
     assert response.json() == partial
 
 
+def test_host_detail_renders_application_category_without_an_attempt(
+    client, enrolled, django_user_model
+):
+    good = report(observed_at=(timezone.now() - timedelta(minutes=1)).isoformat())
+    good["categories"]["applications"]["items"] = [{"id": "previous-success"}]
+    assert send(client, enrolled, good).status_code == 200
+    InventoryCategory.objects.filter(host=enrolled[0], name="applications").update(
+        latest_attempt=None
+    )
+    client.force_login(django_user_model.objects.create_user(username="reader"))
+    page = client.get(reverse("graphyard:inventory_detail", args=["studio"]))
+    assert page.status_code == 200
+    assert page.context["partial_applications"] is None
+    html = page.content.decode()
+    assert "Incomplete application inventory" not in html
+    assert "No attempt recorded" in html and "previous-success" in html
+
+
 @pytest.mark.parametrize(
     "category,status,items",
     [

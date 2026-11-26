@@ -374,6 +374,15 @@ def host_state(host):
         return _host_states([host])[host.pk]
 
 
+def host_evidence(host_id):
+    """Read the host's warning policy and report pointers in one snapshot."""
+    with _read_snapshot():
+        host = get_object_or_404(
+            InventoryHost.objects.select_related("host"), host__host_id=host_id
+        )
+        return host, _host_states([host])[host.pk]
+
+
 def host_summary(host, now, state=None):
     latest, observations = host_state(host) if state is None else state
     categories = {}
@@ -574,7 +583,10 @@ def partial_application_preview(state):
     for category in state[1]:
         if category.name != "applications":
             continue
-        report = category.latest_attempt.report["categories"]["applications"]
+        attempt = category.latest_attempt
+        if attempt is None:
+            return None
+        report = attempt.report["categories"]["applications"]
         partial = report.get("partial_items", [])
         if not partial:
             return None
@@ -605,7 +617,7 @@ def partial_application_preview(state):
         return {
             "count": len(partial),
             "entries": entries,
-            "snapshot": category.latest_attempt.snapshot_id,
+            "snapshot": attempt.snapshot_id,
         }
     return None
 
@@ -613,8 +625,7 @@ def partial_application_preview(state):
 @login_required
 @require_GET
 def detail(request, host_id):
-    host = get_object_or_404(InventoryHost, host__host_id=host_id)
-    state = host_state(host)
+    host, state = host_evidence(host_id)
     return render(
         request,
         "graphyard/inventory_detail.html",
@@ -633,8 +644,7 @@ def application_list(request, host_id):
     from . import inventory_applications as presentation
 
     now = timezone.now()
-    host = get_object_or_404(InventoryHost, host__host_id=host_id)
-    state = host_state(host)
+    host, state = host_evidence(host_id)
     category = next((entry for entry in state[1] if entry.name == "applications"), None)
     snapshot, basis, entries = presentation.source(category)
     observed_at = snapshot.observed_at if snapshot else None

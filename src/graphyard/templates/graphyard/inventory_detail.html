@@ -6,7 +6,7 @@
 {% if latest %}<p><a href="{% url 'graphyard:inventory_download' host.host latest.snapshot_id %}">Download latest full report</a></p>{% endif %}
 {% if host.gaps %}<h2>Coverage gaps</h2><ul>{% for gap in host.gaps %}<li>{{ gap }}</li>{% endfor %}</ul>{% endif %}
 {% for category in categories %}<section><h2>{{ category.name }}</h2>
-<p>Latest attempt: {{ category.latest_attempt.observed_at }}.</p>
+<p>Latest attempt: {{ category.latest_attempt.observed_at|default:"No attempt recorded" }}.</p>
 {% for name, observation in category.latest_attempt.report.categories.items %}{% if name == category.name %}<p>Status: {{ observation.status }} {{ observation.error }}</p>
 {% if observation.partial_items %}
 <p><strong>Incomplete application inventory.</strong> These are results from the latest attempt; they do not replace the last successful inventory.</p>
