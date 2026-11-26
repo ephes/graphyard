@@ -898,8 +898,9 @@ statement or transaction short) and closes the connection.
   seven scalars), then Django's `datetime_re`, then
   `convert_datetimefield_value` (naive is UTC). Text neither accepts loads as
   NULL; text `datetime_re` matches with out-of-range fields (`2026-13-01
-  00:00:00`) raises `ValueError`, which fails the whole load of specs or
-  conditions (P2 message) as in Python. Writing a loaded value back (the
+  00:00:00`) raises `ValueError` (P2 message). Rust condition sweeps count
+  unreadable rows individually; a targeted condition read returns the
+  conversion error. Writing a loaded value back (the
   heartbeat's `last_success`, 5.4) uses the UTC text and raises
   `OverflowError: date value out of range` outside Python's years 1–9999.
   Pinned by `datetime_codec.json` (curated plus a seeded random corpus).

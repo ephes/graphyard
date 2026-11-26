@@ -36,7 +36,7 @@ mod specs;
 mod test_common;
 
 pub use actor::Store;
-pub use conditions::ConditionRow;
+pub use conditions::{ConditionRow, UnreadableCondition};
 pub use datetime::{DateTimeError, DbDateTime};
 pub use error::{NOT_UPDATED_MESSAGE, StoreError};
 pub use heartbeat::{HeartbeatRecord, details_json};

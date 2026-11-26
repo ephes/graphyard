@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Continue Rust condition sweeps past unreadable stored rows and count them
+  in the heartbeat. Targeted runs report the selected row's read error.
+
 - List collectors in the shadow-run preparation scan that Python runs and the
   Rust agent refuses: an enable flag other than `1` or a config over 1 MiB.
 

@@ -238,20 +238,53 @@ fn agent_records_empty_sweeps_as_liveness_without_advancing_success() {
 /// A failure outside a condition (here a stored value of another storage
 /// class, D-13, failing the load): one stderr line, exit 1, no heartbeat.
 #[test]
-fn a_failure_outside_a_condition_exits_1_with_one_line() {
+fn unreadable_conditions_fail_locally_and_healthy_siblings_publish() {
+    let server = FakeServer::start();
     let db = conditions();
-    db.execute("UPDATE condition_definition SET window_minutes = 'thirty' WHERE id = 1");
-    let output = evaluate(&db, &[], &[]);
+    db.execute("UPDATE condition_definition SET created_at = '2026-13-01 00:00:00' WHERE id = 2");
+    condition(&db, 5, "e unreadable", true);
+    db.execute("UPDATE condition_definition SET window_minutes = 'thirty' WHERE id = 5");
+    let env = influx_env(&server);
+
+    let output = evaluate(&db, &[], &pairs(&env));
     assert_eq!(output.status.code(), Some(1), "{output:?}");
-    assert!(output.stdout.is_empty());
-    let stderr = text(&output.stderr);
-    assert!(
-        stderr.starts_with("Condition evaluation failed: "),
-        "{stderr}"
+    assert_eq!(
+        text(&output.stdout),
+        "Condition evaluation completed with failures (2/4).\n"
     );
-    assert_eq!(stderr.lines().count(), 1, "{stderr}");
-    assert_eq!(db.count("pipeline_heartbeat"), 0);
-    assert_eq!(db.text("condition_definition", "a cpu", "message"), "");
+    assert_eq!(server.requests(), ["POST /api/v2/query?org=o"; 2]);
+    for name in ["b cpu", "d cpu"] {
+        assert_eq!(
+            db.text("condition_definition", name, "message"),
+            "No samples available in condition window"
+        );
+    }
+    for name in ["a cpu", "e unreadable"] {
+        assert_eq!(db.text("condition_definition", name, "message"), "");
+    }
+    let stderr = text(&output.stderr);
+    assert!(stderr.contains("condition_id=2 stage=admission"));
+    assert!(stderr.contains("condition_id=5 stage=admission"));
+    assert_eq!(heartbeat_details(&db), r#"{"evaluated": 4, "failed": 2}"#);
+    assert_eq!(
+        db.text("pipeline_heartbeat", "condition_evaluator", "status"),
+        "warning"
+    );
+
+    let before = db.rows("pipeline_heartbeat");
+    for id in ["2", "5"] {
+        let output = evaluate(&db, &["--condition-id", id], &pairs(&env));
+        assert_eq!(output.status.code(), Some(1), "{output:?}");
+        assert!(output.stdout.is_empty());
+        let stderr = text(&output.stderr);
+        assert!(
+            stderr.starts_with("Condition evaluation failed: "),
+            "{stderr}"
+        );
+        assert_eq!(stderr.lines().count(), 1, "{stderr}");
+    }
+    assert_eq!(server.requests().len(), 2);
+    assert_eq!(db.rows("pipeline_heartbeat"), before);
 }
 
 /// D-2 as at the agent's startup: a missing database is never created, an
