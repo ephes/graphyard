@@ -177,7 +177,7 @@ pub fn evaluate_samples(
     }
 
     let grouped = group_samples_by_series(samples)?;
-    let keys: Vec<&SeriesKey> = grouped.keys().collect();
+    let keys: Vec<_> = grouped.keys().collect();
     let mut results = Vec::with_capacity(grouped.len());
     for (index, series) in grouped.values().enumerate() {
         let latest = series[series.len() - 1].ts;
@@ -251,7 +251,7 @@ struct Point {
 }
 
 /// `_series_key`: the sorted `(name, value)` pairs of a sample.
-type SeriesKey = Vec<(String, String)>;
+type SeriesKey<'a> = Vec<(&'a str, &'a str)>;
 
 struct SeriesResult {
     /// Position of the series in query order (also its label's index).
@@ -264,7 +264,7 @@ struct SeriesResult {
 
 /// `_series_key`: the metric, every non-empty canonical dimension, then the
 /// custom tags without overriding a dimension (`setdefault`), sorted by name.
-fn series_key(sample: &MetricSample) -> SeriesKey {
+fn series_key(sample: &MetricSample) -> SeriesKey<'_> {
     let mut dimensions: BTreeMap<&str, &str> = BTreeMap::new();
     dimensions.insert("metric", &sample.metric);
     let canonical: [(&str, Option<&str>); 9] = [
@@ -286,18 +286,15 @@ fn series_key(sample: &MetricSample) -> SeriesKey {
     for (name, value) in &sample.tags {
         dimensions.entry(name).or_insert(value);
     }
-    dimensions
-        .into_iter()
-        .map(|(name, value)| (name.to_owned(), value.to_owned()))
-        .collect()
+    dimensions.into_iter().collect()
 }
 
 /// `_group_samples_by_series`: series in order of first appearance, each
 /// sorted by time; conflicting equal-time values refuse the entire observation.
 fn group_samples_by_series(
     samples: &[MetricSample],
-) -> Result<IndexMap<SeriesKey, Vec<Point>>, PyError> {
-    let mut grouped: IndexMap<SeriesKey, Vec<Point>> = IndexMap::new();
+) -> Result<IndexMap<SeriesKey<'_>, Vec<Point>>, PyError> {
+    let mut grouped: IndexMap<SeriesKey<'_>, Vec<Point>> = IndexMap::new();
     for sample in samples {
         grouped.entry(series_key(sample)).or_default().push(Point {
             ts: sample.ts.micros(),
@@ -321,23 +318,23 @@ fn group_samples_by_series(
 #[cfg(test)]
 thread_local! { static DIMENSION_READS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) }; }
 
-fn dimension<'a>(key: &'a SeriesKey, name: &str) -> Option<&'a str> {
+fn dimension<'a>(key: &SeriesKey<'a>, name: &str) -> Option<&'a str> {
     #[cfg(test)]
     DIMENSION_READS.with(|count| count.set(count.get() + 1));
-    key.binary_search_by(|(candidate, _)| candidate.as_str().cmp(name))
+    key.binary_search_by(|(candidate, _)| (*candidate).cmp(name))
         .ok()
-        .map(|index| key[index].1.as_str())
+        .map(|index| key[index].1)
 }
 
 /// `_series_label`: JSON-quoted names/values of the dimensions that differ;
 /// with nothing varying (one series) every name but `metric`. Missing values
 /// render as `null`, distinct from the quoted empty string.
-fn series_label(keys: &[&SeriesKey], selected: &SeriesKey) -> String {
+fn series_label(keys: &[&SeriesKey<'_>], selected: &SeriesKey<'_>) -> String {
     // One visit per present dimension; absence varies whenever its count is
     // below the series count. Sparse keys never require an N-by-union matrix.
     let mut dimensions: BTreeMap<&str, (&str, usize, bool)> = BTreeMap::new();
     for key in keys {
-        for (name, value) in key.iter() {
+        for &(name, value) in key.iter() {
             let entry = dimensions.entry(name).or_insert((value, 0, false));
             entry.1 += 1;
             entry.2 |= entry.0 != value;

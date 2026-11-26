@@ -448,6 +448,45 @@ fn injective_series_ties_match_in_both_orders() {
 }
 
 #[test]
+fn repeated_series_borrow_tag_storage_and_preserve_structural_ties() {
+    let mut samples = fresh(73.0);
+    let mut empty_zone = fresh(74.0);
+    for sample in &mut empty_zone {
+        sample.tags.insert("zone".into(), String::new());
+    }
+    samples.extend(empty_zone);
+    for (i, sample) in samples.iter_mut().enumerate() {
+        sample.tags.insert("host".into(), format!("ignored-{i}"));
+        sample.subject_id = Some(String::new());
+        sample.tags.insert("subject_id".into(), "legacy".into());
+    }
+
+    let result = evaluate_samples(&humidity_rule(), &samples, now(), &BigInt::from(60)).unwrap();
+    assert_eq!(result.status, StatusLevel::Warning);
+    assert_eq!(result.last_value, Some(73.0));
+    assert!(
+        result
+            .message
+            .ends_with(r#"[series: "zone"=null] (2 of 2 series not OK)"#)
+    );
+    samples.reverse();
+    assert_eq!(
+        result,
+        evaluate_samples(&humidity_rule(), &samples, now(), &BigInt::from(60)).unwrap()
+    );
+
+    for sample in &samples {
+        let key = series_key(sample);
+        assert_eq!(dimension(&key, "host"), Some("homeassistant"));
+        let (stored_name, stored_value) = sample.tags.get_key_value("subject_id").unwrap();
+        let (name, value) = key.iter().find(|(name, _)| *name == "subject_id").unwrap();
+        assert_eq!(dimension(&key, "subject_id"), Some("legacy"));
+        assert_eq!(name.as_ptr(), stored_name.as_ptr());
+        assert_eq!(value.as_ptr(), stored_value.as_ptr());
+    }
+}
+
+#[test]
 fn r102_sparse_labels_do_not_build_a_matrix() {
     let samples: Vec<_> = (0..128)
         .map(|i| {

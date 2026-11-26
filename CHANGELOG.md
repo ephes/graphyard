@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Borrow dimension names and values from samples when grouping Rust
+  condition series.
+
 - Reuse one borrowed Rust breach window and continuity check for both
   condition thresholds.
 
