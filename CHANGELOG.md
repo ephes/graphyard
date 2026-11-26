@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Refuse Rust collector lease renewals at or after the persisted deadline,
+  including when a SQLite writer delays renewal. Leave the expired slot due.
+
 - Validate the staged local Rust release archive through the gzip trailer before
   installing it, so an invalid archive leaves the output path available for a retry.
 - Report local Rust release installation errors separately from concurrent build

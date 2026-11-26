@@ -1,7 +1,8 @@
 //! A short schedule must not expire while a collector is still live.
 mod common;
 
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Arc;
+use std::sync::atomic::{AtomicI64, AtomicUsize, Ordering};
 use std::time::Duration;
 
 use graphyard_agent::runs::{Clock, SpecExecutors, SystemClock, run_metric_specs};
@@ -37,10 +38,34 @@ impl SpecExecutors for Deferred {
         Ok(SpecOutcome::new(StatusLevel::Ok, 1, 0, ""))
     }
 }
+#[derive(Clone, Copy)]
 struct Fixed(UtcDateTime);
 impl Clock for Fixed {
     fn now(&self) -> UtcDateTime {
         self.0
+    }
+}
+
+#[derive(Clone)]
+struct AdjustableClock {
+    seconds: Arc<AtomicI64>,
+    read: Arc<Notify>,
+}
+
+impl AdjustableClock {
+    fn new(seconds: i64) -> Self {
+        Self {
+            seconds: Arc::new(AtomicI64::new(seconds)),
+            read: Arc::new(Notify::new()),
+        }
+    }
+}
+
+impl Clock for AdjustableClock {
+    fn now(&self) -> UtcDateTime {
+        let seconds = self.seconds.load(Ordering::SeqCst);
+        self.read.notify_one();
+        UtcDateTime::from_seconds(seconds)
     }
 }
 fn short_spec(db: &TestDb) {
@@ -247,6 +272,43 @@ async fn abandoned_collection_is_claimable_only_after_its_persisted_lease() {
 }
 
 #[tokio::test]
+async fn renewal_delayed_until_expiry_cancels_collection_and_leaves_the_slot_due() {
+    let db = TestDb::new();
+    short_spec(&db);
+    let store = Store::open(db.path(), &settings(&[])).unwrap();
+    let collector = Deferred::new();
+    let clock = AdjustableClock::new(100);
+    let (run, ()) = tokio::time::timeout(Duration::from_secs(9), async {
+        tokio::join!(run_metric_specs(&store, &collector, &clock, true), async {
+            collector.entered.notified().await;
+            assert_eq!(schedule(&db), 103);
+            clock.read.notified().await; // Drain the scan/claim reads.
+            let writer = db.raw();
+            writer.execute_batch("BEGIN IMMEDIATE").unwrap();
+            clock.seconds.store(101, Ordering::SeqCst);
+            clock.read.notified().await; // Renewal starts while the claim is live.
+            clock.seconds.store(103, Ordering::SeqCst);
+            writer.execute_batch("COMMIT").unwrap();
+            collector.finish.notify_one();
+        })
+    })
+    .await
+    .unwrap();
+    assert_eq!(run.unwrap().total, 0);
+    assert_eq!(schedule(&db), 103);
+    assert_eq!(db.count("pipeline_heartbeat"), 0);
+    assert_eq!(
+        run_metric_specs(&store, &collector, &clock, true)
+            .await
+            .unwrap()
+            .total,
+        1
+    );
+    assert_eq!(collector.calls.load(Ordering::SeqCst), 2);
+    store.close();
+}
+
+#[tokio::test]
 async fn renewal_and_completion_cannot_extend_or_publish_a_replacement_claim() {
     let db = TestDb::new();
     short_spec(&db);
@@ -265,14 +327,14 @@ async fn renewal_and_completion_cannot_extend_or_publish_a_replacement_claim() {
     );
     assert!(
         store
-            .renew_spec_claim(claim.clone(), 103, 104)
+            .renew_spec_claim(claim.clone(), 103, 104, || 101)
             .await
             .unwrap()
     );
     db.execute("UPDATE metric_collection_spec SET last_status = 'warning', last_error = ''");
     assert!(
         store
-            .renew_spec_claim(claim.clone(), 104, 105)
+            .renew_spec_claim(claim.clone(), 104, 105, || 102)
             .await
             .unwrap()
     );
@@ -286,7 +348,7 @@ async fn renewal_and_completion_cannot_extend_or_publish_a_replacement_claim() {
     );
     assert!(
         !store
-            .renew_spec_claim(claim.clone(), 105, 109)
+            .renew_spec_claim(claim.clone(), 105, 109, || 104)
             .await
             .unwrap()
     );
@@ -308,7 +370,12 @@ async fn renewal_and_completion_cannot_extend_or_publish_a_replacement_claim() {
     );
     assert_eq!(schedule(&db), 108);
     db.execute("UPDATE metric_collection_spec SET enabled=0");
-    assert!(!other.renew_spec_claim(claim, 108, 111).await.unwrap());
+    assert!(
+        !other
+            .renew_spec_claim(claim, 108, 111, || 106)
+            .await
+            .unwrap()
+    );
     store.close();
     other.close();
 }
@@ -344,7 +411,7 @@ async fn a_truthy_but_decoded_disabled_flag_fences_lease_writes() {
     // Simulate a legacy import which changes the flag without a new revision.
     db.execute("UPDATE metric_collection_spec SET enabled = 2");
     let renewed = store
-        .renew_spec_claim(claim.clone(), 103, 104)
+        .renew_spec_claim(claim.clone(), 103, 104, || 101)
         .await
         .unwrap();
     let published = store
@@ -373,11 +440,12 @@ impl SpecExecutors for Recording {
 
 /// Replaces the config (keeping the schedule) on the per-spec clock read,
 /// i.e. after the load and before the claim.
-struct EditBeforeClaim<'a> {
-    db: &'a TestDb,
-    calls: AtomicUsize,
+#[derive(Clone)]
+struct EditBeforeClaim {
+    db: Arc<TestDb>,
+    calls: Arc<AtomicUsize>,
 }
-impl Clock for EditBeforeClaim<'_> {
+impl Clock for EditBeforeClaim {
     fn now(&self) -> UtcDateTime {
         if self.calls.fetch_add(1, Ordering::SeqCst) == 1 {
             self.db.execute(
@@ -391,7 +459,7 @@ impl Clock for EditBeforeClaim<'_> {
 
 #[tokio::test]
 async fn claim_refuses_a_definition_edited_after_load() {
-    let db = TestDb::new();
+    let db = Arc::new(TestDb::new());
     insert_spec(
         &db,
         "synthetic",
@@ -401,8 +469,8 @@ async fn claim_refuses_a_definition_edited_after_load() {
     let store = Store::open(db.path(), &settings(&[])).unwrap();
     let collector = Recording(std::sync::Mutex::new(Vec::new()));
     let clock = EditBeforeClaim {
-        db: &db,
-        calls: AtomicUsize::new(0),
+        db: db.clone(),
+        calls: Arc::new(AtomicUsize::new(0)),
     };
     let stale = run_metric_specs(&store, &collector, &clock, true)
         .await
@@ -463,7 +531,7 @@ async fn edits_and_reverts_fence_claim_and_renewal() {
     edit_and_revert(&db);
     assert!(
         !store
-            .renew_spec_claim(before.clone(), 103, 104)
+            .renew_spec_claim(before.clone(), 103, 104, || 101)
             .await
             .unwrap()
     );

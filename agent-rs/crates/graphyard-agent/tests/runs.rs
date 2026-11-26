@@ -27,6 +27,7 @@ const TABLES: [&str; 3] = [
     "pipeline_heartbeat",
 ];
 
+#[derive(Clone, Copy)]
 struct FixedClock(UtcDateTime);
 
 impl Clock for FixedClock {
@@ -604,10 +605,11 @@ async fn two_due_runners_execute_one_collector() {
     b.close();
 }
 
+#[derive(Clone)]
 struct ClaimAfterLoadClock {
     db: PathBuf,
     now: UtcDateTime,
-    calls: std::sync::atomic::AtomicUsize,
+    calls: std::sync::Arc<std::sync::atomic::AtomicUsize>,
 }
 
 impl Clock for ClaimAfterLoadClock {
@@ -634,7 +636,7 @@ async fn a_claim_lost_after_loading_skips_collection_and_heartbeat() {
     let clock = ClaimAfterLoadClock {
         db: db.path.clone(),
         now: "2026-10-21T08:15:30Z".parse().unwrap(),
-        calls: std::sync::atomic::AtomicUsize::new(0),
+        calls: Default::default(),
     };
     let result = run_metric_specs(&store, &Faulty, &clock, true)
         .await

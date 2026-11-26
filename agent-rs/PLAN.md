@@ -580,14 +580,16 @@ Use the per-spec claim start time and advance the Rust claim by
 `min(max(3, interval_seconds), 300)` seconds. Renew it every one third of that
 lease while the collector/sink/registry future is live. Each renewal compares the
 exact last claim timestamp and captured name, enabled state, type, interval and
-config. Completion uses the most recent renewed timestamp and the same captured
-definition. A lost renewal cancels collection; a renewal storage error aborts the
+config. Rust reads the clock after acquiring the SQLite writer reservation and
+refuses renewal at or after the captured deadline. Completion uses the most
+recent renewed timestamp and the same captured definition.
+A lost renewal cancels collection; a renewal storage error aborts the
 run. Neither publishes a healthy outcome. No database lock spans collection.
 A crash or dropped run stops renewal and becomes eligible at its last persisted
 expiry; normal success/failure schedules the regular interval from claim start.
-A process suspension or database contention delaying renewal past expiry can lose
-ownership; cancellation cannot recall accepted external writes. Since round 85
-Python uses the same lease and renewal from a background thread and refuses
+A process suspension or database contention delaying renewal to expiry leaves
+the slot due. Cancellation cannot recall accepted external writes. Since round 85
+Python renews leases from a background thread and refuses
 publication/completion after a lost renewal; never run both schedulers on the
 same specs.
 Non-due manual runs retain unconditional execution and the shared run-start

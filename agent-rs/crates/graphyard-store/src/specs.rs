@@ -7,7 +7,7 @@ use std::vec::IntoIter;
 use graphyard_core::StatusLevel;
 use graphyard_core::utc::UtcDateTime;
 use rusqlite::types::{Value, ValueRef};
-use rusqlite::{Connection, params};
+use rusqlite::{Connection, TransactionBehavior, params};
 
 use crate::actor::Store;
 use crate::datetime::DbDateTime;
@@ -448,17 +448,24 @@ impl Store {
 
     /// Extend only the exact live claim and captured definition. A stale owner
     /// cannot extend a replacement or continue work after an edit/disable.
+    /// Read `now` on the database thread after taking the writer reservation.
     ///
     /// # Errors
-    /// SQLite errors. Superseded/deleted rows return false.
+    /// SQLite errors. Expired, superseded or deleted claims return false.
     pub async fn renew_spec_claim(
         &self,
         definition: Arc<SpecClaimIdentity>,
         expected_schedule: i64,
         until: i64,
+        now: impl FnOnce() -> i64 + Send + 'static,
     ) -> Result<bool, StoreError> {
         self.call(move |connection| {
-            Ok(connection.execute(
+            let transaction =
+                connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
+            if expected_schedule <= now() {
+                return Ok(false);
+            }
+            let renewed = transaction.execute(
                 &format!(
                     "UPDATE metric_collection_spec SET next_run_time = ? \
                  WHERE id = ? AND {COLLECTOR_ENABLED} AND next_run_time = ? \
@@ -475,7 +482,9 @@ impl Store {
                     definition.config,
                     definition.updated_at_raw,
                 ],
-            )? == 1)
+            )? == 1;
+            transaction.commit()?;
+            Ok(renewed)
         })
         .await
     }

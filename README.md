@@ -520,9 +520,10 @@ renewal ownership cancels the outstanding collector; a store failure fails the
 run. A crash or dropped run stops renewal, making the row eligible at its last
 persisted lease expiry. Successful and failed attempts schedule the next regular
 interval from their original claim start. No database lock spans network I/O.
-A process suspended beyond its lease, or database contention that delays renewal
-past expiry, can still lose ownership; cancellation cannot
-recall bytes already accepted by an external sink. The Python agent renews from a
+A Rust renewal checks the deadline after obtaining the SQLite writer reservation.
+A suspension or writer delay that carries renewal to the deadline leaves the slot
+due and cancels the outstanding collector. Cancellation cannot recall bytes
+already accepted by an external sink. The Python agent renews from a
 background thread while its synchronous collector runs; it cannot interrupt the
 collector mid-request, so after a lost renewal it refuses the collector's sink
 and registry publication and skips completion. Do not run both schedulers for the same specs. Explicit non-due runs

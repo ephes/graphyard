@@ -32,8 +32,9 @@ use graphyard_store::{
     SpecRunUpdate, Store, StoreError,
 };
 
-/// The UTC wall clock (`timezone.now()`, `datetime.now(UTC)`).
-pub trait Clock {
+/// The UTC wall clock (`timezone.now()`, `datetime.now(UTC)`). Clones read the
+/// same clock, including when the database thread checks collector leases.
+pub trait Clock: Clone + Send + 'static {
     fn now(&self) -> UtcDateTime;
 }
 
@@ -388,7 +389,10 @@ async fn run_metric_spec<E: SpecExecutors, C: Clock>(
                         .checked_add(lease_seconds)
                         .ok_or(RunError::NextRunTimeOverflow)?
                         .max(until.checked_add(1).ok_or(RunError::NextRunTimeOverflow)?);
-                    if !store.renew_spec_claim(claim.clone(), *until, renewed).await? {
+                    let lease_clock = clock.clone();
+                    if !store.renew_spec_claim(claim.clone(), *until, renewed, move || {
+                        lease_clock.now().timestamp()
+                    }).await? {
                         break None;
                     }
                     *until = renewed;
