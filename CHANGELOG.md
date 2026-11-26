@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Run Rust manual collectors in bounded pages ordered by name and ID.
+  Later pages read current configs, and each completion compares the observed definition and schedule.
+
 - Refuse Rust condition tag filters over 1 MiB before loading their contents.
   Count the failed row in the sweep heartbeat and continue evaluating siblings.
 

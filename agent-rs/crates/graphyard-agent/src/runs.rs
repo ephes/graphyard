@@ -28,8 +28,8 @@ use graphyard_core::{
 };
 use graphyard_influx::{ConditionQuery, QueryError};
 use graphyard_store::{
-    ConditionRow, DueSpecScan, HeartbeatRecord, PendingSpecIssue, SpecRow, SpecRunUpdate, Store,
-    StoreError,
+    ConditionRow, DueSpecScan, HeartbeatRecord, ManualSpecScan, PendingSpecIssue, SpecRow,
+    SpecRunUpdate, Store, StoreError,
 };
 
 /// The UTC wall clock (`timezone.now()`, `datetime.now(UTC)`).
@@ -208,21 +208,18 @@ pub(crate) async fn run_metric_specs_until_shutdown<E: SpecExecutors, C: Clock>(
     let mut state = RunState::new();
     let now = clock.now();
     let mut due_scan = DueSpecScan::new(now.timestamp());
-    let mut manual_specs = if due_only {
-        Vec::new().into_iter()
-    } else {
-        let specs = store.load_manual_specs().await?;
-        if specs.is_empty() {
-            return Err(RunError::NoMatchingSpecs);
-        }
-        specs.into_iter()
-    };
+    let mut manual_scan = ManualSpecScan::default();
+    let mut matched = false;
 
     let mut run = MetricCollectionSpecRun::default();
     let mut errors: Vec<String> = Vec::new();
     let mut store_error = None;
     let mut interrupted = false;
-    while !manual_specs.as_slice().is_empty() || (due_only && due_scan.has_pending()) {
+    while if due_only {
+        due_scan.has_pending()
+    } else {
+        manual_scan.has_pending()
+    } {
         if stopping.get() {
             interrupted = true;
             break;
@@ -230,8 +227,9 @@ pub(crate) async fn run_metric_specs_until_shutdown<E: SpecExecutors, C: Clock>(
         let next = if due_only {
             due_scan.next(store).await
         } else {
-            Ok(manual_specs.next())
+            manual_scan.next(store).await
         };
+        matched |= matches!(next, Ok(Some(_)));
         let spec = match next {
             Ok(Some(Ok(spec))) => spec,
             Ok(Some(Err(PendingSpecIssue::Superseded))) => continue,
@@ -244,6 +242,7 @@ pub(crate) async fn run_metric_specs_until_shutdown<E: SpecExecutors, C: Clock>(
                 }
                 continue;
             }
+            Ok(None) if !due_only && !matched => return Err(RunError::NoMatchingSpecs),
             Ok(None) => break,
             Err(err) if run.total > 0 => {
                 store_error = Some(err);

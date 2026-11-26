@@ -349,10 +349,14 @@ schedulers together for the same specs.
 Rust collector sweeps and lease writes accept an enable flag only when it
 decodes to true (SQLite renders it as the single byte `1`). An imported value
 such as `2` cannot start a collector or renew or complete its claim.
-Explicit non-due/manual runs take one snapshot in name order and execute
-eligible specs regardless of due time, with completion fenced by the captured
-definition and original schedule. They use the same config ceiling as due
-sweeps and report no matching specs when the snapshot is empty.
+Explicit non-due/manual runs execute eligible specs regardless of due time.
+They load up to 16 configs at a time in ascending name and ID order and
+finish each page before reading the next. Later pages observe changes committed
+before their query. A concurrent rename can move a spec across the cursor and
+cause it to be skipped or visited again. All attempts use the sweep's starting
+time for cadence. Each completion compares the definition and schedule seen
+when its page was loaded. Manual runs use the same config ceiling as due
+sweeps and report no matching specs when the first page is empty.
 Superseded completions contribute no run counts, errors or heartbeat evidence;
 when there are no accepted completions or schedule failures, the heartbeat is
 untouched. The Rust agent counts every

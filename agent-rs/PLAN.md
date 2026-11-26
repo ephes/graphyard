@@ -537,11 +537,12 @@ InfluxDB configuration errors surface lazily, per write or query, as in
 2. `now` = current UTC time (µs), `now_ts = floor(now.timestamp())`, taken
    once for the whole run.
 3. Select `enabled = 1` (and `next_run_time <= now_ts` when `due_only`),
-   `ORDER BY name` (model `Meta.ordering`). Rows are loaded once at the start.
-   Rust manual sweeps load the snapshot in name order and retain a failure
-   for each unreadable row. Rust due sweeps page the candidate metadata before
-   loading each candidate’s config. SQLite refuses config values over 1 MiB
-   before returning their contents in either mode (D-15).
+   `ORDER BY name` (model `Meta.ordering`). Python loads the rows at the start.
+   Rust manual sweeps fetch up to 16 configs in ascending `(name, id)` order
+   and retain a failure for each unreadable row. Each page is a new read.
+   Rust due sweeps page the candidate metadata before loading each candidate’s
+   config. SQLite refuses config values over 1 MiB before returning their
+   contents in either mode (D-15).
 4. Empty: with `due_only` return all-zero counters without a heartbeat; else
    raise `No matching enabled metric collection specs` (stderr
    `Metric collection failed: …`, no heartbeat).

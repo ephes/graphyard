@@ -118,6 +118,7 @@ fn decode_pending_spec(row: &rusqlite::Row<'_>) -> Result<PendingSpec, StoreErro
             | StoreError::Sqlite(
                 rusqlite::Error::InvalidColumnType(..)
                 | rusqlite::Error::FromSqlConversionFailure(..)
+                | rusqlite::Error::Utf8Error(..)
                 | rusqlite::Error::IntegralValueOutOfRange(..),
             ),
         ) => Ok(Err(PendingSpecIssue::Invalid {
@@ -140,6 +141,87 @@ const BOUNDED_CONFIG: &str =
 
 // Match bool_column's byte-for-byte interpretation, including restored rows.
 const COLLECTOR_ENABLED: &str = "CAST(enabled AS TEXT) COLLATE BINARY = '1'";
+
+// Each config is capped at 1 MiB. Keep the page small even when all are full.
+const MANUAL_PAGE_SIZE: usize = 16;
+
+#[derive(Clone)]
+struct ManualSpecKey {
+    id: i64,
+    name: Vec<u8>,
+    name_is_text: bool,
+}
+
+/// A manual sweep that holds only one page of eligible configs at a time.
+#[derive(Default)]
+pub struct ManualSpecScan {
+    page: IntoIter<PendingSpec>,
+    after: Option<ManualSpecKey>,
+    last_page: bool,
+}
+
+impl ManualSpecScan {
+    /// Whether the sweep can have another candidate.
+    pub fn has_pending(&self) -> bool {
+        !self.page.as_slice().is_empty() || !self.last_page
+    }
+
+    /// Advance by one candidate, returning None at the end of the sweep.
+    ///
+    /// # Errors
+    /// Store and query failures. Unreadable rows are returned separately.
+    pub async fn next(&mut self, store: &Store) -> Result<Option<PendingSpec>, StoreError> {
+        if self.page.as_slice().is_empty() && !self.last_page {
+            let after = self.after.clone();
+            *self = store
+                .call(move |connection| load_manual_page(connection, after))
+                .await?;
+        }
+        Ok(self.page.next())
+    }
+}
+
+fn load_manual_page(
+    connection: &Connection,
+    after: Option<ManualSpecKey>,
+) -> Result<ManualSpecScan, StoreError> {
+    let pagination = if after.is_some() {
+        "AND (name, id) > (CASE WHEN :name_is_text THEN CAST(:name AS TEXT) ELSE :name END, :id)"
+    } else {
+        ""
+    };
+    let mut statement = connection.prepare_cached(&format!(
+        "SELECT {SPEC_FIELDS}, {BOUNDED_CONFIG}, CAST(name AS BLOB), typeof(name) = 'text'
+         FROM metric_collection_spec WHERE {COLLECTOR_ENABLED} {pagination}
+         ORDER BY name ASC, id ASC LIMIT :page_size"
+    ))?;
+    let limit = MANUAL_PAGE_SIZE as i64;
+    let mut rows = match after {
+        Some(key) => statement.query(rusqlite::named_params! {
+            ":config_limit": MAX_COLLECTOR_CONFIG_BYTES, ":page_size": limit,
+            ":name_is_text": key.name_is_text, ":name": key.name, ":id": key.id,
+        })?,
+        None => statement.query(rusqlite::named_params! {
+            ":config_limit": MAX_COLLECTOR_CONFIG_BYTES, ":page_size": limit,
+        })?,
+    };
+    let mut page = Vec::new();
+    let mut after = None;
+    while let Some(row) = rows.next()? {
+        // Retain the raw key even when the last row's name cannot be decoded.
+        after = Some(ManualSpecKey {
+            id: row.get(0)?,
+            name: row.get(12)?,
+            name_is_text: row.get(13)?,
+        });
+        page.push(decode_pending_spec(row)?);
+    }
+    Ok(ManualSpecScan {
+        last_page: page.len() < MANUAL_PAGE_SIZE,
+        page: page.into_iter(),
+        after,
+    })
+}
 
 const DUE_PAGE_SIZE: usize = 128;
 
@@ -427,23 +509,6 @@ impl Store {
                 ],
             )? == 1)
         }).await
-    }
-
-    /// Load the collectors eligible for manual execution, in name order.
-    ///
-    /// # Errors
-    /// SQLite errors. Unreadable rows are returned separately.
-    pub async fn load_manual_specs(&self) -> Result<Vec<PendingSpec>, StoreError> {
-        self.call(|connection| {
-            let mut statement = connection.prepare_cached(&format!(
-                "SELECT {SPEC_FIELDS}, {BOUNDED_CONFIG} FROM metric_collection_spec
-                 WHERE {COLLECTOR_ENABLED} ORDER BY name ASC"
-            ))?;
-            statement
-                .query_and_then([MAX_COLLECTOR_CONFIG_BYTES], decode_pending_spec)?
-                .collect()
-        })
-        .await
     }
 
     /// Load specs using Django’s SQL truthiness filter for ORM parity.

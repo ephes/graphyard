@@ -175,6 +175,84 @@ async fn manual_collectors_isolate_malformed_metadata_and_run_future_siblings() 
     store.close();
 }
 
+struct EditingCollector<'a> {
+    db: &'a TestDb,
+    seen: RefCell<Vec<(String, Value)>>,
+}
+
+impl SpecExecutors for EditingCollector<'_> {
+    async fn execute(
+        &self,
+        _: SpecType,
+        name: &str,
+        config: &Value,
+        _: &mut RunState,
+    ) -> ExecutorResult {
+        self.seen
+            .borrow_mut()
+            .push((name.to_owned(), config.clone()));
+        if name == "spec-00" {
+            self.db.execute(
+                "UPDATE metric_collection_spec SET updated_at = '2026-01-03 00:00:00' WHERE name = 'spec-00';
+                 UPDATE metric_collection_spec SET config = '{\"changed\":true}' WHERE name = 'spec-39';",
+            );
+        }
+        Ok(SpecOutcome::new(StatusLevel::Ok, 0, 0, ""))
+    }
+}
+
+#[tokio::test]
+async fn manual_collectors_run_before_loading_later_pages() {
+    let db = TestDb::new();
+    // Names are unique in the Django schema. Insert in reverse name order so
+    // primary key order differs from sweep order.
+    for index in (0..40).rev() {
+        common::insert_spec(
+            &db,
+            &format!("spec-{index:02}"),
+            "http_json_metric",
+            &serde_json::json!({}),
+        );
+    }
+    db.execute(
+        "UPDATE metric_collection_spec SET next_run_time = 9223372036854775807;
+         UPDATE metric_collection_spec SET enabled = 2 WHERE name = 'spec-23';
+         UPDATE metric_collection_spec SET name = CAST(x'737065632d3135ff' AS TEXT) WHERE name = 'spec-15';",
+    );
+    let store = Store::open(db.path(), &settings(&[])).unwrap();
+    let collector = EditingCollector {
+        db: &db,
+        seen: RefCell::new(Vec::new()),
+    };
+    let run = run_metric_specs(&store, &collector, &SystemClock, false)
+        .await
+        .unwrap();
+    let seen = collector.seen.into_inner();
+    let expected: Vec<_> = (0..40)
+        .filter(|index| ![15, 23].contains(index))
+        .map(|index| format!("spec-{index:02}"))
+        .collect();
+    assert_eq!(
+        seen.iter().map(|(name, _)| name).collect::<Vec<_>>(),
+        expected.iter().collect::<Vec<_>>()
+    );
+    assert_eq!(seen.last().unwrap().1, serde_json::json!({"changed": true}));
+    assert_eq!((run.total, run.failed), (38, 1));
+    assert_eq!(
+        db.value("metric_collection_spec", "spec-00", "last_run_at"),
+        rusqlite::types::Value::Null
+    );
+    assert_eq!(
+        db.text("metric_collection_spec", "spec-39", "last_status"),
+        "ok"
+    );
+    assert_eq!(
+        db.text("pipeline_heartbeat", "metric_collectors", "last_error"),
+        "spec_id=25: invalid stored collector metadata"
+    );
+    store.close();
+}
+
 struct Samples {
     fail: bool,
 }
