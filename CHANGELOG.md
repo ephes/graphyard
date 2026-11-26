@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Keep Rust manual collector runs going when one stored row is unreadable.
+  Report the failed row by ID and run the remaining eligible specs.
+
 - Apply the decoded enable flag to Rust collector admission, claims,
   renewals and result writes.
 

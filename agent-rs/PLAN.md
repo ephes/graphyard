@@ -361,9 +361,10 @@ that differs is a bug.
   Unique prefixes of long flags are matched among all flags, the Rust-only
   ones included, so `--c` is ambiguous in Rust (`--condition-interval`,
   `--check-schema`) where argparse expands it. A collector schedule beyond
-  SQLite’s INTEGER range fails only its spec. In a Rust due sweep, a stored
-  row conversion failure counts as a failed spec with an ID-only diagnostic
-  and leaves its schedule untouched. Python's bulk load can fail the sweep. A
+  SQLite’s INTEGER range fails only its spec. In Rust collector sweeps, a
+  stored row conversion failure or a config over 1 MiB counts as a failed
+  spec with an ID-only diagnostic and leaves its schedule untouched.
+  Collector scheduling and lease writes require the decoded true value. Python's bulk load can fail the sweep. A
   collector store error after a counted outcome can publish a partial heartbeat
   (section 3.4). Rust collector claims, renewals and completions also compare
   the exact stored `updated_at` text. Rust due sweeps page through candidate
@@ -518,8 +519,10 @@ InfluxDB configuration errors surface lazily, per write or query, as in
    once for the whole run.
 3. Select `enabled = 1` (and `next_run_time <= now_ts` when `due_only`),
    `ORDER BY name` (model `Meta.ordering`). Rows are loaded once at the start.
-   The Rust store decodes each SQLite row as it reads it and returns the first
-   error in query order, with no partial result.
+   Rust manual sweeps load the snapshot in name order and retain a failure
+   for each unreadable row. Rust due sweeps page the candidate metadata before
+   loading each candidate’s config. SQLite refuses config values over 1 MiB
+   before returning their contents in either mode (D-15).
 4. Empty: with `due_only` return all-zero counters without a heartbeat; else
    raise `No matching enabled metric collection specs` (stderr
    `Metric collection failed: …`, no heartbeat).
@@ -567,13 +570,13 @@ same specs.
 Non-due manual runs retain unconditional execution and the shared run-start
 timestamp, with completion fenced by the originally observed schedule and
 captured definition. Superseded completions are not counted. A run with no
-accepted completions, schedule failures or unreadable due rows leaves the
+accepted completions, schedule failures or unreadable rows leaves the
 heartbeat untouched.
 
 A load, claim, renewal or completion store error stops the batch: error log
 `Metric collection failed`, stderr `Metric collection failed: <err>`, and the
 scheduler loop continues. After a committed completion, a schedule overflow or
-an unreadable due row (D-15), Rust tries to publish a partial `metric_collectors` heartbeat. It marks `partial: 1`
+an unreadable row (D-15), Rust tries to publish a partial `metric_collectors` heartbeat. It marks `partial: 1`
 in details, counts the prefix, and preserves `last_success`. A sweep stopped
 by SIGTERM/SIGINT after counted outcomes, with specs left unstarted, publishes
 the same partial heartbeat with the first message `partial run: agent

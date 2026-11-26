@@ -314,10 +314,6 @@ publications (including failures) are ignored. A failure advances
 gap and the final carry against `CONDITION_DATA_STALE_WARNING_SECONDS`, matching
 Python and the shared condition/store fixtures.
 
-The Rust store decodes enabled metric specs directly from SQLite in name order.
-If a row cannot be decoded, the store returns the first error and discards the
-partial result.
-
 The Rust agent checks that each spec’s next run time fits in SQLite before
 claiming or executing it, even in manual mode. An overflowing schedule
 counts as a failed spec and leaves its row untouched. Later specs still run.
@@ -348,8 +344,10 @@ schedulers together for the same specs.
 Rust collector sweeps and lease writes accept an enable flag only when it
 decodes to true (SQLite renders it as the single byte `1`). An imported value
 such as `2` cannot start a collector or renew or complete its claim.
-Explicit non-due/manual runs still execute every enabled spec regardless of due
-time, with completion fenced by the captured definition and original schedule.
+Explicit non-due/manual runs take one snapshot in name order and execute
+eligible specs regardless of due time, with completion fenced by the captured
+definition and original schedule. They use the same config ceiling as due
+sweeps and report no matching specs when the snapshot is empty.
 Superseded completions contribute no run counts, errors or heartbeat evidence;
 when there are no accepted completions or schedule failures, the heartbeat is
 untouched. The Rust agent counts every
@@ -359,13 +357,13 @@ messages in spec order (critical outcomes and warnings with a message). A fixed
 already emitted during collection cannot be recalled. Python and Rust share
 claim/recovery/completion fixtures and run only synthetic collectors in tests.
 
-When a due row has unreadable stored metadata, Rust counts it as failed and
+When a due or manual row has unreadable stored metadata, Rust counts it as failed and
 continues with later collectors. The log and up to five heartbeat error samples
-identify the row by ID without exposing the stored value. The row stays due so
+identify the row by ID without exposing the stored value. The row keeps its existing schedule so
 an operator can repair it. SQLite query failures still fail the run.
 
 A claim, renewal or completion store error stops later specs in the batch.
-After a committed completion, a schedule overflow or a due row with unreadable
+After a committed completion, a schedule overflow or a row with unreadable
 stored metadata, the agent tries to write a degraded `metric_collectors`
 heartbeat with `partial: 1` in its details. The counters cover completions and
 failures observed before the store error. A fixed batch error precedes the usual spec diagnostics. The partial

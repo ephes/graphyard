@@ -104,7 +104,7 @@ pub enum PendingSpecIssue {
 
 pub type PendingSpec = Result<SpecRow, PendingSpecIssue>;
 
-fn decode_due_spec(row: &rusqlite::Row<'_>) -> Result<PendingSpec, StoreError> {
+fn decode_pending_spec(row: &rusqlite::Row<'_>) -> Result<PendingSpec, StoreError> {
     if row.get_ref(CONFIG_COLUMN)? == ValueRef::Null {
         return Ok(Err(PendingSpecIssue::Invalid {
             id: row.get(0)?,
@@ -266,7 +266,7 @@ fn load_pending_spec(
         candidate.revision,
     ])?;
     match rows.next()? {
-        Some(row) => decode_due_spec(row),
+        Some(row) => decode_pending_spec(row),
         None => Ok(Err(PendingSpecIssue::Superseded)),
     }
 }
@@ -432,14 +432,16 @@ impl Store {
     /// Load the collectors eligible for manual execution, in name order.
     ///
     /// # Errors
-    /// SQLite errors and unreadable rows.
-    pub async fn load_manual_specs(&self) -> Result<Vec<SpecRow>, StoreError> {
+    /// SQLite errors. Unreadable rows are returned separately.
+    pub async fn load_manual_specs(&self) -> Result<Vec<PendingSpec>, StoreError> {
         self.call(|connection| {
             let mut statement = connection.prepare_cached(&format!(
-                "SELECT {SPEC_FIELDS}, config FROM metric_collection_spec
+                "SELECT {SPEC_FIELDS}, {BOUNDED_CONFIG} FROM metric_collection_spec
                  WHERE {COLLECTOR_ENABLED} ORDER BY name ASC"
             ))?;
-            statement.query_and_then([], decode_spec)?.collect()
+            statement
+                .query_and_then([MAX_COLLECTOR_CONFIG_BYTES], decode_pending_spec)?
+                .collect()
         })
         .await
     }

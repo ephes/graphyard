@@ -230,7 +230,7 @@ pub(crate) async fn run_metric_specs_until_shutdown<E: SpecExecutors, C: Clock>(
         let next = if due_only {
             due_scan.next(store).await
         } else {
-            Ok(manual_specs.next().map(Ok))
+            Ok(manual_specs.next())
         };
         let spec = match next {
             Ok(Some(Ok(spec))) => spec,
