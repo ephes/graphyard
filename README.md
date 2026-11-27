@@ -13,7 +13,8 @@ one immutable report, with SQLite contention returned as retryable HTTP 503.
 Host latest and category pointers order reports by observation time, receive time,
 then row ID; failed categories keep their last successful evidence. Fleet summaries
 batch timestamps, category statuses, item counts and gaps in the database.
-Per-host, version-page and export views can still read full reports.
+Per-host detail and export views read full reports. The version page reads
+reports referenced by the applications and packages categories.
 Inventory summary, detail and version views each capture evidence in a short
 database snapshot. Host detail and application pages read the host's warning
 policy in that snapshot too, so a page never pairs a newer report with older

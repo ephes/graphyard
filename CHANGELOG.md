@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Limit the inventory Versions page to reports referenced by the applications
+  and packages categories, preserving historical evidence and Homebrew rows.
+- Show Python package comparisons from a failed application probe as unknown
+  while retaining the installed version and source report link.
+
 - Render the inventory host detail page when the applications category has no
   recorded attempt. The page shows "No attempt recorded" and no partial
   application preview instead of failing.
