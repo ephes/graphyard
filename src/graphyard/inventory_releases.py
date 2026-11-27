@@ -456,7 +456,7 @@ def compare(installed, release, observed_at, now, historical=False):
     )
 
 
-def _compare(installed, release, observed_at, now, historical):
+def _compare(installed, release, observed_at, now, historical, *, probe_failed=False):
     result = {
         "installed": installed if isinstance(installed, str) else "Unknown",
         "available": release.version if release and release.version else "Unknown",
@@ -477,6 +477,9 @@ def _compare(installed, release, observed_at, now, historical):
             "stale": "Release information stale",
             "invalid": "Cached release version is invalid",
         }[release.state]
+        return result
+    if probe_failed:
+        result["reason"] = "Application probe failed; installed version unverified"
         return result
     if historical or not observation_is_fresh(observed_at, now, MAX_AGE):
         result["reason"] = "Installed-version observation missing or stale"
@@ -527,6 +530,7 @@ def rows_for_host(host, sources, now, observations=None, *, project_release=None
             evidence = app.get("items")
             if not isinstance(evidence, dict):
                 continue
+            probe_failed = app.get("status") == "error"
             historical = basis == "historical" or app.get("status") != "ok"
             target = project_release(sources.get(("application", name)))
             rows.append(
@@ -542,6 +546,7 @@ def rows_for_host(host, sources, now, observations=None, *, project_release=None
                         snapshot.observed_at,
                         now,
                         historical,
+                        probe_failed=probe_failed,
                     ),
                 }
             )
@@ -565,6 +570,7 @@ def rows_for_host(host, sources, now, observations=None, *, project_release=None
                             snapshot.observed_at,
                             now,
                             historical,
+                            probe_failed=probe_failed,
                         ),
                     }
                 )

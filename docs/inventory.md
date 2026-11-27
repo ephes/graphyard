@@ -537,7 +537,10 @@ success timestamp is missing evidence. Failed, stale and invalid evidence each
 have their own explanation, and the views retain the source timestamps. Historical
 fallback reports remain unknown. If an application probe failed, its application
 and Python package findings are unknown even when its nested Python probe succeeded.
-The rows still show the observed versions and link to the source report. Successful
+The rows still show the observed versions and link to the source report. When the
+entry reports `status: error` and its release evidence is current, the reason names
+the failed application probe; release-source problems (no registered source, failed,
+missing, stale or invalid release evidence) keep their own reason. Successful
 application entries within partial reports can still be compared, with explicit
 partial-basis markers and host coverage notes. Exact version matches mean only a
 match to that checked stable release; an installed version ahead of the source is

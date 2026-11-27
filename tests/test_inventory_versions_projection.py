@@ -255,7 +255,7 @@ def test_python_version_comparison_inherits_application_failure(
                 },
             },
         }
-        for status in ("error", "ok")
+        for status in ("error", "ok", "unsupported")
     ]
     snapshot.save(update_fields=["report"])
     InventoryRelease.objects.create(
@@ -266,6 +266,7 @@ def test_python_version_comparison_inherits_application_failure(
             "targets": [
                 {"kind": "application", "name": "error-app"},
                 {"kind": "application", "name": "ok-app"},
+                {"kind": "application", "name": "unsupported-app"},
                 {"kind": "python", "name": "synthetic-package"},
             ],
         },
@@ -281,12 +282,18 @@ def test_python_version_comparison_inherits_application_failure(
         for row in response.context["page"]
         if row["kind"] in ("application", "python")
     }
-    assert len(rows) == 4
+    assert len(rows) == 6
     for kind in ("application", "python"):
         failed = rows["error-app", kind]
         current = rows["ok-app", kind]
+        unsupported = rows["unsupported-app", kind]
+        assert unsupported["status"] == "unknown"
+        assert unsupported["reason"] == "Installed-version observation missing or stale"
+        assert unsupported["installed"] == "1.0"
         assert failed["status"] == "unknown"
-        assert failed["reason"] == "Installed-version observation missing or stale"
+        assert (
+            failed["reason"] == "Application probe failed; installed version unverified"
+        )
         assert current["status"] == "update"
         assert failed["installed"] == current["installed"] == "1.0"
         assert failed["available"] == current["available"] == "2.0"
@@ -294,7 +301,9 @@ def test_python_version_comparison_inherits_application_failure(
     source_url = reverse(
         "graphyard:inventory_download", args=[host.host.host_id, snapshot.snapshot_id]
     )
-    assert f'href="{source_url}"' in response.content.decode()
+    content = response.content.decode()
+    assert f'href="{source_url}"' in content
+    assert "Application probe failed; installed version unverified" in content
 
 
 @pytest.mark.django_db(transaction=True)
