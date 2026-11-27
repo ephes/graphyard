@@ -445,9 +445,11 @@ The page never makes outbound requests and never modifies host reports.
 The release cache, host list and every category pointer and report shown come from
 one short database snapshot, so
 a concurrent ingest or pruning cannot mix report generations or drop a host's
-evidence mid-render; rendering holds no transaction. Pointers and reports are
-batched with a constant number of queries regardless of fleet size, each referenced
-report is decoded once, and a host filter reads only that host's evidence.
+evidence mid-render; rendering holds no transaction. The page loads reports
+referenced by the applications and packages category pointers. Pointers and
+reports are batched with a constant number of queries regardless of fleet size,
+each referenced report is decoded once, and a host filter reads only that host's
+evidence.
 Within the page request, rows that use the same release source share its URL,
 cache status and parsed upstream version. Installed versions and observation
 ages are evaluated for each row.
@@ -533,9 +535,16 @@ must be no more than eight days old and not future-dated to compare. Source heal
 and version comparison use the same cache rules. An empty cached version or absent
 success timestamp is missing evidence. Failed, stale and invalid evidence each
 have their own explanation, and the views retain the source timestamps. Historical
-fallback reports remain unknown. Valid Python subprobes within partial application
-reports may be compared, with explicit partial-basis markers and host coverage notes. Exact version matches mean only a match to that
-checked stable release; an installed version ahead of the source is distinct.
+fallback reports remain unknown. If an application probe failed, its application
+and Python package findings are unknown even when its nested Python probe succeeded.
+The rows still show the observed versions and link to the source report. When the
+entry reports `status: error` and its release evidence is current, the reason names
+the failed application probe; release-source problems (no registered source, failed,
+missing, stale or invalid release evidence) keep their own reason. Successful
+application entries within partial reports can still be compared, with explicit
+partial-basis markers and host coverage notes. Exact version matches mean only a
+match to that checked stable release; an installed version ahead of the source is
+distinct.
 Python package versions use PEP 440 ordering. Homebrew excludes rebuild suffixes
 and formula revisions; casks and arbitrary OS versions have no upstream comparator.
 APT comparisons retain their locally recorded candidate and explicitly unknown

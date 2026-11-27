@@ -341,17 +341,20 @@ def _latest_snapshot_id():
     )
 
 
-def _host_states(hosts):
-    """Batch pointers and decode every distinct referenced report once."""
+def _host_states(hosts, *, category_names=None):
+    """Batch report evidence, omitting host-latest reports for category-only reads."""
     host_ids = [host.pk for host in hosts]
-    latest_ids = dict(
-        InventoryHost.objects.filter(pk__in=host_ids)
-        .annotate(latest_id=_latest_snapshot_id())
-        .values_list("pk", "latest_id")
-    )
-    categories = list(
-        InventoryCategory.objects.filter(host_id__in=host_ids).order_by("name")
-    )
+    categories = InventoryCategory.objects.filter(host_id__in=host_ids).order_by("name")
+    latest_ids = {}
+    if category_names is None:
+        latest_ids = dict(
+            InventoryHost.objects.filter(pk__in=host_ids)
+            .annotate(latest_id=_latest_snapshot_id())
+            .values_list("pk", "latest_id")
+        )
+    else:
+        categories = categories.filter(name__in=category_names)
+    categories = list(categories)
     identifiers = {pk for pk in latest_ids.values() if pk is not None}
     for category in categories:
         identifiers.update(
@@ -758,7 +761,9 @@ def version_list(request):
             for host in hosts
             if not selected_host or host.host.host_id == selected_host
         ]
-        states = _host_states(selected)
+        states = _host_states(
+            selected, category_names=inventory_releases.VERSION_CATEGORIES
+        )
     project_release = inventory_releases.release_projector(now)
     rows = []
     coverage = []

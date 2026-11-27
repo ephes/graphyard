@@ -109,6 +109,97 @@ def test_version_page_queries_are_constant_and_decode_each_report_once(
 
 
 @pytest.mark.django_db
+def test_version_page_decodes_only_application_and_package_evidence(
+    client, django_user_model, monkeypatch
+):
+    from datetime import timedelta
+    from uuid import uuid4
+
+    from django.urls import reverse
+    from django.utils import timezone
+
+    from graphyard.models import InventoryCategory, InventorySnapshot
+
+    now = timezone.now()
+    referenced = set()
+    expected_rows = set()
+    for basis in ("partial", "historical"):
+        host, success = _host(basis, "1.0", now - timedelta(minutes=3))
+
+        def store_report(minutes_ago, categories):
+            return InventorySnapshot.objects.create(
+                host=host,
+                snapshot_id=uuid4(),
+                observed_at=now - timedelta(minutes=minutes_ago),
+                digest="b" * 64,
+                report={"categories": categories, "gaps": []},
+            )
+
+        failed_applications = {"status": "error", "items": []}
+        if basis == "partial":
+            failed_applications["partial_items"] = _report("2.0")["categories"][
+                "applications"
+            ]["items"]
+        attempt = store_report(2, {"applications": failed_applications})
+        packages = store_report(
+            2, {"packages": _report("3.0")["categories"]["packages"]}
+        )
+        units = store_report(
+            1, {"units": {"status": "ok", "items": [{"name": basis * 10_000}]}}
+        )
+        latest = store_report(0, {"containers": {"status": "ok", "items": []}})
+        pointers = InventoryCategory.objects.filter(host=host)
+        pointers.filter(name="applications").update(latest_attempt=attempt)
+        pointers.filter(name="packages").update(
+            latest_attempt=packages, latest_success=packages
+        )
+        pointers.filter(name="units").update(latest_attempt=units, latest_success=units)
+
+        referenced.update((attempt.pk, packages.pk, success.pk))
+        chosen = attempt if basis == "partial" else success
+        expected_rows.update(
+            (
+                (
+                    basis,
+                    "application",
+                    basis,
+                    "2.0" if basis == "partial" else "1.0",
+                    chosen.pk,
+                ),
+                (basis, "brew (upstream only)", "successful", "3.0", packages.pk),
+            )
+        )
+
+    client.force_login(django_user_model.objects.create_user(username="reader"))
+    decoded = _count_decodes(monkeypatch)
+    response = client.get(reverse("graphyard:inventory_versions"))
+    assert response.status_code == 200
+    assert {
+        (row["host"], row["kind"], row["basis"], row["installed"], row["snapshot"].pk)
+        for row in response.context["page"]
+    } == expected_rows
+    assert len(decoded) == len(referenced)
+    assert all(
+        set(report["categories"]) != {"units"}
+        and set(report["categories"]) != {"containers"}
+        for report in decoded
+    )
+
+    response = client.get(reverse("graphyard:inventory_detail", args=["historical"]))
+    assert response.status_code == 200
+    assert response.context["latest"] == latest
+    assert {
+        category.name: category.latest_attempt
+        for category in response.context["categories"]
+    } == {
+        "applications": attempt,
+        "packages": packages,
+        "units": units,
+        "containers": success,
+    }
+
+
+@pytest.mark.django_db
 def test_selected_host_reads_only_its_own_evidence(
     client, django_user_model, monkeypatch
 ):
@@ -139,6 +230,80 @@ def test_selected_host_reads_only_its_own_evidence(
     )
     assert response.status_code == 200
     assert decoded == [] and len(response.context["page"]) == 0
+
+
+@pytest.mark.django_db
+def test_python_version_comparison_inherits_application_failure(
+    client, django_user_model
+):
+    from django.urls import reverse
+    from django.utils import timezone
+
+    from graphyard.models import InventoryRelease
+
+    now = timezone.now()
+    host, snapshot = _host("synthetic", "1.0", now)
+    snapshot.report["categories"]["applications"]["items"] = [
+        {
+            "id": f"{status}-app",
+            "status": status,
+            "items": {
+                "installed_version": "1.0",
+                "python": {
+                    "status": "ok",
+                    "items": [{"name": "synthetic-package", "version": "1.0"}],
+                },
+            },
+        }
+        for status in ("error", "ok", "unsupported")
+    ]
+    snapshot.save(update_fields=["report"])
+    InventoryRelease.objects.create(
+        source_id="pypi:synthetic-package",
+        definition={
+            "kind": "pypi",
+            "project": "synthetic-package",
+            "targets": [
+                {"kind": "application", "name": "error-app"},
+                {"kind": "application", "name": "ok-app"},
+                {"kind": "application", "name": "unsupported-app"},
+                {"kind": "python", "name": "synthetic-package"},
+            ],
+        },
+        version="2.0",
+        checked_at=now,
+    )
+
+    client.force_login(django_user_model.objects.create_user(username="reader"))
+    response = client.get(reverse("graphyard:inventory_versions"))
+    assert response.status_code == 200
+    rows = {
+        (row["application"], row["kind"]): row
+        for row in response.context["page"]
+        if row["kind"] in ("application", "python")
+    }
+    assert len(rows) == 6
+    for kind in ("application", "python"):
+        failed = rows["error-app", kind]
+        current = rows["ok-app", kind]
+        unsupported = rows["unsupported-app", kind]
+        assert unsupported["status"] == "unknown"
+        assert unsupported["reason"] == "Installed-version observation missing or stale"
+        assert unsupported["installed"] == "1.0"
+        assert failed["status"] == "unknown"
+        assert (
+            failed["reason"] == "Application probe failed; installed version unverified"
+        )
+        assert current["status"] == "update"
+        assert failed["installed"] == current["installed"] == "1.0"
+        assert failed["available"] == current["available"] == "2.0"
+        assert failed["snapshot"] == current["snapshot"] == snapshot
+    source_url = reverse(
+        "graphyard:inventory_download", args=[host.host.host_id, snapshot.snapshot_id]
+    )
+    content = response.content.decode()
+    assert f'href="{source_url}"' in content
+    assert "Application probe failed; installed version unverified" in content
 
 
 @pytest.mark.django_db(transaction=True)
